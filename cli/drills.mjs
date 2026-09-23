@@ -216,8 +216,8 @@ export const DRILLS = [
         rail: "docs",
         perturb: {
             file: "CONTRIBUTING.md",
-            find: "- [`docs/plan.md`](docs/plan.md) — the milestones, and the Session log every session appends to.",
-            replace: "- [`docs/plan.md`](docs/plan-the-drill-broke-this.md) — the milestones, and the Session log every session appends to.",
+            find: "- [`docs/plan.md`](docs/plan.md) — the milestones. A change's record is its commit message.",
+            replace: "- [`docs/plan.md`](docs/plan-the-drill-broke-this.md) — the milestones. A change's record is its commit message.",
         },
         exit: 1,
         tell: "link(s) that do not resolve in the repository",
@@ -738,8 +738,8 @@ export const DRILLS = [
         // control demanded *no block at all* would therefore be green or red by the day of the week.
         perturb: {
             file: "CONTRIBUTING.md",
-            find: "- [`docs/plan.md`](docs/plan.md) — the milestones, and the Session log every session appends to.",
-            replace: "- [`docs/plan.md`](docs/plan-the-drill-broke-this.md) — the milestones, and the Session log every session appends to.",
+            find: "- [`docs/plan.md`](docs/plan.md) — the milestones. A change's record is its commit message.",
+            replace: "- [`docs/plan.md`](docs/plan-the-drill-broke-this.md) — the milestones. A change's record is its commit message.",
         },
         stdin: {
             hook_event_name: "Stop",

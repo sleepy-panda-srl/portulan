@@ -2,8 +2,12 @@
 // `index` — the memory index generator, and the rail on what memory may cost.
 //
 //   node cli/index.mjs [--check] [--pack-root <dir>]... <workspace-dir> [<workspace-dir> ...]
+//   node cli/index.mjs --handoffs <workspace-dir> [<workspace-dir> ...]
+//   node cli/index.mjs [--check] --changes <dir>
 //
-// Exit 0 every index is current and within budget · 1 one is not · 2 could not run.
+// Exit 0 every index is current and within budget · 1 one is not · 2 could not run. `--handoffs`
+// prints the handoff index, which a workspace may keep on disk or not (see `judgeHandoffs`), and
+// `--changes` prints a directory of changelog fragments as the release cut pastes them.
 //
 // ../core/operating/memory.md gives the store four states, and this is the third: "a size-budgeted
 // index is generated so the right memory is recalled without loading all of it. The index is built,
@@ -982,12 +986,21 @@ function judgeHandoffs(dir, workspace, { write, fail, remedyFlags = "" }) {
             );
         }
     }
-    if (broken) return { declared: true, path: indexPath, expected: null };
+    if (broken) return { declared: true, path: indexPath, expected: null, count: series.records.length };
 
     const expected = renderHandoffIndex(workspace, series);
-    compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "handoffs", source: "series", fail, remedyFlags });
+    // **Whether the index is kept is the workspace's choice, and a copy on disk is how it says so**
+    // (2026-09-23). A workspace that keeps one — `init` drafts one — keeps the freshness rail: the copy
+    // is compared byte for byte and a write regenerates it. One that keeps none has no copy, and then a
+    // write creates none and `--check` renders the series, which proves every handoff yields a line, and
+    // compares it with nothing. This repository stopped keeping its own that day: a committed copy
+    // conflicted on every merge that added a handoff — all 15 of that day's pull requests that had
+    // another merge land while they were open — and carried nothing the series does not. `--handoffs`
+    // prints it on demand.
+    const kept = fs.existsSync(indexPath);
+    if (kept) compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "handoffs", source: "series", fail, remedyFlags });
 
-    return { declared: true, path: indexPath, expected };
+    return { declared: true, path: indexPath, expected, count: series.records.length, kept };
 }
 
 /**
@@ -1269,18 +1282,117 @@ function budgetFindings(memory, store, expected, fail) {
  * The help screen — see `./doctor.mjs`'s for the contract and why these three gained one late.
  * `../.portulan/dod.md` condition 4 binds it: every flag below exists in the parser above.
  */
+// ===========================================================================================
+// Changelog fragments: one file per change, assembled at the cut
+// ===========================================================================================
+
+// **A change's changelog entry is a file of its own** (2026-09-23). Every change used to append a
+// bullet to the one `## Unreleased` section of `CHANGELOG.md`, so any two changes open at once
+// conflicted there. One file per change cannot collide with another. The shape is towncrier's: the
+// file is named for the change and carries its section in the name, and the cut assembles the lot.
+// `.portulan/verify/docs.sh`'s record check refuses the same fragments this refuses, in bash, because
+// that recipe needs no node; the rule both carry is `CHANGE_NAME` and one top-level bullet.
+export const CHANGE_SECTIONS = ["added", "changed", "deprecated", "removed", "fixed", "security"];
+const CHANGE_NAME = new RegExp(`^[a-z0-9][a-z0-9-]*\\.(${CHANGE_SECTIONS.join("|")})\\.md$`);
+
+/**
+ * Every fragment in `dir`, in name order, and what is wrong with any that cannot be pasted. A missing
+ * directory is an empty set rather than an error: the cut deletes every fragment, and git keeps no
+ * empty directory.
+ */
+export function readChanges(dir) {
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (cause) {
+        if (cause.code === "ENOENT") return { fragments: [], problems: [] };
+        throw new IndexError(`cannot read ${dir} — ${cause.code ?? cause.message}`);
+    }
+    const fragments = [];
+    const problems = [];
+    for (const entry of entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+        if (NOT_A_RECORD.has(entry.name)) continue;
+        const match = CHANGE_NAME.exec(entry.name);
+        if (!entry.isFile() || !match) {
+            problems.push({
+                name: entry.name,
+                message: `is not a fragment: name it <slug>.<section>.md, the section one of ${CHANGE_SECTIONS.join(", ")}`,
+            });
+            continue;
+        }
+        let text;
+        try {
+            text = fs.readFileSync(path.join(dir, entry.name), "utf8").replace(/\s+$/, "");
+        } catch (cause) {
+            throw new IndexError(`cannot read ${path.join(dir, entry.name)} — ${cause.code ?? cause.message}`);
+        }
+        const lines = text.split("\n");
+        if (!lines[0].startsWith("- ") || lines.filter((line) => /^\S/.test(line)).length !== 1) {
+            problems.push({
+                name: entry.name,
+                message: "is not one top-level bullet: its first line opens `- `, and every later line is indented or blank",
+            });
+            continue;
+        }
+        fragments.push({ name: entry.name, section: match[1], text });
+    }
+    return { fragments, problems };
+}
+
+/**
+ * The fragments as the cut pastes them under a version: a `### Section` per section present. A
+ * fragment links relative to `changes/`, like any file there, so `docs.sh`'s link check resolves it
+ * where it is written; `CHANGELOG.md` sits one directory up, so each `](../` loses its `../` here.
+ */
+export function renderChanges(fragments) {
+    const out = [];
+    for (const section of CHANGE_SECTIONS) {
+        const these = fragments.filter((f) => f.section === section);
+        if (these.length === 0) continue;
+        out.push(`### ${section[0].toUpperCase()}${section.slice(1)}`, "");
+        for (const f of these) out.push(f.text.replaceAll("](../", "]("), "");
+    }
+    return out.join("\n").trimEnd();
+}
+
+function runChanges(dir, check, say) {
+    let read;
+    try {
+        read = readChanges(dir);
+    } catch (error) {
+        if (!(error instanceof IndexError)) throw error;
+        say(`  ✗ ${error.message}`);
+        return 2;
+    }
+    for (const p of read.problems) say(`  ✗ ${path.join(dir, p.name)} ${p.message}`);
+    if (read.problems.length) return 1;
+    if (read.fragments.length === 0) say(`  · ${dir}: no change fragments`);
+    else if (check) say(`  ok ${dir}: ${read.fragments.length} change fragment(s), each one bullet`);
+    else say(renderChanges(read.fragments));
+    return 0;
+}
+
 function usage() {
     return [
         "portulan index — regenerate the memory, handoff and scope indexes",
         "",
         "  portulan index [--check] [--pack-root <dir>|auto]... <workspace-dir> [<workspace-dir> ...]",
         "",
-        "  --check       write nothing; exit 1 if any index is out of date against its store",
+        "  portulan index --handoffs <workspace-dir> [<workspace-dir> ...]",
+        "  portulan index [--check] --changes <dir>",
+        "",
+        "  --check       write nothing; exit 1 if any index kept on disk is out of date against its store,",
+        "                or a handoff yields no index line. A handoff index with no copy on disk is not kept:",
+        "                it is rendered, and nothing is written or compared",
+        "  --handoffs    print each workspace's handoff index instead of judging, whether or not one is kept",
         "  --pack-root   where declared packs are resolved from; `auto` discovers the host's plugin cache.",
         "                A named root REPLACES every other source. A directory actually named `auto` is `./auto`",
+        "  --changes     print the changelog fragments in <dir> grouped by section, as the release cut pastes",
+        "                them; each is <slug>.<section>.md holding one top-level bullet. With --check, print",
+        "                only the verdict",
         "",
         "What is WRITTEN never records which root answered: an index whose bytes carried that would",
-        "regenerate differently on two machines, and `--check` byte-compares.",
+        "regenerate differently on two machines, and `--check` byte-compares every index kept on disk.",
         "",
         "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
     ].join("\n");
@@ -1318,9 +1430,19 @@ export function run(argv, say = console.log) {
     // about the tree whatever this default is.
     const roots = [];
     let discoverPacks = false;
+    let changes = null;
+    let printHandoffs = false;
     for (let i = 0; i < argv.length; i += 1) {
         if (argv[i] === "--check") check = true;
-        else if (argv[i] === "--pack-root") {
+        else if (argv[i] === "--handoffs") printHandoffs = true;
+        else if (argv[i] === "--changes") {
+            changes = argv[i + 1];
+            i += 1;
+            if (changes === undefined || changes.startsWith("-")) {
+                say("  ✗ --changes needs the directory the changelog fragments live in — `changes` in this repository");
+                return 2;
+            }
+        } else if (argv[i] === "--pack-root") {
             const dir = argv[i + 1];
             i += 1;
             // Single leading `-` refused as well, matching `doctor` — see `compile.mjs` for why.
@@ -1339,6 +1461,14 @@ export function run(argv, say = console.log) {
             say(`  ✗ unknown argument \`${argv[i]}\` — run \`portulan index --help\` or \`node cli/index.mjs --help\` for the flags this tool takes`);
             return 2;
         } else dirs.push(argv[i]);
+    }
+
+    if (changes !== null) {
+        if (dirs.length || roots.length || discoverPacks || printHandoffs) {
+            say("  ✗ --changes prints changelog fragments and judges no workspace — run it on its own");
+            return 2;
+        }
+        return runChanges(changes, check, say);
     }
 
     if (dirs.length === 0) {
@@ -1382,7 +1512,7 @@ export function run(argv, say = console.log) {
     for (const dir of dirs) {
         let result;
         try {
-            result = inspect(dir, { write: !check, packRoots: roots.length ? roots : undefined, discoverPacks });
+            result = inspect(dir, { write: !check && !printHandoffs, packRoots: roots.length ? roots : undefined, discoverPacks });
         } catch (error) {
             if (!(error instanceof IndexError)) throw error;
             say(`  ✗ ${dir}: ${error.message}`);
@@ -1394,6 +1524,15 @@ export function run(argv, say = console.log) {
             continue;
         }
 
+        if (printHandoffs) {
+            // Printed rather than written, so reading the series' index leaves no copy behind to go stale.
+            const broken = result.findings.filter((f) => f.series === "handoffs");
+            for (const f of broken) say(`  ✗ ${dir}: ${f.message}`);
+            if (broken.length && worst < 1) worst = 1;
+            else if (!result.series.handoffs.declared) say(`  · ${dir}: declares no handoff index`);
+            else if (!broken.length) say(result.series.handoffs.expected.trimEnd());
+            continue;
+        }
         if (!result.declared) {
             say(`  · ${dir}: declares no index`);
             continue;
@@ -1426,7 +1565,10 @@ export function run(argv, say = console.log) {
                     parts.push(memory.budgets ? `store index ${state}, within budget` : `store index ${state}`);
                 }
             }
-            if (result.series.handoffs.declared) parts.push(`handoff index ${state}`);
+            if (result.series.handoffs.declared) {
+                const { kept, count } = result.series.handoffs;
+                parts.push(kept ? `handoff index ${state}` : `handoff index renders, ${count} handoff(s), none kept on disk`);
+            }
             if (result.series.scopes.declared) parts.push(`scope index ${state}`);
             say(`  ok ${dir}: ${parts.join("; ")}`);
         }

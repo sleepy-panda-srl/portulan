@@ -45,8 +45,8 @@ full: [`2026-07-30-a-round-gets-its-definition.md`](../handoffs/2026-07-30-a-rou
    that a point is settled — [`../gate-map.md`](../gate-map.md) makes it the maintainer's, travelling with
    his merge approval and never ahead of it. The reply is what the loop obliges; the resolution is what
    opens the gate, and they are not the same act or the same person's.
-2. **Records land last.** The handoff and the `docs/plan.md` Session log go in the final push or after
-   the merge — never between rounds.
+2. **Records land last.** A handoff, when one is owed, goes in the final push or after the merge —
+   never between rounds.
 3. **Moved — 2026-08-10, proposal `0025`.** Where an answer lands is the **channel's** fact, not the
    loop's, so it is its own record:
    [`an-answer-lands-on-the-thread-that-raised-it.md`](an-answer-lands-on-the-thread-that-raised-it.md).

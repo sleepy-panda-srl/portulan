@@ -90,7 +90,7 @@ Reversible but consequential: it changes what the repository says, or how it beh
   nobody is present to open; a session applies it in its `gh pr create`.
 - `change-doctrine` — [`../core/`](../core/), a template, a persona, or a skill.
 - `change-this-workspace` — anything here, including this file and [`gates.json`](gates.json).
-- `change-the-plan` — the Status column or the Session log in [`../docs/plan.md`](../docs/plan.md).
+- `change-the-plan` — the milestones and their Status column in [`../docs/plan.md`](../docs/plan.md).
 - `change-a-verify-recipe` — and *relaxing* a check is the case to scrutinise hardest, because it is the
   one change that makes every future "green" mean less.
 

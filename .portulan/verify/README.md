@@ -92,7 +92,7 @@ names.)_
 | [`plugin.sh`](plugin.sh) | the packaging: both manifests parse and agree, component paths resolve, declared skills and agents are real | `bash`, `git`, `node` |
 | [`compile.sh`](compile.sh) | both compiled artifacts — [`../../.claude/settings.json`](../../.claude/settings.json) and [`../compile/github-ruleset.json`](../compile/github-ruleset.json) — are exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
 | [`workflow-filters.sh`](workflow-filters.sh) | every jq **and awk** program the workflows run, lifted out of the parsed `run:` scalars and executed against null-bearing and real-body fixtures — exact stdout, exact exit status | `awk`, `bash`, `jq`, `node` |
-| [`index.sh`](index.sh) | every generated index a workspace declares — the memory store's, and since 2.5 the handoff series' — is exactly what its source renders, and neither the store index, nor the store, nor any single record in it is over the budget its manifest declares | `bash`, `git`, `node` |
+| [`index.sh`](index.sh) | every index a workspace keeps on disk is exactly what its source renders, every handoff yields a line of the handoff index whether or not a copy is kept (this repository keeps none since 2026-09-23), and neither the store index, nor the store, nor any single record in it is over the budget its manifest declares | `bash`, `git`, `node` |
 | [`context.sh`](context.sh) | what a boot reads and what the host loads into every context, measured for both workspaces by [`../../cli/context.mjs`](../../cli/context.mjs) — each file with its size and why it counts, and what is left out — and **Portulan's own footprint railed**: this workspace's boot read-set, the demo's, the boot skill and kernel every adopter's boot reads, the skill's step files, which a boot reads where its manifest is a pointer or names a pack, and the plugin's skill and agent descriptions, each at its figure on the day it landed plus 2%. A demotion lowers its line in the recipe; a raise carries its reason in that change's handoff. Proposal [`0036`](../proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md), items 3 and 6. Its workspace list is audited against the tree, as `index.sh`'s is | `bash`, `git`, `node` |
 | [`ledger.sh`](ledger.sh) | **What a change spends is read right, and the restart advisory speaks once** — [`../../cli/ledger.mjs`](../../cli/ledger.mjs) over [`../../cli/fixtures/ledger/`](../../cli/fixtures/ledger/), synthetic host usage records whose known totals the fixture carries: requests and tokens by class for sessions and subagents apart, contexts opened, compactions, the largest context, rebuilds and their causes, the difference from the host's own totals and the restart threshold, with per-block duplicates, a request copied into a second transcript, a torn line and a sibling directory sharing the key's prefix among the records. Then [`../../cli/advisory.mjs`](../../cli/advisory.mjs) over two of its sessions: the one past its threshold told once and the one below it not, every run exiting 0. **It never reads this machine's records**, which differ per machine: `HOME`, `CLAUDE_CONFIG_DIR` and `TMPDIR` point at an empty temporary directory. Proposal [`0038`](../proposals/0038-what-a-change-spends-is-measured.md), items 2 and 5, and ruling 4 | `bash`, `node` |
 | [`control-chars.sh`](control-chars.sh) | no tracked file carries a byte in the C0 range other than TAB and LF, nor DEL — scanned as bytes, because the one tool that would have shown the last one is the tool the byte silences | `bash`, `git`, `node` |
@@ -142,9 +142,8 @@ correct and still too big.
 
 **Since Workspace Definition 2.5 it covers two series, and only one of them is budgeted.** The handoff
 series gets an index and no rail on its size, which is the argued absence rather than an oversight:
-consolidation is a budget's only permitted remedy, and a handoff series is append-only — held to the
-Session log by the `record` check above, one per session. Retiring a handoff to buy headroom would
-either red that check or destroy the record it exists to keep, so every repair such a budget could ask
+consolidation is a budget's only permitted remedy, and a handoff series is append-only: retiring a
+handoff to buy headroom destroys the record it exists to keep, so every repair such a budget could ask
 for is already barred. A rail whose only legal answer is *do nothing* is one that gets switched off,
 which is the failure this whole file is written against. [`../../spec/slots.md`](../../spec/slots.md)
 carries the argument; whether the series wants a rail on some other axis is the maintainer's question
@@ -383,7 +382,7 @@ less.
 | `links` | Every relative Markdown link resolves **in the repository** — against the tracked set, not against the disk the check is running on. | The engine is a web of cross-references between doctrine, templates, personas, and skills — progressive disclosure *is* those links. A dead link in a framework about context engineering is a product defect, not a docs defect. And the domain is half the rule: a check that asks the filesystem answers a question about one machine, which is how a green stood in front of an author while CI went red on the same commit ([#121](https://github.com/sleepy-panda-srl/portulan/issues/121)). |
 | `kernel` | [`../../core/engine.md`](../../core/engine.md) stays within 60 lines. | The always-loaded layer is the scarcest thing the framework spends, and the budget is constitutional. A budget that lives only in prose is the first thing a busy session negotiates with. |
 | `map` | Every top-level entry appears in the root `README.md` layout table. | Agent legibility: a repository whose own map omits directories teaches an agent a false shape of the ground. This one exists because that had already happened — see below. |
-| `record` | The Session log and `../handoffs/` correspond **both ways** — every log date since 2026-07-25 has a handoff of that date, and every date carries at least as many log entries as it has handoffs; no Markdown file in `../handoffs/` escapes that count by being named without a date; every log entry dated after 2026-07-28 is within the log's 10-line budget; and the newest entry carries a seam attestation. | The Session log and the handoffs are the repository's memory of *how* things were decided, and a session that leaves no record cannot be audited afterwards — which stopped being hypothetical the day a merged doctrine rewrite (#32/#33) turned out to have neither, and again when a two-day review found **five** handoff-documented sessions with no log entry. The budget half exists because the same review found entries at 105 lines against a log that asks for one line per session: an entry that swells into a record makes the file every session must read to boot cost more each time, and moves the *why* out of the handoff written to hold it. Both floors are forward-only cutoffs — the day each rule became a ruling — because a rule cannot bind a record written before it without rewriting that record to suit it. |
+| `record` | Every Markdown file in `../handoffs/` is a dated handoff; `docs/plan.md` carries no Session log entry; every file in `changes/` is one changelog fragment, `<slug>.<section>.md` holding one top-level bullet, and `CHANGELOG.md`'s `## Unreleased` holds no bullet of its own; and the newest change's commit carries a `Seam-scan: clean …` line — the newest commit on the change's own line that is not a merge: HEAD's, its second parent's where HEAD is a merge, or its first parent's where the second is already on `origin/main`. | A change's record is its commit: the subject says what, the body says why. Until 2026-09-23 the record was a Session log entry and a handoff per session, correspondence-checked by date; every pull request wrote to the same log, index and changelog section, and all 15 of that day's pull requests that had another merge land while they were open conflicted there. |
 | `parse` | Every tracked `.json` file is well-formed. | From milestone 2 the repository's policy layer *is* JSON. A manifest that does not parse gates nothing, and it fails at the moment it is needed rather than when it is written. |
 | `doctor` | Both workspaces conform to the Workspace Definition, their paths resolve, their claims match the tree, and every rule carries checkable provenance. It also reports the memory store's count and size, and names any record stating no `Retire when:` condition — reported, never failed, because nothing legislates the field. The budget rail that *does* fail arrived at milestone 5 and is [`index.sh`](index.sh), one recipe over; the retirement condition stays a note here, because it is still the field nothing legislates. For this repository the suite is stricter: a live record without the field turns `tests` red. | The workspace layer is where a team's policy lives, and until this existed every "this workspace conforms" sentence in the repository was an assertion. Its first run found three rules whose provenance the repository had already mandated and not held. |
 | `tests` | The test suites pass. | The validators are the first things here that can be *subtly* wrong rather than visibly broken — a schema keyword silently ignored looks identical to one enforced. A linter can be judged by reading it; a validator cannot. |
@@ -491,131 +490,29 @@ Measured rather than estimated, three alternating pairs on the same tree: 0.802�
 because a default recipe's runtime is a budget like any other, and the honest version of this number is a
 range rather than the flattering single reading.
 
-The `record` check was added 2026-07-27, after a fresh-context audit found that the day's #32/#33
-doctrine-rewrite arc had merged with **no handoff and no Session log entry**, and that the newest log
-entry had closed without the seam attestation its siblings carry. Written red-first against the tree it
-was aimed at: on the pre-repair record it failed on exactly the missing attestation (`docs/plan.md:714`)
-and went green only once the record was repaired. Its observation procedure is one move — delete the
-seam line from the newest entry and run the recipe ([the 0007 rule](../gate-map/platform-floor.md): a watcher earns its
-place by being watched). Forcing the date half red is a bigger move on today's tree: every logged date
-has more than one handoff, so it takes deleting all of a date's handoffs, not one.
+The `record` check was rebuilt 2026-09-23, when the Session log retired and a change's record became its
+commit. What it replaced read the log: a correspondence by date between log entries and handoffs, added
+2026-07-27 after a merged doctrine rewrite (#32/#33) left neither, and an entry budget and a seam line in
+the newest entry, added 2026-07-28. Their provenance and observations are at
+`git show fc453be:.portulan/verify/README.md`. The stray-file audit carried over; an empty handoffs
+directory is now green, since a handoff is owed only for work not committed and pushed.
 
-**The counting direction, the stray-file audit and the entry budget were added 2026-07-28**, from the
-two-day review that found five handoff-documented sessions with no Session log entry and entries grown
-to 105 lines against a log asking for one per session.
-
-**Red-first here means the real record, not a fixture.** Run against `docs/plan.md` as it stood on
-`origin/main` — the record the review was written about — the counting direction exits **1** and names
-the arrears exactly:
-
-```
-FAIL  record — date(s) with fewer Session log entries than handoffs
-        2026-07-27 — 14 handoff(s), 13 Session log entr(ies)
-        2026-07-28 — 5 handoff(s), 2 Session log entr(ies)
-```
-
-With the reconstructions written it exits **0**. Nothing else in the recipe moved between those two runs.
-
-**That is the second design, and the first one is the lesson.** The direction was drafted as *presence*
-— every handoff date has at least one entry of that date — and it was **green on the exact record it was
-minted from**, because each of the five unlogged sessions shared its date with a sibling that had been
-logged. A rail that passes its own founding incident is decoration with a green next to it, and this
-repository already fails other people's prose for less. Caught at the session-open supervisor
-checkpoint, which is where the design was still cheap to change. Counting costs the same `grep` and
-catches five of the six incidents the presence form catches none of.
-
-Observations, each run on this tree and reverted, with the tree asserted clean afterwards:
+Observations of the rebuilt checks, each run on this tree and reverted:
 
 | Move | Result |
 |---|---|
-| clean tree | green; `31 handoff(s)`, `0 entr(ies) dated after 2026-07-28` |
-| the base record from `origin/main` | **red**, naming 2026-07-27 and 2026-07-28 with both counts |
-| a handoff dated 2026-07-29, no entry of that date | **red** on the counting direction alone — 4a stayed green, which is what makes the two separable |
-| a log entry dated 2026-07-29, eleven lines | **red** on the budget, naming file, line, date and count |
-| the same entry trimmed to ten | green, and the count printed as `1` rather than `0` |
-| the cutoff lowered to 2026-07-24, binding 36 entries | **red** on 30, including both merged 2026-07-28 entries — and on **none** of the six added here, which is how their length is a measurement rather than a hand count |
-| a Markdown file in `../handoffs/` whose name carries no date | **red**, naming the file; correspondence still runs |
-| `../handoffs/` holding **only** undated Markdown | **red** naming the files, plus a second red saying neither correspondence check could run — it was **exit 2 naming nothing** until the reorder below |
-| an undated **non**-Markdown file (`notes.txt`) beside real handoffs | green — the audit's scope is `*.md`, measured rather than assumed |
-| `../handoffs/` holding **only** a `notes.txt`, or nothing at all | **exit 2**, and — after the second reorder — printing no verdict line at all beforehand |
-| `../handoffs/` emptied | **exit 2** — could not check correspondence |
-| every entry removed from the log | **exit 2** — could not enumerate the record |
-| the whole recipe under `LC_ALL=C`, `en_US.UTF-8`, `tr_TR.UTF-8` | green and identical in all three |
-| an attestation wrapping between "seam" and "scan" | green — it was **red** before the fix noted below |
-| an attestation following an unindented `- 2026-…` bullet **inside** an entry | green — it was **red** until 2026-07-29, see below |
-| an entry carrying no attestation at all | **red**, unchanged — the negative control for both seam fixes: each widens what the scan can *see*, and neither may widen what counts as an attestation |
+| clean tree, HEAD carrying its `Seam-scan:` line | green on all four |
+| a `- 2026-09-24 · …` line appended to `docs/plan.md` | **red**, naming the line |
+| a fragment holding two top-level bullets | **red**, naming the file |
+| a fragment named `x.improved.md` | **red**, naming the file and the six sections |
+| a bullet added under `## Unreleased` in `CHANGELOG.md` | **red**, with the count |
+| HEAD re-committed without its `Seam-scan:` line | **red**, naming the commit |
+| a merge commit on top, its second parent without the line, then with it | **red** naming the second parent, then green |
+| `main` merged into the branch on top, `main` carrying a change committed later, the branch's own commit with its line, then without | green, then **red**, both naming the branch's own commit; a plain `git log -1 --no-merges HEAD^2` read the later change on `main` |
+| a merge ref over that branch, as CI builds it | the same two results, naming the same commit |
+| that branch in a copy with no `origin/main` | read `main`'s side, here the librarian's commit, which owes no line: the limit below |
 
-`tr_TR.UTF-8` is in that list on purpose: it is the locale where case-insensitive matching stops
-behaving, and the seam half of this same check is a `grep -i`.
-
-**The procedure found a false green in the check it was written for, one step after it was written** —
-the 0007 rule arriving on its own machinery. The first draft read handoff dates straight out of the
-manifest, and the manifest is the git **index** plus untracked files. Emptying `../handoffs/` therefore
-left four dates standing and printed `ok … (4 date(s))` over a directory with nothing in it. The `[ -f ]`
-test the older direction had always carried was the thing the rewrite dropped; it is back, with the
-reason in the code rather than in this file alone. Reading a *derived* list is not reading the tree, and
-the derived list is the one that stays confident once the tree is gone.
-
-**And a third false red in the same half, fixed 2026-07-29 — this one because the check held two
-definitions of one thing.** The seam scan re-derived where the newest entry *ends* with its own regex,
-`^- 2[0-9][0-9][0-9]-`, looser than the `^- YYYY-MM-DD ·` the entry parser requires. An unindented
-`- 2026-…` without the middle dot therefore did not start a new entry as far as every other check was
-concerned, but did end this one's scan — so an attestation sitting after such a line read as absent.
-
-The fix is not a tighter regex. **The scan now reads the entry's start and length from the parser**, so
-the second definition is gone rather than corrected, and the two cannot drift apart again. That is the
-repair `core/operating/evolution.md` prescribes — a fact with two carriers drifts at the weaker
-one — applied to the check that exists to catch it, which is why it is worth more than the narrow
-bug it closes.
-
-Raised as a suppressed low-confidence note on round 6 of
-[#73](https://github.com/sleepy-panda-srl/portulan/pull/73), triaged to
-[#79](https://github.com/sleepy-panda-srl/portulan/issues/79) under the review bound rather than fixed
-there, and fixed here. Measured red-first on the merged tree, with the genuine-absence case asserted as
-the negative control and the 2026-07-28 wrap case asserted as a regression guard.
-
-**And the seam half turned out to carry a false red, found by the session's own entry.** The check joins
-an entry's lines with `tr '\n' ' '`, which leaves the two-space continuation indent standing, so an
-attestation that happens to wrap between *seam* and *scan* arrives as `seam   scan` and matched nothing.
-The words are now separated by `[[:space:]]+`. This is a correction, not a relaxation — they must still
-be adjacent, and *clean* must still follow within 120 characters containing no full stop; an entry with
-no attestation at all is still red, asserted as the negative control. Every entry written since the check
-landed on 2026-07-27 had passed on the accident of wrapping somewhere else, which is worth saying plainly:
-the check was one line-break away from a false red for a year of entries, and it took writing a
-sentence that wrapped in the wrong place to find out. A false red is the failure that gets a whole recipe
-switched off — this file has said so since milestone 2 — and it was sitting inside the recipe that says it.
-
-**The stray-file audit is the same lesson pointed forward.** Both directions enumerate by a dated
-filename, so a handoff named anything else is not failed — it is uncounted, which is worse. A **Markdown**
-file in `../handoffs/` that is not a dated handoff is now a FAIL naming it. The set is empty today; it
-ships to catch the first one. Its scope stops at `*.md` on purpose, and that is measured rather than
-claimed: a `notes.txt` there passes. Widening the matcher would red the untracked debris a working tree
-collects, which buys less than it costs — but it means the audit covers the shape a real handoff would
-take, not the whole directory.
-
-**And the audit was unreachable in the one case it existed for — the inversion of this recipe's own
-founding rule.** It reported *after* the correspondence precondition, so a directory holding only undated
-Markdown exited `2`, *could not run*, while the list of offending filenames was already sitting in a temp
-file. `verify-preconditions-fail-closed` says *could not look* must never read as *nothing wrong*; this
-was **I looked and found it** reading as *could not look* — the same lie told the other way round, and
-the one that costs the operator the diagnosis rather than the alarm. The audit now reports first, and the
-three outcomes separate: undated Markdown present is **red** naming the files and saying plainly that
-neither correspondence check could run; nothing readable at all is the only honest `2`; a stray alongside
-real handoffs is red while correspondence still runs. Raised as a suppressed low-confidence note on #73,
-twice — round 3 filed it as [#78](https://github.com/sleepy-panda-srl/portulan/issues/78) under the
-review bound, and the maintainer then authorised a further round, which is what fixed it.
-
-**Then the fix needed a second ordering, for the same reason as the first.** With the audit moved ahead
-of the precondition, a directory holding nothing enumerable printed `ok   record — … (0 examined)` and
-*then* exited `2`: a green line opening a run that ends in *could not check*. The precondition now
-returns before any verdict is emitted, so the two orderings together say the whole rule — **report a
-finding before a precondition that would hide it, and report no finding at all when there is nothing to
-find.** The count on the green survives and can no longer read 0: the empty case returns earlier, and a
-directory of nothing but strays takes the FAIL branch. Both orderings came from the same channel on
-consecutive rounds, each one exposed by the previous fix, which is the honest shape of this fix rather
-than something to smooth over.
-
-**Both recipes then turned out to have a false green, found in review of that same change.** Neither
+**Both `docs.sh` and `json.sh` then turned out to have a false green, found in review.** Neither
 checked whether `git ls-files` succeeded. When it failed the list came back empty, every loop iterated
 nothing, and the recipe printed GREEN having examined *nothing* — demonstrated by running `docs.sh` in a
 non-git directory, where it emitted `fatal: not a git repository` and still exited `0`. `docs.sh` had
@@ -717,8 +614,9 @@ inside its own store → **exit 2**. Delete the generator → **exit 2** from th
 
 **The handoff series joined this check at Workspace Definition 2.5**, and it gets its own eight moves
 rather than inheriting the ones above — the machinery is shared, the two derived fields are not. Add a
-handoff and do not regenerate → **red, exit 1**, *out of date against the series*. Delete the committed
-handoff index → **red**, *declared and absent*. Strip a handoff's `# ` heading → **red**, naming the
+handoff and do not regenerate a kept index → **red, exit 1**, *out of date against the series*. Delete
+the index → **green** since 2026-09-23: a workspace with no copy on disk keeps none, and `--check` then
+renders the series and compares it with nothing; this repository keeps none. Strip a handoff's `# ` heading → **red**, naming the
 file and the missing heading, **and nothing is written**: a title the generator would have to invent is
 the one thing a generated file must not contain. Rename a handoff so its filename carries no date →
 **red**, a *different* check with a different repair, because the first is fixed by editing the file and
@@ -1054,33 +952,19 @@ than left as a symmetry a reader has to notice, on the rule the same change mint
   reviews that way), and Markdown link *syntax* quoted inside a code span — while writing about this
   check — is treated as a real link and fails. Skipping spans needs a small parser; until then, write
   paths as links when you want them checked, and avoid quoting link syntax verbatim.
-- **`record` corresponds by date, not by session, and counting only narrows that — it does not close
-  it.** Two sessions closing on one day are still satisfied by one handoff: the milestone-3-close
-  session of 2026-07-27 has a Session log entry and no handoff of its own, and 4a cannot see that,
-  because the dependabot handoff shares the date. The counting direction has its own two:
-  **an extra entry on a date offsets a missing one** — log two entries for one session and a second
-  session's handoff goes uncounted — and **a session spanning midnight reds honestly but wrongly**, its
-  handoff on one date and its entry on the other. The first is a real hole; the second is a false red
-  that a reader can resolve in one look, which is the direction to err in. **The convention change that
-  unblocks the per-session version has now landed**: an entry must link its handoff, so the tight rail
-  is a grep over entry bodies rather than a rule nobody agreed to yet. It is not written, and until it
-  is, this is the limit. And the seam half checks that the newest entry *contains* an attestation, never
-  that the attestation is honest — a false "seam scan clean" passes exactly as a true one does.
-- **The entry parser reads a line, not a document.** An entry is delimited by a line *starting* with
-  `- YYYY-MM-DD ·`, so quoting that shape unindented inside an entry splits it in two — and a 20-line
-  entry can pass all-green that way, its phantom half dated before the cutoff. Found by a supervisor
-  probing the parser rather than the record. It is left as a limit rather than fixed, because the fix is
-  a Markdown parser and the trigger is malformed quoting of the log's own syntax inside the log; an
-  unknown date invented that way still fails 4a visibly. Same family as the `links` check not treating
-  code spans as code, recorded above.
-- **The stray-file audit stops at `*.md`.** A `notes.txt` in `../handoffs/` is not examined — so a
-  directory holding only non-Markdown files is *could not run* rather than a finding, which is correct
-  but worth knowing before reading that exit 2.
-- **The entry budget counts lines, which is not the thing anyone cares about.** Ten lines of dense
-  pointer and ten lines of padding score the same, and an entry can satisfy it by moving prose into a
-  handoff nobody reads. It is a rail against unbounded growth in the file every session loads to boot,
-  not a measure of whether an entry is any good — condition 2 of [`../dod.md`](../dod.md) still owns
-  that and still cannot be mechanised.
+- **`record` reads one commit, and a seam line's presence, never whether the scan ran.** The commit is
+  the newest one on the change's own line that is not a merge, following first parents: from HEAD, from
+  its second parent where HEAD is a merge (the shape both `main` and a pull request's merge ref have),
+  or from its first parent where the second is already on `origin/main` (a branch that merged `main`
+  in). A copy with no such ref cannot tell the sides apart and takes the second parent. Only the newest
+  change is read, so the rule needs no cutoff date and no older commit is judged by it. A commit whose
+  author is an App (`[bot]`) owes no line, so a session committing under an App's name passes
+  unexamined.
+- **The stray-file audit stops at `*.md`.** A `notes.txt` in `../handoffs/` is not examined, so the
+  untracked debris a working tree collects passes.
+- **The fragment rule has two carriers.** `docs.sh` checks fragments in bash because the recipe needs no
+  node, and `node cli/index.mjs --changes` refuses the same fragments when it assembles them. The name
+  pattern and one bullet are the rule both carry, and a change to one is a change to both.
 - **`index` checks what memory costs, never whether it is any good.** Derivation and size are
   machine questions; whether these lines lead a reader to the right record is not, and no green here
   should be read as answering it. That is an eval question and a naming question for whoever writes

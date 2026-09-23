@@ -70,6 +70,8 @@ export const MUST_CARRY = ["README.md", "SECURITY.md", ".portulan/products/portu
 // The record layer. These files preserve sentences that are no longer true, on purpose.
 export const RECORD_PREFIXES = [
     "CHANGELOG.md",
+    // Its entries for the next release, one file each since 2026-09-23; the cut moves them into it.
+    "changes/",
     // **A release record is record-layer by nature**, and it was classified here deliberately rather
     // than left to whether a pattern happens to match one. `evals/releases/<version>.md` is generated
     // per release and preserves that release's conditions forever — so the moment `0.1.4` exists,

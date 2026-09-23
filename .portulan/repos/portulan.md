@@ -33,8 +33,8 @@ remaining top-level directories are scaffolding that fills in milestone by miles
 - The kernel [`../../core/engine.md`](../../core/engine.md) is line-budgeted. Adding to it is the wrong
   reflex; the right one is to write in `core/operating/` and link from the kernel only when the line is
   load-bearing for *every* task.
-- [`../../docs/plan.md`](../../docs/plan.md) is a living document — Status column and Session log are
-  updated as work lands, and it is what a session boots from. [`../../docs/vision.md`](../../docs/vision.md)
+- [`../../docs/plan.md`](../../docs/plan.md) is a living document — its Status column moves when
+  milestone state moves, and it is what a session boots from. [`../../docs/vision.md`](../../docs/vision.md)
   sits next to it and is the opposite: frozen, human-owned, never agent-edited.
 - A build-session bootstrap file at the repository root is deliberately git-ignored and never committed.
   If it appears in a diff, that is the bug.

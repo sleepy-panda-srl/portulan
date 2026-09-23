@@ -60,8 +60,8 @@
     {
       "name": "record",
       "color": "fbca04",
-      "description": "The audit trail: the plan's Session log, handoffs, the changelog",
-      "covers": ["docs/plan.md", ".portulan/handoffs/", "CHANGELOG.md"]
+      "description": "The audit trail: handoffs, the changelog and its fragments in changes/",
+      "covers": ["docs/plan.md", ".portulan/handoffs/", "CHANGELOG.md", "changes/"]
     },
     {
       "name": "infrastructure",

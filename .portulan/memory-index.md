@@ -29,7 +29,7 @@
 - [An exit code read through a pipe is the pipes](memory/an-exit-code-read-through-a-pipe-is-the-pipes.md) — rule
 - [Constitution is human owned](memory/constitution-is-human-owned.md) — rule
 - [Every pull request carries a label](memory/every-pull-request-carries-a-label.md) — rule
-- [Every session ends with a handoff](memory/every-session-ends-with-a-handoff.md) — rule
+- [Open work ends with a handoff](memory/open-work-ends-with-a-handoff.md) — rule
 - [Readme map must match shape](memory/readme-map-must-match-shape.md) — rule
 - [Three workspaces not one](memory/three-workspaces-not-one.md) — reference
 - [Two layers need two jobs](memory/two-layers-need-two-jobs.md) — rule

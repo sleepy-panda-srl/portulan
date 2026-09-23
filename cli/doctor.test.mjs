@@ -922,9 +922,8 @@ describe("provenance is parsed into the two forms the constitution names", () =>
 
     test("a handoff index sited inside the series it indexes is refused", async () => {
         // A different walk swallows it here than in the store's case, and the message says which: a
-        // Markdown file in `slots.handoffs` is either counted as a handoff by `docs.sh`'s date
-        // correspondence — inflating one side of a count the Session log is held to — or failed by
-        // the same check for carrying no date.
+        // Markdown file in `slots.handoffs` is either counted as a dated handoff by `docs.sh`'s record
+        // check or failed by the same check for carrying no date.
         const m = wellFormed();
         m.slots.handoffs = "handoffs/";
         m.handoffs = { index: { path: "handoffs/INDEX.md" } };

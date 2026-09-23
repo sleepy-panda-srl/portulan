@@ -54,7 +54,7 @@ the corpus. So the checker catches the careless spelling and does not establish 
 authored nothing: **a person still reads the added sentences.**
 
 The failure it forecloses is exact. `dod.md`'s conditions 5–7 are unsatisfiable in a scratch project — a
-seam-term list that lives outside this repository, a Session log entry in `../docs/plan.md`, a supervisor
+seam-term list that lives outside this repository, the Status column of `../docs/plan.md`, a supervisor
 checkpoint. That licenses **deleting** them. It does **not** license writing a replacement, because a
 replacement saying anything like *"done means the verify recipe is green"* would put **the mandate under
 test** into the workspace layer. The `done-demonstrated` scenario would then measure whether an agent

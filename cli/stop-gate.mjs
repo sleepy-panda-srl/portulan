@@ -6,8 +6,8 @@
 // the recipe is not green. `../core/operating/verification.md` has specified this contract since
 // milestone 1 and named milestone 4 as where the runner arrives; this is that runner.
 //
-// It also enforces the session-end handoff, which `../core/operating/loop.md` and
-// `../memory/every-session-ends-with-a-handoff.md` both promised to this milestone.
+// It also asks for a handoff when a session ends with work not committed and pushed, the rule
+// `../core/operating/loop.md` and `../.portulan/memory/open-work-ends-with-a-handoff.md` carry.
 //
 // ## Two honest limits, stated before the code rather than after
 //
@@ -787,17 +787,16 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
         const found = elsewhere
             ? ` One dated ${stamp} does exist elsewhere in this repository's refs, at ` +
               `${elsewhere.commit}${elsewhere.ref ? ` on \`${elsewhere.ref}\`` : ""} — so this working tree may not be ` +
-              "the tree that did the work. Check before writing a second one: a duplicate handoff reds `docs.sh`'s " +
-              "record check, which is the trap the bare sentence used to set."
+              "the tree that did the work. Check before writing a second one."
             : "";
         problems.push({
             reason: "handoff",
             text:
                 `no handoff dated ${stamp} in ${path.join(tree.workspace, "handoffs")}, read from ` +
                 `${treeIdentity(tree.root)}${answeredElsewhere}. ` +
-                "Every session ends with a dated handoff — five lines is enough, absent is not. The Session log " +
-                "records what landed; the handoff records why, and the why is the part the next session cannot " +
-                `reconstruct from the diff.${found}`,
+                "This tree holds work that is not committed and pushed. Commit and push it, its why in the commit " +
+                "message, or end with a dated handoff naming what is open: where things stand, the open questions " +
+                `and the next action. Five lines is enough; absent is not.${found}`,
         });
     }
 

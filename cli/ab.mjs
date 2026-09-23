@@ -271,6 +271,10 @@ export const DISPOSITIONS = [
         match: "handoffs-index.md",
         kind: "emptying",
         row: "6b",
+        // Generated on demand and ignored since 2026-09-23, so a clean checkout has none; a working copy
+        // has one wherever somebody ran `index` to write it. The audit below asks git, which must not
+        // carry it, and a copy committed again is a stale exemption.
+        mayBeAbsent: "generated on demand and never committed since 2026-09-23 — absent in any clean checkout",
         why: "The same defect at 146 titles. Regenerated over the emptied series, for the same reason.",
     },
 
@@ -1103,7 +1107,14 @@ export function stage(workspaceDir, into, { tracked = null } = {}) {
     // prior pass's blocking finding repeated one repair later: the rail is only worth what it is pointed at.
     substituted.push(
         { rel: "memory-index.md", original: fs.readFileSync(path.join(source, "memory-index.md"), "utf8"), replacement: emptyIndex("Memory index", "memory/", "record"), write: path.join(into, "memory-index.md") },
-        { rel: "handoffs-index.md", original: fs.readFileSync(path.join(source, "handoffs-index.md"), "utf8"), replacement: emptyIndex("Handoff index", "handoffs/", "handoff"), write: path.join(into, "handoffs-index.md") },
+        // The handoff index may be absent from the source (see its disposition), and the arm carries the
+        // emptied one either way, so an arm built from a clean checkout matches one built from a working copy.
+        {
+            rel: "handoffs-index.md",
+            original: fs.existsSync(path.join(source, "handoffs-index.md")) ? fs.readFileSync(path.join(source, "handoffs-index.md"), "utf8") : "",
+            replacement: emptyIndex("Handoff index", "handoffs/", "handoff"),
+            write: path.join(into, "handoffs-index.md"),
+        },
     );
 
     for (const item of substituted) {

@@ -201,16 +201,12 @@ jobs:
           DATE: ${{ steps.existing.outputs.date }}
         run: |
           set -uo pipefail
-          # `--write` writes the dated handoff, appends one Session log entry with `--log`, and
-          # regenerates each index — in that order, which is not an implementation detail: a pass is a
-          # session, so the handoff it writes is a member of the series the handoff index covers, and
-          # an index regenerated first would be stale in the commit this job pushes. `index.sh` would
-          # then red this pull request, and the failure would arrive unattended on the first real run.
-          #
-          # A pass is a session (the maintainer's ruling, 2026-07-28), and a session here ends with a
-          # handoff and a log line; `.portulan/verify/docs.sh`'s `record` check enforces both
-          # correspondences, so a pass that wrote only one of them would turn its own pull request red.
-          node cli/librarian.mjs --as-of "$DATE" --write --log docs/plan.md --reviews "$RUNNER_TEMP/reviews.json" .portulan examples | tee "$RUNNER_TEMP/pass.txt"
+          # `--write` writes the dated handoff carrying the pass's report, then regenerates each index
+          # the workspace keeps — in that order, which is not an implementation detail: the handoff is a
+          # member of the series a kept handoff index covers, and an index regenerated first would be
+          # stale in the commit this job pushes. No `--log`: the Session log retired on 2026-09-23, and
+          # a change's record is its commit.
+          node cli/librarian.mjs --as-of "$DATE" --write --reviews "$RUNNER_TEMP/reviews.json" .portulan examples | tee "$RUNNER_TEMP/pass.txt"
           rc=${PIPESTATUS[0]}
           if [ "$rc" -ne 0 ]; then
             printf '::error::the librarian pass exited %s — it could not run, so nothing is filed\n' "$rc"
@@ -255,7 +251,10 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout -b "$BRANCH"
           git add -A
-          git commit -m "The librarian's pass of ${DATE}"
+          # The trailer `docs.sh`'s `record` check reads: an App's commit owes none, and this one states
+          # why it holds anyway — the pass composes no new prose at run time (`renderLogEntry` in
+          # `cli/librarian.mjs` carries the argument).
+          git commit -m "The librarian's pass of ${DATE}" -m "Seam-scan: clean by construction; this pass composes no new prose at run time."
           git push -u origin "$BRANCH"
 
       - name: Open the pull request as the agent

@@ -43,6 +43,8 @@ import {
     readHandoffs,
     render,
     renderHandoffIndex,
+    readChanges,
+    renderChanges,
     inspect,
     run,
 } from "./index.mjs";
@@ -971,8 +973,7 @@ describe("rendering the handoff index", () => {
             { "handoffs/2026-07-28-the-librarian-goes-on-a-cron.md": handoff("The librarian goes on a cron") },
             withSeries(),
         );
-        inspect(dir, { write: true });
-        const out = fs.readFileSync(path.join(dir, "handoffs-index.md"), "utf8");
+        const out = inspect(dir).series.handoffs.expected;
         assert.match(out, /\[The librarian goes on a cron\]/);
         assert.doesNotMatch(out, /2026 07 28/);
     });
@@ -985,8 +986,7 @@ describe("rendering the handoff index", () => {
             },
             withSeries(),
         );
-        inspect(dir, { write: true });
-        const out = fs.readFileSync(path.join(dir, "handoffs-index.md"), "utf8");
+        const out = inspect(dir).series.handoffs.expected;
         assert.ok(out.indexOf("Newer") < out.indexOf("Older"), "newest should lead");
     });
 });
@@ -1016,8 +1016,8 @@ describe("what the handoff index refuses to guess", () => {
 
     test("an index sited inside the series is refused, not special-cased", () => {
         // Same rule as the memory index and a second reason for it: a file in `slots.handoffs` is
-        // either counted as a handoff by docs.sh's date correspondence, or failed by it for carrying
-        // no date. Both are wrong answers about a generated artifact.
+        // either a dated handoff to docs.sh's record check, or failed by it for carrying no date.
+        // Both are wrong answers about a generated artifact.
         const dir = workspace(
             { "handoffs/2026-07-28-a.md": handoff("A") },
             withSeries({ handoffs: { index: { path: "handoffs/index.md" } } }),
@@ -1051,9 +1051,14 @@ describe("what the handoff index refuses to guess", () => {
     });
 });
 
-describe("the handoff index is byte-compared like the store's", () => {
-    test("red when a handoff was added and the index was not regenerated", () => {
-        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+// A copy on disk is how a workspace says it keeps its index (2026-09-23): kept, it is byte-compared like
+// the store's and a write regenerates it; not kept, a write creates none and `--check` renders the series
+// and compares it with nothing. `init` drafts a kept one; this repository keeps none.
+describe("a kept handoff index is byte-compared like the store's", () => {
+    const kept = (files) => workspace({ ...files, "handoffs-index.md": "" }, withSeries());
+
+    test("red when a handoff was added and the kept index was not regenerated", () => {
+        const dir = kept({ "handoffs/2026-07-01-a.md": handoff("A") });
         inspect(dir, { write: true });
         tree(dir, { "handoffs/2026-07-28-b.md": handoff("B") });
         const bad = failures(inspect(dir));
@@ -1064,7 +1069,7 @@ describe("the handoff index is byte-compared like the store's", () => {
     });
 
     test("--check does not write the file it disagrees with", () => {
-        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        const dir = kept({ "handoffs/2026-07-01-a.md": handoff("A") });
         inspect(dir, { write: true });
         const before = fs.readFileSync(path.join(dir, "handoffs-index.md"));
         tree(dir, { "handoffs/2026-07-28-b.md": handoff("B") });
@@ -1072,6 +1077,45 @@ describe("the handoff index is byte-compared like the store's", () => {
         assert.deepEqual(fs.readFileSync(path.join(dir, "handoffs-index.md")), before);
     });
 
+    test("a write regenerates a kept index", () => {
+        const dir = kept({ "handoffs/2026-07-01-a.md": handoff("A") });
+        tree(dir, { "handoffs/2026-07-28-b.md": handoff("B") });
+        inspect(dir, { write: true });
+        assert.match(fs.readFileSync(path.join(dir, "handoffs-index.md"), "utf8"), /2026-07-28 · \[B\]/);
+        assert.equal(failures(inspect(dir)).length, 0);
+    });
+});
+
+describe("a handoff index nobody keeps is rendered and compared with nothing", () => {
+    test("green with no copy on disk, which is how a clone of this repository has it", () => {
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        const result = inspect(dir);
+        assert.equal(failures(result).length, 0);
+        assert.equal(result.series.handoffs.kept, false);
+        assert.equal(result.series.handoffs.count, 1);
+    });
+
+    test("a write creates none, so no copy is left behind to go stale", () => {
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        inspect(dir, { write: true });
+        assert.equal(fs.existsSync(path.join(dir, "handoffs-index.md")), false);
+    });
+
+    test("a handoff that yields no line is still red", () => {
+        const dir = workspace({ "handoffs/2026-07-01-a.md": "No heading.\n" }, withSeries());
+        assert.equal(failures(inspect(dir)).filter((f) => f.check === "title").length, 1);
+    });
+
+    test("--handoffs prints the index and writes nothing", () => {
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        const said = [];
+        assert.equal(run(["--handoffs", dir], (l) => said.push(l)), 0);
+        assert.match(said.join("\n"), /2026-07-01 · \[A\]/);
+        assert.equal(fs.existsSync(path.join(dir, "handoffs-index.md")), false);
+    });
+});
+
+describe("the handoff series carries no budget", () => {
     test("no budget is declarable, so no budget finding can be raised over the series", () => {
         // The absence is the design (spec/slots.md): every remedy a budget could ask for on an
         // append-only series is barred, so a rail here is one built to be broken. Asserted rather
@@ -1087,10 +1131,65 @@ describe("the handoff index is byte-compared like the store's", () => {
 });
 
 describe("the live handoff series", () => {
-    test(".portulan's handoff index is current", () => {
+    test("every handoff in .portulan yields an index line, and a clean checkout keeps none", () => {
         const result = inspect(path.join(REPO, ".portulan"));
         assert.equal(result.series.handoffs.declared, true);
+        assert.ok(result.series.handoffs.count > 0);
         assert.equal(text(failures(result).filter((f) => f.series === "handoffs")), "");
+    });
+});
+
+// ---------------------------------------------------------------- changelog fragments
+
+describe("changelog fragments", () => {
+    test("grouped by section in Keep a Changelog order, each fragment pasted whole", () => {
+        const dir = tree(scratch(), {
+            "b-fix.fixed.md": "- **Fixed B.**\n  Its second line.\n",
+            "a-change.changed.md": "- **Changed A.** [`doctor`](../cli/doctor.mjs)\n",
+            "c-new.added.md": "- **Added C.**\n\n",
+            "README.md": "What this directory is for.\n",
+        });
+        const { fragments, problems } = readChanges(dir);
+        assert.deepEqual(problems, []);
+        assert.equal(fragments.length, 3, "README.md is not a fragment");
+        assert.equal(
+            renderChanges(fragments),
+            ["### Added", "", "- **Added C.**", "", "### Changed", "", "- **Changed A.** [`doctor`](cli/doctor.mjs)", "", "### Fixed", "", "- **Fixed B.**", "  Its second line."].join("\n"),
+            "a link written from changes/ is pasted as CHANGELOG.md, one directory up, reads it",
+        );
+    });
+
+    test("a name without a known section, or a file holding two bullets, is refused and nothing is printed", () => {
+        const dir = tree(scratch(), {
+            "no-section.md": "- One.\n",
+            "odd.improved.md": "- One.\n",
+            "two.changed.md": "- One.\n- Two.\n",
+            "prose.changed.md": "Prose first.\n- Then a bullet.\n",
+            "fine.changed.md": "- Fine.\n",
+        });
+        const { fragments, problems } = readChanges(dir);
+        assert.deepEqual(problems.map((p) => p.name), ["no-section.md", "odd.improved.md", "prose.changed.md", "two.changed.md"]);
+        assert.deepEqual(fragments.map((f) => f.name), ["fine.changed.md"]);
+        const said = [];
+        assert.equal(run(["--changes", dir], (l) => said.push(l)), 1);
+        assert.doesNotMatch(said.join("\n"), /### Changed/, "a cut must never paste around a broken fragment");
+    });
+
+    test("a missing directory is an empty set, since the cut deletes every fragment", () => {
+        const said = [];
+        assert.equal(run(["--changes", path.join(scratch(), "changes")], (l) => said.push(l)), 0);
+        assert.match(said.join("\n"), /no change fragments/);
+    });
+
+    test("--changes judges no workspace, and needs its directory", () => {
+        const said = [];
+        assert.equal(run(["--changes", scratch(), "."], (l) => said.push(l)), 2);
+        assert.equal(run(["--changes"], (l) => said.push(l)), 2);
+        assert.equal(run(["--changes", "--check"], (l) => said.push(l)), 2);
+    });
+
+    test("every fragment in this repository's changes/ can be pasted", () => {
+        assert.deepEqual(readChanges(path.join(REPO, "changes")).problems, []);
     });
 });
 

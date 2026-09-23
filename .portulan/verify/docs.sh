@@ -8,15 +8,17 @@
 # already give, and costs a claim that goes stale silently. Copilot, #255 round 2.
 # Only the kernel budget was a rule this repo had already stated; links and map were
 # minted from the defect that this recipe's first run exposed (see ./README.md, Provenance), record
-# from the 2026-07-27 audit that found a merged arc with no record at all, proposal from milestone
-# 5, where "a rule change is a proposal as a pull request" turned out to bind nothing, and plan from
-# the post-M5 reconciliation, which found 63,420 characters of row and only 11% of it criterion:
+# from the 2026-07-27 audit that found a merged arc with no record at all (rebuilt 2026-09-23 around
+# the commit, when the Session log retired), proposal from milestone 5, where "a rule change is a
+# proposal as a pull request" turned out to bind nothing, and plan from the post-M5 reconciliation,
+# which found 63,420 characters of row and only 11% of it criterion:
 #   links     every relative Markdown link resolves IN THE REPOSITORY, not on this disk
 #                                                             (docs that lie are worse than no docs)
 #   kernel    core/engine.md stays inside its line budget    (the always-loaded layer is the scarce one)
 #   map       the root README lists every top-level entry    (agent legibility: the map matches the ground)
-#   record    a date has at least as many log entries as handoffs and vice versa, entries stay within
-#             their line budget, newest attests the seam      (a session with no record is unauditable)
+#   record    every handoff is dated, the Session log stays retired, every changelog entry is a
+#             one-bullet fragment, the newest commit attests the seam
+#                                                  (a change's record is its commit; nothing conflicts)
 #   proposal  every proposal is numbered, records an outcome, and names the pull request that filed it
 #                                                             (a rule you cannot trace to its review)
 #   plan      no milestone row carries an amendment argument or a session note, every row parses into
@@ -409,210 +411,137 @@ else
 fi
 
 # --------------------------------------------------------------------- 4. record
-# Five checks on the session record. 4a and 4d were added 2026-07-27, after an audit found a merged
-# doctrine rewrite (#32/#33) with no handoff and no Session log entry, and the newest entry missing
-# its seam attestation. 4b, 4b' and 4c were added 2026-07-28, after a two-day review found five
-# handoff-documented sessions with no Session log entry at all, and log entries that had grown from
-# the "one entry per session" the log asks for to 105 lines.
-#
-# Correspondence runs BOTH ways and is by DATE, not by session — but the reverse direction compares
-# COUNTS, which is the difference between a rail and a decoration here. Presence was the first draft:
-# it was green on the exact record it was minted from, because each of the five unlogged sessions
-# shared a date with a sibling that had been logged. Counting reds on that record. Both remaining
-# limits are in ./README.md rather than restated here.
-#
-# Two floors, each forward-only and each a cutoff rather than a list, because a rule written after a
-# record cannot bind it without rewriting the record to suit the rule:
-#   CADENCE_FLOOR       2026-07-25, the day the handoff cadence became a maintainer ruling.
-#   ENTRY_BUDGET_CUTOFF 2026-07-28. Entries dated AFTER it are bound; the entries already over budget
-#                       when it was set — two of them dated that same day and already merged — keep
-#                       their length. So this half binds nothing at the moment it is introduced,
-#                       stated here rather than left to be inferred from a green, and 4c prints the
-#                       count it examined on every run so the green never implies more than it saw.
-#
-# The seam check reads PRESENCE of an attestation in the newest entry, never whether it is honest.
+# Four checks on the record a change leaves, rebuilt 2026-09-23 when the Session log retired. A
+# change's record is its commit: the subject says what, the body says why. The log, the committed
+# handoffs index and the one `## Unreleased` section were the files every pull request wrote to, and
+# all 15 pull requests of that day that had another merge land while they were open conflicted there.
+#   4a  every Markdown file in the handoffs directory is a dated handoff (the stray audit)
+#   4b  docs/plan.md carries no Session log entry
+#   4c  every file in changes/ is one changelog fragment, and CHANGELOG.md's Unreleased holds none
+#   4d  the newest change's commit attests the seam
+# The checks they replace (log↔handoff correspondence by date, the ten-line entry budget, the seam
+# line in the newest entry) are at `git show fc453be:.portulan/verify/docs.sh`.
 PLAN=docs/plan.md
 HANDOFFS=.portulan/handoffs
 HANDOFFS_RE=${HANDOFFS//./\\.}   # dots escaped: the path is a literal in a regex context
-CADENCE_FLOOR=2026-07-25
-ENTRY_BUDGET=10
-ENTRY_BUDGET_CUTOFF=2026-07-28
+CHANGES=changes
+CHANGELOG=CHANGELOG.md
+
+# 4a. Every Markdown file under the handoffs directory, split into dated handoffs and anything else.
+# A file here whose name carries no date sorts nowhere and no index line can be derived for it, so it
+# is reported rather than silently uncounted. `[ -f ]` because the manifest is the INDEX plus
+# untracked files: a handoff git knows about and the tree does not is not a handoff. The scope is
+# Markdown deliberately, so the untracked debris a working tree collects (`.DS_Store`) passes.
+: >"$tmp/handoffdates"
+: >"$tmp/strays"
+while IFS= read -r h; do
+    [ -f "$h" ] || continue
+    base=${h##*/}
+    case "$base" in
+        [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.md)
+            printf '%s\n' "${base:0:10}" >>"$tmp/handoffdates" ;;
+        *) printf '%s\n' "$h" >>"$tmp/strays" ;;
+    esac
+done < <(grep "^${HANDOFFS_RE}/.*\.md$" "$manifest")
+if [ -s "$tmp/strays" ]; then
+    fail "record — Markdown file(s) in $HANDOFFS/ whose name carries no date, so no check counts them"
+    sed 's/^/        /' "$tmp/strays"
+else
+    # The count names what was examined. Zero is a legitimate series now: a handoff is owed only by a
+    # session that ends with work not committed and pushed.
+    pass "record — every Markdown file in $HANDOFFS/ is a dated handoff ($(wc -l <"$tmp/handoffdates" | tr -d '[:space:]') examined)"
+fi
+
+# 4b. The Session log stays retired. Sessions copied the shape of the entries above theirs, so the
+# first session to meet an old handoff telling it to append one would start the log again, and with
+# it the conflict every pull request had on this file.
 if [ ! -f "$PLAN" ]; then
     fail "record — $PLAN is missing"
 else
-    # The entry list is the input set for three of the five checks below, so building it is a
-    # PRECONDITION: an empty list would let two of them pass having examined nothing. One pass,
-    # emitting DATE<TAB>START<TAB>LINES. Trailing blank lines belong to the gap between entries,
-    # not to the entry, so they are not charged against the budget.
-    awk '
-        function flush() {
-            if (date != "") {
-                while (n > 0 && bt > 0) { n--; bt-- }
-                printf "%s\t%d\t%d\n", date, start, n
-            }
-        }
-        /^- 2[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] ·/ {
-            flush(); date = substr($0, 3, 10); start = NR; n = 1; bt = 0; next
-        }
-        date != "" && /^## / { flush(); date = ""; next }
-        date != "" { n++; if ($0 ~ /^[[:space:]]*$/) bt++; else bt = 0 }
-        END { flush() }
-    ' "$PLAN" >"$tmp/entries"
-    if [ ! -s "$tmp/entries" ]; then
-        printf 'verify: no Session log entries found in %s — cannot enumerate the record\n' "$PLAN" >&2
-        exit 2
-    fi
-    # One date per entry, repeats intact — 4b counts them, so collapsing here would erase the signal.
-    # Where a `sort -u` is taken below it carries `LC_ALL=C`: these are byte comparisons and the
-    # ordering should not depend on the machine's locale. Measured under C, en_US.UTF-8 and
-    # tr_TR.UTF-8 — the last on purpose, since 4d's match is case-insensitive and that is the locale
-    # where case stops behaving.
-    cut -f1 "$tmp/entries" >"$tmp/logdates"
-
-    # Every Markdown file under the handoffs directory, split into dated handoffs and anything else.
-    # Enumerating them is a precondition: with none enumerable the two directions below would report
-    # ok over an empty set, which is the false green this recipe has minted rules about.
-    #
-    # `[ -f ]` is load-bearing and was learned the expensive way: the first draft of this read the
-    # dates straight out of the manifest, and the manifest is the INDEX plus untracked files. Emptying
-    # the handoffs directory therefore left four dates standing and printed `ok … (4 date(s))` over a
-    # directory with nothing in it — found by this check's own observation procedure, one step after
-    # it was written. A handoff that git knows about and the tree does not is not a handoff.
-    #
-    # The `*)` arm is the other half of the same lesson: a file here whose name carries no date is
-    # invisible to a check that enumerates by date, so it would be silently uncounted rather than
-    # reported. Discovery is audited against the shape it assumes, the way `doctor.sh` and
-    # `plugin.sh` already audit theirs. The set is empty today; it ships to guard the next one.
-    : >"$tmp/handoffdates"
-    : >"$tmp/strays"
-    while IFS= read -r h; do
-        [ -f "$h" ] || continue
-        base=${h##*/}
-        case "$base" in
-            [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.md)
-                printf '%s\n' "${base:0:10}" >>"$tmp/handoffdates" ;;
-            *) printf '%s\n' "$h" >>"$tmp/strays" ;;
-        esac
-    done < <(grep "^${HANDOFFS_RE}/.*\.md$" "$manifest")
-    # 4b'. The stray audit reports BEFORE the correspondence precondition, and the order is the point.
-    # It ran after it until 2026-07-28: a directory holding only undated Markdown then exited 2 —
-    # *could not run* — while `$tmp/strays` already held the names that were the whole defect. That is
-    # the exact inversion of `../memory/verify-preconditions-fail-closed.md`. There, *could not look*
-    # must never read as *nothing wrong*; here, **I looked and found it** was reading as *could not
-    # look*, which is the same lie told the other way round and costs the operator the diagnosis.
-    #
-    # The scope is Markdown deliberately: the enumeration above greps `*.md`, so a `notes.txt` here
-    # passes — measured, not assumed. Widening it would red the untracked debris a working tree
-    # collects (`.DS_Store` and friends), which is a worse trade than the gap.
-    if [ ! -s "$tmp/handoffdates" ] && [ ! -s "$tmp/strays" ]; then
-        # Nothing whatever to look at: the only branch that is honestly *could not run*. It returns
-        # BEFORE any verdict is printed, and that ordering is the second half of the same lesson.
-        # Emitting the audit's line first meant a run ending in exit 2 opened with `ok … (0 examined)`
-        # — a green above a "could not check", which is the shape this whole check exists to refuse.
-        printf 'verify: no Markdown file under %s/ — cannot check correspondence\n' "$HANDOFFS" >&2
-        exit 2
-    fi
-
-    if [ -s "$tmp/strays" ]; then
-        fail "record — Markdown file(s) in $HANDOFFS/ whose name carries no date, so no check counts them"
-        sed 's/^/        /' "$tmp/strays"
+    grep -n '^- 2[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] ·' "$PLAN" >"$tmp/logentries"
+    if [ -s "$tmp/logentries" ]; then
+        fail "record — $PLAN carries $(wc -l <"$tmp/logentries" | tr -d '[:space:]') Session log entr(ies); the log retired 2026-09-23 and a change's record is its commit message"
+        cut -c1-100 "$tmp/logentries" | sed "s|^|        $PLAN:|"
     else
-        # The count names this check's coverage, as 4c's does. It can no longer be 0: the empty case
-        # returned above, and a directory of nothing but strays takes the FAIL branch.
-        pass "record — every Markdown file in $HANDOFFS/ is a dated handoff ($(wc -l <"$tmp/handoffdates" | tr -d '[:space:]') examined)"
-    fi
-
-    if [ ! -s "$tmp/handoffdates" ]; then
-        # Markdown is present and none of it is dated. The cause is known and was just named
-        # file by file, so the honest verdict is RED. Exit 2 here would report "could not look"
-        # over a diagnosis the recipe had already made.
-        fail "record — no DATED handoff in $HANDOFFS/, so neither correspondence check could run"
-    else
-        # 4a. Every Session log date since the cadence floor has a handoff of that date.
-        : >"$tmp/record"
-        while IFS= read -r d; do
-            [[ "$d" < "$CADENCE_FLOOR" ]] && continue
-            grep -qxF -- "$d" "$tmp/handoffdates" || printf '%s\n' "$d" >>"$tmp/record"
-        done < <(LC_ALL=C sort -u "$tmp/logdates")
-
-        if [ -s "$tmp/record" ]; then
-            fail "record — Session log date(s) since $CADENCE_FLOOR with no dated handoff in $HANDOFFS/"
-            sed 's/^/        /' "$tmp/record"
-        else
-            pass "record — every Session log date since $CADENCE_FLOOR has a dated handoff"
-        fi
-
-        # 4b. And the reverse, BY COUNT rather than by presence: a date carries at least as many
-        # Session log entries as it has handoffs. Presence was the first draft and it was the weaker
-        # rail by a long way — it was GREEN on the very record it was minted from, because each of the
-        # five unlogged sessions shared its date with a sibling that had been logged. Counting is red
-        # on that same tree (2026-07-27: 13 entries against 14 handoffs; 2026-07-28: 2 against 5) and
-        # green once the entries are written, which is what red-first is supposed to mean.
-        #
-        # No floor is needed on this side: dates before the cadence ruling have zero handoffs and `>=`
-        # is satisfied by anything. What it cannot see is stated in ./README.md rather than here — an
-        # extra entry on a date can offset a missing one, and a session spanning midnight reds honestly.
-        : >"$tmp/orphans"
-        while IFS= read -r d; do
-            hc=$(grep -cxF -- "$d" "$tmp/handoffdates")
-            lc=$(grep -cxF -- "$d" "$tmp/logdates")
-            [ "$lc" -ge "$hc" ] ||
-                printf '%s — %s handoff(s), %s Session log entr(ies)\n' "$d" "$hc" "$lc" >>"$tmp/orphans"
-        done < <(LC_ALL=C sort -u "$tmp/handoffdates")
-
-        if [ -s "$tmp/orphans" ]; then
-            fail "record — date(s) with fewer Session log entries than handoffs"
-            sed 's/^/        /' "$tmp/orphans"
-        else
-            pass "record — every date has at least as many log entries as handoffs ($(wc -l <"$tmp/handoffdates" | tr -d '[:space:]') handoff(s))"
-        fi
-    fi
-
-    # 4c. An entry dated after the budget cutoff is a pointer, not a record: at most 10 lines.
-    : >"$tmp/budget"
-    bound=0
-    while IFS=$'\t' read -r d start lines; do
-        [[ "$d" > "$ENTRY_BUDGET_CUTOFF" ]] || continue
-        bound=$((bound + 1))
-        [ "$lines" -gt "$ENTRY_BUDGET" ] &&
-            printf '%s:%s (%s) is %s lines\n' "$PLAN" "$start" "$d" "$lines" >>"$tmp/budget"
-    done <"$tmp/entries"
-
-    # The bound count is printed on the red branch as well as the green one. A green that named what it
-    # examined while a red did not would be the honest half of a claim: both carriers of this rule say
-    # the count is printed on every run, and a sentence true only of successes is how that starts drifting.
-    if [ -s "$tmp/budget" ]; then
-        fail "record — $bound entr(ies) dated after $ENTRY_BUDGET_CUTOFF, $(wc -l <"$tmp/budget" | tr -d '[:space:]') over the ${ENTRY_BUDGET}-line budget"
-        sed 's/^/        /' "$tmp/budget"
-    else
-        pass "record — $bound entr(ies) dated after $ENTRY_BUDGET_CUTOFF, all within ${ENTRY_BUDGET} lines"
-    fi
-
-    # 4d. The newest entry attests the seam.
-    #
-    # The entry's extent is READ FROM THE PARSER above — its start line and its own line count — rather
-    # than re-derived here. Until 2026-07-29 this line carried a second regex, `^- 2[0-9][0-9][0-9]-`,
-    # which is looser than the `^- YYYY-MM-DD ·` the parser requires: an unindented `- 2026-…` without
-    # the middle dot did not start a new entry as far as everything above was concerned, but did end
-    # this scan, so an attestation sitting after such a line read as ABSENT. A **false red**, and the
-    # cause was two carriers of one definition — *where does an entry end* — disagreeing, in the check
-    # this repository added to stop exactly that. Reusing the parser's answer is not a tighter regex;
-    # it removes the second definition, so the two cannot drift apart again.
-    last=$(cut -f2 "$tmp/entries" | tail -1)
-    span=$(cut -f3 "$tmp/entries" | tail -1)
-    entry=$(awk -v s="$last" -v n="$span" 'NR >= s && NR < s + n' "$PLAN")
-    # `[[:space:]]+` between the two words, not a single space, and it is a false-red fix rather than a
-    # relaxation. `tr` turns each newline into a space and leaves the continuation indent standing, so an
-    # attestation that happens to wrap between "seam" and "scan" arrives as `seam   scan` and reads as
-    # ABSENT. Every entry since this check landed had passed on the accident of wrapping elsewhere; the
-    # first one that did not was written by the session adding these lines, and the check caught it. The
-    # words must still be adjacent, and `clean` still within 120 characters that contain no full stop.
-    if printf '%s' "$entry" | tr '\n' ' ' | grep -qiE 'seam[[:space:]]+scan[^.]{0,120}clean'; then
-        pass "record — the newest Session log entry carries a seam attestation"
-    else
-        fail "record — the newest Session log entry ($PLAN:$last) carries no seam attestation"
+        pass "record — $PLAN carries no Session log entry; a change's record is its commit"
     fi
 fi
+
+# 4c. Changelog fragments. One file per change, `<slug>.<section>.md` holding one top-level bullet;
+# the index tool's `--changes` groups them for the cut, which pastes them under the version and
+# deletes them. That tool refuses the same fragments this does: the name pattern below and one bullet
+# are the rule both carry, and this copy is bash because this recipe needs no node.
+: >"$tmp/fragments"
+: >"$tmp/badfragments"
+while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    base=${f#"$CHANGES"/}
+    [ "$base" = README.md ] && continue
+    if ! [[ "$base" =~ ^[a-z0-9][a-z0-9-]*\.(added|changed|deprecated|removed|fixed|security)\.md$ ]]; then
+        printf '%s is not named <slug>.<section>.md, the section one of added, changed, deprecated, removed, fixed, security\n' "$f" >>"$tmp/badfragments"
+    elif ! awk 'NR == 1 && !/^- / { bad = 1 } /^[^[:space:]]/ { top++ } END { exit (NR == 0 || bad || top != 1) }' "$f"; then
+        printf '%s is not one top-level bullet: its first line opens "- ", and every later line is indented or blank\n' "$f" >>"$tmp/badfragments"
+    else
+        printf '%s\n' "$f" >>"$tmp/fragments"
+    fi
+done < <(grep "^${CHANGES}/" "$manifest")
+# The Unreleased section holds no bullet of its own, or two open changes would both append there
+# again. Its extent is from the heading to the next `## `.
+unreleased=0
+if [ -f "$CHANGELOG" ]; then
+    unreleased=$(awk '/^## Unreleased/ { on = 1; next } /^## / { on = 0 } on && /^- / { n++ } END { print n + 0 }' "$CHANGELOG")
+fi
+if [ -s "$tmp/badfragments" ] || [ "$unreleased" -ne 0 ]; then
+    fail "record — changelog entries that the index tool's \`--changes $CHANGES\` cannot assemble"
+    sed 's/^/        /' "$tmp/badfragments"
+    [ "$unreleased" -eq 0 ] ||
+        printf '        %s holds %s bullet(s) under ## Unreleased — a change'"'"'s entry is a file in %s/\n' "$CHANGELOG" "$unreleased" "$CHANGES"
+else
+    pass "record — $(wc -l <"$tmp/fragments" | tr -d '[:space:]') changelog fragment(s) in $CHANGES/, each one bullet; $CHANGELOG's Unreleased holds none"
+fi
+
+# 4d. The newest change's commit attests the seam: a `Seam-scan:` line saying clean, the trailer the
+# plan's Protocol asks of every commit. The commit read is the newest one on the change's own line that
+# is not a merge, following first parents. Where HEAD is a merge the change is its second parent: main
+# merges each pull request with a merge commit (the last ten, measured 2026-09-23), and CI checks out a
+# pull request's merge ref, which has the same shape. A branch that merged main in has it the other way
+# round, so where the second parent is already on the base (`PORTULAN_BASE_REF`, `origin/main` by
+# default, as ./pack-version.sh reads it) and the first is not, the change is the first. Following first
+# parents steps over the merges that brought main in. A plain `git log -1 --no-merges` reads whichever
+# change was committed last on either side, so once a branch had merged main in it judged another pull
+# request's commit, in all three shapes (measured). With no base ref to tell the sides apart, the second
+# parent is taken. A squash merge keeps the trailer because GitHub composes the squash message from the
+# commits' own, which is why a leading `* ` is allowed. There is no cutoff date: only the newest change
+# is read, so no commit made before this rule is ever judged by it. The check reads PRESENCE, never
+# whether the scan ran. An App's commit (a Dependabot bump, the librarian's pass) composes nothing from
+# private context, so it owes none; that is also how a session committing under an App's name would
+# pass, stated in ./README.md.
+side=HEAD
+if git rev-parse -q --verify 'HEAD^2' >/dev/null; then
+    side='HEAD^2'
+    # `--end-of-options` because the base is user-supplied; ./pack-version.sh measured why.
+    if basesha=$(git rev-parse -q --verify --end-of-options "${PORTULAN_BASE_REF:-origin/main}^{commit}" 2>/dev/null) &&
+        git merge-base --is-ancestor 'HEAD^2' "$basesha" && ! git merge-base --is-ancestor 'HEAD^1' "$basesha"; then
+        side='HEAD^1'
+    fi
+fi
+if ! change=$(git log -1 --no-merges --first-parent --format=%H "$side" 2>/dev/null) || [ -z "$change" ] ||
+    ! git log -1 --format='%an%n%B' "$change" >"$tmp/change" 2>/dev/null; then
+    printf 'verify: cannot read the newest commit on %s — cannot check the seam attestation\n' "$side" >&2
+    exit 2
+fi
+author=$(sed -n 1p "$tmp/change")
+short=$(git rev-parse --short "$change")
+case "$author" in
+    *'[bot]')
+        pass "record — the newest change ($short) is an App's commit ($author), which owes no seam attestation" ;;
+    *)
+        if tail -n +2 "$tmp/change" | grep -qiE '^[[:space:]*-]*seam-scan:.*clean'; then
+            pass "record — the newest change ($short) carries a Seam-scan trailer"
+        else
+            fail "record — the newest change ($short) carries no \`Seam-scan: clean …\` line in its commit message"
+        fi ;;
+esac
 
 # ------------------------------------------------------------------- 5. proposal
 # Three checks on the proposal series, added 2026-07-28 with the scheduled librarian.
@@ -714,13 +643,14 @@ fi
 # in it to find. That history now lives in `docs/milestones/mN.md`, moved verbatim, and these four
 # checks are what stop it flowing back.
 #
-# **This rail is RETROACTIVE, and that is deliberate — the opposite call from `record`'s two floors.**
-# There, a cutoff was mandatory: a rule written after a record cannot bind it without rewriting the
-# record to suit the rule, so `ENTRY_BUDGET_CUTOFF` binds nothing that already existed. Here the
-# remedy is **relocation**, which preserves a merged record byte-for-byte, so every historical row can
-# satisfy this rail without one word being lost or altered. A cutoff would buy nothing and cost the
-# rail its whole subject, since the rows that motivated it are precisely the old ones. Retroactivity
-# is honest exactly when compliance destroys nothing, and this is that case.
+# **This rail is RETROACTIVE, and that is deliberate — the opposite call from the record rules.** A
+# rule written after a record cannot bind it without rewriting the record to suit the rule, so those
+# bind forward only: the Session log's entry budget did it with a cutoff date, and `record`'s seam
+# check does it by reading only the newest change. Here the remedy is **relocation**, which preserves
+# a merged record byte-for-byte, so every historical row can satisfy this rail without one word being
+# lost or altered. A cutoff would buy nothing and cost the rail its whole subject, since the rows that
+# motivated it are precisely the old ones. Retroactivity is honest exactly when compliance destroys
+# nothing, and this is that case.
 #
 # Scope is the milestone-table rows of docs/plan.md and nothing else, which is load-bearing rather
 # than tidy. A file-wide grep for either marker would red the very records this change preserves:

@@ -10,7 +10,7 @@ pushed and opened while its own checkpoint ran was *"compliant with the gate map
 ([`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) *Where this lands*,
 [#168](https://github.com/sleepy-panda-srl/portulan/pull/168)) — it was compliant with the tier half of
 this file and out of order under this table, the pack's sentence, and core's *"the diff before it goes
-outward"*: the breach class the Session log already names on
+outward"*: the breach class already named on
 [#137](https://github.com/sleepy-panda-srl/portulan/pull/137). No carrier puts this checkpoint at the
 pull request; that boundary was an inference from the Auto tier, drawn three times in one arc, which is
 why [the commit bullet](../gate-map.md#auto--the-agent-acts-unattended) now carries the citing clause.

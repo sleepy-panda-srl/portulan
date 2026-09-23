@@ -48,7 +48,7 @@ touched; this branch was rebased onto their merge.
 - **Reconstructions say so, loudly.** Both the handoff and the Session log entry for the #32/#33 arc
   open by declaring what they are and what they cannot contain. A reconstruction that reads as
   contemporaneous would be a worse record than the gap it fills. This coexists with
-  [`every-session-ends-with-a-handoff.md`](../memory/every-session-ends-with-a-handoff.md) — the rule
+  [`every-session-ends-with-a-handoff.md`](../memory/open-work-ends-with-a-handoff.md) — the rule
   that refuses retroactive handoffs, cited by #30 the same day to refuse backfilling the milestone-3
   close — rather than contradicting it. What that rule forbids is fabricating a contemporaneous
   artifact; a reconstruction labelled as one fabricates nothing. And the arc, unlike the pre-cutoff

@@ -76,7 +76,7 @@ The working discipline lives in the repository rather than here:
 - [`.portulan/verify/README.md`](.portulan/verify/README.md) — the verify recipes. All of them are
   green before every commit, and CI runs every recipe the manifest yields: the workspace's own, plus
   those the packs it composes contribute.
-- [`docs/plan.md`](docs/plan.md) — the milestones, and the Session log every session appends to.
+- [`docs/plan.md`](docs/plan.md) — the milestones. A change's record is its commit message.
 - [`docs/vision.md`](docs/vision.md) — the constitution. **Human-owned; no agent edits it, ever.**
 
 `main` is protected: no direct pushes, required checks must be green, every review conversation must be

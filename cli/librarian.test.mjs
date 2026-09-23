@@ -1323,6 +1323,9 @@ describe("a pass leaves the tree it just wrote to green", () => {
             {
                 ".portulan/memory/r.md": [linked(), "2026-06-01"],
                 ".portulan/handoffs/2026-06-01-x.md": ["# Handoff — x\n\nBody.\n", "2026-06-01"],
+                // A workspace that keeps its handoff index, as `init` drafts one: a copy on disk is what
+                // `index` regenerates and compares. One that keeps none has nothing to go stale.
+                ".portulan/handoffs-index.md": ["", "2026-06-01"],
             },
             { workspace: m },
         );
