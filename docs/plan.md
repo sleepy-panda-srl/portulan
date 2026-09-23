@@ -3055,7 +3055,7 @@ _The seam applies here too: no client-identifying references._
   not see; the log kept only the message. His token now makes only the REST request #435 proved; the job's
   own token reads the pull request over REST and the review requests over GraphQL, tolerating a hidden
   reviewer, beside which a missing Copilot warns rather than reds; any other refusal is red at once. Tested
-  against a stub `gh` in twenty-two cases. · Checkpoints skipped by his instruction of 2026-09-23 12:38 (no
+  against a stub `gh` in twenty-four cases. · Checkpoints skipped by his instruction of 2026-09-23 12:38 (no
   fresh-context runs unless he asks); the coordinator session reviewed the diff before the commit; his review
   is on the PR · 28 green, `tests` as non-root · Seam scan clean against the private terms this project
   names; the term-list scan is his · [handoff](../.portulan/handoffs/2026-09-23-q-the-request-job-reads-with-its-own-token-and-asks-with-his.md)

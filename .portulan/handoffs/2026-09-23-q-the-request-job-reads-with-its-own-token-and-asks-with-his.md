@@ -8,11 +8,11 @@ and its review requests over GraphQL, selecting each reviewer's type and a Bot's
 kept in a file and judged by one `jq` program rather than by `gh`'s exit status, because `gh` exits non-zero
 on any GraphQL error. A `FORBIDDEN` error whose path runs through a `requestedReviewer` is read as a reviewer
 the job may not see; any other `FORBIDDEN` is red at once, with the answer printed; any other error is a look
-that read nothing. The proof of the request is Copilot among the review requests, read up to three times,
-five seconds apart, after the call; reads that never find it are red only when they showed every reviewer.
-The mutation, the Bot node-id lookup and their fixtures are gone. The filters recipe covers the two new
-programs with fifteen fixtures in place of #436's nine, and the six fixtures of `copilot-review.yml`'s pull
-request read anchor on a longer fragment, because `.head.sha` now names two programs.
+that read nothing. The proof of the request is Copilot among the review requests, read up to three times, five
+seconds apart, after the call; reads that never find it are red only when all three answered and showed every
+reviewer. The mutation, the Bot node-id lookup and their fixtures are gone. The filters recipe covers the two
+new programs with fifteen fixtures in place of #436's nine, and the six fixtures of `copilot-review.yml`'s
+pull request read anchor on a longer fragment, because `.head.sha` now names two programs.
 
 **What failed.** The first run of #436's job after it merged, on #443's head `2acddc7` at 18:21:40 UTC (run
 35901903000, job 107319935704), went red at its first look: `GitHub refused to show #443 to the token`, then
@@ -47,31 +47,37 @@ endpoint whose permission is unverified to a job whose first two live runs today
 kind of assumption, while this rule keeps red for what the job's token can prove wrong and never for what
 it cannot see. That is the coordinator session's delegated call of 2026-09-23, with that reason.
 
-**What is red, and what warns.** Red: no token; a request GitHub refuses; a read before the request that
-the job's own token is refused (HTTP 401, bad credentials, a resource not accessible, or a `FORBIDDEN` error
+**What is red, and what warns.** Red: no token; a request GitHub refuses; a read before the request that the
+job's own token is refused (HTTP 401, bad credentials, a resource not accessible, or a `FORBIDDEN` error
 anywhere but on a reviewer), at once and with GitHub's answer, since waiting would only hide a fault of this
-file; and a request GitHub accepted whose review requests, read three times after it, show every reviewer
-and never Copilot. A warning and exit 0: the pull request or its review requests unreadable for the whole
-wait; Copilot still holding a request when the wait runs out; a request made whose review requests could not
-be read after it, a refusal included, with the last answer printed; and one whose reads list no Copilot
-beside a hidden reviewer. The last two are new, because the proof is now a read after the call rather than
-the mutation's own answer, and a request that was made is never reported as not made. A 403 without the
-refusal's words, which a rate limit also answers, is a look that read nothing, as it was in #436.
+file; and a request GitHub accepted whose review requests, read three times after it, show every reviewer and
+never Copilot. A warning and exit 0: the pull request or its review requests unreadable for the whole wait;
+Copilot still holding a request when the wait runs out; a request made after which a read of its review
+requests failed, a refusal included, with the last answer printed; and one whose reads list no Copilot beside
+a hidden reviewer. The last two are new, because the proof is now a read after the call rather than the
+mutation's own answer, and a request that was made is never reported as not made. A 403 without the refusal's
+words, which a rate limit also answers, is a look that read nothing, as it was in #436.
 
 **How it was tested, and what was not.** The step was lifted from the parsed YAML and run under `bash -e`
-against a stub `gh`, with the waits shortened, in twenty-two cases. The stub answers REST and GraphQL in
+against a stub `gh`, with the waits shortened, in twenty-four cases. The stub answers REST and GraphQL in
 GitHub's shapes, exits 1 and prints the whole answer on a GraphQL error as `gh` does, and records the token
 each call carried. A request recorded, beside a hidden team and without one; Copilot holding a request for two
 looks and then none, which asked; held past the wait, a warning; another head at the first look and after two
 held looks, a closed pull request and a draft, each with nothing asked; a refused request, red; three reads
 after the call showing every reviewer and no Copilot, red; the same beside a hidden reviewer, a warning; three
-unreadable, and three refused, each a warning; Copilot on the second read, green; the pull request unreadable
-once, rate-limited once, and the review requests unreadable once, each then asking; either unreadable
-throughout, a warning; the job's token refused on the pull request, and on the review requests, each red at
-the first look; and no token, red with no call. In every case that asked, the request carried his token and
-every read the job's. `pull_request_target`, the environment, the job token's `permissions` and GitHub's
-answer for a hidden team cannot run outside GitHub, and this pull request cannot exercise its own change. The
-harness is in the project's shared files, not in this repository.
+unreadable, three refused, a read showing every reviewer then two unreadable, and one unreadable then two
+showing every reviewer, each a warning; Copilot on the second read, green; the pull request unreadable once,
+rate-limited once, and the review requests unreadable once, each then asking; either unreadable throughout, a
+warning; the job's token refused on the pull request, and on the review requests, each red at the first look;
+and no token, red with no call. In every case that asked, the request carried his token and every read the
+job's. `pull_request_target`, the environment, the job token's `permissions` and GitHub's answer for a hidden
+team cannot run outside GitHub, and this pull request cannot exercise its own change. The harness is in the
+project's shared files, not in this repository.
+
+**Copilot's round on `1920a6d`.** One finding, moderate, and right: a read after the call that showed every
+reviewer, followed by two that could not be read, went red, though the rule above asks all three to show every
+reviewer. Absence is now proven only when all three answered; otherwise it is the unconfirmed warning. Two
+cases above cover it, with the unreadable reads last and first.
 
 **Observation (proposal 0007).** On the next push to a pull request a bot opened, after this merges: the
 job's log shows the reads and the request, and its summary Copilot among the review requests; the timeline

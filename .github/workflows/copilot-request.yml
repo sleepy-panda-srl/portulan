@@ -59,7 +59,7 @@
 # *Members* permission, which neither token is given. GitHub then answers the rest beside a `FORBIDDEN`
 # error whose path runs through that `requestedReviewer`; that error, and only that one, is read as a
 # reviewer not shown, and so is a reviewer GitHub answers as null. A hidden reviewer may be Copilot, so a
-# request the reads after it do not find is red only when they showed every reviewer.
+# request the reads after it do not find is red only when all three answered and showed every reviewer.
 #
 # ## A round for the newest head, and never a request over a round in flight
 #
@@ -123,8 +123,8 @@
 # and a request GitHub accepted whose review requests, read three times after it, show every reviewer
 # and never Copilot, which is a request GitHub did not record. A warning and exit 0: a request this job
 # could not make, because the pull request or its review requests stayed unreadable or Copilot still
-# held a request when the wait ran out, which a re-run of this job repairs; a request made whose review
-# requests could not be read after it; and one whose review requests list no Copilot but hide a
+# held a request when the wait ran out, which a re-run of this job repairs; a request made after which a
+# read of the review requests failed; and one whose review requests list no Copilot but hide a
 # reviewer, which may be Copilot's. So while a hidden reviewer such as the team above holds a request,
 # the check goes red only for a request refused or never made. A rename of the reviewer's login shows in
 # either, with the logins printed. What this job cannot see is a request GitHub records and Copilot then
@@ -335,15 +335,15 @@ jobs:
                 exit 1
               fi
               asked="Requested ${REVIEWER} on #${PR_NUMBER} (${head}) with the maintainer's token after $(( $(date +%s) - started ))s."
-              # ACCEPTED IS NOT RECORDED. The proof is Copilot among the review requests after the call.
-              read_any=''
+              # ACCEPTED IS NOT RECORDED. The proof is Copilot among the review requests after the call. Its
+              # absence is proven only by three reads that all answered and showed every reviewer.
+              read_all=yes
               hidden_any=''
               for confirm in 1 2 3; do
                 verdict=$(read_requests)
                 case "$verdict" in
                   'ok '*)
                     read -r _ shown requested <<<"$verdict" || true
-                    read_any=yes
                     if [ "$shown" = hidden ]; then
                       hidden_any=yes
                     fi
@@ -357,6 +357,7 @@ jobs:
                     fi
                     ;;
                   *)
+                    read_all=''
                     last_error=$(cat "$err_file" "$body_file")
                     last_error=${last_error:-the review requests read answered nothing}
                     ;;
@@ -374,18 +375,18 @@ jobs:
                   "Copilot's own run for this head shows among the pull request's checks when it starts."
                 exit 0
               fi
-              if [ -n "$read_any" ]; then
+              if [ -n "$read_all" ]; then
                 printf '::error::GitHub accepted the request on #%s, and its review requests, every one shown, do not list Copilot\n' "$PR_NUMBER"
                 printf 'Bot review requests after the call:%s\n' "${requested:+ $requested}"
-                report "Copilot was NOT requested on #${PR_NUMBER} (${head}), opened by ${PR_AUTHOR}: GitHub accepted the call, and its review requests after it show every reviewer and no Copilot." \
+                report "Copilot was NOT requested on #${PR_NUMBER} (${head}), opened by ${PR_AUTHOR}: GitHub accepted the call, and its review requests, read three times after it, show every reviewer and no Copilot." \
                   "" \
                   "GitHub did not record the request. Request Copilot from the Reviewers menu; if that works" \
                   "where this did not, the token is what to look at."
                 exit 1
               fi
-              printf '::warning::requested Copilot on #%s, unconfirmed: the review requests could not be read after the call\n' "$PR_NUMBER"
+              printf '::warning::requested Copilot on #%s, unconfirmed: a read of the review requests after the call failed\n' "$PR_NUMBER"
               printf '%s\n' "$last_error"
-              report "$asked GitHub accepted the call, and the review requests could not be read after it, so it is unconfirmed." \
+              report "$asked GitHub accepted the call; no read of its review requests after it listed Copilot, and at least one could not be read, so it is unconfirmed." \
                 "" \
                 '```' "$last_error" '```' \
                 "" \
