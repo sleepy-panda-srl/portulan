@@ -128,7 +128,7 @@ export const FORMS = [
                 label: "Which part of Portulan",
                 required: true,
                 options: [
-                    "doctrine — core/: the loop, autonomy, verification, memory, evolution, safety",
+                    "doctrine — core/: the loop, autonomy, verification, memory, evolution, safety, context",
                     "mechanism — cli/, spec/, the plugin: the code that checks and enforces",
                     "workspace — .portulan/: the policy layer and the gate map",
                     "packaging — the plugin, the marketplace, install and boot",

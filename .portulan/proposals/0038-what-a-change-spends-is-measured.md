@@ -236,8 +236,11 @@ Neither the multipliers' fallback nor the horizon is a rail: they parameterize a
 turns red on them.
 
 **Two coordination notes, not questions.** The manifest keys this adds (the multipliers, the horizon, the declared
-block) ride the MINOR that 0036's key needs, which 0034 has commissioned as `2.9`; neither waits for the other. And
-the handoff is `0037`'s: if it wants its session's spend recorded, the ledger supplies one line inside that budget.
+block) ride the MINOR that 0036's key needs, which 0034 has commissioned as `2.9`; neither waits for the other.
+_(Settled the same day: 0036's key took `2.9` alone in [#440](https://github.com/sleepy-panda-srl/portulan/pull/440),
+so these keys take the next free MINOR, beside 0034's slots if they are drafted together. Annotated rather than
+rewritten.)_
+And the handoff is `0037`'s: if it wants its session's spend recorded, the ledger supplies one line inside that budget.
 
 ## Order of work after acceptance — one change per pull request
 

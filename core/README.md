@@ -13,7 +13,7 @@ loads on demand.
 | Path | What lives here |
 |---|---|
 | [`engine.md`](engine.md) | The kernel: cascade, loop, non-negotiable gates, and the map. Always loaded. |
-| [`operating/`](operating/) | The doctrine, one concern per file: loop · autonomy · verification · memory · evolution · safety. |
+| [`operating/`](operating/) | The doctrine, one concern per file: loop · autonomy · verification · memory · evolution · safety · context. |
 | [`templates/`](templates/) | The artifacts the doctrine references: repo-card · task · handoff · proposal · memory-entry. |
 | [`personas/`](personas/) | Roles an agent takes, as context firewalls — each with a `tools:` allow-list. |
 | [`skills/`](skills/) | Progressive-disclosure procedures in `SKILL.md` form. |

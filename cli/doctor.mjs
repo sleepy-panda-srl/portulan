@@ -1215,6 +1215,19 @@ export async function inspect(workspaceDir, options = {}) {
                     `${major}.${minor} will simply be absent`,
             );
         }
+        // Grading against the newest schema has the converse hole: a key a later MINOR added passes here, in
+        // a manifest whose own version's validator refuses it as unknown. A key is refused at birth, when no
+        // manifest can newly fail it; refusing an older one now could fail a manifest that passes today, which
+        // ../spec/README.md calls a MAJOR. Raised by Copilot on #440, for `context`, the first key born gated.
+        for (const [key, since] of [["context", 9]]) {
+            if (major === 2 && minor < since && workspace[key] !== undefined) {
+                fail(
+                    "schema",
+                    `\`${key}\` is Workspace Definition 2.${since}'s, and this manifest declares ${major}.${minor}, ` +
+                        `whose validator refuses it as an unknown key. Declare 2.${since}, or remove the key`,
+                );
+            }
+        }
     }
 
     const errors = validate(schema, workspace);
@@ -1929,6 +1942,32 @@ export async function inspect(workspaceDir, options = {}) {
                     "run, where the consuming tool refuses it with exit 2 and nobody is watching",
             );
         }
+    }
+
+    // Workspace Definition 2.9's always-tier budget is typed `number` for the same reason and refused on
+    // the same terms, but not in the loop above: nothing consumes it yet, so it has no exit 2 to cite, and
+    // saying it had would be issue #84's error again. Raised by Copilot on #440. Proposal `0036`.
+    const alwaysTokens = workspace.context?.always?.budget?.tokens;
+    if (alwaysTokens !== undefined && !positive(alwaysTokens)) {
+        fail(
+            "schema",
+            `context.always.budget.tokens is ${JSON.stringify(alwaysTokens)}, which is not a positive integer. ` +
+                "The declared keyword subset has no `minimum` and cannot say `integer`, so this is checked here",
+        );
+    }
+
+    // The one number of this family that is not an integer: 2.99 bytes per token is a real figure. What is
+    // refused instead is a figure under one. A token covers at least one byte, so a smaller value is
+    // tokens per byte entered inverted, and it would overstate every count by the square of the true
+    // ratio. Workspace Definition 2.9, proposal `0036`.
+    const bytesPerToken = workspace.context?.ratio?.bytes_per_token;
+    if (bytesPerToken !== undefined && !(Number.isFinite(bytesPerToken) && bytesPerToken >= 1)) {
+        fail(
+            "schema",
+            `context.ratio.bytes_per_token is ${String(bytesPerToken)}, and it must be a finite number of at least 1. ` +
+                "A token covers at least one byte, so a smaller figure is tokens per byte entered inverted. The " +
+                "declared keyword subset has no `minimum`, so this is checked here",
+        );
     }
 
     if (workspace.librarian?.staleness?.proposal_days !== undefined && !workspace.slots?.proposals) {

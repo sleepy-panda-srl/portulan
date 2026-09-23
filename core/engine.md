@@ -38,7 +38,7 @@ scale down. → `operating/loop.md`
 
 ## The map
 
-- `operating/` — the doctrine: loop · autonomy · verification · memory · evolution · safety.
+- `operating/` — the doctrine: loop · autonomy · verification · memory · evolution · safety · context.
 - `templates/` — the artifacts: repo-card · task · handoff · proposal · memory-entry.
 - `personas/` — roles as context firewalls, each with a `tools:` allow-list.
 - `skills/` — progressive-disclosure procedures; a skill must enforce, measure, or earn its tokens.

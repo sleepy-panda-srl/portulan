@@ -1,0 +1,29 @@
+{
+  "portulan": {
+    "spec": "2.9"
+  },
+  "name": "fixture",
+  "kind": "repository",
+  "tree": "./",
+  "slots": {
+    "identity": "identity.md",
+    "principles": "principles.md",
+    "gates": "gate-map.md"
+  },
+  "verify": {
+    "default": "docs",
+    "recipes": [
+      {
+        "id": "docs",
+        "run": "./verify.sh"
+      }
+    ]
+  },
+  "context": {
+    "always": {
+      "budget": {
+        "tokens": 8000
+      }
+    }
+  }
+}
