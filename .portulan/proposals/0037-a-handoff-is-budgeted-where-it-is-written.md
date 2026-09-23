@@ -80,9 +80,12 @@ and one sentence of `loop.md` narrowed (rule 4). No kernel line: 0036 already pu
    and counted at the manifest's declared ratio. It binds only handoffs dated after a declared **cutoff**, a date and
    not a list, as the Session log's entry budget binds, because a merged handoff is corrected by a dated note and
    never rewritten: a cap that reached back would be red with no legal repair. So a breach is local to the session
-   writing the handoff, in the change that can still edit it. The cutoff moves only in a change that tightens the cap
-   or lowers the ratio, and then to that change's date, since a merged handoff cannot be compressed to meet a bound
-   that tightened after it merged.
+   writing the handoff, in the change that can still edit it. The cutoff is set by the change that declares the cap
+   and moves only in one that tightens the cap or lowers the ratio, each time to that change's date or the newest
+   handoff's date, whichever is later: a merged handoff cannot be compressed to meet a bound that tightened after it
+   merged, and a filename date is not a merge date, so the later date exempts every handoff already in the tree, even
+   one dated ahead. A merged handoff keeps its name as it keeps its text; a rename that dates one past the cutoff is
+   bound in the change that makes it, whose repair is to undo the rename.
 3. **A breach is repaired by compression, or by moving a fact to the record that owns it**, never by splitting (two
    dated handoffs against one session red the correspondence), never by retiring, never by cutting a decision's why,
    and never by a raise or a later cutoff in the change that breached it. What a handoff carries is the template's:
@@ -94,11 +97,12 @@ and one sentence of `loop.md` narrowed (rule 4). No kernel line: 0036 already pu
 4. **The session-end gate stays blind to length; the cap is a verify rail.** `loop.md`'s *"a gate on this checks that
    one exists and is dated — never its structure or its length"* is narrowed to the session-end gate, and says a
    workspace may cap a handoff from above in a verify recipe. There is still no floor: short is fine, absent is not.
-5. **The index carries a window.** Where the manifest declares a token budget for it, the index lists the newest
-   handoffs whose lines fit, whole lines only, and closes with one line giving the count it leaves out and where they
-   are: the series, whose filenames lead with their dates. The generator makes that demotion itself because it loses
-   nothing: every line is derived from a handoff that stays where it is, and no index points at another. With no
-   budget declared, the index lists the whole series, as today.
+5. **The index carries a window.** Where the manifest declares a token budget for it, the whole index fits it: the
+   generator counts the header and the closing line first, then lists the newest handoffs whose lines fit in what is
+   left, whole lines only. The closing line gives the count it leaves out and where they are: the series, whose
+   filenames lead with their dates. The generator makes that demotion itself because it loses nothing: every line is
+   derived from a handoff that stays where it is, and no index points at another. With no budget declared, the index
+   lists the whole series, as today.
 6. **A boot reads no handoff and not their index.** Both stay on-read, so neither the always tier nor the boot
    read-set carries them, and the cap prices the read a session makes when it takes up handed-over work, a restart
    under 0038 among them.
@@ -110,12 +114,13 @@ and one sentence of `loop.md` narrowed (rule 4). No kernel line: 0036 already pu
 - **The cap (a rail).** The `index` recipe checks it in `cli/index.mjs`, beside memory's per-record cap: a bound
   handoff over its cap is red, and the finding names the handoff, its tokens at the declared ratio, the cap, the
   overage and the repair menu, for every handoff over and not only the first. It fires in the change that writes the
-  handoff, before merge, while compression is still a legal repair. The schema requires the cutoff with the cap;
-  `doctor` refuses either budget with no declared ratio to count it by, which the schema's subset cannot state across
-  two objects, and any figure that is not a positive integer.
+  handoff, before merge, while compression is still a legal repair, or in the one that renames it past the cutoff.
+  The schema requires the cutoff with the cap; `doctor` refuses either budget with no declared ratio to count it by,
+  which the schema's subset cannot state across two objects, and any figure that is not a positive integer.
 - **The window (generated).** `cli/index.mjs` writes it and the `index` recipe byte-compares it, as it does today. Its
-  header states the declared budget in place of *"No budget"*, and its closing line the count left out. Nothing turns
-  it red on size.
+  header states the declared budget in place of *"No budget"*, and its closing line the count left out. The generator
+  refuses a budget too small for those two lines and names the least one that holds them; nothing else turns it red
+  on size.
 - **The report (by default).** `context.mjs` prints a handoff group for every workspace with a series, with no
   configuration: the count, the total, the median, the three largest and the index, in bytes and in tokens at the
   declared ratio or at 0036's estimate, saying which. Where a cap is declared it adds how many bound handoffs are over
@@ -128,8 +133,8 @@ and one sentence of `loop.md` narrowed (rule 4). No kernel line: 0036 already pu
   the prefix. The generator keeps printing headings as written: `cli/index.mjs` already refuses to normalise content
   it does not own, and says *"the repair is to reword the headings, which changes the fact rather than the report of
   it"*.
-- **`init` offers both budgets** in its interview, with the cutoff at the day it writes the manifest: an offer the
-  human accepts, not a default.
+- **`init` offers both budgets** in its interview, with the cutoff at the day it writes the manifest or the newest
+  handoff's date, whichever is later: an offer the human accepts, not a default.
 - **The Stop-gate is unchanged.** It checks that a handoff dated today exists, and never reads one.
 
 ## What this does not ask for
@@ -157,13 +162,14 @@ the maintainer's criterion of better performance:
    MINOR, beside 0038's keys and 0034's slots if drafted together, and none waits for another.
 2. **Tokens, at the declared ratio**: 0036's unit, so a handoff's cap is counted like the fresh context it joins; never
    a per-run count, by 0036's second ruling.
-3. **This repository's figures: 3,000 tokens a handoff, and 3,000 for the index's lines**, declared once its ratio is,
-   with that change's date as the cutoff. At 0036's estimate 3,000 tokens is about 8,970 bytes: near memory's 8 KB
-   record cap, about twice the mean of the handoffs dated 2026-09-23, and above every one of them. 76 of the 187
-   handoffs (41%) are over it, holding 466,687 bytes above it. The window lists the newest 54 handoffs here, back to
-   2026-08-25, in 8,774 bytes of lines against today's 28,766, and stays near that as the series grows. The window saves
-   on-demand reads of the index, not the boot, which reads nothing of the series. One figure for both on purpose:
-   opening the index to find a handoff costs about what reading one does.
+3. **This repository's figures: 3,000 tokens a handoff, and 3,000 for the index**, declared once its ratio is, with
+   that change's date as the cutoff. At 0036's estimate 3,000 tokens is about 8,970 bytes: near memory's 8 KB record
+   cap, about twice the mean of the handoffs dated 2026-09-23, and above every one of them. 76 of the 187 handoffs
+   (41%) are over it, holding 466,687 bytes above it. Counting today's 342-byte header and a closing line of about 100
+   bytes, the window lists the newest 52 handoffs here, back to 2026-08-25, and the index is 8,879 bytes against
+   today's 29,108; it stays near that as the series grows. The window saves on-demand reads of the index, not the
+   boot, which reads nothing of the series. One figure for both on purpose: opening the index to find a handoff costs
+   about what reading one does.
 4. **Where each piece lives**: the cap and the window in `cli/index.mjs`, which already reads the series and rails
    memory's per-record cap; the measurement in `context.mjs` and the report in `doctor`, as 0036 set for the always
    tier.
