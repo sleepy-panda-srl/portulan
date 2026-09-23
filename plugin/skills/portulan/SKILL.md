@@ -36,9 +36,11 @@ do not fall back to searching upward or outward.
 ### 2a. If the manifest is a pointer, resolve it — the workspace is somewhere else, and the CLI finds it
 
 **Where the manifest's `kind` is `pointer`, read [`pointer-manifest.md`](pointer-manifest.md) and follow
-it before step 3: it is this step in full.** Any other manifest is the workspace itself, and its boot
-skips the file. If the read is denied, this step did not load: say so, ask for read access to the file,
-and do not proceed as though it had.
+it before step 3: it is this step in full.** If the read is denied, this step did not load: say so, ask
+for read access to the file, and do not proceed as though it had. A manifest whose `kind` is
+`repository`, `demo` or `portfolio` is the workspace itself, and its boot skips the file. Any other
+`kind`, or none, is a defect in the manifest: report it, as `doctor` would, and do not read its slots
+as this team's policy.
 
 ## 3. Read the slots the manifest names
 
