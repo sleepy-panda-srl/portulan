@@ -102,6 +102,16 @@
         "doc": "verify/README.md"
       },
       {
+        "id": "context",
+        "run": "./.portulan/verify/context.sh",
+        "requires": [
+          "bash",
+          "git",
+          "node"
+        ],
+        "doc": "verify/README.md"
+      },
+      {
         "id": "control-chars",
         "run": "./.portulan/verify/control-chars.sh",
         "requires": [

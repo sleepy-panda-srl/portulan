@@ -98,6 +98,14 @@ export const EXCLUDED = {
  * ruled and does not claim to — it checks that a disposition exists, is live, and is unique.
  */
 export const PRODUCT = {
+    "context.mjs":
+        "the measure of what a boot reads and what the host loads into every context. Product on proposal " +
+        "`0036`'s own text, accepted 2026-09-23 by the maintainer's delegation, which reaches the measurement " +
+        "*through `doctor` and a recipe* for every workspace and budgets the always tier of every adopter: " +
+        "what it reads is each adopter's manifest, slots and instruction files, which is the 2026-08-24 " +
+        "rule's case, *the tool is product, the policy it reads is this team's*. It is classified here " +
+        "because it lands before `doctor` imports it, and his merge over this register is the ruling, as " +
+        "for every entry",
     "release-eval.mjs":
         "the eval result a release carries, written at publish by `--tagged`. Ruled product by the " +
         "maintainer on 2026-09-01, on two grounds that are NOT one. (1) `./eval-bundle.mjs`'s 2026-08-24 " +
