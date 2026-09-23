@@ -6,8 +6,8 @@ window closes without a round, the step now ends with a warning and exits 0, on 
 cause the CI to fail."* The report is unchanged in substance and still goes to the log and the job
 summary, under a `::warning::` annotation instead of `::error::`. It reverses his 13:39 call of red at the
 close. An API unreadable at the last look now ends the same way, with a warning whose report says at how
-many of the window's looks it was unreadable: that is the coordinator session's delegated call, recorded
-as such so that it can be reversed. The step fails only on its own errors, an event with no pull request
+many of the window's looks a read failed: that is the coordinator session's delegated call, recorded as
+such so that it can be reversed. The step fails only on its own errors, an event with no pull request
 number or a pull request reported with no head commit. Nothing downstream reads the warning as a round,
 because `round=green` is written only by a round, so the notes promotion and the derived verdict still run
 only on one.
@@ -36,15 +36,25 @@ passes without one. `walk_unread` is reset on every look, so the report's note t
 exist describes the last look rather than any earlier one.
 
 **How it was tested, and what was not.** The await step was lifted out of the parsed YAML and run under
-`bash -e` against a stub `gh`, with the window cut to 6s and the looks to 2s, in eleven cases, each against
-#431's step and this one. On a re-run: a first look that could not read the pull request and then no round
-now posts one re-request at the second look, where #431's posted at the first; a first look that could not
-read and then a round now posts none; a failed reviews read, and a walk cut short by an unreadable body,
-each defer the re-request to the next complete look. No round, a held request, no request, a refusal and
-an API unreadable at every look all exit 0 with a warning and no step outputs; the last posts nothing and
-reports the API unreadable at 4 of 4 looks. A round on the third look produces byte-identical outputs and
-summary. Nothing ran on GitHub: this pull request's own run is the first live one, and it ends either on
-the round, if one lands inside three minutes, or with the warning at the close.
+`bash -e` against a stub `gh`, with the window cut to 6s and the looks to 2s, in twelve cases, each
+against #431's step and this one. On a re-run: a first look that could not read the pull request and then
+no round now posts one re-request at the second look, where #431's posted at the first; a first look that
+could not read and then a round now posts none; a failed reviews read, and a walk cut short by an
+unreadable body, each defer the re-request to the next complete look. No round, a held request, no
+request, a refusal and an API unreadable at every look all exit 0 with a warning and no step outputs; the
+last posts nothing and reports a failed read at 4 of 4 looks. A round on the third look produces
+byte-identical outputs and summary. Live on this pull request, on both heads before the fix below: each
+run closed at three minutes green under the warning, with the report in the log and the job summary, and
+the second printed the newest review's link on its own line. Neither head drew a round in its window; the
+one Copilot round, requested by hand, landed at 15:37 UTC on the first head, after the rebase onto #433
+had replaced it.
+
+**Copilot's round on this pull request: two findings, both taken.** The look count left out a look whose
+walk stopped at an unreadable body, which the re-request guard already treats as unread: a twelfth stub
+case, a walk cut short at the first look and the reviews unreadable after it, reported 3 of 4 looks before
+the fix and 4 of 4 after. The count now takes both, and the report says at how many looks a read failed.
+And the retired paragraphs of 0023's procedure in the gate map still read in the present tense, so they
+now read in the past.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38: no fresh-context runs unless he asks.
 The coordinator session reviewed the diff before the commit; his review is on the pull request.

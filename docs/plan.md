@@ -2958,7 +2958,7 @@ _The seam applies here too: no client-identifying references._
   call. Copilot's three findings on #431 are fixed with it: the newest review's link sits outside the
   summary's code fence, a re-run re-requests only at a look that could read, and the header, gate map and
   memory record say warning. Proposal 0023's exit (2) is retired in the gate map. Tested against a stub
-  `gh` in eleven cases. · Checkpoints skipped by his instruction of 2026-09-23 12:38 (no fresh-context runs
+  `gh` in twelve cases. · Checkpoints skipped by his instruction of 2026-09-23 12:38 (no fresh-context runs
   unless he asks); the coordinator session reviewed the diff before the commit; his review is on the PR ·
   27 green, `tests` as non-root · Seam scan clean against the private terms this project names; the
   term-list scan is his · [handoff](../.portulan/handoffs/2026-09-23-g-a-copilot-window-with-no-round-is-reported-not-failed.md)

@@ -1221,25 +1221,25 @@ of this paragraph and the next are the record of the procedure it replaced._
 The check can be left holding a state that never clears: on
 [#157](https://github.com/sleepy-panda-srl/portulan/pull/157) a rebase force-push drew no round at all
 — the re-request was accepted and abandoned — and the pull request merged past the red check on the
-maintainer's explicit override. That exception is now the procedure, unchanged in substance: **the check
-stays red**, because a gate that opens itself on an unexplained absence is not a gate, and the maintainer
-may merge past it **per occurrence, never as standing permission**, with the act recorded on the pull
-request *before* the merge — his own comment, or an agent's via [`tools/gh-bot`](tools/gh-bot) quoting
-his instruction verbatim. **The recording is the difference between an override and a habit.**
+maintainer's explicit override. That exception then became the procedure, unchanged in substance: **the
+check stayed red**, because a gate that opens itself on an unexplained absence is not a gate, and the
+maintainer could merge past it **per occurrence, never as standing permission**, with the act recorded on
+the pull request *before* the merge — his own comment, or an agent's via [`tools/gh-bot`](tools/gh-bot)
+quoting his instruction verbatim. **The recording was the difference between an override and a habit.**
 
 The cause is unestablished — authorship is the surviving lead
 ([#161](https://github.com/sleepy-panda-srl/portulan/issues/161)) — and while it stands the weekly
-librarian pass meets this whenever it needs a rebase, so the expected price is **one recorded override
+librarian pass meets this whenever it needs a rebase, so the expected price was **one recorded override
 per stranded pass**. _Dated 2026-09-23: the lead now has a documented mechanism. GitHub bills a review on
 a bot's pull request, or one a bot requests, to the organisation, and nothing here pays that share.
 [`copilot-request.yml`](../.github/workflows/copilot-request.yml) is the repair, the first bot-authored
-pull request after it is the observation, and the retirement condition below stands._ Measured 2026-08-09: the scheduled pass has run **once**, and it stranded. This is
+pull request after it is the observation, and the retirement condition below stands._ Measured 2026-08-09: the scheduled pass has run **once**, and it stranded. This was
 doctrine standing where a rail should eventually stand, and [`../docs/vision.md`](../docs/vision.md)'s
-*rails, not prose* is conceded rather than contradicted — the rail is the required-context flip above,
-declined for now **precisely because** it would make a known strand class unmergeable at 06:00 on a
-Monday with nobody at a keyboard. Retire this paragraph when a scheduled pass that needed a rebase draws
-its round and merges with no override, when `copilot-reviewed` joins the required contexts, or when
-Copilot review leaves the review path.
+*rails, not prose* was conceded rather than contradicted — the rail was the required-context flip above,
+declined then **precisely because** it would make a known strand class unmergeable at 06:00 on a
+Monday with nobody at a keyboard. It was to be retired when a scheduled pass that needed a rebase drew
+its round and merged with no override, when `copilot-reviewed` joined the required contexts, or when
+Copilot review left the review path.
 
 ## The triage threshold
 

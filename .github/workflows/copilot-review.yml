@@ -104,8 +104,8 @@
 #
 # An unreadable API is never taken as an answer — it is retried on every look, and if it is still
 # unreadable at the last look, the step ends with the same warning as a window with no round, and its
-# report says the API was unreadable at the last look, at how many of the window's looks, and the last
-# error. "Could not look" is still never "nothing wrong" —
+# report says the API was unreadable at the last look, at how many of the window's looks a read failed,
+# and the last error. "Could not look" is still never "nothing wrong" —
 # `.portulan/memory/verify-preconditions-fail-closed.md` — but since 2026-09-23 the colour no longer
 # carries that difference: the report does, and no step output claims a round, so the notes and verdict
 # steps below skip. Until then this case was red, with the stated cost that a GitHub API outage blocked
@@ -266,9 +266,10 @@ jobs:
           # that it could not review. Read only by the expiry message below, which must not print
           # `no Copilot review` over a head that drew one and was told nothing came of it.
           refused_seen=''
-          # Looks taken, and how many of them could not read: for the report on an API unreadable at
-          # the close, where one failed read at the edge and an outage the window long are different
-          # findings.
+          # Looks taken, and at how many of them a read failed, the head's (`unread`) or a walk's past
+          # the newest match (`walk_unread`), the two the re-request below waits out: for the report
+          # on an API unreadable at the close, where one failed read at the edge and an outage the
+          # window long are different findings. Both counted since Copilot's round on #435.
           looks=0
           unread_looks=0
 
@@ -882,7 +883,7 @@ jobs:
             fi
 
             looks=$((looks + 1))
-            if [ -n "$unread" ]; then unread_looks=$((unread_looks + 1)); fi
+            if [ -n "$unread" ] || [ -n "$walk_unread" ]; then unread_looks=$((unread_looks + 1)); fi
             [ "$SECONDS" -lt "$WAIT_SECONDS" ] || break
 
             if [ -n "$unread" ]; then
@@ -964,7 +965,7 @@ jobs:
           if [ -n "$unread" ]; then
             printf '::warning::could not confirm a Copilot review on #%s after %ss — the API was unreadable at the last look: %s\n' \
               "$PR_NUMBER" "$SECONDS" "$unread"
-            printf 'The API was unreadable at %s of %s looks. This is not a finding about the review: it is\n' \
+            printf 'A read failed at %s of %s looks. This is not a finding about the review: it is\n' \
               "$unread_looks" "$looks"
             printf '"could not look", reported rather than failed since 2026-09-23 (the header says why).\n'
             printf 'Nothing about the round is established, so re-run this job once the API answers.\n'
