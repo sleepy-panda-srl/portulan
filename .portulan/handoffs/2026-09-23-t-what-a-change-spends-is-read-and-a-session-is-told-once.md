@@ -96,7 +96,9 @@ transcripts". The drill fired,
 `exit 1 · said "does not reproduce"`. Run once over this session's own records, numbers only, the ledger
 put this session at 288,127 tokens against a threshold of 160,958 at the general multipliers: the session
 building the advisory was past the threshold it computes, and carried on to finish the step, as the line
-itself says to.
+itself says to. Once `.claude/settings.json` carried the compiled hook, the host ran it at this session's
+next prompt and the line reached the context, 349,642 tokens against a threshold of 190,006 from a fresh
+context of 95,003; at the prompt after that, nothing came.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38: no fresh-context runs unless he asks. The
 coordinator session reviewed the diff before the first commit; his review is on the pull request.
