@@ -201,6 +201,14 @@ export const DISPOSITIONS = [
             "the same reason as `identity.md`, and the mismatch is recorded rather than smoothed.",
     },
     {
+        match: "gate-map/",
+        kind: "keep",
+        row: "residual",
+        why:
+            "The on-read half of `gate-map.md`, split from it so that a boot reads only the index: the same document and " +
+            "the same residual, so the same disposition.",
+    },
+    {
         match: "gates.json",
         kind: "keep",
         row: "residual",

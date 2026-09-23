@@ -2086,14 +2086,36 @@ describe("customer zero", () => {
         }
     });
 
+    // Since 2026-09-23 the gate map is two halves: the index a boot reads, and the on-read files it links
+    // under `gate-map/` — proposal 0036's demotion, applied to the largest file a boot loaded. The citation
+    // rail reads both, because a retired id is as wrong in a moved paragraph as in the index. The membership
+    // and tier rails stay on the index alone: it is the half every session reads, so a rule it does not name,
+    // or names under the wrong tier, is one a boot never sees.
+    const gateMapProse = () => {
+        const dir = path.join(REPO, ".portulan", "gate-map");
+        const moved = fs.readdirSync(dir).filter((f) => f.endsWith(".md")).sort();
+        return [
+            ["gate-map.md", fs.readFileSync(path.join(REPO, ".portulan", "gate-map.md"), "utf8")],
+            ...moved.map((f) => [`gate-map/${f}`, fs.readFileSync(path.join(dir, f), "utf8")]),
+        ];
+    };
+
     test("every rule id the gate map cites exists in the policy — declared or composed", () => {
-        const prose = fs.readFileSync(path.join(REPO, ".portulan", "gate-map.md"), "utf8");
         const ids = new Set([...real.rules, ...composedGates].map((r) => r.id));
-        const cited = [...prose.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+){2,})`/g)].map((m) => m[1]);
-        for (const id of cited) {
-            if (/\.(md|json|sh|mjs)$/.test(id) || id.includes("/")) continue;
-            assert.ok(ids.has(id), `gate-map.md cites \`${id}\`, which no rule declares`);
+        for (const [file, prose] of gateMapProse()) {
+            const cited = [...prose.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+){2,})`/g)].map((m) => m[1]);
+            for (const id of cited) {
+                if (/\.(md|json|sh|mjs)$/.test(id) || id.includes("/")) continue;
+                assert.ok(ids.has(id), `${file} cites \`${id}\`, which no rule declares`);
+            }
         }
+    });
+
+    test("every on-read file of the gate map is linked from its index", () => {
+        // A file under `gate-map/` that the index does not link is text no session is ever sent to.
+        const [[, index], ...moved] = gateMapProse();
+        assert.ok(moved.length > 0, "gate-map/ holds no files, so this rail checks nothing");
+        for (const [file] of moved) assert.ok(index.includes(`](${file}`), `${file} is linked from nowhere a boot reads`);
     });
 
     test("the composed set is non-empty, so the two rails above are not widened to a no-op", () => {

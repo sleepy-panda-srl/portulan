@@ -60,4 +60,5 @@
 /.github/               @sleepy-panda-srl/maintainers
 /.portulan/verify/      @sleepy-panda-srl/maintainers
 /.portulan/gate-map.md  @sleepy-panda-srl/maintainers
+/.portulan/gate-map/    @sleepy-panda-srl/maintainers
 /CODEOWNERS             @sleepy-panda-srl/maintainers

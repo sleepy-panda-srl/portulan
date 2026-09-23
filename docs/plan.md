@@ -2962,3 +2962,14 @@ _The seam applies here too: no client-identifying references._
   unless he asks); the coordinator session reviewed the diff before the commit; his review is on the PR ·
   27 green, `tests` as non-root · Seam scan clean against the private terms this project names; the
   term-list scan is his · [handoff](../.portulan/handoffs/2026-09-23-g-a-copilot-window-with-no-round-is-reported-not-failed.md)
+
+- 2026-09-23 · M12 (Context economy) — row stays todo · **The gate map keeps its rules and moves its
+  reasons.** [`gate-map.md`](../.portulan/gate-map.md) is the index a boot reads: each gate's rule under its
+  tier, one line per honest hole and per identity act; the rest moved verbatim into nine on-read files under
+  [`gate-map/`](../.portulan/gate-map/), none deleted and none kept twice beyond the titles that name what a
+  file continues. 143,030 → 26,959 bytes; this repository's boot read-set 211,673 → 95,602, about 38,800
+  fewer tokens per boot at 0036's estimated 2.99 bytes per token; the demo workspace's is unchanged. ·
+  Checkpoints skipped by his instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the
+  coordinator session reviewed the diff before the commit; his review is on the PR · 27 green, `tests` as
+  non-root · Seam scan clean against the private terms this project names; the term-list scan is his ·
+  [handoff](../.portulan/handoffs/2026-09-23-h-the-gate-map-keeps-its-rules-and-moves-its-reasons.md)
