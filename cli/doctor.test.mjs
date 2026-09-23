@@ -523,9 +523,39 @@ describe("what every context loads is reported, and failed only against a declar
     });
 });
 
+describe("the guidance slot, which compile reads", () => {
+    // Workspace Definition 2.10. `doctor` checks what it checks of every directory slot and gates the slot to
+    // its version; what a unit's frontmatter says is `compile`'s to refuse, since the subset cannot see inside
+    // a file. Proposal `0036`.
+    const withGuidance = (spec) => ({ ...wellFormed(), portulan: { spec }, slots: { ...wellFormed().slots, context: "context/" } });
+    const unit = "---\ntier: always\n---\n\nA.\n";
+
+    for (const spec of ["2.0", "2.9"]) {
+        test(`\`slots.context\` in a manifest declaring ${spec} is a failure that names 2.10`, async () => {
+            const dir = tree(scratch(), { ...minimalFiles, "context/a.md": unit, "workspace.json": JSON.stringify(withGuidance(spec)) });
+            const { findings } = await inspect(dir, { schema: SCHEMA });
+            const hit = severities(findings, "fail").find((f) => /`slots\.context` is Workspace Definition 2\.10's/.test(f.message));
+            assert.ok(hit, `expected the version gate to refuse \`slots.context\` under ${spec}`);
+            assert.match(hit.message, new RegExp(`declares ${spec.replace(".", "\\.")}`));
+        });
+    }
+
+    test("declared at 2.10 over a directory that is there, it passes", async () => {
+        const dir = tree(scratch(), { ...minimalFiles, "context/a.md": unit, "workspace.json": JSON.stringify(withGuidance("2.10")) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.deepEqual(severities(findings, "fail"), []);
+    });
+
+    test("declared over a directory that is not there, it fails as every directory slot does", async () => {
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(withGuidance("2.10")) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.ok(severities(findings, "fail").some((f) => /slots\.context/.test(f.message)), JSON.stringify(findings));
+    });
+});
+
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 9 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 10 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -1818,9 +1848,9 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
             return tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
         };
         assert.equal(await run([build("9.9")], { quiet: true }), 2, "a MAJOR ahead");
-        // `2.10`, not a string one character on: the MINOR is compared as a number, so this also holds
-        // the comparison to its arithmetic now that the current version is `2.9`.
-        assert.equal(await run([build("2.10")], { quiet: true }), 2, "a MINOR ahead");
+        // `2.11`, not a string one character on: the MINOR is compared as a number, so this also holds
+        // the comparison to its arithmetic now that the current version is `2.10`, the first MINOR of two digits.
+        assert.equal(await run([build("2.11")], { quiet: true }), 2, "a MINOR ahead");
         assert.equal(await run([build("2.0")], { quiet: true }), 0, "the current version");
     });
 
@@ -2037,7 +2067,7 @@ describe("the packs a workspace declares", () => {
 
     test("the two version trains are read by different functions and do not collide", () => {
         assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 9 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 10 });
         // The workspace reader must not accept the pack `$id` as a workspace version.
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });
