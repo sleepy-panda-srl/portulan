@@ -109,6 +109,7 @@ Close the boot by stating the honest position:
   configured one, and it is the only layer indifferent to how a command was spelled.
 - **A declared pack is not an invocable pack.** Where the workspace names packs, say which, and give
   step 3a's four limits — not a summary of them, which is how one of them ends up quietly dropped.
+  Where the read of `packs.md` was denied, say step 3a did not load instead of giving them.
 - **Memory has a generated index only where the workspace declared one.** `memory.index` is optional:
   a workspace carrying it gets an index written by `index`, and a workspace that also declares a recipe
   comparing that file byte for byte gets it held current by a rail rather than by anyone's diligence —

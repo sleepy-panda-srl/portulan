@@ -3016,3 +3016,13 @@ _The seam applies here too: no client-identifying references._
   coordinator session reviewed the diff before the commit; his review is on the PR · 27 green, `tests` as
   non-root · Seam scan clean against the private terms this project names; the term-list scan is his ·
   [handoff](../.portulan/handoffs/2026-09-23-i-copilot-is-requested-over-graphql-once-no-round-is-in-flight.md)
+
+- 2026-09-23 · M12 (Context economy) — row stays todo · **The boot report says step 3a did not load where
+  `packs.md` was denied**, instead of giving limits it never read: a gap the move of steps 2a and 3a opened,
+  named in Copilot's summary of that change's final head; the maintainer chose the fix at 18:02 UTC. The
+  skill 8,825 → 8,917 bytes, so this repository's and the demo's boot read-sets go 92,906 → 92,998 and
+  33,499 → 33,591; a pointer naming packs reads 1,833 more than before the move. · Checkpoints skipped by his
+  instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator session reviewed the
+  diff before the commit; his review is on the PR · 27 green, `tests` as non-root · Seam scan clean against the
+  private terms this project names; the term-list scan is his ·
+  [handoff](../.portulan/handoffs/2026-09-23-p-the-boot-report-says-when-the-packs-step-did-not-load.md)
