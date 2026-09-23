@@ -3007,11 +3007,12 @@ _The seam applies here too: no client-identifying references._
   terms this project names; the term-list scan is his · [handoff](../.portulan/handoffs/2026-09-23-n-the-always-tier-has-its-doctrine-and-its-key.md)
 
 - 2026-09-23 · Off the milestone row · **Copilot is requested over GraphQL, once no round is in flight.** On
-  #435 his token's request was recorded at 15:49:59 and Copilot's round started at 15:50:09, yet the job
-  went red: REST's `requested_reviewers` never lists a Bot. `copilot-request.yml` now asks with GraphQL
+  #435 his token's request was recorded at 15:49:59 and Copilot's round started at 15:50:09, yet the job went
+  red: REST's `requested_reviewers` never lists a Bot. `copilot-request.yml` now asks with GraphQL
   `requestReviews` and takes Copilot in the mutation's own answer as the proof, his earlier script's design
-  from another repository; it waits while Copilot holds a request and asks only when no round is on the
-  head. Tested against a stub `gh` in sixteen cases. · Checkpoints skipped by his instruction of 2026-09-23
-  12:38 (no fresh-context runs unless he asks); the coordinator session reviewed the diff before the commit;
-  his review is on the PR · 27 green, `tests` as non-root · Seam scan clean against the private terms this
-  project names; the term-list scan is his · [handoff](../.portulan/handoffs/2026-09-23-i-copilot-is-requested-over-graphql-once-no-round-is-in-flight.md)
+  from another repository; it waits while Copilot holds a request, then asks for its event's head and judges no
+  round, since Copilot files a refusal as a review too. Tested against a stub `gh` in nineteen cases. ·
+  Checkpoints skipped by his instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the
+  coordinator session reviewed the diff before the commit; his review is on the PR · 27 green, `tests` as
+  non-root · Seam scan clean against the private terms this project names; the term-list scan is his ·
+  [handoff](../.portulan/handoffs/2026-09-23-i-copilot-is-requested-over-graphql-once-no-round-is-in-flight.md)

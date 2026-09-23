@@ -457,9 +457,9 @@ const CASES = [
     },
     // ---- copilot-request.yml: the pull request, read before asking -----------------------------
     //
-    // One GraphQL read per look, printed as three lines the shell reads in order: node id, head,
-    // state and draft flag; the logins holding a review request; the logins that reviewed the head.
-    // GraphQL's `Bot.login` carries no `[bot]` suffix, which is why the shell's login set has both.
+    // One GraphQL read per look, printed as two lines the shell reads in order: node id, head, state
+    // and draft flag; and the logins holding a review request. GraphQL's `Bot.login` carries no
+    // `[bot]` suffix, which is why the shell's login set has both.
     {
         id: "request-state-pending",
         anchor: "(.isDraft | tostring)",
@@ -488,47 +488,6 @@ const CASES = [
         why: "an answer that is JSON but not an object is an error, exit 5, which `gh` passes on as "
             + "a failed read: the same unreadable branch",
         input: '"a string"',
-        stdout: "",
-        status: 5,
-    },
-    // ---- copilot-request.yml: who reviewed the head --------------------------------------------
-    {
-        id: "request-reviews-on-and-off-the-head",
-        anchor: "[.user.login, .commit_id] | join",
-        why: "one line per review, login and commit, for the shell to keep the head's. A review "
-            + "whose author was deleted prints an empty login, which the shell skips, rather than "
-            + "the word `null`",
-        input: '[{"user":{"login":"copilot-pull-request-reviewer[bot]"},"commit_id":"h2","state":"COMMENTED"},'
-            + '{"user":{"login":"a-person"},"commit_id":"h1","state":"APPROVED"},'
-            + '{"user":null,"commit_id":"h2","state":"COMMENTED"}]',
-        stdout: "copilot-pull-request-reviewer[bot]|h2\na-person|h1\n|h2\n",
-        status: 0,
-    },
-    {
-        id: "request-reviews-dismissed",
-        anchor: "[.user.login, .commit_id] | join",
-        why: "a DISMISSED review is an invalidated one, so it prints no line and cannot stand as the "
-            + "round on the head; any other state prints, and a review with no `state` at all is kept "
-            + "rather than dropped",
-        input: '[{"user":{"login":"copilot-pull-request-reviewer[bot]"},"commit_id":"h2","state":"DISMISSED"},'
-            + '{"user":{"login":"copilot-pull-request-reviewer[bot]"},"commit_id":"h1"}]',
-        stdout: "copilot-pull-request-reviewer[bot]|h1\n",
-        status: 0,
-    },
-    {
-        id: "request-reviews-none",
-        anchor: "[.user.login, .commit_id] | join",
-        why: "no reviews at all is the ordinary answer on a new pull request, and prints nothing",
-        input: "[]",
-        stdout: "",
-        status: 0,
-    },
-    {
-        id: "request-reviews-not-a-list",
-        anchor: "[.user.login, .commit_id] | join",
-        why: "an error object in place of the list fails the read, exit 5, so the look counts as "
-            + "unread instead of as a head nobody reviewed",
-        input: '{"message":"Not Found"}',
         stdout: "",
         status: 5,
     },

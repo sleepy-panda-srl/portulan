@@ -57,19 +57,28 @@
 # earlier script's, reused. The node id is looked up at run time from the REST login rather than written
 # here, so the platform facts this file hard-codes stay the logins below.
 #
-# ## One round on the newest head, and never a request over a round in flight
+# ## A round for the newest head, and never a request over a round in flight
 #
 # A request names no commit; Copilot reviews the head it finds. On #435 a push at 15:52 had this job ask
 # while Copilot still held the 15:49 request, and nothing was recorded: the held request was answered on
 # the earlier head at 15:54:21, and the newer head drew no round. So before asking, the job reads the
-# pull request. A Copilot round already on the head means nothing is owed, and it stops. Copilot holding
-# a request means a round is running or on order, and it waits, looking every 15 seconds for up to 15
-# minutes. Only when neither holds does it ask, at most once per run.
+# pull request. Copilot holding a request means a round is running or on order, and it waits, looking
+# every 15 seconds for up to 15 minutes. Once Copilot holds none, it asks, at most once per run, and
+# only for the head its event carried: a look that finds another head stops it, because the push that
+# made that head has a run of its own, which asks for it.
+#
+# It does not judge whether a round is already on the head; `copilot-reviewed` does. A review object is
+# not always a round: Copilot files an error or a refusal as a review too, and telling them apart means
+# reading the body, whose format moved on 2026-09-23 under `copilot-review.yml`'s matcher, which read
+# every round that day as unrecognised. Raised by Copilot on this change, the third finding on that
+# judgement. The price is a second round of a head that has had one: on a re-run, a reopening or a draft
+# made ready again, and on a push that lands in the seconds between a request and Copilot taking it up.
+# The gain is that a re-run after a refusal asks.
 #
 # One job per pull request runs at a time. A newer push waits behind the running job rather than
 # cancelling it, so a request is never cut off between the call and the reading of its answer; a third
-# push cancels the second's pending run, which shows as cancelled and costs nothing, because the job
-# that runs next asks for the head it then finds, or finds the round already on it.
+# push cancels the second's pending run, which shows as cancelled and costs nothing, because the run
+# for the newest push is the one left to ask.
 #
 # Only a pull request a bot opened, from this repository, and not a draft. A person's pull request is
 # the ruleset's, billed to its author. A fork's is not this repository's to spend his allowance on.
@@ -141,6 +150,7 @@ jobs:
           GH_TOKEN: ${{ secrets.COPILOT_REQUEST_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -uo pipefail
           # No globbing: the reviewer login contains `[bot]`, which an unquoted expansion would read
@@ -198,7 +208,7 @@ jobs:
 
           # One read per look, printed as two lines: the pull request's node id, head, state and draft
           # flag; and the logins holding a review request. A missing pull request prints an empty id
-          # and head, which the loop reads as unreadable. Who reviewed the head is a second read, below.
+          # and head, which the loop reads as unreadable.
           STATE_QUERY='query($owner: String!, $repo: String!, $number: Int!) {
             repository(owner: $owner, name: $repo) {
               pullRequest(number: $number) {
@@ -225,7 +235,6 @@ jobs:
             pr_state=''
             draft=''
             pending=''
-            reviewed=''
             if state=$(gh api graphql -f query="$STATE_QUERY" -f owner="$owner" -f repo="$repo" -F number="$PR_NUMBER" \
                   --jq '.data.repository.pullRequest | ([.id, .headRefOid, .state, (.isDraft | tostring)] | join("|")), ([.reviewRequests.nodes[]?.requestedReviewer.login // empty] | join(" "))' \
                   2>"$err_file"); then
@@ -235,28 +244,6 @@ jobs:
                 IFS='|' read -r pr_id head pr_state draft || true
                 IFS= read -r pending || true
               } <<<"$state"
-              # WHO REVIEWED THE HEAD, over REST with `--paginate`, and not as the last hundred reviews
-              # of the GraphQL connection: replies to review threads are reviews too, so a long history
-              # after a round could push the round out of a fixed window and draw a second request for
-              # it. Raised by Copilot on this change; `copilot-review.yml` paginates the same read for
-              # the same reason. A DISMISSED review is an invalidated one and is not a round on the head,
-              # which is how `copilot-review.yml` reads it too; raised by Copilot on the next push. A look
-              # that could not read the reviews has not established that no round is on the head, so it
-              # counts as unread and looks again.
-              if [ -n "$pr_id" ] && [ -n "$head" ]; then
-                if reviews=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
-                      --jq '.[] | select(.state != "DISMISSED") | [.user.login, .commit_id] | join("|")' 2>"$err_file"); then
-                  while IFS='|' read -r login commit; do
-                    if [ -n "$login" ] && [ "$commit" = "$head" ]; then
-                      reviewed="${reviewed:+$reviewed }$login"
-                    fi
-                  done <<<"$reviews"
-                else
-                  last_error=$(cat "$err_file")
-                  pr_id=''
-                  head=''
-                fi
-              fi
             else
               last_error=$(cat "$err_file")
               # A token GitHub rejects is not a slow API, and waiting fifteen minutes on it would only
@@ -284,8 +271,8 @@ jobs:
             elif [ "$draft" = 'true' ]; then
               report "Nothing asked on #${PR_NUMBER}: it became a draft, which the ruleset does not review either."
               exit 0
-            elif found=$(copilot_in "$reviewed"); then
-              report "Nothing asked on #${PR_NUMBER}: a Copilot round is already on its head, ${head}, by ${found}."
+            elif [ "$head" != "$EVENT_HEAD" ]; then
+              report "Nothing asked on #${PR_NUMBER} for ${EVENT_HEAD}: its head is now ${head}, and the run for that push asks for it."
               exit 0
             elif found=$(copilot_in "$pending"); then
               if [ "$looks" -eq 1 ] || [ $((looks % 4)) -eq 0 ]; then
@@ -293,8 +280,8 @@ jobs:
                   "$found" "$PR_NUMBER" "$head"
               fi
             else
-              # Nothing on order and no round on the head: ask, once. The Bot's node id is looked up
-              # here rather than written down, from the REST login GitHub documents for the request.
+              # Nothing on order: ask, once. The Bot's node id is looked up here rather than written
+              # down, from the REST login GitHub documents for the request.
               reviewer_path=$(printf '%s' "$REVIEWER" | sed 's/\[/%5B/g; s/\]/%5D/g')
               bot_id=$(gh api "users/${reviewer_path}" --jq '.node_id // empty' 2>"$err_file") || bot_id=''
               if [ -z "$bot_id" ]; then
