@@ -722,13 +722,15 @@ Both are `doctor`'s because the subset has no `minimum` and cannot say `integer`
 `context` in a manifest declaring a version before 2.9, whose own validator refuses it as unknown: the
 key is gated from birth, when no manifest can newly fail the check.
 
-**What nothing checks yet: the budget itself.** Nothing measures the always tier until row 12's
-measurement lands, so no workspace in this tree declares the key: a budget nothing checks reads as a rail,
-which is the failure
+**What checks the budget itself.** `doctor` measures the always tier of every workspace that declares
+a `tree`, through [`../cli/context.mjs`](../cli/context.mjs), and fails it over a declared budget, or
+where a declared budget cannot be judged; with none declared it reports the figure. _(This paragraph read
+*"What nothing checks yet: the budget itself"* until that report landed, and it was true then:
 [`a-mandate-nothing-checks-is-already-broken.md`](../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md)
-names. Portulan's own contribution is railed by this repository's recipes, not by a budget in its
-manifest. And, as with memory, no checker establishes that a budget was not raised in the change that
-breached it.
+is why no workspace here declared the key before something checked it.)_ No workspace in this tree
+declares it now either: Portulan's own contribution is railed by this repository's recipes, not by a
+budget in its manifest. And, as with memory, no checker establishes that a budget was not raised in the
+change that breached it.
 
 ## `provenance` — a record field, not a manifest key
 

@@ -32,6 +32,9 @@ import { fileURLToPath } from "node:url";
 // depends on the order today — `compile.mjs` reads no environment at module scope, checked — but a
 // reader should not have to know that to trust the file.
 import { run as compileRun } from "./compile.mjs";
+// The boot's line, beside the report that must print the same one. Read no environment at module scope
+// either, checked, for the reason above.
+import { run as contextRun } from "./context.mjs";
 
 // A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
 // 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
@@ -426,6 +429,97 @@ describe("the always tier's ratio, and the budget that needs it", () => {
     test("a ratio with no calibrating host is refused by the schema", () => {
         const errors = validate(SCHEMA, withRatio({ bytes_per_token: 2.99 }));
         assert.ok(errors.some((e) => e.pointer === "/context/ratio" && /`calibrated_by`/.test(e.message)), JSON.stringify(errors));
+    });
+});
+
+describe("what every context loads is reported, and failed only against a declared budget", () => {
+    // Proposal 0036: `doctor` reports every workspace's always tier with no configuration, and fails only
+    // where the manifest declares a budget. The line is ./context.mjs's, so these pin the verdict and what
+    // the line names; context.test.mjs pins how it is measured.
+    const budgeted = (tokens) => ({
+        ...wellFormed(),
+        portulan: { spec: "2.9" },
+        context: { always: { budget: { tokens } }, ratio: { bytes_per_token: 3, calibrated_by: "claude-code" } },
+    });
+    const noTree = (m) => {
+        const copy = { ...m, kind: "demo" };
+        delete copy.tree;
+        return copy;
+    };
+    // 3,000 bytes: 1,000 tokens at the ratio above.
+    const instructions = "Always run the recipe before you say done.\n".repeat(70).slice(0, 3000);
+    const only = (findings) => {
+        const hits = checks(findings, "context");
+        assert.equal(hits.length, 1, `expected one context finding, got ${JSON.stringify(hits)}`);
+        return hits[0];
+    };
+
+    test("with no budget declared it is a note: the size, the largest file and what it is, and init's offer", async () => {
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()), "CLAUDE.md": instructions });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const hit = only(findings);
+        assert.equal(hit.severity, "report");
+        assert.match(hit.message, /^Claude Code: this repository's always tier is ~1,003 tokens, 3,000 B at 2\.99 bytes per token/);
+        assert.match(hit.message, /the largest: CLAUDE\.md ~1,003 \(instructions\)/);
+        assert.match(hit.message, /budget: undeclared \(context\.always\.budget\.tokens\) — a report, not a rail; init would offer/);
+        assert.deepEqual(severities(findings, "fail"), []);
+    });
+
+    // Row 12's first demonstration, in miniature: the same words moved into a rule `paths:` scopes load
+    // on-path, and the budget holds with nothing raised.
+    test("a declared budget exceeded is a failure naming the repair, and a demotion returns it green", async () => {
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(budgeted(800)), "CLAUDE.md": instructions });
+        const over = only((await inspect(dir, { schema: SCHEMA })).findings);
+        assert.equal(over.severity, "fail");
+        assert.match(over.message, /over the 800 declared by 200 — repair by demotion to a later tier, by a merge or by a retirement, never by raising the budget in this change$/);
+
+        fs.rmSync(path.join(dir, "CLAUDE.md"));
+        tree(dir, { ".claude/rules/done.md": `---\npaths: src/**\n---\n\n${instructions}` });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const within = only(findings);
+        assert.equal(within.severity, "report");
+        assert.match(within.message, /1 path-scoped rule sits on-path/);
+        assert.match(within.message, /budget: the always tier is ~0 tokens of the 800 declared$/);
+        assert.deepEqual(severities(findings, "fail"), []);
+    });
+
+    test("a declared budget it cannot judge is a failure, never a pass over nothing measured", async () => {
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(noTree(budgeted(8000))) });
+        const hit = only((await inspect(dir, { schema: SCHEMA })).findings);
+        assert.equal(hit.severity, "fail");
+        assert.match(hit.message, /^Claude Code: the declared budget cannot be judged — this workspace declares no tree/);
+    });
+
+    test("with no budget declared, a tier it could not measure is said and moves no exit code", async () => {
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(noTree(wellFormed())) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const hit = only(findings);
+        assert.equal(hit.severity, "report");
+        assert.match(hit.message, /^Claude Code: the always tier is not measured — this workspace declares no tree/);
+        assert.deepEqual(severities(findings, "fail"), []);
+    });
+
+    // `0036`: the same figure closes the boot. The boot prints it with `context --brief`.
+    test("the line is the one the boot closes with", async () => {
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(budgeted(5000)),
+            "CLAUDE.md": `${instructions}\nSee @notes.md\n`,
+            "notes.md": "Notes the instructions import.\n",
+            ".claude/rules/style.md": "Keep lines short.\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const lines = [];
+        assert.equal(contextRun(["--workspace", dir, "--brief"], (line) => lines.push(line)), 0);
+        assert.deepEqual(lines, [only(findings).message]);
+    });
+
+    test("a pointer is not measured, and the report says so among the checks that did not run", async () => {
+        const m = { portulan: { spec: "2.7" }, name: "fixture", kind: "pointer", governed_by: { workspace: "elsewhere" } };
+        const dir = tree(scratch(), { "workspace.json": JSON.stringify(m) });
+        const { findings } = await inspect(dir, { schema: SCHEMA, env: { CLAUDE_CONFIG_DIR: scratch() } });
+        assert.deepEqual(checks(findings, "context"), []);
+        assert.match(text(checks(findings, "residence")), /the always tier's report/);
     });
 });
 

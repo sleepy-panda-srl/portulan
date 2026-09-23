@@ -3059,3 +3059,13 @@ _The seam applies here too: no client-identifying references._
   fresh-context runs unless he asks); the coordinator session reviewed the diff before the commit; his review
   is on the PR · 28 green, `tests` as non-root · Seam scan clean against the private terms this project
   names; the term-list scan is his · [handoff](../.portulan/handoffs/2026-09-23-q-the-request-job-reads-with-its-own-token-and-asks-with-his.md)
+- 2026-09-23 · M12 (Context economy) — row stays todo · **What every context loads is reported, and closes the
+  boot.** `doctor` gives every workspace a `context` note from [`cli/context.mjs`](../cli/context.mjs):
+  Claude Code's always tier, its three largest files and what each is, what sits on-path, the plugin's
+  descriptions and the budget; it fails only over a declared budget or one it cannot judge. The boot's step 5
+  gives the same line (`context --brief`), run with step 3's reads: the skill 8,917 → 9,111 bytes, boot
+  read-sets 88,947 → 89,141 and 35,393 → 35,587, no rail moved · Checkpoints skipped by his instruction of
+  2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator session reviewed the diff before the
+  commit; his review is on the PR · 28 green, `tests` as non-root · Seam scan clean against the private terms
+  this project names; the term-list scan is his ·
+  [handoff](../.portulan/handoffs/2026-09-23-r-what-every-context-loads-is-reported-and-closes-the-boot.md)

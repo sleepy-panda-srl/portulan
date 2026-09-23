@@ -32,6 +32,11 @@
 // line above stays literally true because that is not a link. The result is REPORTED and never
 // graded: a pointer whose governor is not installed is a correct pointer, and this tool says where
 // the workspace is rather than passing judgement on it.
+//
+// **It measures what every context in the repository loads, as of proposal `0036`'s report**: the
+// files Claude Code loads from the `tree`, read through ./context.mjs, which follows an instruction
+// file's `@` imports as the host does and never out of the tree. A report by default, and a verdict only
+// against a budget the manifest declares.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -71,6 +76,10 @@ import { parseFrontmatter, AGENT_DIR } from "./plugin-lint.mjs";
 // there must be exactly one thing that says it.
 import { resolveGovernor, AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 import { composedId } from "./recipe-set.mjs";
+// What every context in the repository loads, measured by the one module that measures it: `doctor`
+// prints its line rather than counting a second way, and the boot closes with the same line
+// (`context --brief`), so a session is never told a figure this report does not give. Proposal `0036`.
+import { alwaysLine } from "./context.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -1358,7 +1367,8 @@ export async function inspect(workspaceDir, options = {}) {
         report(
             "residence",
             "the governing-workspace checks did not run here — path slots, cross-field, packs, claims, " +
-                "enforcement, provenance and the store reports all read a policy layer this manifest " +
+                "enforcement, provenance, the store reports, the legibility score and the always tier's " +
+                "report all read a policy layer this manifest " +
                 "correctly does not carry. They run where the workspace resides, and a green pointer is " +
                 "not a statement that the workspace it names is green",
         );
@@ -1945,8 +1955,10 @@ export async function inspect(workspaceDir, options = {}) {
     }
 
     // Workspace Definition 2.9's always-tier budget is typed `number` for the same reason and refused on
-    // the same terms, but not in the loop above: nothing consumes it yet, so it has no exit 2 to cite, and
-    // saying it had would be issue #84's error again. Raised by Copilot on #440. Proposal `0036`.
+    // the same terms, but not in the loop above, whose message cites an unattended run: this budget's
+    // consumers are `./context.mjs` and this tool's own `context` finding, both read by whoever ran them,
+    // and citing a run nobody watches would be issue #84's error again. Raised by Copilot on #440, when
+    // nothing consumed it yet. Proposal `0036`.
     const alwaysTokens = workspace.context?.always?.budget?.tokens;
     if (alwaysTokens !== undefined && !positive(alwaysTokens)) {
         fail(
@@ -2694,6 +2706,13 @@ export async function inspect(workspaceDir, options = {}) {
             ". Scored from what the manifest declares and the affordances documents it reaches; it moves no exit code, " +
             "because a score that could fail a workspace would make the verdict a function of how much prose somebody wrote",
     );
+
+    // Always emitted, for the fourth time and the same reason: a repository whose always tier nobody
+    // measured and one whose tier is small print identically unless one of them says which. A report by
+    // default and a rail by declaration (proposal `0036`): it fails only over a budget the manifest
+    // declares, or where a declared budget cannot be judged, which must not read as one that was met.
+    const always = alwaysLine(dir, workspace);
+    (always.verdict === "over" || always.verdict === "unjudged" ? fail : report)("context", always.line);
 
     return { dir, workspace, findings, stats };
 }
