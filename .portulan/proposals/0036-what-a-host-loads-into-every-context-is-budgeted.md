@@ -1,11 +1,11 @@
 # Proposal 0036 — what a host loads into every context is budgeted, like memory
 
-**Status. PROPOSED — drafted 2026-09-23; its five open questions ruled by the maintainer the same day.**
-Drafted on his directive of that day (*"Deliver token & cache optimizations"*), from the kickoff of
-2026-09-21 that carries the measured baseline below. It proposes a rule and an order of work and builds
-nothing. His rulings are recorded under *What the maintainer ruled*, and the milestone row the first of
-them asks for lands in this same change as row 12 of [`../../docs/plan.md`](../../docs/plan.md). The
-rule itself is his to accept on this pull request.
+**Status. ACCEPTED — drafted and accepted 2026-09-23, with revisions; its five open questions ruled by
+the maintainer the same day.** Drafted on his directive of that day (*"Deliver token & cache
+optimizations"*), from the kickoff of 2026-09-21 that carries the measured baseline below. It proposes a
+rule and an order of work and builds nothing. His rulings are recorded under *What the maintainer ruled*,
+and the milestone row the first of them asks for landed with it as row 12 of
+[`../../docs/plan.md`](../../docs/plan.md). The acceptance and its revisions are recorded under *Decision*.
 
 **Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/429
 
@@ -45,8 +45,8 @@ layer; the stamp under *Provenance* is its record here.
   session of every project where it is enabled.
 - The Stop-gate relays the **last 25 lines** of a red recipe's output, stdout then stderr, with no byte
   cap ([`../../cli/stop-gate.mjs`](../../cli/stop-gate.mjs)). On this tree `docs.sh` prints 18 lines, 16
-  of them `ok`, so a refusal over one failing check carries every passing check with it: up to nine
-  refusals a session, each one an extra model turn.
+  of them `ok`, so a refusal over one failing check carries every passing check with it. The gate refuses
+  at most three consecutive times per reason and nine times in all, and each refusal is an extra model turn.
   [`../../core/operating/loop.md`](../../core/operating/loop.md) already says *"Compact the error, not the
   transcript, back into context"*, and Portulan's own hook does not.
 
@@ -75,9 +75,9 @@ What Portulan budgets today is real and narrow:
   establishes ([`../../spec/slots.md`](../../spec/slots.md)).
 - **The kernel.** [`../../core/engine.md`](../../core/engine.md) is 47 lines, railed at 60 by
   [`../verify/docs.sh`](../verify/docs.sh), and only in **this repository's** recipe.
-- **Per-host compilation.** Gates and recipes compile to Claude Code settings and a GitHub ruleset, with a
-  degradation report. `vendor --host` writes an `AGENTS.md` that inlines the kernel verbatim and links
-  every slot, deterministically and with no size check.
+- **Per-host compilation.** Gates compile to Claude Code settings and a GitHub ruleset, with a degradation
+  report, and recipes run through the Stop-gate those settings call. `vendor --host` writes an `AGENTS.md`
+  that inlines the kernel verbatim and links every slot, deterministically and with no size check.
 
 **The gap:** nothing measures, budgets or demotes what a host loads into every context. `doctor` never
 opens `CLAUDE.md` or `AGENTS.md`. Every size rail in the CLI counts lines, columns or bytes, and none
@@ -87,23 +87,28 @@ one*, reaches no adopter's always-loaded layer at all.
 ## Proposed rule
 
 For a new doctrine page, `core/operating/context.md`, with `context` added to the kernel's map (47 of 60
-lines used):
+lines used today):
 
 1. **Every piece of guidance sits in a load tier, and belongs in the latest tier that still reaches the
    agent in time.** There are four tiers. **Always**: loaded into every context, which covers project
    instruction files and their imports, unscoped rules, and skill and agent descriptions. **On-path**:
    loaded when the agent first touches a matching path, which covers nested instruction files and
    path-scoped rules. **On-invoke**: loaded when a skill, persona or ritual runs. **On-read**: loaded when
-   the agent opens the file. **One level of index only**: an always-tier line may point at content, and a
-   pointer may not point at another pointer.
+   the agent opens the file. **One level of index only**, which the study under *Provenance* motivates
+   and does not establish: an always-tier line may point at content, and a pointer may not point at
+   another pointer. A **pointer** is a line the agent reads to decide whether to open something; a file a
+   procedure always reads is content loaded in that procedure's tier, not a pointer. So the kernel's map,
+   whose lines point at directories of content, is one level, and so is the boot's path to a memory
+   record: the boot always reads the memory index, and each index line is the one pointer to its record.
 2. **The always tier is budgeted in tokens.** The budget is declared in the manifest and never defaulted.
    A breach is repaired by **demotion** to a later tier, by **merge** or by **retirement**, and never by
    raising the budget in the change that breached it. The shape is memory's on purpose, its limit
    included: a budget is a rail, not an aim, and the no-raise half is a rule no checker establishes.
 3. **Portulan budgets its own contribution by default, because it owns it.** That is the kernel, the boot
    skill and the engine half of the boot read-set, skill and persona prompts, hook-injected text, and the
-   vendored `AGENTS.md` skeleton. This is what lets every install benefit on upgrade without configuring
-   anything.
+   vendored `AGENTS.md` skeleton. The default is a rail in this repository, not a budget in any adopter's
+   manifest, so rule 2's *never defaulted* holds. This is what lets every install benefit on upgrade
+   without configuring anything.
 4. **A fresh context is priced where it is created.** Whatever spawns one (a checkpoint, a persona, a
    ritual) states what it loads, and the compiled agent carries that. **Reviewers keep the conventions
    they grade against**: the remedy for an expensive always tier is a smaller always tier, never a blind
@@ -115,7 +120,8 @@ lines used):
 
 - **Measurement.** One module converts the bytes each tier loads into tokens at a **declared** ratio, with
   an **exact** mode, run on demand, that asks the host for the true count and prints the ratio to declare.
-  It exits 0, 1 or 2 like every recipe. **The exact mode never runs inside a recipe**, because no verify
+  The manifest records which host's exact count calibrated the declared ratio. It exits 0, 1 or 2 like
+  every recipe. **The exact mode never runs inside a recipe**, because no verify
   recipe may make a network call ([`../gate-map.md`](../gate-map.md)).
 - **A report by default, a rail by declaration.** `doctor` reports every workspace's always tier per host
   with no configuration: its size, the top contributors, and the tier each sits in. The same figure closes
@@ -123,9 +129,9 @@ lines used):
   default is the report.
 - **Compile targets per host.** For Claude Code that means path-scoped rules and nested instruction files
   for the on-path tier, skills for on-invoke, and each persona's `model`, `omitClaudeMd` and cache
-  lifetime from what it declares it needs. The compiled files are **committed and byte-compared to their
-  source**. The degradation report says which tiers a host can express, and the vendored `AGENTS.md`
-  inherits the tiers.
+  lifetime from what it declares it needs. The compiled files are **committed, regenerated from source
+  and byte-compared**. The degradation report says which tiers a host can express, and the vendored
+  `AGENTS.md` inherits the tiers.
 - **Portulan's own footprint** is railed in this repository's recipes, as the kernel already is. Its
   budgets start at today's measured figures and are lowered as each demotion lands. The first two
   demotions are named here: the boot skill keeps its procedure and moves its rationale into on-read
@@ -210,12 +216,22 @@ the host loads`. Public corroboration: `form=link`
 this repository's plan, 452,764 bytes at that commit, which its own header says every session boots by
 reading. Host facts come from the Claude Code documentation on costs, prompt caching and memory, checked
 2026-09-21 by the kickoff. `omitClaudeMd` and `subagentPromptCacheTtl` were confirmed present in the
-2.1.280 binary on 2026-09-23, as strings only and not as behaviour. The one-level-of-index finding is the
-kickoff's citation of arXiv 2607.17598, **not re-read for this draft**; it is to be read before this
-merges.
+2.1.280 binary on 2026-09-23, as strings only and not as behaviour. The one-level-of-index rule is
+motivated by arXiv 2607.17598, *Is Progressive Disclosure All You Need for Long-Context Agents?* (He,
+Zhao, Wang and Chen, submitted 2026-07-20), whose abstract finds that *"a second, deeper routing level
+never helps and sometimes breaks accuracy outright, so one level is enough"*; it measured long-document
+question answering on InfiniteBench, across three agent harnesses and three model families, and not
+instruction files, so it motivates the rule and does not establish it.
 
 **Retire when.** A host measures and enforces a declared per-project budget on what it loads into every
 context, so that Portulan's measurement would describe the host's mechanism instead of supplying one.
 
-**Decision.** Marius Cetanas — pending. The five questions are ruled; the rule itself is his to accept on
-this pull request.
+**Decision.** Marius Cetanas, by delegation — accepted, on 2026-09-23 — because an independent review
+of the drafted head reproduced every public figure on the tree, found his five rulings quoted as he gave
+them, and found the budget rule consistent with memory's, its no-checker limit included, with the
+revisions listed at the end of this line correcting the text and changing no ruling. He delegated the ruling that day to the
+project's coordinator, acting as supervisor in a session separate from the drafting one. He merged
+[#429](https://github.com/sleepy-panda-srl/portulan/pull/429) while this line still read pending and
+then asked for the revisions, which landed in its follow-up the same day: the cited study read and
+stated under *Provenance*, *pointer* defined in rule 1, four accuracy fixes, and two wording fixes from
+review.

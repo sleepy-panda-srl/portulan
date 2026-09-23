@@ -41,6 +41,10 @@ also showed the demo read-set reproducing only with the `combcount` repo card, s
 **The fidelity note names the supervisor by role, not by model.** Checkpointed entries since 2026-09-04
 name the model, and this one cannot: this session's operating rules keep model identifiers out of anything
 pushed. The Protocol line in `plan.md` stays the one carrier of each tier's model name.
+_[Corrected 2026-09-23, original words above left verbatim: the reason given does not hold. Both commits
+that carried this handoff name the implementing model in their `Co-Authored-By` trailers, so this
+session's rules did not keep model identifiers out of everything it pushed. The fidelity note names the
+supervisor by role all the same, and the Protocol line is still the one carrier.]_
 
 **Green in this container needs a non-root run.** As root, `tests` fails its permission cases, because a
 chmod-000 fixture never denies root. Every other recipe ran green as root, and `tests` ran green as a
