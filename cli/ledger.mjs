@@ -103,11 +103,17 @@ const count = (v) => (Number.isSafeInteger(v) && v > 0 ? v : 0);
 
 const text = (v) => (typeof v === "string" && v !== "" ? v : null);
 
-/** The host's configuration home, its transcripts, and the file holding its own per-project totals. */
+/**
+ * The host's configuration home, its transcripts, and the file holding its own per-project totals, or why
+ * there is no default. The host takes a relative `CLAUDE_CONFIG_DIR` as it stands, so from the directory
+ * it was started in, which a later reader cannot know: that is a reason to name both paths, never a
+ * reason to read `~/.claude` in its place.
+ */
 export function hostPaths(env = process.env, home = os.homedir()) {
-    // The host refuses a relative `CLAUDE_CONFIG_DIR`, so one is not honoured here either.
-    const declared = text(env.CLAUDE_CONFIG_DIR);
-    const configDir = declared !== null && path.isAbsolute(declared) ? declared : null;
+    const configDir = text(env.CLAUDE_CONFIG_DIR);
+    if (configDir !== null && !path.isAbsolute(configDir)) {
+        return { why: `CLAUDE_CONFIG_DIR is the relative path ${JSON.stringify(configDir)}, which the host read from the directory it was started in; name --projects and --config` };
+    }
     return {
         projects: path.join(configDir ?? path.join(home, ".claude"), "projects"),
         config: path.join(configDir ?? home, ".claude.json"),
@@ -272,7 +278,7 @@ export function markRebuilds(requests) {
                 const gap = r.at !== null && before.at !== null ? r.at - before.at : null;
                 let cause = "unexplained";
                 if (r.compacted) cause = "compaction";
-                else if (before.model !== r.model) cause = "model change";
+                else if (before.model !== null && r.model !== null && before.model !== r.model) cause = "model change";
                 else if (before.effort !== null && r.effort !== null && before.effort !== r.effort) cause = "effort change";
                 else if (gap !== null && gap > LIFETIME_MS[lifetime]) cause = "lifetime lapsed";
                 r.rebuild = { tokens: missed, cause };
@@ -648,7 +654,8 @@ export function print(report, say) {
     row("output", "output");
     say(`  contexts opened: ${grouped(f.sessions + f.subagentContexts)} (${grouped(f.sessions)} session(s), ${grouped(f.subagentContexts)} subagent(s)); compactions: ${grouped(f.compactions)}`);
     say(`  largest context: ${grouped(f.largest)} tokens`);
-    say(`  hit rate: ${(f.hitRate * 100).toFixed(1)}% of input read from cache — a hit rate does not bound spend; requests do`);
+    if (f.hitRate === null) say("  hit rate: none — no input was recorded, so none could be read from cache");
+    else say(`  hit rate: ${(f.hitRate * 100).toFixed(1)}% of input read from cache — a hit rate does not bound spend; requests do`);
     const causes = Object.entries(f.causes).map(([cause, n]) => `${grouped(n)} ${cause}`).join(", ");
     say(`  rebuilds: ${grouped(f.rebuilds)}${f.rebuilds ? `, ${grouped(f.rebuilt)} tokens written again (${causes})` : ""}`);
     const processed = f.total.uncached + writtenOf(f.total) + f.total.read + f.total.output;
@@ -769,6 +776,7 @@ export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { e
         const options = parseArgs(argv);
         if (options.fixture !== null) return runFixture(path.resolve(cwd, options.fixture), say);
         const host = hostPaths(env, home);
+        if (host.why !== undefined && (options.projects === null || options.config === null)) throw new LedgerError(host.why);
         const repo = path.resolve(cwd, options.repo ?? ".");
         const roots = worktrees(repo);
         let branch = options.branch;

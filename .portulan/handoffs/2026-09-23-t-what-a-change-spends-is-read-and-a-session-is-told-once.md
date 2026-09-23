@@ -85,7 +85,7 @@ earlier with no rework. The status line is compiled by default: `0038` places it
 the note naming `settings.local.json` carries the override, and item 4 adds the declaration that turns it
 off. `F` is the first request after the last compaction, stated as erring toward an earlier line.
 
-**How it was checked.** 34 cases in [`cli/ledger.test.mjs`](../../cli/ledger.test.mjs) and 20 in
+**How it was checked.** 37 cases in [`cli/ledger.test.mjs`](../../cli/ledger.test.mjs) and 20 in
 [`cli/advisory.test.mjs`](../../cli/advisory.test.mjs), every one over a temporary directory or the
 committed fixture, and one new case in `compile.test.mjs` with the no-shell case widened to the two new
 commands. Among them: every fixture transcript folded in two pieces, cut at every line, gives what one
@@ -124,7 +124,12 @@ format now says, so the command is unchanged. That the prompt's call and the sta
 the older snapshot rename last, replaying lines and compactions: a snapshot is its offset, its digest and
 its figures together, so the next call reads again from that offset and counts nothing twice, which a
 case now pins. And that the status line said a context "is past" a threshold it had only reached: it
-says "has reached" now.
+says "has reached" now. Its round on 9527599 named three more in its summary, and all three held. A
+request whose model the records do not name read as a model change: an unnamed model is no change now,
+as an unnamed effort already was. A relative `CLAUDE_CONFIG_DIR` was read as `~/.claude`, on the word of
+this module that the host refuses one; the program text shows the host takes it as it stands, from the
+directory it was started in, so the ledger says so and asks for both paths, exit 2. And a branch whose
+requests recorded no input printed a hit rate of 0.0%: it says there is none.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38: no fresh-context runs unless he asks. The
 coordinator session reviewed the diff before the first commit; his review is on the pull request. The

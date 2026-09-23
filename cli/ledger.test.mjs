@@ -29,9 +29,11 @@ import {
     foldFigures,
     hostPaths,
     hostTotals,
+    ledger,
     markRebuilds,
     mayHold,
     multipliers,
+    print,
     projectKey,
     readLine,
     readTranscript,
@@ -235,6 +237,11 @@ describe("rebuilds and their causes", () => {
         assert.equal(hour[1].rebuild?.cause, "unexplained");
     });
 
+    test("a model the records do not name is no model change, as an effort they do not name is no effort change", () => {
+        const rs = markRebuilds([req({ minute: 0, written1h: 40000 }), req({ minute: 1, model: null, written1h: 42000 })]);
+        assert.equal(rs[1].rebuild?.cause, "unexplained");
+    });
+
     test("a miss under 2,000 tokens, or under 5% of the context, is no rebuild — the host's own threshold", () => {
         const small = markRebuilds([req({ written1h: 30000 }), req({ minute: 1, written1h: 1999, read: 28002 })]);
         assert.equal(small[1].rebuild, null);
@@ -244,10 +251,10 @@ describe("rebuilds and their causes", () => {
 });
 
 describe("where the host keeps its records", () => {
-    test("the configuration home is CLAUDE_CONFIG_DIR when absolute, else ~/.claude, and the totals file beside it", () => {
+    test("the configuration home is CLAUDE_CONFIG_DIR, else ~/.claude, with the totals file beside it; a relative one is a reason, never ~/.claude", () => {
         assert.deepEqual(hostPaths({ CLAUDE_CONFIG_DIR: "/c" }, "/h"), { projects: path.join("/c", "projects"), config: path.join("/c", ".claude.json") });
         assert.deepEqual(hostPaths({}, "/h"), { projects: path.join("/h", ".claude", "projects"), config: path.join("/h", ".claude.json") });
-        assert.deepEqual(hostPaths({ CLAUDE_CONFIG_DIR: "relative" }, "/h"), hostPaths({}, "/h"), "the host refuses a relative one");
+        assert.match(hostPaths({ CLAUDE_CONFIG_DIR: "relative" }, "/h").why, /the relative path "relative".*name --projects and --config/);
     });
 
     test("a project key is the path with every other character a dash, cut at 200 with the host's hash", () => {
@@ -471,6 +478,29 @@ describe("the command", () => {
             assert.equal(run(["--branch", "b"], out.fn, { cwd: dir, env: { CLAUDE_CONFIG_DIR: dir }, home: dir }), 0);
             assert.ok(out.lines.some((l) => /^ {2}read +42 +0 +42$/.test(l)), out.lines.join("\n"));
             assert.ok(out.lines.some((l) => /per changed line: not computed — .* is not inside a git repository/.test(l)));
+        });
+    });
+
+    test("a relative CLAUDE_CONFIG_DIR is could-not-run until both paths are named, never a read of ~/.claude", () => {
+        withTemp((dir) => {
+            const out = say();
+            assert.equal(run(["--branch", "b"], out.fn, { cwd: dir, env: { CLAUDE_CONFIG_DIR: "relative" }, home: dir }), 2);
+            assert.match(out.lines.join("\n"), /CLAUDE_CONFIG_DIR is the relative path "relative"/);
+            const projects = path.join(dir, "projects");
+            write(path.join(projects, projectKey(dir), "s.jsonl"), blocks({ cwd: dir, branch: "b", read: 42 }));
+            fs.writeFileSync(path.join(dir, "claude.json"), "{}");
+            const named = ["--branch", "b", "--projects", projects, "--config", path.join(dir, "claude.json")];
+            assert.equal(run(named, say().fn, { cwd: dir, env: { CLAUDE_CONFIG_DIR: "relative" }, home: dir }), 0);
+        });
+    });
+
+    test("a branch whose requests recorded no input has no hit rate, and says so rather than 0.0%", () => {
+        withTemp((dir) => {
+            const projects = path.join(dir, "projects");
+            write(path.join(projects, projectKey("/r"), "s.jsonl"), blocks({ uncached: 0, read: 0, output: 3 }));
+            const lines = [];
+            print(ledger({ projects, config: null, roots: ["/r"], branch: "b" }), (l) => lines.push(l));
+            assert.ok(lines.includes("  hit rate: none — no input was recorded, so none could be read from cache"), lines.join("\n"));
         });
     });
 
