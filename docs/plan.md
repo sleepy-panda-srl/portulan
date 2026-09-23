@@ -2916,3 +2916,13 @@ _The seam applies here too: no client-identifying references._
   coordinator session reviewed the diff before the commit; his review is on the PR · 27 green, `tests` as
   non-root · Seam scan clean against the private terms this project names; the term-list scan is his ·
   [handoff](../.portulan/handoffs/2026-09-23-c-the-copilot-review-window-is-three-minutes.md)
+
+- 2026-09-23 · M12 (Context economy) — row stays todo · **The boot skill keeps its procedure and moves its
+  reasons to an on-read file**, the first demotion 0036 names:
+  [`SKILL.md`](../plugin/skills/portulan/SKILL.md) 22,774 → 17,813 bytes, the reasons moved to
+  [`rationale.md`](../plugin/skills/portulan/rationale.md), none deleted and none kept twice. Boot read-set:
+  demo 41,156 → 36,195 bytes, this repository 213,717 → 208,756; about 1,660 fewer tokens per boot at
+  0036's estimated 2.99 bytes per token. · No fresh-context checkpoint, skipped by his instruction of
+  2026-09-23; the coordinator session reviewed the diff before the commit, he reviews it on the PR · 27
+  green, `tests` as non-root · Seam scan clean against the known private terms; the term-list scan is his ·
+  [handoff](../.portulan/handoffs/2026-09-23-d-the-boot-skill-keeps-its-procedure-and-moves-its-reasons.md) · [#432](https://github.com/sleepy-panda-srl/portulan/pull/432)

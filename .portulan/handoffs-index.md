@@ -2,10 +2,11 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 175 handoff(s), newest first. No budget: the series is append-only, so
+> 176 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-09-23 · [Handoff — 2026-09-23: what a host loads into every context is proposed for a budget, and row 12 runs first](handoffs/2026-09-23-the-always-tier-is-proposed-for-a-budget.md)
+- 2026-09-23 · [Handoff — 2026-09-23: the boot skill keeps its procedure and moves its reasons](handoffs/2026-09-23-d-the-boot-skill-keeps-its-procedure-and-moves-its-reasons.md)
 - 2026-09-23 · [Handoff — 2026-09-23: the Copilot review is time-boxed to three minutes](handoffs/2026-09-23-c-the-copilot-review-window-is-three-minutes.md)
 - 2026-09-23 · [Handoff — 2026-09-23: 0036 is accepted, and the study it cited is read](handoffs/2026-09-23-b-0036-is-accepted-and-its-study-is-read.md)
 - 2026-09-21 · [Handoff — the librarian's scheduled pass](handoffs/2026-09-21-librarian-pass.md)
