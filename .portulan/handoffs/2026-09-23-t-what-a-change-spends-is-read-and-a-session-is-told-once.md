@@ -22,9 +22,10 @@ configuration home (`CLAUDE_CONFIG_DIR`, else `~/.claude`), one per subagent und
 subagent paths were read from the host's own program text, as strings, not from its documentation, which
 covers neither. **Read, not yet seen:** the status-line command runs with `CLAUDE_PROJECT_DIR` set, which
 the compiled command's path needs, because the host runs it through the one runner it runs every hook
-command through, and that runner puts the project root in the variable, as the program text of 2.1.281
-shows. This container draws no status line, so the first one in a real terminal is still to be seen. Every
-usage record is written once per content block: this session's transcript held 123 records for 66
+command through, and that runner puts the project root in the variable. The program text shows it in
+2.1.281, the version the binary read here reports, and the coordinator session's reviewer found the same
+in 2.1.280. This container draws no status line, so the first one in a real terminal is still to be
+seen. Every usage record is written once per content block: this session's transcript held 123 records for 66
 requests when the ledger first read it.
 
 **The threshold.** `C* ≈ F × (1 + m_w / (n × m_r))` with `n` = 20. `F` is the session's first request after
@@ -69,8 +70,8 @@ where to keep one's own. The line at the prompt is unaffected.
 classifies it a hook runner and the ledger `imported` through it, and the fourteen modules reachable from
 nothing stay fourteen; `cli/README.md` carries the four rows, the roster names and that sentence;
 `verify/README.md` the recipe's row and run-list line; `cli/fixtures/README.md` the fixture's row; the
-manifest the recipe, 190 bytes more in this repository's boot read-set (89,141 → 89,331, under its rail
-of 90,726); `drills.mjs` its drill, which disables the per-block deduplication. The A/B arm is
+manifest the recipe, 190 bytes more in this repository's boot read-set (89,046 → 89,236 on fc453be, under its
+rail of 90,726); `drills.mjs` its drill, which disables the per-block deduplication. The A/B arm is
 compiled like any workspace, so [`evals/ab/register.md`](../../evals/ab/register.md), regenerated, counts 6
 hooks pinned to this machine where it counted 5, and `arm.md` and `ab.mjs` say the status line is pinned
 with them. An arm runs one `--print` prompt, before any request is recorded, so the line is not said in
