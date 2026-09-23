@@ -328,7 +328,7 @@ jobs:
           # is what `pr-labeled` gates on, and a failure to apply the ownership label (deleted from
           # GitHub, say — declaring in labels.json does not create it) must not take the required
           # label down with it. Ownership is display, not gate, so its failure warns in both
-          # channels and reds nothing — the same fail-direction split as the derived verdict.
+          # channels and reds nothing — the fail-direction split the derived verdict had until 2026-09-23.
           # Raised by Copilot on #99. The maintainer's ruling, 2026-07-29; unvouched as an
           # App-actor call until a scheduled pass demonstrates it.
           if ! gh pr edit "$url" --add-label agent-driven; then

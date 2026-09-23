@@ -51,7 +51,7 @@ full: [`2026-07-30-a-round-gets-its-definition.md`](../handoffs/2026-07-30-a-rou
    loop's, so it is its own record:
    [`an-answer-lands-on-the-thread-that-raised-it.md`](an-answer-lands-on-the-thread-that-raised-it.md).
    Cited rather than restated, per [`../gate-map.md`](../gate-map.md). The slot keeps its number so
-   *"rule 3"* — cited from `0021` and from `copilot-review.yml` — still names the rule it always named.
+   *"rule 3"*, cited from `0021`, still names the rule it always named.
 4. **Two fix-rounds, then triage.** After the second round of fixes, whatever remains becomes an issue
    linking the comment. It does not become another push, and it does not hold the merge.
    **A round whose finding is a SIBLING of an earlier round's fix does not spend the bound — added

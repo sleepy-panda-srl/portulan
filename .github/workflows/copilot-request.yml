@@ -1,7 +1,8 @@
 # A pull request a bot opens gets its Copilot review requested in the name of a person GitHub can bill.
 #
 # The policy is `.portulan/gate-map.md` → *Which identity acts* and *Merge discipline*; this file is
-# only the actuator, and `copilot-review.yml` stays the checker that awaits the round it asks for.
+# only the actuator. No check awaits the round it asks for: since 2026-09-23 the session that owns the
+# pull request does, and names the review it addressed in its ready reply.
 #
 # ## Why the ruleset is not enough
 #
@@ -22,9 +23,10 @@
 # carries the "requested due to automatic review settings" event that the person-authored #418 carries
 # on every push.
 #
-# The re-request in `copilot-review.yml` does not fill the gap: it is made with `GITHUB_TOKEN`, which is
-# `github-actions[bot]`, so it is a bot's request as well. That fits the *requested, accepted, and gone*
-# signature issue #161 records on #157 and #248, and explains no more of that issue than its re-requests.
+# The re-request `copilot-review.yml` made until its removal on 2026-09-23 did not fill the gap: it was
+# made with `GITHUB_TOKEN`, which is `github-actions[bot]`, so it was a bot's request as well. That fits
+# the *requested, accepted, and gone* signature issue #161 records on #157 and #248, and explains no
+# more of that issue than its re-requests.
 #
 # ## What this does instead
 #
@@ -71,13 +73,13 @@
 # only for the head its event carried: a look that finds another head stops it, because the push that
 # made that head has a run of its own, which asks for it.
 #
-# It does not judge whether a round is already on the head; `copilot-reviewed` does. A review object is
-# not always a round: Copilot files an error or a refusal as a review too, and telling them apart means
-# reading the body, whose format moved on 2026-09-23 under `copilot-review.yml`'s matcher, which read
-# every round that day as unrecognised. Raised by Copilot on this change, the third finding on that
-# judgement. The price is a second round of a head that has had one: on a re-run, a reopening or a draft
-# made ready again, and on a push that lands in the seconds between a request and Copilot taking it up.
-# The gain is that a re-run after a refusal asks.
+# It does not judge whether a round is already on the head. A review object is not always a round:
+# Copilot files an error or a refusal as a review too, and telling them apart means reading the body,
+# whose format moved on 2026-09-23 under the matcher `copilot-review.yml` had for it. Raised by Copilot
+# on #436, the third finding there on that judgement. The price is a second round of a head that has
+# had one: on a re-run, a reopening or a draft made ready again, and on a push that lands between a
+# run's last look and Copilot taking the request up, some ten seconds, because a request names no
+# commit and none can be pinned. The gain is that a re-run after a refusal asks.
 #
 # One job per pull request runs at a time. A newer push waits behind the running job rather than
 # cancelling it, so a request is never cut off between the call and the read that confirms it; a third
@@ -88,8 +90,8 @@
 # the ruleset's, billed to its author. A fork's is not this repository's to spend his allowance on.
 # Drafts mirror the ruleset's `review_draft_pull_requests: false`, and `ready_for_review` asks when a
 # draft stops being one; a pull request that becomes a draft during the wait is not asked for either.
-# `synchronize` mirrors its `review_on_push: true`, because `copilot-reviewed` awaits a round on every
-# head.
+# `synchronize` mirrors its `review_on_push: true`, so every head a bot pushes draws a round, as every
+# head a person pushes does.
 #
 # ## Why `pull_request_target`, and why the token sits in an environment
 #
@@ -128,7 +130,7 @@
 # reviewer, which may be Copilot's. So while a hidden reviewer such as the team above holds a request,
 # the check goes red only for a request refused or never made. A rename of the reviewer's login shows in
 # either, with the logins printed. What this job cannot see is a request GitHub records and Copilot then
-# drops; only `copilot-reviewed` notices that, when no round arrives.
+# drops; the session awaiting the round notices that, when no round arrives on the head.
 
 name: copilot request
 
@@ -171,10 +173,9 @@ jobs:
           REVIEWER='copilot-pull-request-reviewer[bot]'
           # The logins that count as Copilot, lower-cased. REST names the reviewer with the `[bot]`
           # suffix and has shown it as `Copilot` (#86); GraphQL's `Bot.login`, which the review
-          # requests read below carries, drops the suffix. The REST spellings are a second carrier of
-          # `REVIEWERS` in `copilot-review.yml`, which this job cannot read because it checks nothing
-          # out; the GraphQL one is this file's alone while that file reads REST. A rename reds this
-          # job with the logins printed, the failure direction that file prefers.
+          # requests read below carries, drops the suffix. The REST spellings were shared with
+          # `REVIEWERS` in `copilot-review.yml` until its removal on 2026-09-23, and every spelling is
+          # this file's alone now. A rename shows in this job's verdict, with the logins printed.
           COPILOT_LOGINS='copilot-pull-request-reviewer[bot] copilot-pull-request-reviewer copilot copilot[bot]'
           POLL_SECONDS=15
           WAIT_SECONDS=900
@@ -353,7 +354,7 @@ jobs:
                         "" \
                         "The author, ${PR_AUTHOR}, is a bot, and GitHub bills a review on a bot's pull request to the" \
                         "organisation. A request by the maintainer is attributed to him, like his click in the Reviewers" \
-                        "menu. Whether Copilot's round lands is what copilot-reviewed checks."
+                        "menu. Copilot's own run for this head shows among the pull request's checks while it reviews."
                       exit 0
                     fi
                     ;;

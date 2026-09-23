@@ -89,10 +89,10 @@
 //
 // The rule's table counts submissions that found **nothing at all**. Finding nothing has two halves:
 // no inline comment thread, *and* no suppressed low-confidence note in the review body. The first
-// half is structural and this tool computes it exactly. The second is decided by a matcher — the awk
+// half is structural and this tool computes it exactly. The second was decided by a matcher — the awk
 // in `../.github/workflows/copilot-review.yml`, fixtured in
-// `../.portulan/verify/workflow-filters.mjs` — that is deliberately reduced to **one** carrier, and
-// that carrier is a workspace-layer gate while this file is engine.
+// `../.portulan/verify/workflow-filters.mjs` until both left on 2026-09-23 — that was deliberately
+// reduced to **one** carrier, and that carrier was a workspace-layer gate while this file is engine.
 //
 // Re-implementing it here would put a second spelling of one rule on the other side of the
 // engine/workspace boundary, where neither could see the other drift. That is this repository's

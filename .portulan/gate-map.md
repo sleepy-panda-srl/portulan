@@ -259,7 +259,6 @@ backends and what each refuses, the gates neither compiles, and composition.
 | **Committing and pushing a scheduled pass** | **The workflow**, as `github-actions[bot]` |
 | **Filing an issue from `portulan feedback`** — by a person or a session here | **The maintainer's** GitHub credentials: the `gh` login already on the machine |
 | **Resolving a review thread** | **The maintainer decides**; the command is his or an agent's, on his explicit per-action approval of the merge the thread blocks |
-| **Submitting or dismissing the round's derived verdict** | **The agent identity**, via an App installation token minted inside the workflow |
 | **Requesting Copilot's review on a pull request a bot opened** | **The maintainer's** credentials, as a fine-grained token of his that [`copilot-request.yml`](../.github/workflows/copilot-request.yml) uses with nobody at a keyboard |
 | Everything Gated above — settings, releases, merges | **The maintainer decides**; the command is his or an agent's, on his explicit per-action approval |
 
@@ -274,12 +273,13 @@ found merges that had landed **before** Copilot's round on the final push arrive
 requested, the review happened, and its feedback reached a pull request that was already closed — so it
 was disregarded by nobody in particular, which is the worst way for it to happen.
 
-**Amended 2026-09-23, his ruling of 14:07 UTC: past three minutes, the awaited half is a report.** A
-window that closes with no round ends the check green with a warning rather than red. His words: *"This
-shouldn't be an error and it shouldn't cause the CI to fail."* Merging without a round is his call.
+**Amended 2026-09-23, his ruling of 17:21 UTC: no check awaits the round; the session that owns the pull
+request does.** It awaits Copilot's round on the final head and says in its ready message which review, on
+which commit, it addressed; conversation resolution still blocks a merge while a thread is open. Merging
+without a round is his call, as he ruled at 14:07: *"This shouldn't be an error and it shouldn't cause the
+CI to fail."*
 
-What enforces each half, and the bounds on the process above the rule: the review window, the review
-loop, the derived verdict, and the retired override for a head that never draws a round:
+What carries each half, the form of the ready line, the bounds on the loop, and what left with the check:
 [`gate-map/merge-discipline.md`](gate-map/merge-discipline.md).
 
 ## The triage threshold

@@ -15,10 +15,10 @@
 #
 # The argument, the fixtures and the two-way coverage rule are in ./workflow-filters.mjs, which is
 # the instrument; this is the wrapper, and the wrapper is the point (./README.md). Two merge-gate
-# workflows branch on what jq prints for null — `copilot-review.yml` on an empty first field from
-# `join("|")`, `pr-labels.yml` on `jq -er` producing no output — and until this recipe nothing
-# executed either. The harness covering the first stubs `gh`, so it asserted the *shape* those
-# filters were assumed to produce with nothing proving jq produced it.
+# workflows branched on what jq prints for null — `copilot-review.yml`, removed on 2026-09-23, on an
+# empty first field from `join("|")`, `pr-labels.yml` on `jq -er` producing no output — and until this
+# recipe nothing executed either. The harness covering the first stubbed `gh`, so it asserted the
+# *shape* those filters were assumed to produce with nothing proving jq produced it.
 #
 # WHY THIS IS A RECIPE AND NOT A FILE IN cli/. The suite is the obvious home — it is `node --test`
 # over `cli/*.test.mjs` and this is a regression test. It was refused for the reason this whole

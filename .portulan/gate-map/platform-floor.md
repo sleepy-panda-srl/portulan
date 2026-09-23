@@ -82,9 +82,9 @@ rather than as an approval. The honest qualification is that it can still decide
 conversation resolution is required on `main`, so a Copilot review that leaves an inline comment opens a
 thread that blocks merge until the maintainer resolves it, which is exactly what happened on
 [#25](https://github.com/sleepy-panda-srl/portulan/pull/25). Not a gate, then, but upstream of one.
-_Since 2026-07-29 the round's outcome is also displayed as an approval — submitted by the agent
-identity, not by Copilot, so the sentence above stays true; see [*Merge discipline*](merge-discipline.md) for the derived
-verdict and why the approving-review count still does not move._
+_From 2026-07-29 to 2026-09-23 the round's outcome was also displayed as an approval, submitted by the
+agent identity rather than by Copilot; that derived verdict left with `copilot-review.yml`, and
+[*Merge discipline*](merge-discipline.md) says what carries the round now._
 
 It was added while this section was being written, which is as good an illustration as the section could
 ask for of why the layers needed counting in the first place.
