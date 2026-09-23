@@ -47,6 +47,7 @@ Run any of the recipes declared here from anywhere in the tree:
 ./.portulan/verify/compile.sh
 ./.portulan/verify/workflow-filters.sh
 ./.portulan/verify/index.sh
+./.portulan/verify/context.sh
 ./.portulan/verify/control-chars.sh
 ./.portulan/verify/rule-carriers.sh
 ./.portulan/verify/pack-version.sh
@@ -61,6 +62,10 @@ Run any of the recipes declared here from anywhere in the tree:
 ./.portulan/verify/mutants.sh
 ./.portulan/verify/fuzz-shell.sh
 ./.portulan/verify/drills.sh
+./.portulan/verify/ab.sh
+./.portulan/verify/ab-grade.sh
+./.portulan/verify/ab-run.sh
+./.portulan/verify/release-eval.sh
 ```
 
 _(**It happened again, and the second time was worse.** The block listed **thirteen** while the manifest
@@ -87,6 +92,7 @@ names.)_
 | [`compile.sh`](compile.sh) | both compiled artifacts — [`../../.claude/settings.json`](../../.claude/settings.json) and [`../compile/github-ruleset.json`](../compile/github-ruleset.json) — are exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
 | [`workflow-filters.sh`](workflow-filters.sh) | every jq **and awk** program the workflows run, lifted out of the parsed `run:` scalars and executed against null-bearing and real-body fixtures — exact stdout, exact exit status | `awk`, `bash`, `jq`, `node` |
 | [`index.sh`](index.sh) | every generated index a workspace declares — the memory store's, and since 2.5 the handoff series' — is exactly what its source renders, and neither the store index, nor the store, nor any single record in it is over the budget its manifest declares | `bash`, `git`, `node` |
+| [`context.sh`](context.sh) | what a boot reads and what the host loads into every context, measured for both workspaces by [`../../cli/context.mjs`](../../cli/context.mjs) — each file with its size and why it counts, and what is left out — and **Portulan's own footprint railed**: this workspace's boot read-set, the demo's, the boot skill and kernel every adopter's boot reads, the skill's step files, which a boot reads where its manifest is a pointer or names a pack, and the plugin's skill and agent descriptions, each at its figure on the day it landed plus 2%. A demotion lowers its line in the recipe; a raise carries its reason in that change's handoff. Proposal [`0036`](../proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md), items 3 and 6. Its workspace list is audited against the tree, as `index.sh`'s is | `bash`, `git`, `node` |
 | [`control-chars.sh`](control-chars.sh) | no tracked file carries a byte in the C0 range other than TAB and LF, nor DEL — scanned as bytes, because the one tool that would have shown the last one is the tool the byte silences | `bash`, `git`, `node` |
 | [`rule-carriers.sh`](rule-carriers.sh) | a rule an incident reduced to **one** carrier stays reduced — a registered spelling appears only in its carrier or beside a citation of it. Covers **only registered rules**, which is a ratchet over what incidents have taught it and never coverage of doctrine | `bash`, `git`, `node` |
 | [`pack-version.sh`](pack-version.sh) | a pack whose `contributes` differs from the **merge-base** also moved its `portulan.version` — [#265](https://github.com/sleepy-panda-srl/portulan/issues/265), arm 3, and a **prose-only** edit to a fragment's `reason` counts. **The only recipe here that reads a *diff* rather than the tree**, so it refuses at **2** where the base ref or merge-base is unreachable, and [`../../.github/workflows/verify.yml`](../../.github/workflows/verify.yml) sets `fetch-depth: 0` for it | `bash`, `git`, `node` |

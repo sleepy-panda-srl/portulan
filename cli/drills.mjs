@@ -349,6 +349,19 @@ export const DRILLS = [
         why: "The index is generated and byte-compared, which is the only thing that makes `core/operating/memory.md`'s *generated, never hand-maintained* a fact rather than a preference.",
     },
     {
+        rail: "context",
+        perturb: {
+            file: "core/engine.md",
+            find: "# Portulan engine",
+            // 500 bytes onto the kernel's heading: past the engine rail's headroom and inside the boot
+            // rails', so the one rail that owns the kernel is the one that has to fire.
+            replace: `# Portulan engine${" (moved back from an on-read file)".repeat(15)}`,
+        },
+        exit: 1,
+        tell: "over its rail of",
+        why: "Every boot in every adopting repository reads the kernel and the boot skill in full, so a demotion undone there costs every context everywhere. The rail is the only thing that turns that growth from a quiet diff into a red.",
+    },
+    {
         rail: "control-chars",
         perturb: {
             file: "CONTRIBUTING.md",

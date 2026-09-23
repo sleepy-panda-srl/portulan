@@ -3026,3 +3026,14 @@ _The seam applies here too: no client-identifying references._
   diff before the commit; his review is on the PR · 27 green, `tests` as non-root · Seam scan clean against the
   private terms this project names; the term-list scan is his ·
   [handoff](../.portulan/handoffs/2026-09-23-p-the-boot-report-says-when-the-packs-step-did-not-load.md)
+
+- 2026-09-23 · M12 (Context economy) — row stays todo · **What a boot reads is measured, and Portulan's own
+  share is railed.** [`cli/context.mjs`](../cli/context.mjs) lists every file a boot reads in full and every
+  file Claude Code loads into every context, and why each counts; a declared `context.always.budget.tokens`
+  rails the always tier. The [`context`](../.portulan/verify/context.sh) recipe rails the engine half (11,825
+  bytes), the skill's step files (10,729), the plugin's descriptions (3,386) and both boot read-sets, at +2%
+  on `a534f15`. The manifest now counts: 92,998 is 100,053 with it, the demo's 33,591 is 35,393 · Checkpoints
+  skipped by his instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator
+  session reviewed the diff before the commit; his review is on the PR · 28 green, `tests` as non-root · Seam
+  scan clean against the private terms this project names; the term-list scan is his ·
+  [handoff](../.portulan/handoffs/2026-09-23-o-what-a-boot-reads-is-measured-and-portulans-share-railed.md)
