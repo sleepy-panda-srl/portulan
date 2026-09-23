@@ -7,6 +7,7 @@ requirement — *standards first, host adapters second* — so what is specific 
 | Path | What it is |
 |---|---|
 | [`skills/portulan/SKILL.md`](skills/portulan/SKILL.md) | The boot skill. Loads the kernel, finds the *project's* workspace, reads its slots, and reports what is and is not enforced. Invoked as `/portulan`. |
+| [`skills/portulan/rationale.md`](skills/portulan/rationale.md) | Why each boot step is shaped as it is: the measurements and incidents behind the skill's instructions. Read on demand, never at boot, so a boot does not pay for it. |
 
 **The agent bindings are not here — they are [`../agents/`](../agents/)**, at the repository root:
 [`implementer`](../agents/implementer.md), [`reviewer`](../agents/reviewer.md),
