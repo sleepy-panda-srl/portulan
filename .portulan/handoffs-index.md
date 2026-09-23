@@ -2,10 +2,11 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 178 handoff(s), newest first. No budget: the series is append-only, so
+> 179 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-09-23 · [Handoff — 2026-09-23: what a host loads into every context is proposed for a budget, and row 12 runs first](handoffs/2026-09-23-the-always-tier-is-proposed-for-a-budget.md)
+- 2026-09-23 · [Handoff — 2026-09-23: a Copilot window with no round is reported, not failed](handoffs/2026-09-23-g-a-copilot-window-with-no-round-is-reported-not-failed.md)
 - 2026-09-23 · [Handoff — 2026-09-23: Copilot is requested on a pull request a bot opens](handoffs/2026-09-23-f-copilot-is-requested-on-a-pull-request-a-bot-opens.md)
 - 2026-09-23 · [Handoff — 2026-09-23: what a change spends is proposed for measurement, and row 13 follows row 12](handoffs/2026-09-23-e-what-a-change-spends-is-proposed-for-measurement.md)
 - 2026-09-23 · [Handoff — 2026-09-23: the boot skill keeps its procedure and moves its reasons](handoffs/2026-09-23-d-the-boot-skill-keeps-its-procedure-and-moves-its-reasons.md)

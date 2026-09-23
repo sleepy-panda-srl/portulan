@@ -7,8 +7,8 @@
 feedback has been awaited and resolved.* Taken from his own observation while browsing **closed** pull
 requests, where merges had landed before Copilot's round on the final push arrived.
 
-**A merge waits for the Copilot round on the commit it is actually merging, and for that feedback to be
-resolved.** Two halves, two mechanisms:
+**A merge waits for the Copilot round on the commit it is actually merging, three minutes at most, and for
+that feedback to be resolved.** Two halves, two mechanisms:
 [`../../.github/workflows/copilot-review.yml`](../../.github/workflows/copilot-review.yml) for *awaited*,
 `required_conversation_resolution` for *resolved*.
 
@@ -51,28 +51,28 @@ also a class of false red, since the agent's own replies to Copilot are submitte
 re-ran the check mid-round.
 
 **Three limits, stated because the rule is weaker than it sounds.** The reviewer's login is a platform fact
-the workflow hard-codes; a rename surfaces as a permanent red rather than a silent pass, which is the
-right failure direction and still a fragility. *Resolved* is not *adjudicated*: a reviewer can
+the workflow hard-codes; a rename surfaces as a warning on every pull request rather than a silent pass,
+the right failure direction and still a fragility. *Resolved* is not *adjudicated*: a reviewer can
 resolve its own thread — measured on [#44](https://github.com/sleepy-panda-srl/portulan/pull/44) — so
 this rule guarantees the round **happened before the merge**, not that anyone agreed with it. And the wait
-is a window: three minutes, the maintainer's time-box of 2026-09-23, down from 20. Past it the check reds
-with a report of what had landed, and **nothing re-triggers it**, so a maintainer re-runs the job — the old
-click, now also the price of a round slower than the window.
+is a window: three minutes, the maintainer's time-box of 2026-09-23, down from 20. Past it the check
+reports what had landed and, on his ruling of 14:07 that day, ends **green with a warning**: *"This
+shouldn't be an error and it shouldn't cause the CI to fail."* Past the window this rule no longer
+refuses; merging without a round is his call, and a round landing later waits for a re-run.
 
 **It composes with the autonomy mode rather than substituting for one.** A mode decides whether an agent
 raises a ship-step prompt; this is a status check, and floor rows hold at every mode — it is not yet
 required, deliberately, per the gate map. Under `auto`, where no prompt is raised, this check still
-refuses. That composition is the reason the rule is worth more under a loose mode than under a strict one.
+waits out its window. That composition is the reason the rule is worth more under a loose mode than
+under a strict one.
 
 **One state cannot clear, and its exit is doctrine rather than machinery — added 2026-08-09.** A head
 can wait out the whole budget with the re-request accepted and no round arriving — measured twice on
 [#157](https://github.com/sleepy-panda-srl/portulan/pull/157)'s rebased heads, cause unexplained,
 authorship the surviving lead ([#161](https://github.com/sleepy-panda-srl/portulan/issues/161)). The
 ruling on [`../proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md`](../proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md),
-exit (2): the check stays red, and merging past it is the maintainer's explicit per-occurrence act,
-recorded on the pull request before the merge. **Not a weakening** — `copilot-reviewed` is not a required
-context, so the platform never held this door; what the record buys is that routing around the gate stops
-being invisible.
+exit (2), kept the check red and made merging past it a recorded per-occurrence act **until 2026-09-23**,
+when his ruling that a window with no round is a warning left no red to merge past.
 
 **A review OBJECT is not a round — amended 2026-08-18,
 [#286](https://github.com/sleepy-panda-srl/portulan/issues/286).** The paragraph above says a checker
