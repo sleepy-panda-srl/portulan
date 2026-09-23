@@ -1252,14 +1252,15 @@ const HOST_TIER_NOT_A_GATE = {
 };
 
 /**
- * The compiled-hook runners, in the order `claudeCode` spells them: the PreToolUse gate, then the Stop
- * gate. **This is their one carrier.** They are invoked by generated host configuration rather than
+ * The compiled-hook runners, in the order `claudeCode` spells them: the PreToolUse gate, the Stop gate,
+ * then the restart advisory, which is both the `UserPromptSubmit` hook and the status-line command.
+ * **This is their one carrier.** They are invoked by generated host configuration rather than
  * imported by anything, so no import graph can find them and every other roster that needs to know
- * which `cli/` modules are runners has to ask here — `./payload.mjs` does. A third runner added below
+ * which `cli/` modules are runners has to ask here — `./payload.mjs` does. A fourth runner added below
  * without a name added here would classify as unreachable in that rail, which is the direction that
  * fails loudly rather than the one that ships something unnoticed.
  */
-export const HOOK_RUNNERS = ["gate.mjs", "stop-gate.mjs"];
+export const HOOK_RUNNERS = ["gate.mjs", "stop-gate.mjs", "advisory.mjs"];
 
 /**
  * Translate the policy into a Claude Code settings object.
@@ -1327,6 +1328,7 @@ export function claudeCode(parsed, options = {}) {
     };
     const runner = options.runner ?? spell(HOOK_RUNNERS[0]);
     const stopRunner = options.stopRunner ?? spell(HOOK_RUNNERS[1]);
+    const advisoryRunner = options.advisoryRunner ?? spell(HOOK_RUNNERS[2]);
 
     const compiled = [];
     const refused = [];
@@ -1511,7 +1513,15 @@ export function claudeCode(parsed, options = {}) {
                 hooks: [{ type: "command", command: `node ${runner}` }],
             })),
             Stop: [{ hooks: [{ type: "command", command: `node ${stopRunner}` }] }],
+            // **The restart advisory, proposal `0038`'s rule 2**, compiled for every workspace whatever
+            // its policy says, because it gates nothing: one line at the prompt where the session's
+            // recorded usage has crossed the restart threshold, once, and never a block. The prompt is
+            // where it reaches the agent without an extra turn; a non-blocking Stop hook's output would
+            // reach only the host's debug log. See ./advisory.mjs.
+            UserPromptSubmit: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} prompt` }] }],
         },
+        // The same figure for the human, from the host's own last-call counts, at no token cost.
+        statusLine: { type: "command", command: `node ${advisoryRunner} status` },
     };
 
     // The shell half of every write gate, reported on every run rather than left for a reader to
@@ -1535,6 +1545,14 @@ export function claudeCode(parsed, options = {}) {
                 `project, or pass \`--runner\`/\`--stop-runner\` to name a path you control`,
         );
     }
+    // Said on every run, because it is the one thing here that replaces a setting a person may have made
+    // themselves: a project's `statusLine` outranks the user's, so this one takes the place of theirs in
+    // this repository. `.claude/settings.local.json` outranks the project's, which is where to keep one.
+    notes.push(
+        `the status line is compiled: it shows the restart threshold (proposal 0038) and takes the place of a status line ` +
+            `set in user settings, in this repository only. To keep your own here, set \`statusLine\` in \`.claude/settings.local.json\`, which ` +
+            `outranks this file; the restart advisory at the prompt is unaffected`,
+    );
     if (editCoveredGates.length) {
         notes.push(
             `${editCoveredGates.length} write gate(s) — ${editCoveredGates.join(", ")} — emit \`Edit(path)\` as their only ` +

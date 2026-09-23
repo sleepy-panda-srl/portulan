@@ -3101,3 +3101,13 @@ _The seam applies here too: no client-identifying references._
   diff before the commit; his review is on the PR · 28 green, `tests` as non-root · Seam scan clean against the
   private terms this project names; the term-list scan is his ·
   [handoff](../.portulan/handoffs/2026-09-23-s-a-workspaces-guidance-compiles-into-the-tier-it-declares.md)
+- 2026-09-23 · M13 (Spend economy) — row stays todo · **What a change spends is read from the host's own
+  records, and a session is told once when continuing costs more than restarting.**
+  [`cli/ledger.mjs`](../cli/ledger.mjs) prices a branch from the host's local usage records, deduplicated per
+  message: tokens by class, rebuilds and their causes, the difference from the host's own totals, the restart
+  threshold. [`cli/advisory.mjs`](../cli/advisory.mjs), compiled for every workspace, says one line at the first
+  prompt past that threshold and shows it in the status line; the [`ledger`](../.portulan/verify/ledger.sh)
+  recipe rails both on a fixture, never on this machine's records. · Checkpoints skipped by his instruction of
+  2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator session reviewed the diff before the
+  commit; his review is on the PR · 29 green, `tests` as non-root · Seam scan clean against the private terms
+  this project names; the term-list scan is his · [handoff](../.portulan/handoffs/2026-09-23-t-what-a-change-spends-is-read-and-a-session-is-told-once.md)

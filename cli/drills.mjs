@@ -363,6 +363,19 @@ export const DRILLS = [
         why: "Every boot in every adopting repository reads the kernel and the boot skill in full, so a demotion undone there costs every context everywhere. The rail is the only thing that turns that growth from a quiet diff into a red.",
     },
     {
+        rail: "ledger",
+        perturb: {
+            file: "cli/ledger.mjs",
+            find: "const prior = request.id === null ? undefined : byId.get(request.id);",
+            // Per-block deduplication switched off: every content block the host wrote becomes a request of
+            // its own, which is the one mistake every figure the ledger prints would inherit silently.
+            replace: "const prior = undefined;",
+        },
+        exit: 1,
+        tell: "does not reproduce",
+        why: "The host writes one usage record per content block, so a reader that stops deduplicating by message id multiplies every figure by the blocks per request and still prints plausible numbers. The fixture's known totals are the only thing that tells those numbers from the true ones.",
+    },
+    {
         rail: "control-chars",
         perturb: {
             file: "CONTRIBUTING.md",

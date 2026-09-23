@@ -64,6 +64,7 @@ import {
     guidanceUnits,
     claudeCodeGuidance,
     agentsMdGuidance,
+    HOOK_RUNNERS,
 } from "./compile.mjs";
 import { alwaysTier } from "./context.mjs";
 
@@ -584,10 +585,30 @@ describe("the Claude Code backend", () => {
         assert.ok(settings.hooks.Stop?.length > 0, "the Stop-gate is the other half of milestone 4");
     });
 
+    test("the restart advisory is the UserPromptSubmit hook and the status line, both on the third runner", () => {
+        // Proposal 0038, rule 2: one line where the agent is, once, and the same figure for the human.
+        // Compiled whatever the policy says, because it gates nothing.
+        const result = claudeCode(parse(policy()));
+        const settings = result.artifact.value;
+        assert.equal(HOOK_RUNNERS[2], "advisory.mjs");
+        assert.deepEqual(
+            settings.hooks.UserPromptSubmit.flatMap((h) => h.hooks.map((x) => x.command)),
+            [`node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" prompt`],
+        );
+        assert.deepEqual(settings.statusLine, { type: "command", command: `node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" status` });
+        assert.ok(
+            result.notes.some((n) => /status line/.test(n) && /settings\.local\.json/.test(n)),
+            "replacing a status line a person set is said on every run, with where to keep their own",
+        );
+        const named = claudeCode(parse(policy()), { advisoryRunner: '"/elsewhere/advisory.mjs"' }).artifact.value;
+        assert.equal(named.statusLine.command, 'node "/elsewhere/advisory.mjs" status');
+    });
+
     test("emitted hook commands invoke node directly rather than an inline shell one-liner", () => {
         const settings = claudeCode(parse(policy())).artifact.value;
-        const commands = [...settings.hooks.PreToolUse, ...settings.hooks.Stop]
-            .flatMap((h) => h.hooks.map((x) => x.command));
+        const commands = [...settings.hooks.PreToolUse, ...settings.hooks.Stop, ...settings.hooks.UserPromptSubmit]
+            .flatMap((h) => h.hooks.map((x) => x.command))
+            .concat(settings.statusLine.command);
         for (const c of commands) {
             assert.doesNotMatch(c, /[|;&><]/, "quoting and word-splitting inside emitted shell is where the next fail-open lives");
         }
