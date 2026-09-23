@@ -432,6 +432,19 @@ CHANGELOG=CHANGELOG.md
 # is reported rather than silently uncounted. `[ -f ]` because the manifest is the INDEX plus
 # untracked files: a handoff git knows about and the tree does not is not a handoff. The scope is
 # Markdown deliberately, so the untracked debris a working tree collects (`.DS_Store`) passes.
+# **A real day, not the shape of one.** `2026-13-45-x.md` matches the glob and names no day. The
+# index tool refuses it (`dateOf` in `cli/index.mjs`), but the Stop gate runs this recipe alone, and
+# until 2026-09-23 the log's correspondence by date caught a mistyped day here. Found by Copilot, #451.
+real_day() {
+    local y=$((10#${1:0:4})) m=$((10#${1:5:2})) d=$((10#${1:8:2})) last
+    case $m in
+        1 | 3 | 5 | 7 | 8 | 10 | 12) last=31 ;;
+        4 | 6 | 9 | 11) last=30 ;;
+        2) if ((y % 4 == 0 && (y % 100 != 0 || y % 400 == 0))); then last=29; else last=28; fi ;;
+        *) return 1 ;;
+    esac
+    ((d >= 1 && d <= last))
+}
 : >"$tmp/handoffdates"
 : >"$tmp/strays"
 while IFS= read -r h; do
@@ -439,12 +452,16 @@ while IFS= read -r h; do
     base=${h##*/}
     case "$base" in
         [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.md)
-            printf '%s\n' "${base:0:10}" >>"$tmp/handoffdates" ;;
+            if real_day "${base:0:10}"; then
+                printf '%s\n' "${base:0:10}" >>"$tmp/handoffdates"
+            else
+                printf '%s\n' "$h" >>"$tmp/strays"
+            fi ;;
         *) printf '%s\n' "$h" >>"$tmp/strays" ;;
     esac
 done < <(grep "^${HANDOFFS_RE}/.*\.md$" "$manifest")
 if [ -s "$tmp/strays" ]; then
-    fail "record — Markdown file(s) in $HANDOFFS/ whose name carries no date, so no check counts them"
+    fail "record — Markdown file(s) in $HANDOFFS/ whose name does not lead with a real YYYY-MM-DD day, so no index line can be derived"
     sed 's/^/        /' "$tmp/strays"
 else
     # The count names what was examined. Zero is a legitimate series now: a handoff is owed only by a

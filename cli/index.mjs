@@ -6,7 +6,8 @@
 //   node cli/index.mjs [--check] --changes <dir>
 //
 // Exit 0 every index is current and within budget · 1 one is not · 2 could not run. `--handoffs`
-// prints the handoff index, which a workspace may keep on disk or not (see `judgeHandoffs`), and
+// prints the handoff index, which a workspace may keep on disk or not (see `judgeHandoffs`), exiting 1
+// only when a handoff yields no line, and
 // `--changes` prints a directory of changelog fragments as the release cut pastes them.
 //
 // ../core/operating/memory.md gives the store four states, and this is the third: "a size-budgeted
@@ -1384,7 +1385,8 @@ function usage() {
         "  --check       write nothing; exit 1 if any index kept on disk is out of date against its store,",
         "                or a handoff yields no index line. A handoff index with no copy on disk is not kept:",
         "                it is rendered, and nothing is written or compared",
-        "  --handoffs    print each workspace's handoff index instead of judging, whether or not one is kept",
+        "  --handoffs    print each workspace's handoff index, whether or not one is kept and however stale a",
+        "                kept copy is; exit 1 only when a handoff yields no index line, reported instead",
         "  --pack-root   where declared packs are resolved from; `auto` discovers the host's plugin cache.",
         "                A named root REPLACES every other source. A directory actually named `auto` is `./auto`",
         "  --changes     print the changelog fragments in <dir> grouped by section, as the release cut pastes",
@@ -1526,7 +1528,9 @@ export function run(argv, say = console.log) {
 
         if (printHandoffs) {
             // Printed rather than written, so reading the series' index leaves no copy behind to go stale.
-            const broken = result.findings.filter((f) => f.series === "handoffs");
+            // Whether a kept copy is current is `--check`'s question (the `index` finding), so a stale one
+            // does not stop the print; a handoff the index cannot derive a line for does. Copilot, #451.
+            const broken = result.findings.filter((f) => f.series === "handoffs" && f.check !== "index");
             for (const f of broken) say(`  ✗ ${dir}: ${f.message}`);
             if (broken.length && worst < 1) worst = 1;
             else if (!result.series.handoffs.declared) say(`  · ${dir}: declares no handoff index`);

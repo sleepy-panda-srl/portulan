@@ -1113,6 +1113,24 @@ describe("a handoff index nobody keeps is rendered and compared with nothing", (
         assert.match(said.join("\n"), /2026-07-01 · \[A\]/);
         assert.equal(fs.existsSync(path.join(dir, "handoffs-index.md")), false);
     });
+
+    test("--handoffs prints past a stale kept copy and leaves it as it is, since freshness is --check's", () => {
+        // Found by Copilot on #451: the usage said "whether or not one is kept", and a stale kept copy
+        // printed its `index` finding instead of the index and exited 1.
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A"), "handoffs-index.md": "stale\n" }, withSeries());
+        const said = [];
+        assert.equal(run(["--handoffs", dir], (l) => said.push(l)), 0);
+        assert.match(said.join("\n"), /2026-07-01 · \[A\]/);
+        assert.doesNotMatch(said.join("\n"), /out of date/);
+        assert.equal(fs.readFileSync(path.join(dir, "handoffs-index.md"), "utf8"), "stale\n");
+    });
+
+    test("--handoffs reports a handoff that yields no line instead of printing, and exits 1", () => {
+        const dir = workspace({ "handoffs/2026-13-45-a.md": handoff("A") }, withSeries());
+        const said = [];
+        assert.equal(run(["--handoffs", dir], (l) => said.push(l)), 1);
+        assert.match(said.join("\n"), /valid YYYY-MM-DD date/);
+    });
 });
 
 describe("the handoff series carries no budget", () => {
