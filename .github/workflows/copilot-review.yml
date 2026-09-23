@@ -29,7 +29,7 @@
 # |---|---|---|---|
 # | Awaited | requested, not answered yet | **failure** | the job stays *in progress* — a pending check |
 # | Not owed | the ruleset does not request a round here | **failure**, permanently | success, with the reason printed |
-# | Missing | the round never came, or the API is unreadable | failure | failure, after the wait budget |
+# | Missing | no round within the window, or the API is unreadable | failure | failure, when the 3-minute window closes |
 #
 # The first row was guaranteed noise: Copilot cannot have reviewed a commit that did not exist when the
 # run started, so **every push produced a red check by construction**, and the reviews measured on this
@@ -41,6 +41,30 @@
 # `review_draft_pull_requests: false`, so on a draft **no round is ever coming** and the old check red-X'd
 # every push for the life of the draft. See the `draft` branch below for why reporting success there does
 # not open the gate, and for the one window it does leave.
+#
+# ## The wait is a three-minute window: the maintainer's time-box, 2026-09-23
+#
+# His ruling: the Copilot review on every pull request is time-boxed to three minutes, and anything
+# past that is reported with whatever findings are available at that moment. So the await step looks
+# for three minutes from its own start (on a push, the moment the ruleset requests the round), and
+# its last look lands on the window's close. When that look finds no round, the step concludes red
+# and writes what it found to the job summary as well as the log: what landed on the awaited head
+# (nothing, or a refusal), whether Copilot still holds the request, and Copilot's newest review on
+# the pull request. The window replaced a 20-minute budget set at five times the slowest round
+# measured, and rounds here have landed 1m53s–3m47s after a push, so some now land after it. That
+# red then reads *late*, not *lost*, and a re-run finds the round on its first look.
+#
+# **Red, not green, because of what this check's name claims.** `copilot-reviewed` says a round
+# landed on the head. Green over a head nobody reviewed is a positive claim this step has not
+# established, which is the defect of #286, and it would open the awaited half of *Merge discipline*
+# that the red holds. Merging past the red stays the maintainer's explicit, recorded act (proposal
+# 0023), as it was after twenty minutes.
+#
+# **What the window costs, named rather than found later.** A round landing after the close is
+# processed by nothing until the job is re-run: its suppressed notes are not promoted and no verdict
+# is derived from it. On a superseded head nobody re-runs, so those notes stay in the review body,
+# which is the loss the per-head concurrency group below was built to stop, back for rounds slower
+# than the window.
 #
 # ## It also prints the half of the round that no gate can see
 #
@@ -99,9 +123,11 @@ on:
   # not bot-triggered and needs no approval. **The click is gone and so is that class of false red.**
   # The cost of dropping it: if the wait budget expires before the review lands, nothing re-triggers the
   # check — a maintainer re-runs the job, which is the same click as before but only in the rare case
-  # rather than every time.
+  # rather than every time. **Since the three-minute window (2026-09-23) it is not the rare case:** a
+  # round slower than the window needs the same re-run.
 
-# `write`, not `read`, as of 2026-07-29 — for the one POST below that re-requests Copilot mid-wait.
+# `write`, not `read`, as of 2026-07-29 — for the one POST below that re-requests Copilot at a re-run's
+# first look.
 #
 # A `permissions:` block REPLACES the default, so every scope not named here is `none`: this job can
 # still touch nothing outside pull requests. What the widening does NOT buy is a single call —
@@ -147,9 +173,8 @@ permissions:
 #
 # What the old line was right about is priced rather than dismissed: a superseded run does keep a runner.
 # It does not keep it long — the wait exits as soon as ITS OWN head's round lands, which measured
-# 1m53s–3m47s on this repository, not the 20-minute budget. The budget is only spent when a round never
-# comes, which is already the failure case this workflow is loud about. A runner-minute is the price of
-# a finding, and the finding is worth more.
+# 1m53s–3m47s on this repository, and never later than the three-minute window. A runner-minute is the
+# price of a finding, and the finding is worth more.
 #
 # The gate is unaffected: each run reports its check against its own commit, so a superseded run's
 # result attaches to a commit that is no longer the head and gates nothing. The verdict step's stale-
@@ -169,8 +194,8 @@ concurrency:
 jobs:
   copilot-reviewed:
     runs-on: ubuntu-latest
-    # The wait budget below is 20 minutes; this is the backstop for a job that hangs somewhere else.
-    timeout-minutes: 25
+    # The wait below is a 3-minute window; this is the backstop for a job that hangs somewhere else.
+    timeout-minutes: 10
     steps:
       # The tree is needed for exactly one thing: the token minter the verdict step runs
       # (`.portulan/tools/gh-bot-token.mjs`). Shallow is fine — nothing here reads git history.
@@ -193,19 +218,16 @@ jobs:
           # The reviewer logins that count. Lower-case; compared lower-cased.
           REVIEWERS='copilot-pull-request-reviewer[bot] copilot copilot[bot]'
 
-          # 20 minutes against a measured 1m53s–3m47s (#49, #54, #57, 2026-07-28) — five times the
-          # slowest round observed. Long enough that expiry means something went wrong rather than
-          # something was slow, which is the only way the red at the end of it is worth reading.
-          WAIT_SECONDS=1200
-          # Halfway. Late enough that an ordinary round (under four minutes here) has long since
-          # landed and the re-request is never sent to a reviewer that was merely working; early
-          # enough that the ~90s answer it buys still fits inside the budget with minutes to spare.
-          REREQUEST_AFTER=600
+          # Three minutes: the maintainer's time-box of 2026-09-23 (see the header). It was 20 minutes,
+          # five times the slowest round measured (1m53s–3m47s, #49, #54, #57, 2026-07-28), chosen so
+          # that expiry meant something went wrong rather than something was slow. Under the window
+          # expiry can mean slow, and the report at the close says what it can tell apart.
+          WAIT_SECONDS=180
           # none → attempted → sent | failed. Never "attempted" at the end unless the shell died
           # between the two assignments below.
           rerequest_state=none
           rerequest_at=''
-          # 30s, not 5s: the budget is 40 polls of two reads each, well inside the 1,000/hour that
+          # 30s, not 5s: the window is seven looks of two reads each, well inside the 1,000/hour that
           # `GITHUB_TOKEN` gets per repository even with every open pull request waiting at once.
           POLL_SECONDS=30
 
@@ -233,6 +255,11 @@ jobs:
             # would be unreadable in the one place it matters, the failure at the end.
             seen=''
             unread=''
+            # Copilot's newest review on ANY commit of this pull request, for the report at the
+            # window's close: the findings that exist when the awaited head has none.
+            latest_id=''
+            latest_commit=''
+            latest_state=''
 
             # The head SHA is read from the API rather than from the payload, and re-read on every
             # poll — a push during the wait must not be answered against the head this run started on.
@@ -262,9 +289,9 @@ jobs:
               # Not `unread`, and not a retry. The two failures are different in kind and only one of
               # them is worth waiting on: a transport error means the answer is unknown and may arrive
               # on the next poll, but this is a SUCCESSFUL read whose answer is that the pull request
-              # has no head. Waiting cannot make a well-formed answer say something else, so twenty
-              # minutes of polling would buy nothing and bury a precise fault under the generic
-              # timeout message twenty minutes later.
+              # has no head. Waiting cannot make a well-formed answer say something else, so a whole
+              # window of polling would buy nothing and bury a precise fault under the generic
+              # message at its close.
               #
               # The first cut of this file failed here immediately — "refusing to guess". Folding it
               # into the retry loop was a regression introduced by the rewrite that added waiting, and
@@ -364,6 +391,12 @@ jobs:
                   lower=$(printf '%s' "$login" | tr '[:upper:]' '[:lower:]')
                   seen="$seen $lower"
                   for candidate in $REVIEWERS; do
+                    # Any commit, any state. The list is oldest first, so the last one kept is the newest.
+                    if [ "$lower" = "$candidate" ]; then
+                      latest_id="$id"
+                      latest_commit="$commit"
+                      latest_state="$state"
+                    fi
                     # A DISMISSED review is an invalidated one — it must not satisfy the await.
                     if [ "$lower" = "$candidate" ] && [ "$commit" = "$first_head" ] && [ "$state" != "DISMISSED" ]; then
                       printf 'found: %s reviewed %s (%s)\n' "$login" "$commit" "$state"
@@ -488,7 +521,7 @@ jobs:
                     refused_seen='yes'
                     printf 'NOT A ROUND — the newest Copilot review on %s says the reviewer was unable to review it.\n' "$first_head"
                     printf 'A review object exists and no judgement happened, so it does not satisfy this check.\n'
-                    printf 'Still waiting for a round on this head, on the same budget.\n'
+                    printf 'Still waiting for a round on this head, in the same window.\n'
                     [ -z "$walk_unread" ] || printf 'NOTE: review %s could not be read, so an OLDER round on this head may exist and was not established here.\n' "$walk_unread"
                   fi
                 fi
@@ -763,13 +796,22 @@ jobs:
               fi
             fi
 
-            # ONE re-request, halfway through the budget — issue #88, and it is measured rather than
-            # guessed. On #86, the scheduled librarian's first real pull request, the auto-request was
-            # made and ACCEPTED (`requested_reviewers` read `["Copilot"]`) and no review came in the
-            # full twenty minutes. An explicit re-request then produced one in about **ninety
-            # seconds**. So waiting alone bought nothing and asking again bought everything, and the
-            # difference is not slowness — maintainer-opened pull requests here draw rounds in
-            # 1m53s–3m47s.
+            # ONE re-request, and since 2026-09-23 only on a RE-RUN, at its first look that finds no
+            # round — issue #88, and it is measured rather than guessed. On #86, the scheduled
+            # librarian's first real pull request, the auto-request was made and ACCEPTED
+            # (`requested_reviewers` read `["Copilot"]`) and no review came in the full twenty minutes.
+            # An explicit re-request then produced one in about **ninety seconds**. So waiting alone
+            # bought nothing and asking again bought everything, and the difference is not slowness —
+            # maintainer-opened pull requests here draw rounds in 1m53s–3m47s.
+            #
+            # It fired halfway through a 20-minute wait, late enough that an ordinary round had long
+            # since landed. No point inside a three-minute window is: at 90 seconds every ordinary
+            # round is still in flight, and a re-request then lands on a reviewer that is merely
+            # working. So a first attempt leaves the ruleset's request alone, and a re-run, a person's
+            # explicit *try again* after a window closed, asks at once, which leaves the ~90s answer
+            # room inside its own window. What a re-request does to a round still in flight is not
+            # measured here, which is why the report at the close says to re-run once the review has
+            # appeared, or when none is coming.
             #
             # The repair goes HERE rather than in `librarian.yml` because the fault is not the
             # librarian's: any App- or bot-authored pull request meets it, and this file is the one
@@ -778,7 +820,7 @@ jobs:
             # like the silent auto-request or like the answered late one. Only the late case is
             # measured, and only the late case is what this does.
             #
-            # Once, not per poll: re-requesting in a loop would be a write amplified 20× against a
+            # Once, not per poll: re-requesting in a loop would repeat a write on every look against a
             # reviewer that may simply be busy. A failed POST is printed and never fatal — the verdict
             # below is still the wait's to render, and a re-request that could not be made is not a
             # finding about the review.
@@ -789,7 +831,7 @@ jobs:
             # this same change removes from the timeout message. `rerequest_at` holds the second the
             # attempt actually happened rather than the second it was scheduled for, so the verdict
             # below has one carrier for that fact instead of two that can disagree.
-            if [ "$rerequest_state" = none ] && [ "$SECONDS" -ge "$REREQUEST_AFTER" ]; then
+            if [ "$rerequest_state" = none ] && [ "${GITHUB_RUN_ATTEMPT:-1}" -gt 1 ]; then
               rerequest_at="$SECONDS"
               rerequest_state=attempted
               if gh api --method POST \
@@ -810,7 +852,14 @@ jobs:
             else
               printf 'waiting (%ss of %ss): no Copilot round for %s yet\n' "$SECONDS" "$WAIT_SECONDS" "$first_head"
             fi
-            sleep "$POLL_SECONDS"
+            # The last nap is cut to the window's edge, so the final look lands AT the close rather
+            # than up to a poll later: the report reads what was available at that moment. Floored at
+            # one second, because a clock that ticked past the edge since the test above would hand
+            # `sleep` a negative number, and under `-e` that ends the step before the report exists.
+            nap=$((WAIT_SECONDS - SECONDS))
+            [ "$nap" -le "$POLL_SECONDS" ] || nap="$POLL_SECONDS"
+            [ "$nap" -ge 1 ] || nap=1
+            sleep "$nap"
           done
 
           # Two timeouts, two different faults, and the check must not claim the one it did not
@@ -866,11 +915,19 @@ jobs:
             done
           fi
 
+          # THE REPORT GOES WHERE THE CHECK IS READ, not only into the log. The time-box ruling's
+          # second half is that a review past the window is reported with whatever findings are
+          # available at that moment, and a log line alone is the notification nobody reads, which
+          # is the incident behind proposal 0006. So the report is composed once, into a file, and
+          # printed twice: to the log, where `::error::` still raises the annotation, and to the job
+          # summary, which is the check's own page. The braces below close after the last line of it.
+          report_file="$RUNNER_TEMP/copilot-window.txt"
+          {
           if [ -n "$unread" ]; then
             printf '::error::could not confirm a Copilot review on #%s after %ss — the API was still unreadable at the last attempt: %s\n' \
               "$PR_NUMBER" "$SECONDS" "$unread"
             printf 'This is not a finding about the review. It is "could not look", held for the whole\n'
-            printf 'budget, which stays red because a gate that opens when it is unwell is not a gate.\n'
+            printf 'window, which stays red because a gate that opens when it is unwell is not a gate.\n'
             printf 'The last head SHA read successfully was %s, which may be stale — do not act on it.\n' "${head:-none}"
           elif [ -n "$refused_seen" ]; then
             printf '::error::Copilot answered on %s to say it was unable to review it, and no round arrived in %ss.\n' \
@@ -885,13 +942,13 @@ jobs:
             printf 'came back empty, three times across about forty minutes, and a draft/ready toggle\n'
             printf 're-ran this workflow without re-requesting. CLOSING AND REOPENING the pull request\n'
             printf 'did: a real round in about 200 seconds.\n'
-            printf 'Try it in the order the evidence supports. The halfway re-request this job makes is\n'
-            printf 'measured to have worked on #86 (2026-07-29, about 90s), so re-run this job first\n'
-            printf 'and close/reopen only if the refusal repeats.\n'
+            printf 'Try it in the order the evidence supports. A re-run re-requests Copilot at its first\n'
+            printf 'look, the re-request measured to have worked on #86 (2026-07-29, about 90s), so\n'
+            printf 're-run this job first and close/reopen only if the refusal repeats.\n'
             [ -z "$walk_unread" ] || printf 'ONE THING THIS DID NOT ESTABLISH: review %s could not be read,\nso an older round on this head may exist. Re-run before acting on the above.\n' "$walk_unread"
           else
-            printf '::error::no Copilot review for the commit this run awaited (%s) after %ss of waiting.\n' \
-              "$first_head" "$SECONDS"
+            printf '::error::no Copilot review on the commit this run awaited (%s) within the %ss window.\n' \
+              "$first_head" "$WAIT_SECONDS"
             printf 'A pull request may not merge until Copilot has delivered a ROUND on the commit it is\n'
             printf 'merging, and until that feedback is resolved. Conversation resolution covers the\n'
             printf 'resolved half; this covers the awaited half.\n\n'
@@ -942,22 +999,26 @@ jobs:
               printf '**the author was a bot** and no auto-request was made for it. Treat that as the\n'
               printf 'lead rather than the finding: check the Copilot ruleset applies to pull requests\n'
               printf 'from this author, then re-run the job.\n'
-              # What the mid-wait re-request established, and only that. `sent` never reaches here —
+              # What the re-run's re-request established, and only that. `sent` never reaches here —
               # it is the one state that makes this a different fault, handled in the branch above.
               # `failed` DOES reach here, so the paragraph above must not say the job never asked: it
               # asked and the call failed, which the sub-message below is the carrier for. Raised by
               # Copilot on #160 — the same defect this whole change is about, committed inside it.
               case "$rerequest_state" in
-                failed)   printf 'The mid-wait re-request at %ss could NOT be sent, so whether asking again would have worked is untested.\n' "$rerequest_at" ;;
-                none)     printf 'The wait ended before the %ss re-request point, so no re-request was attempted.\n' "$REREQUEST_AFTER" ;;
+                failed)   printf 'The re-request at %ss could NOT be sent, so whether asking again would have worked is untested.\n' "$rerequest_at" ;;
+                none)     printf 'This was a first attempt, and only a re-run re-requests Copilot, so none was attempted: request Copilot from the Reviewers menu, or re-run this job.\n' ;;
               esac
             else
-              printf 'REQUESTED AND UNANSWERED — the reviewer holds the request and did not deliver:\n'
+              printf 'REQUESTED AND NOT YET ANSWERED — the reviewer holds the request:\n'
               printf '  %s\n' "$requested"
-              printf 'That is the ruleset-and-login fault. Rounds here land in under four minutes, so a\n'
-              printf 'full budget spent waiting is a fault rather than slowness: check the Copilot\n'
-              printf 'ruleset is still active and that the login above has not been renamed, then re-run\n'
-              printf 'this job — it is not bot-triggered and needs no approval. Measured 2026-07-28.\n'
+              printf 'Rounds here have landed 1m53s–3m47s after a push (measured 2026-07-28), so a request\n'
+              printf 'still held when the %ss window closes is most often a round in flight:\n' "$WAIT_SECONDS"
+              printf 'late, not lost. Once, on #86, it was a request that was never going to be answered.\n'
+              printf 'Re-run this job once the review appears on the pull request and its first look will\n'
+              printf 'find it; the re-run is not bot-triggered and needs no approval. If none appears,\n'
+              printf 're-run anyway: its first look re-requests Copilot. What a re-request does to a round\n'
+              printf 'still in flight is not measured here. If that fails too, check the Copilot ruleset\n'
+              printf 'is still active and that the login above has not been renamed.\n'
             fi
           fi
           printf '\nReview authors seen on this pull request:%s\n' "${seen:- none}"
@@ -991,6 +1052,31 @@ jobs:
             failed)   printf 'A re-request was attempted at %ss and the call FAILED.\n' "$rerequest_at" ;;
             attempted) printf 'A re-request was attempted at %ss with no result recorded.\n' "$rerequest_at" ;;
           esac
+          # WHATEVER FINDINGS WERE AVAILABLE AT THE CLOSE. The awaited head has no round by now, so
+          # what exists is Copilot's word on the pull request as a whole: its newest review, on
+          # whichever commit, whose inline comments stay open as threads until resolved. Not claimed
+          # when the last look failed, since an empty answer from a read that did not happen is not
+          # "Copilot has reviewed nothing".
+          if [ -n "$unread" ]; then
+            printf 'Newest Copilot review on this pull request: COULD NOT READ.\n'
+          elif [ -z "$latest_id" ]; then
+            printf 'Newest Copilot review on this pull request: none, on any commit.\n'
+          else
+            printf 'Newest Copilot review on this pull request: %s on %s (%s), %s/%s/pull/%s#pullrequestreview-%s\n' \
+              "$latest_id" "$latest_commit" "$latest_state" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$PR_NUMBER" "$latest_id"
+          fi
+          } >"$report_file"
+          cat "$report_file"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            {
+              printf '## Copilot review window closed at %ss\n\n' "$SECONDS"
+              printf '````\n'
+              while IFS= read -r line; do
+                printf '%s\n' "${line#::error::}"
+              done <"$report_file"
+              printf '````\n'
+            } >>"$GITHUB_STEP_SUMMARY"
+          fi
           exit 1
 
       # THE VERDICT, CARRIED WHERE THE PLATFORM CAN DISPLAY IT — added 2026-07-29, on the
@@ -1045,7 +1131,7 @@ jobs:
       # with no notes, suppression-plus-dismissal on the first finding round that follows an
       # approval, the self-approval skip on the next librarian pull request, the no-credentials
       # skip on the first fork. The App dismissing its own approval is likewise unmeasured until it
-      # fires — as is the mid-wait re-request above (#88, merged via #96), which no run had yet
+      # fires — as is the re-run re-request above (#88, merged via #96), which no run had yet
       # reached when this shipped — and every refusal prints as a warning AND a summary line, never
       # a log line alone: a warning in a green run's log as the entire notification mechanism is
       # the incident behind proposal 0006.

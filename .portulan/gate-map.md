@@ -1092,9 +1092,13 @@ never coming*. Since Copilot cannot have reviewed a commit that did not exist wh
 push produced a red check by construction**, and rounds on this repository land 1m53s–3m47s later (#49,
 #54, #57). A red that is expected on every push is how a gate becomes background weather. The check now
 waits inside its own run: the job stays *in progress* while the round is outstanding, which blocks a merge
-exactly as hard and says the true thing. Red is reserved for the round never arriving — a 20-minute budget,
-five times the slowest round measured — and for an API that stays unreadable, which is still `could not
-look`, never `nothing wrong`.
+exactly as hard and says the true thing. Red is reserved for no round arriving within the window — **three
+minutes since 2026-09-23, the maintainer's time-box**, which replaced a 20-minute budget set at five times
+the slowest round measured — and for an API that stays unreadable, which is still `could not look`, never
+`nothing wrong`. At the close the check reports whatever had landed, in its job summary as well as its log:
+what is on the awaited head, whether Copilot still holds the request, and Copilot's newest review on the
+pull request. Rounds here have landed up to 3m47s after a push, so a round slower than the window arrives
+after the red, which then reads *late*, not *lost*, and a re-run finds it.
 
 The same amendment closed a red that could never clear. The Copilot ruleset carries
 `review_draft_pull_requests: false`, so on a **draft** no round is owed and none was ever coming; the check
@@ -1112,7 +1116,10 @@ request**: the `pull_request_review` re-trigger fired when the review landed, bu
 the bot, so GitHub held the run as `action_required` awaiting a maintainer's *Approve and run*. Waiting
 inside the `pull_request` run — which is not bot-triggered — removed that trigger and that click. What is
 left is the tail: if the budget expires before the round lands, **nothing re-triggers the check** and a
-maintainer re-runs the job. The same click as before, now only in the case that is already a fault.
+maintainer re-runs the job. The same click as before, and since the three-minute window no longer only in
+the case that is already a fault: a round slower than the window needs it too. A re-run re-requests
+Copilot at its first look when the head has no round, which is where the one re-request moved from the
+middle of the old 20-minute wait.
 
 **The guarantee is bounded; the process on top of it is now bounded too — 2026-07-28.** Answering
 Copilot was made mandatory and unbounded on the same day, and the unbounded half did not survive
