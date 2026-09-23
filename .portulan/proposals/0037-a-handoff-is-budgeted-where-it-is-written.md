@@ -85,25 +85,29 @@ and one sentence of `loop.md` narrowed (rule 4). No kernel line: 0036 already pu
    The cutoff is set by the change that declares the cap and moves only in one that tightens the cap or lowers the
    ratio, each time to that change's date or the newest handoff's date, whichever is later: a merged handoff cannot be
    compressed to meet a bound that tightened after it merged, and a filename date is not a merge date, so the later
-   date exempts every handoff already in the tree. No handoff may be dated more than a day after the UTC date a recipe
-   checks it on, that day being what time zones need, so the newest handoff's date never runs ahead of the tree. A date
-   cannot tell a handoff merged in the morning from one written that evening, so the cap binds from the day after the
-   cutoff and the cutoff day's own handoffs stay unbound, the setting change's among them: that one day is the rule's
-   known gap, which the Session log's entry budget has too, because binding it would turn a merged one red with no
-   legal repair. A merged handoff keeps its name as it keeps its text, save where the index refuses its date; a rename
-   that dates one past the cutoff is bound in the change that makes it, whose repair is to undo the rename.
+   date exempts every handoff already in the tree, which is meant for the merged ones: rule 3 keeps an open one to the
+   cap it was written under. No handoff may be dated more than a day after the UTC date a recipe checks it on, that day
+   being what time zones need, so the newest handoff's date never runs ahead of the tree. A date cannot tell a handoff
+   merged in the morning from one written that evening, so the cap binds from the day after the cutoff and the cutoff
+   day's own handoffs stay unbound, the setting change's among them: that one day is the rule's known gap, which the
+   Session log's entry budget has too, because binding it would turn a merged one red with no legal repair. A merged
+   handoff keeps its name as it keeps its text, save where the index refuses its date; a rename that dates one past the
+   cutoff is bound in the change that makes it, whose repair is to undo the rename.
 3. **A breach is repaired by compression, or by moving a fact to the record that owns it**, never by splitting (two
    dated handoffs against one session red the correspondence), never by retiring, never by cutting a decision's why,
    and never by a raise or a later cutoff in the change that breached it. Nor does the cutoff ever move earlier, nor a
    handoff carry a date earlier than the day it is written: an earlier cutoff binds merged handoffs that compression
    may not touch, and an earlier date lets a handoff that can still be compressed escape the cap. A manifest edit that
    moves the cutoff back, or a handoff dated back to fall on or before it, is the same class of hand edit as that
-   raise, a rule no checker establishes because the truth lives in history, and its repair is undoing the edit. What a
-   handoff carries is the template's: the state, each decision with its why, the open questions, the next action, and
-   what is left unsafe. What landed is the change's own record (the diff, the commit, and here the Session log), a
-   figure is the record's that measured it, a durable rule is memory's or the doctrine's, and the handoff links them
-   rather than restating them. A dated correction counts toward a bound handoff's cap; one that would breach it is
-   written in the correcting session's own handoff, which names the handoff it corrects.
+   raise, a rule no checker establishes because the truth lives in history, and its repair is undoing the edit. A
+   cutoff move exempts what has merged, not what is open, for the same reason and with no checker either: the change
+   that moves it carries no handoff over the cap it replaces, and an open change whose handoff breached that cap before
+   the move still repairs it by compression. What a handoff carries is the template's: the state, each decision with
+   its why, the open questions, the next action, and what is left unsafe. What landed is the change's own record (the
+   diff, the commit, and here the Session log), a figure is the record's that measured it, a durable rule is memory's
+   or the doctrine's, and the handoff links them rather than restating them. A dated correction counts toward a bound
+   handoff's cap; one that would breach it is written in the correcting session's own handoff, which names the handoff
+   it corrects.
 4. **The session-end gate stays blind to length; the cap is a verify rail.** `loop.md`'s *"a gate on this checks that
    one exists and is dated — never its structure or its length"* is narrowed to the session-end gate, and says a
    workspace may cap a handoff from above in a verify recipe. There is still no floor: short is fine, absent is not.
@@ -121,16 +125,19 @@ and one sentence of `loop.md` narrowed (rule 4). No kernel line: 0036 already pu
 
 ## Enforcement — a rail and a window by declaration, a report by default
 
-- **The cap (a rail).** The `index` recipe checks it in `cli/index.mjs`, beside memory's per-record cap: a bound
-  handoff over its cap is red, and the finding names the handoff, its tokens at the declared ratio, the cap, the
-  overage and the repair menu, for every handoff over and not only the first. It fires in the change that writes the
-  handoff, before merge, while compression is still a legal repair, or in the one that renames it past the cutoff. The
-  schema requires the cutoff with the cap; `doctor` refuses either budget with no declared ratio to count it by, which
-  the schema's subset cannot state across two objects, and any figure that is not a positive integer.
-- **Dates (a rail in every workspace).** The `index` recipe already refuses a handoff whose filename leads with no
-  valid date and names the repair, renaming the file. It also refuses one dated more than a day after the UTC date it
-  runs on, with the same repair, whether or not a cap is declared, so the newest handoff's date never runs ahead of the
-  tree and no filename carries the cutoff forward.
+- **The cap (a rail).** The `index` recipe checks it in `cli/index.mjs`, beside memory's per-record cap, reading the
+  series wherever the manifest names a handoffs slot, whether or not it declares an index; today's handoff judge
+  returns before it reads the series when no index path is declared, so the build moves that read ahead of the return:
+  a bound handoff over its cap is red, and the finding names the handoff, its tokens at the declared ratio, the cap,
+  the overage and the repair menu, for every handoff over and not only the first. It fires in the change that writes
+  the handoff, before merge, while compression is still a legal repair, or in the one that renames it past the cutoff.
+  The schema requires the cutoff with the cap; `doctor` refuses either budget with no declared ratio to count it by,
+  which the schema's subset cannot state across two objects, and any figure that is not a positive integer.
+- **Dates (a rail in every workspace with a series).** Where an index is declared, the `index` recipe already refuses a
+  handoff whose filename leads with no valid date and names the repair, renaming the file. It also refuses one dated
+  more than a day after the UTC date it runs on, with the same repair, and both refusals read the series as the cap
+  does, wherever a handoffs slot is named, with or without an index or a cap, so the newest handoff's date never runs
+  ahead of the tree and no filename carries the cutoff forward.
 - **The window (generated).** `cli/index.mjs` writes it and the `index` recipe byte-compares it, as it does today. Its
   header states the declared budget in place of *"No budget"*, and its closing line the count left out. The generator
   refuses a budget too small for those two lines and names the least one that holds them; nothing else turns it red
@@ -220,7 +227,8 @@ After 0036's measurement module, which this reuses:
 
 1. `context.md`'s part, `loop.md`'s narrowed sentence, and the template.
 2. The keys and the MINOR, with `doctor`'s refusals.
-3. The cap and the window in `cli/index.mjs`, each shown red and then green on a fixture series.
+3. The cap, the date refusal and the window in `cli/index.mjs`, each shown red and then green on a fixture series, the
+   cap and the date refusal on one that declares no index.
 4. The report in `context.mjs`, and in `doctor` once 0036's fourth change has landed.
 5. `init`'s offer.
 6. This repository's declaration, once its ratio is declared from the exact mode: the cap, the window and the cutoff,

@@ -25,14 +25,13 @@ row 12, whose text is his third question.
 **Review.** No fresh-context checkpoint ran, by the maintainer's instruction of 2026-09-23 12:38. The coordinator
 session reviewed the diff before the commit and reproduced its figures; two corrections are folded (37 headings repeat
 their date, not 19, and the cutoff now says why it is a manifest date when the specification declines one for the
-ratio), with one sentence saying the window saves on-demand reads of the index, not the boot. Copilot's four rounds
-found six things. Fixed: the window counted its lines only, so it now fits the whole index (52 handoffs here, not 54);
-a filename date is not a merge date, so the cutoff moves to the newest handoff's date where that is later, a rename
-past it is bound in the change that makes it, and a handoff dated more than a day ahead is red; and the Session log's
-figures now name `457b0b6`. Named rather than closed: handoffs dated on the cutoff's day stay unbound, the gap the
-Session log's entry budget has too. The coordinator session's checks after those pushes added that the date rail holds
-in every workspace and that the cutoff never moves earlier; Copilot's fourth round added backdating, which joins that
-rule: no handoff is dated earlier than the day it is written.
+ratio), with one sentence saying the window saves on-demand reads of the index, not the boot. Copilot's five rounds
+found eight things. Fixed: the window fits the whole index (52 handoffs here, not 54); the cutoff moves to the newest
+handoff's date where that is later, a rename past it is bound, and a date more than a day ahead is refused; the rails
+read the series with no index declared; the Session log's figures name `457b0b6`. Stated as rules no checker
+establishes: the cutoff day's own handoffs stay unbound, the gap the Session log's entry budget has too; no handoff is
+dated earlier than it is written; a cutoff move exempts what has merged, not what is open. The coordinator session's
+checks after those pushes added that the date rail holds in every workspace and that the cutoff never moves earlier.
 
 **Next action.** His rulings on the three questions and his acceptance, recorded in a separate change as 0036's and
 0038's were. The build follows 0036's measurement module; this repository declares its cap once its ratio is declared
