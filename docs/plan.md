@@ -3048,3 +3048,14 @@ _The seam applies here too: no client-identifying references._
   coordinator session reviewed the diff before the commit; his review is on the PR · 28 green, `tests` as
   non-root · Seam scan clean against the private terms this project names; the term-list scan is his ·
   [handoff](../.portulan/handoffs/2026-09-23-m-three-boot-files-keep-their-rules-and-move-their-reasons.md)
+
+- 2026-09-23 · Off the milestone row · **The request job reads with its own token and asks with his.** The
+  first run of #436's job, on #443 at 18:21:40 UTC, was refused its GraphQL read, and a re-run on #441 too:
+  most likely the team `CODEOWNERS` requests, which a token without the organisation's Members permission may
+  not see; the log kept only the message. His token now makes only the REST request #435 proved; the job's
+  own token reads the pull request over REST and the review requests over GraphQL, tolerating a hidden
+  reviewer, beside which a missing Copilot warns rather than reds; any other refusal is red at once. Tested
+  against a stub `gh` in twenty-four cases. · Checkpoints skipped by his instruction of 2026-09-23 12:38 (no
+  fresh-context runs unless he asks); the coordinator session reviewed the diff before the commit; his review
+  is on the PR · 28 green, `tests` as non-root · Seam scan clean against the private terms this project
+  names; the term-list scan is his · [handoff](../.portulan/handoffs/2026-09-23-q-the-request-job-reads-with-its-own-token-and-asks-with-his.md)

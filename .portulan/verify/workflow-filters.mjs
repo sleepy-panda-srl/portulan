@@ -171,7 +171,7 @@ const CASES = [
     // ---- copilot-review.yml: the pull request read ------------------------------------------
     {
         id: "pr-normal",
-        anchor: ".head.sha",
+        anchor: "(.draft|tostring), .user.login",
         why: "the ordinary read — SHA, separator, draft flag, author",
         input: '{"head":{"sha":"6a05f59","ref":"topic"},"draft":false,"number":54,'
             + '"user":{"login":"marius-cetanas"}}',
@@ -180,7 +180,7 @@ const CASES = [
     },
     {
         id: "pr-draft",
-        anchor: ".head.sha",
+        anchor: "(.draft|tostring), .user.login",
         why: "a draft is `true` in the second field, which is the whole NOT APPLICABLE branch",
         input: '{"head":{"sha":"6a05f59"},"draft":true,"user":{"login":"marius-cetanas"}}',
         stdout: "6a05f59|true|marius-cetanas\n",
@@ -188,7 +188,7 @@ const CASES = [
     },
     {
         id: "pr-app-author",
-        anchor: ".head.sha",
+        anchor: "(.draft|tostring), .user.login",
         why: "the exact third field the verdict step's self-approval skip compares against — the "
             + "platform refuses an App approving its own pull request, so this string is the whole "
             + "reason the field exists",
@@ -198,7 +198,7 @@ const CASES = [
     },
     {
         id: "pr-ghost-author",
-        anchor: ".head.sha",
+        anchor: "(.draft|tostring), .user.login",
         why: "GitHub returns `user: null` for a deleted account. The author field goes EMPTY — not "
             + "an error — and an empty login can never equal the App's, so the verdict proceeds "
             + "rather than skipping or crashing",
@@ -208,7 +208,7 @@ const CASES = [
     },
     {
         id: "pr-null-head-sha",
-        anchor: ".head.sha",
+        anchor: "(.draft|tostring), .user.login",
         why: "a null SHA leaves the first field EMPTY — not the string `null`, not an error. This is "
             + "the one the workflow's no-head-SHA guard rests on, and the shape the stubbed harness "
             + "asserts without executing",
@@ -218,7 +218,7 @@ const CASES = [
     },
     {
         id: "pr-null-head-object",
-        anchor: ".head.sha",
+        anchor: "(.draft|tostring), .user.login",
         why: "and a null `head` object reaches the same guard by the same route — `.head.sha` on "
             + "null is null, not an error, so this does not fail the read either",
         input: '{"head":null,"draft":false}',
@@ -457,97 +457,168 @@ const CASES = [
     },
     // ---- copilot-request.yml: the pull request, read before asking -----------------------------
     //
-    // One GraphQL read per look, printed as two lines the shell reads in order: node id, head, state
-    // and draft flag; and the logins holding a review request. GraphQL's `Bot.login` carries no
-    // `[bot]` suffix, which is why the shell's login set has both.
+    // Over REST, with the job's own token: head, state and draft flag on one line, which the shell
+    // splits on `|`. REST spells the state in lower case.
     {
-        id: "request-state-pending",
-        anchor: "(.isDraft | tostring)",
-        why: "Copilot holding a request, next to a Team reviewer that matches neither inline fragment "
-            + "and arrives as `{}`: its null login is dropped rather than printed. The shell waits on "
-            + "the second line",
-        input: '{"data":{"repository":{"pullRequest":{"id":"PR_1","headRefOid":"h2","state":"OPEN",'
-            + '"isDraft":false,"reviewRequests":{"nodes":[{"requestedReviewer":{"login":'
-            + '"copilot-pull-request-reviewer"}},{"requestedReviewer":{}}]}}}}}',
-        stdout: "PR_1|h2|OPEN|false\ncopilot-pull-request-reviewer\n",
+        id: "request-pr-open",
+        anchor: ".state, (.draft | tostring)",
+        why: "an open pull request that is not a draft: the head the shell compares with the event's, "
+            + "the state it requires to be `open`, and the draft flag as a word",
+        input: '{"head":{"sha":"h2"},"state":"open","draft":false}',
+        stdout: "h2|open|false\n",
         status: 0,
     },
     {
-        id: "request-state-no-pull-request",
-        anchor: "(.isDraft | tostring)",
-        why: "a null pull request prints an empty id and head, because `join` renders null as the "
-            + "empty string, and an empty line. The shell reads the empty head as unreadable and "
-            + "looks again, which is the answer it gives a failed read",
-        input: '{"data":{"repository":{"pullRequest":null}}}',
-        stdout: "|||null\n\n",
+        id: "request-pr-draft",
+        anchor: ".state, (.draft | tostring)",
+        why: "a draft prints `true`, and the job asks nothing for it",
+        input: '{"head":{"sha":"h2"},"state":"open","draft":true}',
+        stdout: "h2|open|true\n",
         status: 0,
     },
     {
-        id: "request-state-not-an-object",
-        anchor: "(.isDraft | tostring)",
+        id: "request-pr-no-head",
+        anchor: ".state, (.draft | tostring)",
+        why: "an answer without the pull request's fields prints an empty head and state, because "
+            + "`join` renders null as the empty string, and the word `null`. The shell reads the "
+            + "empty head as unreadable and looks again, which is the answer it gives a failed read",
+        input: '{"message":"Not Found","status":"404"}',
+        stdout: "||null\n",
+        status: 0,
+    },
+    {
+        id: "request-pr-not-an-object",
+        anchor: ".state, (.draft | tostring)",
         why: "an answer that is JSON but not an object is an error, exit 5, which `gh` passes on as "
             + "a failed read: the same unreadable branch",
         input: '"a string"',
         stdout: "",
         status: 5,
     },
-    // ---- copilot-request.yml: the Bot's node id -------------------------------------------------
+    // ---- copilot-request.yml: the review requests, judged -------------------------------------
+    //
+    // Over GraphQL, with the job's own token. `gh` exits non-zero on any GraphQL error and then
+    // prints the whole answer unfiltered, so the job keeps the answer in a file and this program
+    // judges it: `ok`, then `hidden` or `shown`, then the Bots' logins; `refused`; or `unread`.
+    // GraphQL's `Bot.login` carries no `[bot]` suffix, which is why the shell's login set has both.
     {
-        id: "request-bot-id",
-        anchor: ".node_id // empty",
-        why: "the node id the mutation's `botIds` takes, looked up from the REST login at run time "
-            + "rather than written into the workflow",
-        input: '{"login":"copilot-pull-request-reviewer[bot]","node_id":"BOT_kgDOCnlnWA"}',
-        stdout: "BOT_kgDOCnlnWA\n",
+        id: "request-verdict-team-hidden",
+        anchor: 'then "hidden" else "shown"',
+        why: "the team `CODEOWNERS` requests is a reviewer the job may not see: GitHub answers the "
+            + "rest, nulls that node and adds a FORBIDDEN error whose path ends in "
+            + "`requestedReviewer`. That error is tolerated, the answer is marked `hidden`, the null "
+            + "is dropped, and Copilot's login is printed. This is how #443's refusal is read; that "
+            + "run's log kept only the message, so the shape is inferred",
+        input: '{"data":{"repository":{"pullRequest":{"reviewRequests":{"nodes":[{"requestedReviewer":'
+            + 'null},{"requestedReviewer":{"__typename":"Bot","login":"copilot-pull-request-reviewer"}}]}}}},'
+            + '"errors":[{"type":"FORBIDDEN","path":["repository","pullRequest","reviewRequests","nodes",0,'
+            + '"requestedReviewer"],"message":"Resource not accessible by integration"}]}',
+        stdout: "ok hidden copilot-pull-request-reviewer\n",
         status: 0,
     },
     {
-        id: "request-bot-id-null",
-        anchor: ".node_id // empty",
-        why: "a null node id prints nothing rather than the word `null`, so the shell's empty test "
-            + "reds the lookup instead of sending `null` to the mutation as an id",
-        input: '{"login":"copilot-pull-request-reviewer[bot]","node_id":null}',
-        stdout: "",
-        status: 0,
-    },
-    // ---- copilot-request.yml: the review requests in the mutation's own answer ------------------
-    {
-        id: "request-answer-lists-copilot",
-        anchor: ".data.requestReviews",
-        why: "the review requests after the mutation, on one line, for the shell loop that looks for "
-            + "Copilot among them: the proof the request was recorded. GraphQL names it without the "
-            + "`[bot]` suffix",
-        input: '{"data":{"requestReviews":{"pullRequest":{"reviewRequests":{"nodes":[{"requestedReviewer":'
-            + '{"login":"copilot-pull-request-reviewer"}},{"requestedReviewer":{"login":"a-person"}}]}}}}}',
-        stdout: "copilot-pull-request-reviewer a-person\n",
+        id: "request-verdict-all-shown",
+        anchor: 'then "hidden" else "shown"',
+        why: "with no hidden reviewer the answer is `shown`, which is what lets a request the reads "
+            + "after it do not find go red: every reviewer was seen, and none is Copilot",
+        input: '{"data":{"repository":{"pullRequest":{"reviewRequests":{"nodes":[{"requestedReviewer":'
+            + '{"__typename":"Bot","login":"copilot-pull-request-reviewer"}}]}}}}}',
+        stdout: "ok shown copilot-pull-request-reviewer\n",
         status: 0,
     },
     {
-        id: "request-answer-not-recorded",
-        anchor: ".data.requestReviews",
-        why: "an answer whose review requests are empty is a request GitHub did not record: one empty "
-            + "line and exit 0, which the loop reads as Copilot absent, so the job goes red and says so",
-        input: '{"data":{"requestReviews":{"pullRequest":{"reviewRequests":{"nodes":[]}}}}}',
-        stdout: "\n",
+        id: "request-verdict-null-reviewer-hidden",
+        anchor: 'then "hidden" else "shown"',
+        why: "a reviewer GitHub answers as null with no error beside it is hidden too, because it may "
+            + "be Copilot's request as much as a refused one may",
+        input: '{"data":{"repository":{"pullRequest":{"reviewRequests":{"nodes":[{"requestedReviewer":'
+            + 'null}]}}}}}',
+        stdout: "ok hidden \n",
         status: 0,
     },
     {
-        id: "request-answer-null",
-        anchor: ".data.requestReviews",
-        why: "a null node in the list is dropped by `// empty` rather than printed as `null`, so the "
-            + "line is empty and the job goes red on it as on an empty list",
-        input: '{"data":{"requestReviews":{"pullRequest":{"reviewRequests":{"nodes":[null]}}}}}',
-        stdout: "\n",
+        id: "request-verdict-nothing-on-order",
+        anchor: 'then "hidden" else "shown"',
+        why: "a person holding a request prints no login, because only a Bot's is selected, and no "
+            + "request at all prints none either: `ok shown` and nothing after it, which the shell "
+            + "reads as nothing on order, so it asks",
+        input: '{"data":{"repository":{"pullRequest":{"reviewRequests":{"nodes":[{"requestedReviewer":'
+            + '{"__typename":"User"}}]}}}}}',
+        stdout: "ok shown \n",
         status: 0,
     },
     {
-        id: "request-answer-not-an-object",
-        anchor: ".data.requestReviews",
-        why: "an answer that is JSON but not an object is an error, exit 5, which is the workflow's "
-            + "`could not be read` branch: red, with the answer printed in full",
+        id: "request-verdict-refused",
+        anchor: 'then "hidden" else "shown"',
+        why: "a FORBIDDEN error anywhere but on a reviewer is the job token's own refusal, and "
+            + "`refused` sends the job red at once, with the answer printed",
+        input: '{"data":{"repository":{"pullRequest":null}},"errors":[{"type":"FORBIDDEN","path":'
+            + '["repository","pullRequest"],"message":"Resource not accessible by integration"}]}',
+        stdout: "refused\n",
+        status: 0,
+    },
+    {
+        id: "request-verdict-refused-without-path",
+        anchor: 'then "hidden" else "shown"',
+        why: "and a FORBIDDEN error with no path at all is the same refusal, not a hidden reviewer",
+        input: '{"data":null,"errors":[{"type":"FORBIDDEN","message":"Resource not accessible by integration"}]}',
+        stdout: "refused\n",
+        status: 0,
+    },
+    {
+        id: "request-verdict-other-error",
+        anchor: 'then "hidden" else "shown"',
+        why: "any other error, such as GitHub's answer to a query that timed out, is `unread`, and "
+            + "the next look repeats the read",
+        input: '{"data":null,"errors":[{"message":"Something went wrong while executing your query. '
+            + 'This may be the result of a timeout, or it could be a GitHub bug."}]}',
+        stdout: "unread\n",
+        status: 0,
+    },
+    {
+        id: "request-verdict-no-pull-request",
+        anchor: 'then "hidden" else "shown"',
+        why: "a pull request GitHub could not resolve is `unread` rather than an empty list, so it "
+            + "is never taken for nothing on order",
+        input: '{"data":{"repository":{"pullRequest":null}},"errors":[{"type":"NOT_FOUND","path":'
+            + '["repository","pullRequest"],"message":"Could not resolve to a PullRequest with the number of 7."}]}',
+        stdout: "unread\n",
+        status: 0,
+    },
+    {
+        id: "request-verdict-no-list",
+        anchor: 'then "hidden" else "shown"',
+        why: "an answer that carries the pull request but no list of review requests is `unread`, so "
+            + "it is never taken for every reviewer shown and none of them Copilot",
+        input: '{"data":{"repository":{"pullRequest":{"reviewRequests":null}}}}',
+        stdout: "unread\n",
+        status: 0,
+    },
+    {
+        id: "request-verdict-not-graphql",
+        anchor: 'then "hidden" else "shown"',
+        why: "an object with neither `data` nor `errors`, as an HTTP error body is, is `unread`",
+        input: '{"message":"Server Error"}',
+        stdout: "unread\n",
+        status: 0,
+    },
+    {
+        id: "request-verdict-not-an-object",
+        anchor: 'then "hidden" else "shown"',
+        why: "an answer that is JSON but not an object is `unread` too: the type test comes first "
+            + "and `or` stops there, so `has` never sees a string",
         input: '"a string"',
+        stdout: "unread\n",
+        status: 0,
+    },
+    {
+        id: "request-verdict-empty",
+        anchor: 'then "hidden" else "shown"',
+        why: "an empty answer, which a failed connection leaves in the file, prints nothing and "
+            + "exits 0; the shell counts anything but `ok` and `refused` as unread",
+        input: "",
         stdout: "",
-        status: 5,
+        status: 0,
     },
 ];
 
