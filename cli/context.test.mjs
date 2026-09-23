@@ -614,6 +614,22 @@ describe("--brief: the line `doctor` reports and the boot closes with", () => {
         assert.ok(!unread.out.includes(looped), "in the repository's own paths, as the rest of the line is");
     });
 
+    test("an error gives its paths from the repository or the plugin, never from where either sits", () => {
+        const lost = repository({ manifest: { ...context(100), tree: "loop/" } });
+        fs.symlinkSync("loop", path.join(lost, ".portulan/loop"));
+        const unread = brief(lost);
+        assert.equal(unread.code, 2);
+        assert.match(unread.out, /cannot be judged — the repository could not be read \(ELOOP\)$/);
+        assert.ok(!unread.out.includes(lost), unread.out);
+
+        const bundleRoot = bundle();
+        fs.mkdirSync(path.join(bundleRoot, "plugin/skills/looped"));
+        fs.symlinkSync("SKILL.md", path.join(bundleRoot, "plugin/skills/looped/SKILL.md"));
+        const { out } = brief(repository(), [], { bundleRoot });
+        assert.match(out, /; the Portulan plugin's descriptions are not measured — plugin\/skills\/looped\/SKILL\.md could not be read \(ELOOP\); /);
+        assert.ok(!out.includes(bundleRoot), out);
+    });
+
     test("a file's name cannot break the line: a control character in it is escaped, never printed", () => {
         const escaped = (code) => "\\" + "u" + code.toString(16).padStart(4, "0");
         const name = `.claude/rules/a${String.fromCharCode(10)}b${String.fromCharCode(27)}[2J.md`;

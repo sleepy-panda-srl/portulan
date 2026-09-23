@@ -46,27 +46,30 @@ note beside what checks it now. The comment on `doctor`'s budget check said noth
 and it classifies as `imported`, which the `payload` rail would otherwise have failed as a stale entry; so
 [`cli/README.md`](../../cli/README.md) counts fourteen modules reachable from nothing, not fifteen.
 
-**How it was checked.** Eleven new cases in [`cli/context.test.mjs`](../../cli/context.test.mjs): the
+**How it was checked.** Twelve new cases in [`cli/context.test.mjs`](../../cli/context.test.mjs): the
 largest files in order and what each is, what sits on-path and what loads uncounted, a line that does not
 move with the directory it runs from, the full report judging the same budget in the same words, exit 2
 only where a declared budget cannot be judged, a malformed key, a pointer, a slot naming nothing, a
-plugin it cannot read, a file name with a control character, and `--rail`, `--repo` or a second `--brief`
-refused. Six in [`cli/doctor.test.mjs`](../../cli/doctor.test.mjs), among them row 12's first
-demonstration in miniature (a declared budget forced over is red, and the same words moved into a rule
-`paths:` scopes return it green with nothing raised) and `doctor`'s finding equal to the boot's line on
-one fixture.
+plugin it cannot read, a file name with a control character, an error's paths given from the repository
+or the plugin, and `--rail`, `--repo` or a second `--brief` refused. Six in
+[`cli/doctor.test.mjs`](../../cli/doctor.test.mjs), among them row 12's first demonstration in miniature
+(a declared budget forced over is red, and the same words moved into a rule `paths:` scopes return it
+green with nothing raised) and `doctor`'s finding equal to the boot's line on one fixture.
 
-**Copilot's two rounds, on b544a90 and 7ab7022.** Both threads were right. A count of none left its
-clause out, so a line with no path-scoped rule and no import out of the repository read the same as one
-that never counted them: both are said at zero now, which puts the line here at 582 bytes, and the
-empty-tier case pins both zeros and both plurals. *What is machinery today* said `doctor` fails only over
-a declared budget; it now names the other failure, a declared budget it cannot judge. Of what the
-summaries named besides, one held: a measurement error printed absolute paths, and a file's name could
-carry a control character into the line, so errors now give the repository's own paths and control
-characters are escaped, which keeps the line one line. The rest is as designed: a manifest that is not an
-object exits 2, a malformed key is a verdict only where it declares a budget, the line measures the tree
-whatever `kind` says, a pointer excepted, and leaves a defective kind to `doctor`, and a boot with no
-workspace goes from step 2 to step 4 without step 3's reads, which the line runs with.
+**Copilot's three rounds, on b544a90, 7ab7022 and d861b6c.** The first two threads were right. A count of
+none left its clause out, so a line with no path-scoped rule and no import out of the repository read the
+same as one that never counted them: both are said at zero now, which puts the line here at 582 bytes,
+and the empty-tier case pins both zeros and both plurals. *What is machinery today* said `doctor` fails
+only over a declared budget; it now names the other failure, a declared budget it cannot judge. Of what
+the summaries named besides, one held: a measurement error printed absolute paths, and a file's name
+could carry a control character into the line, so control characters are escaped, which keeps the line
+one line. The third round found the first fix for paths partial, since an error on the tree itself or on
+the plugin's files still gave them absolute, so every path in the line is now given from the repository
+or the plugin, the tree taken as declared before it is checked, and a case pins both. The rest is as
+designed: a manifest that is not an object exits 2, a malformed key is a verdict only where it declares a
+budget, the line measures the tree whatever `kind` says, a pointer excepted, and leaves a defective kind
+to `doctor`, and a boot with no workspace goes from step 2 to step 4 without step 3's reads, which the
+line runs with.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks).
 The coordinator session reviewed the diff before the commit; his review is on the pull request. The

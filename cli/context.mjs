@@ -722,8 +722,9 @@ export function measure(workspaceDir, { bundleRoot = BUNDLE_ROOT, repo = null } 
 
 /**
  * The always tier in one line: its size, its largest files and what each is, what sits on-path beside
- * it, and the verdict against a declared budget. Paths are the repository's own, so the line does not
- * move with the directory it was run from.
+ * it, and the verdict against a declared budget. Paths are the repository's own and the plugin's, an
+ * error's included, so the line moves neither with the directory it was run from nor with where either
+ * sits.
  *
  * `over` and `unjudged` are verdicts: a budget exceeded, and a budget declared that could not be judged.
  * `unmeasured` is a report, said where no budget waits on the figure.
@@ -733,10 +734,15 @@ export function measure(workspaceDir, { bundleRoot = BUNDLE_ROOT, repo = null } 
 export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } = {}) {
     // Read raw, so a budget whose key is malformed still counts as one somebody meant to declare.
     const budgeted = manifest.context?.always !== undefined;
+    // The tree as declared, before it is checked, since checking it is one of the things that can fail
+    // on it. Raised by Copilot on #446.
+    const roots = [
+        [typeof manifest.tree === "string" ? path.resolve(workspaceDir, manifest.tree) : null, "the repository"],
+        [path.resolve(bundleRoot), "the plugin"],
+    ];
+    const said = (verdict, text) => ({ verdict, line: printable(relativeTo(`${MEASURED_HOST}: ${text}`, roots)) });
     const notMeasured = (why) =>
-        budgeted
-            ? { verdict: "unjudged", line: printable(`${MEASURED_HOST}: the declared budget cannot be judged — ${why}`) }
-            : { verdict: "unmeasured", line: printable(`${MEASURED_HOST}: the always tier is not measured — ${why}`) };
+        budgeted ? said("unjudged", `the declared budget cannot be judged — ${why}`) : said("unmeasured", `the always tier is not measured — ${why}`);
     let declared;
     let root;
     let always;
@@ -748,8 +754,7 @@ export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } 
         always = alwaysTier(root);
     } catch (error) {
         if (!(error instanceof ContextError)) throw error;
-        // In the repository's own paths, as the rest of the line is. Raised by Copilot on #446.
-        return notMeasured(root ? error.message.split(`${root}${path.sep}`).join("") : error.message);
+        return notMeasured(error.message);
     }
     // The plugin's descriptions are an aside, not the workspace's: a defect in the bundle is said and
     // never withholds the repository's figure.
@@ -797,7 +802,21 @@ export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } 
             : `the Portulan plugin's descriptions are not measured — ${plugin.unavailable}`,
     );
     parts.push(judged.text);
-    return { verdict: judged.verdict, line: printable(`${MEASURED_HOST}: ${parts.join("; ")}`) };
+    return said(judged.verdict, parts.join("; "));
+}
+
+/**
+ * `text` with each path under one of `roots` given from that root, and the root alone by its name. The
+ * longest root goes first, so a root inside another gives its own paths; a filesystem root is none, since
+ * every path is under it. Raised by Copilot on #446.
+ */
+function relativeTo(text, roots) {
+    const usable = roots.filter(([root]) => root !== null && path.dirname(root) !== root).sort((a, b) => b[0].length - a[0].length);
+    for (const [root, name] of usable) {
+        text = text.split(`${root}${path.sep}`).join("").split(`${root} `).join(`${name} `);
+        if (text.endsWith(root)) text = `${text.slice(0, -root.length)}${name}`;
+    }
+    return text;
 }
 
 /**
