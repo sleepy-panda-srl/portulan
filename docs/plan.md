@@ -3069,3 +3069,14 @@ _The seam applies here too: no client-identifying references._
   commit; his review is on the PR · 28 green, `tests` as non-root · Seam scan clean against the private terms
   this project names; the term-list scan is his ·
   [handoff](../.portulan/handoffs/2026-09-23-r-what-every-context-loads-is-reported-and-closes-the-boot.md)
+
+- 2026-09-23 · M12 (Context economy) — **filed, not built** · **A handoff is proposed for a budget where it is
+  written, and its index for a window.** [`0037`](../.portulan/proposals/0037-a-handoff-is-budgeted-where-it-is-written.md),
+  the number 0036's fourth ruling reserved: a cap on each handoff in tokens at the declared ratio, binding only
+  handoffs dated after a cutoff so it never reaches a merged one; the series stays unbudgeted; the index lists the
+  newest handoffs within a token budget; a report by default. At `457b0b6` the series was 187 handoffs and 1,759,473
+  bytes, the largest 41,573, and the index 29,108. The rule and three questions are his on the PR. · Checkpoints
+  skipped by his instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator session
+  reviewed the diff before the commit; his review is on the PR · 28 green, `tests` as non-root · Seam scan clean
+  against the private terms this project names; the term-list scan is his ·
+  [handoff](../.portulan/handoffs/2026-09-23-u-a-handoff-is-proposed-for-a-budget-where-it-is-written.md) · [#445](https://github.com/sleepy-panda-srl/portulan/pull/445)
