@@ -2871,3 +2871,13 @@ _The seam applies here too: no client-identifying references._
   **Review: 3 rounds, 13 threads, 4 refused on measurements**, one right: **`--tagged` is green on an unrenamed
   accumulator** — a stated enforcer that was not the real one; prose fixed, mechanism filed **#419**.
   · Session-open **A-W-A (11+5)** · pre-commit **A-W-A (6+4)** · Fable 5.1, all folded · 27 green · Seam scan clean · [handoff](../.portulan/handoffs/2026-09-16-the-0-1-3-cut-prepared-and-three-stale-headers.md)
+
+- 2026-09-21 · M5 (Memory lifecycle & librarian) · **Scheduled librarian pass**, filed by
+  `cli/librarian.mjs` rather than by a person: 2 workspaces passed,
+  0 stale record(s), 0 sealed stamp(s) due for re-validation, 9 proposal(s) nagged, no index drift.
+  · Mined: 1 incident(s) with nothing pointing back at them, 79 path(s) drawing
+  repeat review findings, 3 record group(s) citing one incident.
+  · No supervisor checkpoint: a scheduled pass makes no decision for one to grade.
+  · Seam scan clean by construction — this pass composes no new prose at run time, so its
+  diff carries nothing the scan had not already passed.
+  Handoff: [`2026-09-21`](../.portulan/handoffs/2026-09-21-librarian-pass.md).

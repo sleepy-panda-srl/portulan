@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 171 handoff(s), newest first. No budget: the series is append-only, so
+> 172 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-09-21 · [Handoff — the librarian's scheduled pass](handoffs/2026-09-21-librarian-pass.md)
 - 2026-09-16 · [Handoff — 2026-09-16: the 0.1.3 cut prepared, and three stale headers](handoffs/2026-09-16-the-0-1-3-cut-prepared-and-three-stale-headers.md)
 - 2026-09-14 · [Handoff — the librarian's scheduled pass](handoffs/2026-09-14-librarian-pass.md)
 - 2026-09-09 · [2026-09-09 — Both tiers are named and dated, and the phrase that was neither is retired](handoffs/2026-09-09-the-two-tiers-are-named-and-dated.md)
