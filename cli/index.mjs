@@ -859,7 +859,9 @@ function siteOutside(dir, declaredPath, slot, word) {
  * escaping should be visible in the value itself", and a link is an escape the value does not show.
  * Only the components the declared path adds are looked at, so a workspace that itself sits under a
  * link (macOS's `/var`, a linked checkout) is judged as before. A dangling link is refused the same
- * way, and a component not there yet ends the walk: nothing below it exists to follow.
+ * way, and a component not there yet ends the walk: nothing below it exists to follow. `lstat` at every
+ * step, never `existsSync`, which follows a link and reads a dangling one as nothing there. Returns
+ * whether the index is there.
  */
 function refuseLinks(dir, declaredPath, indexPath) {
     let probe = path.resolve(dir);
@@ -870,7 +872,7 @@ function refuseLinks(dir, declaredPath, indexPath) {
         try {
             stat = fs.lstatSync(probe);
         } catch (cause) {
-            if (cause.code === "ENOENT") return;
+            if (cause.code === "ENOENT") return false;
             throw new IndexError(`cannot look for the index at ${declaredPath} — ${cause.code ?? cause.message}`);
         }
         if (stat.isSymbolicLink()) {
@@ -880,6 +882,7 @@ function refuseLinks(dir, declaredPath, indexPath) {
             );
         }
     }
+    return true;
 }
 
 /**
@@ -903,8 +906,10 @@ function refuseLinks(dir, declaredPath, indexPath) {
  * in `./doctor.mjs`, `./new.mjs`, `./init.mjs`, `./plugin-lint.mjs` and `./compile.mjs` — this was the
  * one read in the repository that did not carry it.
  */
-function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series, source, fail, remedyFlags = "" }) {
-    refuseLinks(dir, declaredPath, indexPath);
+function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series, source, fail, remedyFlags = "", optional = false }) {
+    // An optional index, the handoffs', is kept or not by a copy on disk: with none, nothing is written
+    // or compared. Returns whether a copy is kept.
+    if (!refuseLinks(dir, declaredPath, indexPath) && optional) return false;
     if (write) {
         try {
             fs.mkdirSync(path.dirname(indexPath), { recursive: true });
@@ -940,6 +945,7 @@ function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series,
     } else if (!actual.equals(Buffer.from(expected, "utf8"))) {
         fail(series, "index", `${declaredPath} is out of date against the ${source} — run \`node cli/index.mjs${remedyFlags} ${dir}\` to regenerate it`);
     }
+    return true;
 }
 
 /** The memory store's index and its budgets. */
@@ -1033,19 +1039,11 @@ function judgeHandoffs(dir, workspace, { write, fail, remedyFlags = "" }) {
     // conflicted on every merge that added a handoff — all 15 of that day's pull requests that had
     // another merge land while they were open — and carried nothing the series does not. `--handoffs`
     // prints it on demand.
-    // `lstat`, never `existsSync`, which follows a link and reads a dangling one as no copy at all, so
-    // `--check` was green over a kept index nobody could read. Copilot, #451. Anything at the path is a
-    // kept copy, and a link there, dangling or not, is then refused by `compareOrWrite`, as for every series.
-    let kept = true;
-    try {
-        fs.lstatSync(indexPath);
-    } catch (cause) {
-        if (cause.code !== "ENOENT") {
-            throw new IndexError(`cannot look for the index at ${declaredPath} — ${cause.code ?? cause.message}`);
-        }
-        kept = false;
-    }
-    if (kept) compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "handoffs", source: "series", fail, remedyFlags });
+    // Whether a copy is kept is read by `compareOrWrite`'s walk, after its link refusal, so a link on the
+    // path is refused whether or not anything is behind it, as for every series. Copilot, #451, twice:
+    // `existsSync` read a dangling link as no copy at all, and a presence check of its own ran before the
+    // refusal and passed a linked directory with no index behind it.
+    const kept = compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "handoffs", source: "series", fail, remedyFlags, optional: true });
 
     return { declared: true, path: indexPath, expected, count: series.records.length, kept };
 }
@@ -1348,12 +1346,18 @@ const CHANGE_NAME = new RegExp(`^[a-z0-9][a-z0-9-]*\\.(${CHANGE_SECTIONS.join("|
  * empty directory.
  */
 export function readChanges(dir) {
-    let entries;
+    // The directory itself too: `readdirSync` follows a link, and every fragment would then come from
+    // wherever it led while each entry looked like a file of its own. `docs.sh` refuses it as well.
+    // Copilot, #451.
+    let entries = null;
     try {
-        entries = fs.readdirSync(dir, { withFileTypes: true });
+        if (!fs.lstatSync(dir).isSymbolicLink()) entries = fs.readdirSync(dir, { withFileTypes: true });
     } catch (cause) {
         if (cause.code === "ENOENT") return { fragments: [], problems: [] };
         throw new IndexError(`cannot read ${dir} — ${cause.code ?? cause.message}`);
+    }
+    if (entries === null) {
+        throw new IndexError(`${dir} is a link, and fragments are read where they are written — replace it with the directory it points at`);
     }
     const fragments = [];
     const problems = [];

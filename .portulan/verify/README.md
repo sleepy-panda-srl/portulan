@@ -508,8 +508,10 @@ Observations of the rebuilt checks, each run on this tree and reverted:
 | a fragment holding two top-level bullets | **red**, naming the file |
 | a fragment named `x.improved.md` | **red**, naming the file and the six sections |
 | a fragment that is a link to a good one, a directory holding one, or a submodule | **red**, naming it; `--changes` refuses each too, exit 1 |
+| `changes/` itself a link to a directory of good fragments | **red**, naming the link; `--changes` refuses it, exit 2. Green before Copilot's round on 84d2857, with no fragment examined |
 | a bullet added under `## Unreleased` in `CHANGELOG.md` | **red**, with the count |
 | `## Unreleased` renamed `## [Unreleased]` with a bullet under it, then the heading deleted | **red** on both, naming the missing heading; the rename passed as none before Copilot's round on #451 |
+| `## Unreleased` renamed `## Unreleased (old)` | **red**, naming the missing heading; before Copilot's round on 84d2857 it counted as the section, green |
 | HEAD re-committed without its `Seam-scan:` line | **red**, naming the commit |
 | the same with `Seam-scan: not clean`, `unclean` or `cleanly skipped` | **red** on each, naming the commit; all three passed before Copilot's round on #451. `clean by construction`, the librarian's line, green |
 | the same, authored as `claude[bot]` | **red**, naming the commit; any `[bot]` author passed before Copilot's round on #451 |
@@ -641,7 +643,9 @@ explained — a workspace cannot quietly acquire the rail whose every legal reme
 
 **One move holds for all three indexes since Copilot's round on #451.** Put a link where an index is
 kept, to a file outside the workspace → **exit 2**, *leads through a link*, and the file is untouched,
-for the store's index as for the handoffs'. Before it a write overwrote the file the link led to.
+for the store's index as for the handoffs'. Before it a write overwrote the file the link led to. A
+linked directory on the way with no index behind it is refused too, the handoffs' included, whose check
+for a kept copy had read it as none (Copilot, the round on 84d2857).
 
 The `proposal` check was added 2026-07-28, at milestone 5, against a sentence
 [`../../core/operating/evolution.md`](../../core/operating/evolution.md) had carried since milestone 1:

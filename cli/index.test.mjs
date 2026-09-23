@@ -1143,6 +1143,14 @@ describe("a kept handoff index is byte-compared like the store's", () => {
         assert.equal(fs.readFileSync(path.join(away, "handoffs-index.md"), "utf8"), "not an index\n");
     });
 
+    test("a linked directory is refused even with no index behind it", () => {
+        // Copilot, #451: a presence check of its own ran before the refusal, read nothing there as no copy
+        // kept, and passed.
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries({ handoffs: { index: { path: "indexes/handoffs-index.md" } } }));
+        fs.symlinkSync(scratch(), path.join(dir, "indexes"));
+        assert.throws(() => inspect(dir), (e) => e instanceof IndexError && /leads through a link at indexes\b/.test(e.message));
+    });
+
     test("a write regenerates a kept index", () => {
         const dir = kept({ "handoffs/2026-07-01-a.md": handoff("A") });
         tree(dir, { "handoffs/2026-07-28-b.md": handoff("B") });
@@ -1267,6 +1275,16 @@ describe("changelog fragments", () => {
         assert.deepEqual(problems.map((p) => p.name), ["link.changed.md"]);
         assert.match(problems[0].message, /not a regular file/);
         assert.deepEqual(fragments.map((f) => f.name), ["fine.changed.md"]);
+    });
+
+    test("a link standing for the directory itself is refused, and nothing behind it is read", () => {
+        // Copilot, #451: `readdirSync` followed it, so every fragment came from wherever it led.
+        const away = tree(scratch(), { "fine.changed.md": "- Fine.\n" });
+        const link = path.join(scratch(), "changes");
+        fs.symlinkSync(away, link);
+        assert.throws(() => readChanges(link), (e) => e instanceof IndexError && /is a link, and fragments are read where they are written/.test(e.message));
+        const said = [];
+        assert.equal(run(["--changes", link], (l) => said.push(l)), 2);
     });
 
     test("a missing directory is an empty set, since the cut deletes every fragment", () => {

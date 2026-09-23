@@ -495,6 +495,10 @@ fi
 # tree is passed over, as the index tool never sees it either.
 : >"$tmp/fragments"
 : >"$tmp/badfragments"
+# The directory itself too. Git lists a link there as one entry, so no fragment under it was examined
+# here while `--changes` read every one from wherever it led (Copilot, #451).
+[ ! -L "$CHANGES" ] ||
+    printf '%s is a link: fragments are files of this tree, read where they are written\n' "$CHANGES" >>"$tmp/badfragments"
 while IFS= read -r f; do
     [ -e "$f" ] || [ -L "$f" ] || continue
     base=${f#"$CHANGES"/}
@@ -512,11 +516,12 @@ done < <(grep "^${CHANGES}/" "$manifest")
 # The Unreleased section holds no bullet of its own, or two open changes would both append there
 # again. Its extent is from the heading to the next `## `. **The heading must be there**: without it
 # nothing was counted, so bullets under a renamed one (`## [Unreleased]`, as Keep a Changelog spells
-# it) passed as none (Copilot, #451). The cut re-seeds it above the version it writes.
+# it) passed as none (Copilot, #451). The cut re-seeds it above the version it writes. The whole line is
+# matched, since `## Unreleased (old)` is a renamed heading too.
 unreleased=0
 noheading=
 if [ -f "$CHANGELOG" ]; then
-    unreleased=$(awk '/^## Unreleased/ { h = 1; on = 1; next } /^## / { on = 0 } on && /^- / { n++ } END { print n + 0; exit !h }' "$CHANGELOG") ||
+    unreleased=$(awk '/^## Unreleased[ \t]*$/ { h = 1; on = 1; next } /^## / { on = 0 } on && /^- / { n++ } END { print n + 0; exit !h }' "$CHANGELOG") ||
         noheading=1
     unreleased=${unreleased:-0}
 fi
