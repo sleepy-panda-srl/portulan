@@ -86,6 +86,9 @@ import { alwaysLine } from "./context.mjs";
 // Which form a consumer's records and boot are in, read from the one definition `init`, `vendor` and
 // `upgrade` share, so the report cannot disagree with what they write.
 import { formLine } from "./form.mjs";
+// Where every session switch stands, in the words of the module `init` and `upgrade` offer the cache
+// lifetime from, so the report and the offer cannot name the key two ways.
+import { sessionsLine } from "./sessions.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -1236,12 +1239,14 @@ export async function inspect(workspaceDir, options = {}) {
         // manifest can newly fail it; refusing an older one now could fail a manifest that passes today, which
         // ../spec/README.md calls a MAJOR. Raised by Copilot on #440, for `context`, the first key born gated.
         // `slots.context` is the second, at 2.10, and a slot is read one level down. The memory cap's cutoff
-        // and `sessions` are the third and fourth, at 2.11.
+        // and `sessions` are the third and fourth, at 2.11, and `spend`, `0038`'s multipliers and horizon, is
+        // the fifth, at 2.12.
         for (const [key, since, value] of [
             ["context", 9, workspace.context],
             ["slots.context", 10, workspace.slots?.context],
             ["memory.store.budget.cutoff", 11, workspace.memory?.store?.budget?.cutoff],
             ["sessions", 11, workspace.sessions],
+            ["spend", 12, workspace.spend],
         ]) {
             if (major === 2 && minor < since && value !== undefined) {
                 fail(
@@ -2020,6 +2025,56 @@ export async function inspect(workspaceDir, options = {}) {
         }
     }
 
+    // Workspace Definition 2.12's `spend`, proposal `0038`'s ruling 2: four figures the subset types only as
+    // `number`. A read is held above nothing and to at most an uncached token, since the restart threshold
+    // divides by it; a write to at least one; and the horizon to a positive integer, as `cli/ledger.mjs`'s
+    // `readSpend` holds them where `compile` and the ledger read the manifest, so a figure this passes is one
+    // they take.
+    const readMultiplier = workspace.spend?.multipliers?.read;
+    if (readMultiplier !== undefined && !(Number.isFinite(readMultiplier) && readMultiplier > 0 && readMultiplier <= 1)) {
+        fail(
+            "schema",
+            `spend.multipliers.read is ${String(readMultiplier)}, and it must be a finite number above 0 and at most 1. A token ` +
+                "read from cache costs something, and never more than the same token sent uncached. The declared keyword subset " +
+                "has neither `minimum` nor `maximum`, so this is checked here",
+        );
+    }
+    for (const lifetime of ["5m", "1h"]) {
+        const writeMultiplier = workspace.spend?.multipliers?.write?.[lifetime];
+        if (writeMultiplier !== undefined && !(Number.isFinite(writeMultiplier) && writeMultiplier >= 1)) {
+            fail(
+                "schema",
+                `spend.multipliers.write["${lifetime}"] is ${String(writeMultiplier)}, and it must be a finite number of at least 1. ` +
+                    "Writing a token to the cache costs at least what sending it uncached does. The declared keyword subset " +
+                    "has no `minimum`, so this is checked here",
+            );
+        }
+    }
+    // Figures each in range can still give no threshold, since it divides each write by the read: a read near
+    // zero under a write near the largest number overflows to Infinity, a line no session reaches.
+    // `cli/ledger.mjs`'s `overflowingWrite` refuses the same pair where `compile` and the ledger read it.
+    if (Number.isFinite(readMultiplier) && readMultiplier > 0) {
+        for (const lifetime of ["5m", "1h"]) {
+            const writeMultiplier = workspace.spend?.multipliers?.write?.[lifetime];
+            if (Number.isFinite(writeMultiplier) && !Number.isFinite(writeMultiplier / readMultiplier)) {
+                fail(
+                    "schema",
+                    `spend.multipliers.write["${lifetime}"] divided by spend.multipliers.read overflows, so no finite restart ` +
+                        "threshold can be computed from them. No keyword in the declared subset relates two figures, so this is " +
+                        "checked here",
+                );
+            }
+        }
+    }
+    const horizonRequests = workspace.spend?.horizon?.requests;
+    if (horizonRequests !== undefined && !positive(horizonRequests)) {
+        fail(
+            "schema",
+            `spend.horizon.requests is ${JSON.stringify(horizonRequests)}, which is not a positive integer. ` +
+                "The declared keyword subset has no `minimum` and cannot say `integer`, so this is checked here",
+        );
+    }
+
     if (workspace.librarian?.staleness?.proposal_days !== undefined && !workspace.slots?.proposals) {
         fail(
             "cross",
@@ -2763,6 +2818,18 @@ export async function inspect(workspaceDir, options = {}) {
         form = `not read — ${error.message}`;
     }
     report("form", form);
+
+    // Always emitted, and never a verdict (2026-09-24): where every session switch stands, each one left to
+    // the host's default included, which no other line names. One line, because a session that runs `doctor`
+    // reads this output, and every line of it is read again on every later request. Where a repository leaves
+    // the cache lifetime to the host, it names what prints the offer (proposal `0038`, item 4).
+    let sessions;
+    try {
+        sessions = sessionsLine(workspace);
+    } catch (error) {
+        sessions = `not read — ${error.message}`;
+    }
+    report("sessions", sessions);
 
     return { dir, workspace, findings, stats };
 }

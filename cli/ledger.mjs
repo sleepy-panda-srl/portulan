@@ -2,6 +2,7 @@
 // What a change spends, measured — the ledger proposal `0038` names.
 //
 //   node cli/ledger.mjs [--branch <name>] [--repo <dir>] [--base <ref>] [--projects <dir>] [--config <file>]
+//       [--workspace <dir>]
 //   node cli/ledger.mjs --fixture <dir>
 //
 // `0036` prices one context's prefix. Nothing priced how many times it is re-read, how many times it is
@@ -48,13 +49,18 @@
 // handoff and what a new session re-reads to orient itself, so the threshold errs toward an earlier line,
 // the direction ruling 2 chose to err in for the multipliers; a restart that finds its floor still in the
 // directory's shared cache pulls the other way. The multipliers are the manifest's to declare (`0038`,
-// ruling 2); no key carries them yet, so every figure here says `undeclared` and uses the general ones:
-// reads at a tenth of input, and writes at the lifetime the host recorded, 1.25× for five minutes and 2×
-// for an hour. The horizon is 20 requests (ruling 3). `./advisory.mjs` is the one line this threshold
-// feeds, at the next prompt and in the status line, from the same running figures.
+// ruling 2), and so is the horizon: `spend`, since Workspace Definition 2.12, which `--workspace <dir>` reads
+// from `<dir>/workspace.json`, the declared write taken at the lifetime the host recorded. Without the flag,
+// or where the manifest declares no `spend`, every figure here says `undeclared` and uses the general ones:
+// reads at a tenth of input, and writes at the lifetime the host recorded, 1.25× for five minutes and 2× for
+// an hour; and the horizon is 20 requests (ruling 3). `./advisory.mjs` is the one line this threshold feeds,
+// with the next tool result or at the next prompt, and in the status line, from the same running figures,
+// and it takes the declared ones from the flags `./compile.mjs` writes onto its commands.
 //
-// Exit 0 a report · 1 `--fixture` only: the fixture no longer reproduces its known totals · 2 could not
-// run: an argument, a records directory or file that could not be read, or a fixture missing.
+// Exit 0 a report · 1 `--fixture` only: the fixture no longer reproduces its known totals · 2 could not run:
+// an argument, a records directory or file that could not be read, a fixture missing, or a manifest named by
+// `--workspace` that could not be read or whose `spend` is refused, or a threshold its figures carry past the
+// largest number.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -75,7 +81,7 @@ export const DEFAULT_LIFETIME = "5m";
 
 export const LIFETIME_MS = { "5m": 5 * 60 * 1000, "1h": 60 * 60 * 1000 };
 
-/** Requests still to go when the threshold is judged — `0038`'s ruling 3, until a manifest key declares another. */
+/** Requests still to go when the threshold is judged — `0038`'s ruling 3, where the manifest's `spend.horizon` declares no other. */
 export const HORIZON = 20;
 
 /** A rebuild wrote again at least this many tokens the request before it had in cache… */
@@ -339,25 +345,97 @@ export function foldFigures(figures, read) {
     return figures;
 }
 
-/** The multipliers a threshold is computed at, and where each came from. */
+/**
+ * What each figure of a workspace's `spend` may be (Workspace Definition 2.12, `0038`'s ruling 2): a cache
+ * read costs more than nothing, since the threshold divides by it, and at most an uncached input token; a
+ * cache write costs at least one; and the horizon is a whole number of requests. One table, read by
+ * `readSpend` here and by `./advisory.mjs`, which takes the same figures back from the flags `./compile.mjs`
+ * writes onto its commands. Each test is the one `./doctor.mjs` applies to the same key, the horizon's
+ * included, which is `Number.isInteger` there as for every positive integer it checks, so a manifest
+ * `doctor` passes is one these readers take.
+ */
+export const SPEND_FIGURES = {
+    read: { holds: (v) => Number.isFinite(v) && v > 0 && v <= 1, is: "a number above 0 and at most 1" },
+    write: { holds: (v) => Number.isFinite(v) && v >= 1, is: "a number of at least 1" },
+    requests: { holds: (v) => Number.isInteger(v) && v > 0, is: "a positive integer" },
+};
+
+/**
+ * The write, `"5m"` or `"1h"`, that the read divides past the largest number, or null. The restart threshold
+ * divides each write by the horizon times the read, so figures each in its range can still give no threshold:
+ * a read near zero under a write near the largest number overflows to Infinity, a line no session reaches. A
+ * horizon is at least 1, so a write the read divides finitely gives a finite quotient at every horizon.
+ */
+export function overflowingWrite({ read, write }) {
+    return ["5m", "1h"].find((at) => !Number.isFinite(write[at] / read)) ?? null;
+}
+
+/**
+ * A manifest's `spend`, read: `{ multipliers, horizon }`, each null where its half is undeclared, and both
+ * null where `spend` is. `where` names the manifest in a refusal. **Refused at the first fault, in any shape
+ * the schema refuses, any figure out of its range, or a pair that gives no finite threshold**, because every
+ * threshold the ledger prints and the advisory says is priced by it, and neither reader may depend on
+ * `doctor` having been run: `./compile.mjs` writes what this returns into the settings the host reads, and
+ * `--workspace` prints by it.
+ */
+export function readSpend(value, where) {
+    if (value === undefined) return { multipliers: null, horizon: null };
+    const refuse = (what) => new LedgerError(`\`spend\` in ${where} ${what}; ../spec/slots.md gives its shape, and \`doctor\` names every finding`);
+    const code = (key) => `\`${key}\``;
+    // An object of `keys` and no other, holding every one of them where `whole` says it must.
+    const shaped = (v, at, keys, whole) => {
+        if (v === null || typeof v !== "object" || Array.isArray(v)) throw refuse(`${at}is not an object`);
+        const stray = Object.keys(v).find((key) => !keys.includes(key));
+        if (stray !== undefined) throw refuse(`${at}names ${code(stray)}, which is ${keys.length === 1 ? `not ${code(keys[0])}` : `neither ${keys.map(code).join(" nor ")}`}`);
+        const missing = whole ? keys.find((key) => !Object.hasOwn(v, key)) : undefined;
+        if (missing !== undefined) throw refuse(`${at}has no ${code(missing)}, which it needs`);
+        return v;
+    };
+    const figure = (v, at, key, range) => {
+        if (!SPEND_FIGURES[range].holds(v)) throw refuse(`${at}sets ${code(key)} to ${JSON.stringify(v)}, which is not ${SPEND_FIGURES[range].is}`);
+        return v;
+    };
+    shaped(value, "", ["multipliers", "horizon"], false);
+    let multipliers = null;
+    if (value.multipliers !== undefined) {
+        const m = shaped(value.multipliers, "at `multipliers` ", ["read", "write"], true);
+        const read = figure(m.read, "at `multipliers` ", "read", "read");
+        const write = shaped(m.write, "at `multipliers.write` ", ["5m", "1h"], true);
+        multipliers = { read, write: { "5m": figure(write["5m"], "at `multipliers.write` ", "5m", "write"), "1h": figure(write["1h"], "at `multipliers.write` ", "1h", "write") } };
+        const over = overflowingWrite(multipliers);
+        if (over !== null) throw refuse(`at \`multipliers\` gives no finite restart threshold, since \`write["${over}"]\` divided by \`read\` overflows`);
+    }
+    const horizon = value.horizon === undefined ? null : figure(shaped(value.horizon, "at `horizon` ", ["requests"], true).requests, "at `horizon` ", "requests", "requests");
+    return { multipliers, horizon };
+}
+
+/**
+ * The multipliers a threshold is computed at, and where each came from. Declared or general, the write is
+ * the one for the lifetime the host recorded, else the default's: a declaration prices both lifetimes, and
+ * the records say which one the fresh context was written at.
+ */
 export function multipliers({ declared = null, lifetime = null } = {}) {
-    if (declared !== null) return { ...declared, source: "declared" };
     const recorded = lifetime !== null && lifetime in WRITE_BY_LIFETIME;
     const at = recorded ? lifetime : DEFAULT_LIFETIME;
+    if (declared !== null) return { read: declared.read, write: declared.write[at], lifetime: at, recorded, source: "declared" };
     return { read: GENERAL_READ, write: WRITE_BY_LIFETIME[at], lifetime: at, recorded, source: "undeclared" };
 }
 
 /** `C* ≈ F × (1 + m_w / (n × m_r))`, in whole tokens. */
 export function restartThreshold({ fresh, write, read, horizon = HORIZON }) {
     if (!(fresh > 0 && write > 0 && read > 0 && horizon > 0)) throw new LedgerError("a restart threshold needs a fresh context, both multipliers and a horizon, each above zero");
-    return Math.round(fresh * (1 + write / (horizon * read)));
+    const threshold = Math.round(fresh * (1 + write / (horizon * read)));
+    // Figures a declaration may hold can still overflow with a fresh context, and a line at Infinity is none.
+    if (!Number.isFinite(threshold)) throw new LedgerError(`the restart threshold ${fresh} × (1 + ${write} / (${horizon} × ${read})) overflows, so these multipliers give none`);
+    return threshold;
 }
 
-/** The words that say which multipliers a figure assumed. */
+/** The words that say which multipliers a figure assumed, and which lifetime its write was taken at. */
 export function describeMultipliers(m) {
-    if (m.source === "declared") return `multipliers declared: read ${m.read}×, write ${m.write}×`;
     const lifetime = m.lifetime === "1h" ? "one-hour" : "five-minute";
-    return `multipliers undeclared: the general read ${m.read}× and the ${m.write}× of ${m.recorded ? `the ${lifetime} writes the host recorded` : `a ${lifetime} write, the lifetime the records did not state`}`;
+    const at = m.recorded ? `the ${lifetime} writes the host recorded` : `a ${lifetime} write, the lifetime the records did not state`;
+    if (m.source === "declared") return `multipliers declared: read ${m.read}×, write ${m.write}× (${at})`;
+    return `multipliers undeclared: the general read ${m.read}× and the ${m.write}× of ${at}`;
 }
 
 /**
@@ -634,22 +712,39 @@ function latestSession(contexts, branch) {
     return latest?.context ?? null;
 }
 
-/** The whole report for one branch, as figures; `print` turns it into lines. */
-export function ledger({ projects, config, roots, branch, lines = null }) {
+/**
+ * The whole report for one branch, as figures; `print` turns it into lines. `spend` is what `readSpend`
+ * gives, and every threshold the report computes is priced by it.
+ */
+export function ledger({ projects, config, roots, branch, lines = null, spend = { multipliers: null, horizon: null } }) {
     const collected = collect({ projects, roots });
     const figures = tally(collected.contexts, branch);
     const host = config === null ? [] : compareHost(collected.contexts, hostTotals(config, roots));
     const latest = latestSession(collected.contexts, branch);
-    const restart = latest === null ? null : { session: latest.session, ...thresholdFor(latest.transcript) };
-    return { projects, roots, branch, collected, figures, host, restart, lines };
+    const priced = { declared: spend.multipliers, horizon: spend.horizon ?? HORIZON };
+    const restart = latest === null ? null : { session: latest.session, ...thresholdFor(latest.transcript, priced) };
+    return { projects, roots, branch, collected, figures, host, restart, lines, priced };
 }
 
 const signed = (n) => (n > 0 ? `+${grouped(n)}` : n < 0 ? `−${grouped(-n)}` : "0");
 
 const short = (id) => id.slice(0, 8);
 
+/**
+ * The restart line of a report with no threshold to judge. It still says the horizon and the multipliers a
+ * threshold would take, so a declaration `--workspace` read is said where no request is recorded.
+ */
+function unjudged({ declared, horizon } = { declared: null, horizon: HORIZON }) {
+    const m = declared ?? { read: GENERAL_READ, write: WRITE_BY_LIFETIME };
+    return (
+        "  restart: no session on this branch has a request with a time to judge; a threshold would take a horizon of " +
+        `${horizon} requests and ${declared === null ? "the general multipliers, undeclared" : "the declared multipliers"}: ` +
+        `read ${m.read}×, writes ${m.write["5m"]}× for five minutes and ${m.write["1h"]}× for an hour`
+    );
+}
+
 export function print(report, say) {
-    const { collected, figures: f, host, restart, lines } = report;
+    const { collected, figures: f, host, restart, lines, priced } = report;
     say(`ledger: branch ${report.branch} — what this change spent, from Claude Code's own usage records (numbers only: nothing a context said is read)`);
     say(`  worktrees: ${report.roots.join(", ")}`);
     say(
@@ -659,6 +754,7 @@ export function print(report, say) {
     );
     if (f.main.requests + f.subagents.requests === 0) {
         say(`  no request on ${report.branch} is recorded here`);
+        say(unjudged(priced));
         return;
     }
     const row = (label, k) => say(`  ${label.padEnd(18)}${grouped(f.main[k]).padStart(14)}${grouped(f.subagents[k]).padStart(14)}${grouped(f.total[k]).padStart(14)}`);
@@ -687,7 +783,7 @@ export function print(report, say) {
         say(`  host totals, session ${short(h.session)} (the last the host saved for ${h.cwd}, every branch): ${parts.join(", ")}`);
     }
     if (restart === null || restart.threshold === undefined) {
-        say("  restart: no session on this branch has a request with a time to judge");
+        say(unjudged(priced));
         return;
     }
     const m = restart.multipliers;
@@ -743,9 +839,26 @@ function named(cwd, value, flag, kind) {
     return full;
 }
 
+/**
+ * The `spend` of the manifest in a directory `--workspace` names. A manifest that cannot be read or parsed
+ * is could-not-run, as a named records directory that is not one is: read as declaring nothing, every
+ * figure would say `undeclared` of a workspace that may declare them.
+ */
+function workspaceSpend(dir) {
+    const file = path.join(dir, "workspace.json");
+    let manifest;
+    try {
+        manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+    } catch (error) {
+        throw new LedgerError(`--workspace ${file} could not be read as a manifest — ${error.code ?? error.message}`);
+    }
+    if (manifest === null || typeof manifest !== "object" || Array.isArray(manifest)) throw new LedgerError(`--workspace ${file} is not a JSON object, so no \`spend\` could be read from it`);
+    return readSpend(manifest.spend, file);
+}
+
 function parseArgs(argv) {
-    const options = { branch: null, repo: null, base: null, projects: null, config: null, fixture: null };
-    const flags = { "--branch": "branch", "--repo": "repo", "--base": "base", "--projects": "projects", "--config": "config", "--fixture": "fixture" };
+    const options = { branch: null, repo: null, base: null, projects: null, config: null, workspace: null, fixture: null };
+    const flags = { "--branch": "branch", "--repo": "repo", "--base": "base", "--projects": "projects", "--config": "config", "--workspace": "workspace", "--fixture": "fixture" };
     for (let i = 0; i < argv.length; i += 1) {
         const key = flags[argv[i]];
         if (key === undefined) throw new LedgerError(`unknown argument ${JSON.stringify(argv[i])}`);
@@ -793,6 +906,8 @@ export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { e
     try {
         const options = parseArgs(argv);
         if (options.fixture !== null) return runFixture(path.resolve(cwd, options.fixture), say);
+        // Before any record is read, so a refused declaration costs no walk of the host's transcripts.
+        const spend = options.workspace === null ? undefined : workspaceSpend(named(cwd, options.workspace, "--workspace", "directory"));
         const host = hostPaths(env, home);
         if (host.why !== undefined && (options.projects === null || options.config === null)) throw new LedgerError(host.why);
         const repo = path.resolve(cwd, options.repo ?? ".");
@@ -808,6 +923,7 @@ export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { e
             roots: roots ?? [repo],
             branch,
             lines: roots === null ? { why: `${repo} is not inside a git repository` } : linesChanged(repo, branch, options.base),
+            spend,
         });
         print(report, say);
         return 0;

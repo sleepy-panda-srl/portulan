@@ -89,7 +89,8 @@ is a question that could not be answered.
   one — `spec/README.md`'s own rule, the one that keeps `examples/` at 2.4 as live compatibility
   evidence and keeps `new` and `vendor` writing `2.7`. `0006` writes 2.10 into a manifest older than it
   because the step declares `slots.context`, the key 2.10 added, which is the same rule; `init`
-  writes 2.10 for the same reason.
+  writes 2.10 for the same reason, and 2.11 where a person takes the cache lifetime it offers, which
+  `sessions`, 2.11's key, declares.
 
 ## The steps that exist
 

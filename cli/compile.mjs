@@ -51,6 +51,9 @@ import { AUTO, discoverPackRoots, namedWithAuto, resolutionRoots } from "./disco
 import { isInside } from "./inside.mjs";
 // A heading's section, for a list named by `#heading`: the one reader of Markdown sections.
 import { CannotOutline, sectionOf } from "./symbols.mjs";
+// A workspace's `spend` is read by the ledger's own reader, so the figures `compile` writes onto the restart
+// advisory's commands are held to the ranges the ledger prices by, and not to a second copy of them.
+import { HORIZON, LedgerError, readSpend } from "./ledger.mjs";
 
 /** Raised when `compile` cannot run, or cannot compile honestly. Always exit 2, never 1. */
 export class CompileError extends Error {
@@ -1506,14 +1509,31 @@ export function claudeCode(parsed, options = {}) {
     if (sessions?.git_instructions !== undefined) switches.includeGitInstructions = sessions.git_instructions;
     if (sessions?.cache_lifetime !== undefined) switches.promptCacheTtl = sessions.cache_lifetime;
     const sessionsFrom = Object.keys(switches).length ? sessions.manifest : null;
+    // **The declared figures, Workspace Definition 2.12's `spend`, written onto all three advisory commands only
+    // where declared**, so a manifest without the key compiles byte for byte as before. The advisory is handed its
+    // command and the host's payload and nothing else, so the figures ride the command, where this file's drift
+    // rail holds them to the manifest; each of the three computes the threshold, so each carries them. Proposal
+    // `0038`, ruling 2; `./advisory.mjs` reads them back.
+    const spend = options.spend ?? null;
+    const figures = [];
+    if (spend?.multipliers) figures.push("--read", spend.multipliers.read, "--write-5m", spend.multipliers.write["5m"], "--write-1h", spend.multipliers.write["1h"]);
+    if (spend?.horizon) figures.push("--horizon", spend.horizon);
+    const spendFlags = figures.map((f) => ` ${f}`).join("");
+    const spendFrom = figures.length ? spend.manifest : null;
+    // Both keys come from one manifest when `compile` reads it; an API caller may name two, and each is said.
+    const declaredIn =
+        sessionsFrom && sessionsFrom === spendFrom
+            ? `\`sessions\` and \`spend\` in ${sessionsFrom}`
+            : [sessionsFrom && `\`sessions\` in ${sessionsFrom}`, spendFrom && `\`spend\` in ${spendFrom}`].filter(Boolean).join(", or ");
     const value = {
         $portulan: {
             generated: "cli/compile.mjs",
             source,
             ...(sessionsFrom ? { sessions: sessionsFrom } : {}),
+            ...(spendFrom ? { spend: spendFrom } : {}),
             ...(packs.length ? { packs } : {}),
-            warning: sessionsFrom
-                ? `Generated file. Edit ${source}, or \`sessions\` in ${sessionsFrom}, and recompile; \`verify/compile.sh\` fails on drift.`
+            warning: declaredIn
+                ? `Generated file. Edit ${source}, or ${declaredIn}, and recompile; \`verify/compile.sh\` fails on drift.`
                 : `Generated file. Edit ${source} and recompile; \`verify/compile.sh\` fails on drift.`,
         },
         permissions: { deny, ask, allow: [] },
@@ -1533,11 +1553,11 @@ export function claudeCode(parsed, options = {}) {
             // every tool, since no matcher is match-all, or at the next prompt, whichever comes first.
             // Each enters the context without an extra turn; a non-blocking Stop hook's output would reach
             // only the host's debug log. See ./advisory.mjs.
-            PostToolUse: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} tool` }] }],
-            UserPromptSubmit: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} prompt` }] }],
+            PostToolUse: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} tool${spendFlags}` }] }],
+            UserPromptSubmit: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} prompt${spendFlags}` }] }],
         },
         // The same figure for the human, from the host's own last-call counts, at no token cost.
-        statusLine: { type: "command", command: `node ${advisoryRunner} status` },
+        statusLine: { type: "command", command: `node ${advisoryRunner} status${spendFlags}` },
         ...switches,
     };
 
@@ -1596,6 +1616,17 @@ export function claudeCode(parsed, options = {}) {
         notes.push(
             `\`sessions.headless\` is not compiled: it is what the runners that start sessions apply, today \`cli/warm.mjs\`, ` +
                 `and the dynamic-sections exclusion it can carry is no host setting`,
+        );
+    }
+    // Said on every run that writes the figures, because the threshold every session here is told at moves with
+    // them, and nothing but a recompile carries an edit of them to the commands.
+    if (spendFrom !== null) {
+        const m = spend.multipliers;
+        const priced = m ? `read ${m.read}×, write ${m.write["5m"]}× for five minutes and ${m.write["1h"]}× for an hour, whichever lifetime the host records` : "the general multipliers";
+        notes.push(
+            `the restart advisory and the status line compute the threshold at the declared figures (\`spend\`): ${priced}, and ` +
+                `${spend.horizon ? `a horizon of ${spend.horizon} requests` : `the general horizon of ${HORIZON} requests`}. The compiled ` +
+                `commands carry them, so an edit to \`spend\` is drift until recompiled`,
         );
     }
     if (editCoveredGates.length) {
@@ -3322,6 +3353,35 @@ export function sessionsDeclaration(workspaceRoot, workspaceDir = ".portulan") {
 }
 
 /**
+ * A workspace's declared multipliers and horizon, Workspace Definition 2.12's `spend`, or null where it
+ * declares none.
+ *
+ * **Refused whole on any shape or value the ledger refuses**, for `sessionsDeclaration`'s reason: what this
+ * returns is written onto the restart advisory's commands, and this runner must not depend on `doctor` having
+ * been run. The reader is the ledger's own (`readSpend`), so the ranges written here are the ranges the ledger
+ * prices by, and its refusal stops this run with exit 2 before anything is written. A manifest that cannot be
+ * read is not this function's to judge: it answers null, as `sessionsDeclaration` does. Proposal `0038`,
+ * ruling 2; added 2026-09-24.
+ */
+export function spendDeclaration(workspaceRoot, workspaceDir = ".portulan") {
+    const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
+    let declared;
+    try {
+        declared = JSON.parse(fs.readFileSync(manifest, "utf8")).spend;
+    } catch {
+        return null;
+    }
+    if (declared === undefined) return null;
+    const where = path.relative(workspaceRoot, manifest).split(path.sep).join("/");
+    try {
+        return { manifest: where, ...readSpend(declared, where) };
+    } catch (error) {
+        if (error instanceof LedgerError) throw new CompileError(error.message);
+        throw error;
+    }
+}
+
+/**
  * What to say when a workspace declares no gate policy and none is there by convention.
  *
  * This is a STATE, not a failure to read a file, and the difference is the whole point: `policyPath`'s
@@ -4194,6 +4254,7 @@ export function run(argv, options = {}) {
         // Read beside the guidance and for the same reason: a malformed declaration is a reason this run cannot
         // compile honestly whichever half it reaches first.
         const sessions = sessionsDeclaration(workspaceRoot, workspaceDir);
+        const spend = spendDeclaration(workspaceRoot, workspaceDir);
         const { file: policyFile, declared: policyDeclared, reason: policyReason } = policyDeclaration(workspaceRoot, workspaceDir);
         const packOptions = { named: namedRoots, discovery: () => discoverPackRoots(), forced };
         // A `gates` key this compiler refuses stops the run, beside guidance or a `gates.json` at the
@@ -4229,6 +4290,12 @@ export function run(argv, options = {}) {
                 say(
                     `note    \`sessions\` in ${sessions.manifest} compiled nothing: its host switches ride the settings a gate ` +
                         `policy compiles to, and this workspace has none`,
+                );
+            }
+            if (spend !== null) {
+                say(
+                    `note    \`spend\` in ${spend.manifest} compiled nothing: its figures ride the restart advisory's commands ` +
+                        `in the settings a gate policy compiles to, and this workspace has none`,
                 );
             }
             say();
@@ -4287,6 +4354,7 @@ export function run(argv, options = {}) {
             // which world compiled it (#264).
             packProvenance: contributions,
             sessions,
+            spend,
         });
 
         // Printed before the backends, because a rule's provenance changes how its compiled line reads

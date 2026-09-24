@@ -199,6 +199,16 @@ so `doctor` and `cli/index.mjs` refuse one by hand, and the hand-check covers **
 `sessions` adds nothing to either: every field of it is a boolean or one of two strings, which the
 schema types in full with `type` and `enum`, so `doctor` only gates the key to 2.11.
 
+**2.12 adds five to the hand-check and nothing to the conditional requirements.** `required` holds both
+halves of `spend.multipliers` and both lifetimes of its `write` in the schema itself, and the subset types
+the four figures only as `number`, the horizon included, since it cannot say `integer`, so `doctor` holds
+the read in (0, 1], each write at least 1 and the horizon to a positive integer by hand, and refuses a write
+the read divides past the largest number, since the restart threshold divides one by the other; the
+hand-check covers **fifteen**. For the two writes `minimum` alone would close the gap, as it would for the
+ratio; the read is the first figure bounded above, so it would need `exclusiveMinimum` and `maximum`, and
+the horizon the budgets' `minimum` and `integer`; no keyword in the subset relates two figures, so the
+quotient stays by hand.
+
 _These figures are history rather than state: what 2.3 and 2.4 added cannot change, so they do not go
 stale the way the removed count did. The one forward-looking sentence is the growth rate, and it is
 dated by the version it names._
@@ -214,14 +224,28 @@ number governing both would make a bump in either mean a change in the other:
 
 | Schema | Manifest key | Current | What it governs |
 |---|---|---|---|
-| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.11** | the Workspace Definition — the manifest at a workspace root |
+| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.12** | the Workspace Definition — the manifest at a workspace root |
 | [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.0** | the Pack Definition — the manifest at a pack root. |
 
 The rules below apply to each train independently. `portulan.spec` is `MAJOR.MINOR`, and the current
-Workspace Definition version is **2.11**. It did **not** move when the Pack Definition arrived, because
+Workspace Definition version is **2.12**. It did **not** move when the Pack Definition arrived, because
 `workspace.schema.json` was byte-identical across that change: `packs` already existed as an array of
 strings and was deliberately left that way, since tightening its items to the canonical `category/name`
 form would be a constraint an existing manifest could newly fail, which is a MAJOR.
+
+**2.12 is a MINOR on 2.8's terms: optional keys only.** `spend` is item 4 of proposal `0038`'s order of
+work: the multipliers the restart threshold is computed at, which its ruling 2 has the manifest declare, and
+the horizon the threshold is judged over, 20 requests under ruling 3 until the manifest declares another;
+[`slots.md`](slots.md) argues it. Nothing is removed, renamed, tightened or defaulted: without `spend`,
+[`../cli/ledger.mjs`](../cli/ledger.mjs) and the restart advisory price at the general multipliers as before
+and say `undeclared`, and the settings compile byte for byte as before, so every 2.11 manifest is a valid
+2.12 manifest unchanged. This repository's own workspace stays on 2.11 and declares no `spend`; it now
+declares `sessions.headless.cache_lifetime` `"5m"`, a 2.11 key. `examples/` stays on 2.4. `init` writes 2.11
+where a person takes the five-minute cache lifetime it now offers, since `sessions` is 2.11's key, and 2.10
+otherwise. `KNOWN_SPECS` in [`../cli/index.mjs`](../cli/index.mjs) and
+[`../cli/librarian.mjs`](../cli/librarian.mjs) gains `"2.12"` by addition, and `doctor` gates the key to
+2.12. `0038`'s third key, the declared Stop-gate block, takes the next free MINOR, 2.13, in its own change,
+and `0034`'s keys take the next free MINOR when they are drafted.
 
 **2.11 is a MINOR on 2.8's terms: optional keys only.** `memory.store.budget.cutoff`
 makes the per-record cap forward-only, in proposal `0037`'s shape for a handoff, and [`slots.md`](slots.md)

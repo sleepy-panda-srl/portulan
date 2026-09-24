@@ -35,6 +35,7 @@ import { fileURLToPath } from "node:url";
 
 import { InitError, SLUG, slugify, parseArgs, scan, draft, collisions, residenceAt, run } from "./init.mjs";
 import { compileGuidance } from "./compile.mjs";
+import { LIFETIME_OFFER, OFFER_ENDS, offerLines } from "./sessions.mjs";
 
 // A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
 // 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
@@ -1213,6 +1214,14 @@ describe("doctor is green on what init emits — the bar this session must clear
         assert.equal(result.code, 0, `doctor was not green on a fresh draft:\n${result.out}`);
     });
 
+    test("an in-repo draft declaring a cache lifetime validates, at the 2.11 that added the key", async () => {
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", "--cache-lifetime", "5m", dir], harness().options), 0);
+        const result = doctor(["--pack-root", path.join(REPO, "packs"), path.join(dir, ".portulan")]);
+        assert.equal(result.code, 0, `doctor was not green on a draft declaring a lifetime:\n${result.out}`);
+        assert.match(result.out, /note {2}sessions {3}cache lifetime 5m, compiled as `promptCacheTtl`/);
+    });
+
     test("an in-repo draft that opted out of the cycle validates with no roots at all", async () => {
         const dir = scratch();
         assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
@@ -1256,7 +1265,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("a missing answer is asked for at a terminal, and the draft is written", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "", "y"]);
         const code = await run([dir], { ...harness().options, io: s.io });
         assert.equal(code, 0, "an interviewed run that confirms must write");
         assert.match(s.asked.join("\n"), /residence/, "the one question init may not answer must be asked");
@@ -1265,7 +1274,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("nothing is asked where stdin or stdout is not a TTY — the refusal is the old one, unchanged", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "y"], { interactive: false });
+        const s = scripted(["in-repo", "", "", "none", "", "y"], { interactive: false });
         const h = harness();
         const code = await run([dir], { ...h.options, io: s.io });
         assert.equal(code, 2, "a non-interactive run must refuse exactly as it did before the interview existed");
@@ -1276,7 +1285,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("`--no-interview` forces the non-interactive path at a terminal", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "", "y"]);
         const h = harness();
         assert.equal(await run(["--no-interview", dir], { ...h.options, io: s.io }), 2);
         assert.equal(s.asked.length, 0);
@@ -1285,7 +1294,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("what the flags already answered is never asked again", async () => {
         const dir = scratch();
-        const s = scripted(["none", "y"]);
+        const s = scripted(["none", "", "y"]);
         assert.equal(await run(["--residence", "in-repo", "--name", "acme", "--summary", "one line", dir], { ...harness().options, io: s.io }), 0);
         const questions = s.asked.join("\n");
         assert.doesNotMatch(questions, /residence/, "being asked to confirm a flag you just typed reads as not having listened");
@@ -1296,7 +1305,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("a question offers the derived default where one exists, and an empty line accepts it", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "", "y"]);
         assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
         const name = s.asked.find((q) => q.startsWith("workspace name"));
         assert.match(name, /\[.+\]/, "the name question must offer the directory-derived slug");
@@ -1318,14 +1327,14 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("the governor and the feed are asked only for a pointer", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "", "y"]);
         assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
         assert.doesNotMatch(s.asked.join("\n"), /governing|feed/, "a workspace that lives here has no governor and no feed");
     });
 
     test("an answer the schema refuses is re-asked with the reason, and does not abort the run", async () => {
         const dir = scratch();
-        const s = scripted(["feed-side", "in-repo", "Not A Slug", "acme", "", "none", "y"]);
+        const s = scripted(["feed-side", "in-repo", "Not A Slug", "acme", "", "none", "", "y"]);
         assert.equal(await run([dir], { ...harness().options, io: s.io }), 0, "a typo at a prompt must be re-asked, never fatal");
         assert.equal(s.asked.filter((q) => q.startsWith("residence")).length, 2);
         assert.equal(s.asked.filter((q) => q.startsWith("workspace name")).length, 2);
@@ -1337,7 +1346,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("declining at the confirmation writes nothing, and exits 2", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "n"]);
+        const s = scripted(["in-repo", "", "", "none", "", "n"]);
         const h = harness();
         assert.equal(await run([dir], { ...h.options, io: s.io }), 2, "0 must keep meaning `it wrote`");
         assert.equal(fs.existsSync(path.join(dir, ".portulan")), false, "a decline must leave the repository untouched");
@@ -1355,7 +1364,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("the confirmation echoes every answer before a byte is written", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "acme", "one line", "none", "y"]);
+        const s = scripted(["in-repo", "acme", "one line", "none", "", "y"]);
         assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
         const echoed = s.said.join("\n");
         assert.match(echoed, /about to draft/);
@@ -1367,7 +1376,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
         // Answering five questions and then being told the repository already has a workspace is the
         // shape of a tool that asks before it looks.
         const dir = scratch({ ".portulan/workspace.json": JSON.stringify({ portulan: { spec: "2.7" }, name: "already", kind: "repository" }) });
-        const s = scripted(["in-repo", "", "", "none", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "", "y"]);
         const h = harness();
         assert.equal(await run([dir], { ...h.options, io: s.io }), 2);
         assert.equal(s.asked.length, 0, "the machine's question comes first");
@@ -1376,9 +1385,66 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("`none` at the checkpoints prompt composes no packs", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "", "y"]);
         assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
         assert.equal(ok(dir).packs, undefined, "opting out at the prompt must be the same answer as --no-cycle");
+    });
+
+    // The cache lifetime, the last question before the confirmation (proposal 0038, item 4, 2026-09-24).
+    test("the lifetime is asked last, after the offer's reason and its trade-off, and a yes drafts it at 2.11", async () => {
+        const dir = scratch();
+        const s = scripted(["in-repo", "", "", "none", "y", "y"]);
+        const h = harness();
+        assert.equal(await run([dir], { ...h.options, io: s.io }), 0, h.warned.join("\n"));
+        const question = s.asked.indexOf("Five-minute cache writes? [y/N]: ");
+        assert.equal(question, s.asked.length - 2, "the question comes after every other one and before the confirmation");
+        const said = s.said.join("\n");
+        for (const text of [LIFETIME_OFFER.reason, LIFETIME_OFFER.tradeOff]) assert.ok(said.includes(text), "a yes is given knowing the reason and the trade-off");
+        assert.match(said, /^ {2}cache {7}5m, as `sessions\.cache_lifetime` at Workspace Definition 2\.11$/m, "the confirmation echoes the answer");
+        assert.equal(ok(dir).portulan.spec, "2.11");
+        assert.deepEqual(ok(dir).sessions, { cache_lifetime: "5m" });
+        assert.ok(h.said.some((l) => /run `portulan compile`, which writes it into \.claude\/settings\.json as `promptCacheTtl`/.test(l)));
+    });
+
+    test("anything but a yes leaves the host's default, and the report says so in one line, not the offer again", async () => {
+        for (const answer of ["", "n", "5m"]) {
+            const dir = scratch();
+            const s = scripted(["in-repo", "", "", "none", answer, "y"]);
+            const h = harness();
+            assert.equal(await run([dir], { ...h.options, io: s.io }), 0, h.warned.join("\n"));
+            assert.match(s.said.join("\n"), /^ {2}cache {7}\(none — the host's default lifetime\)$/m);
+            assert.equal(ok(dir).portulan.spec, "2.10", `${JSON.stringify(answer)}: a manifest declaring nothing new stays at 2.10`);
+            assert.equal(ok(dir).sessions, undefined);
+            const lines = h.said.filter((l) => /cache lifetime|sessions\.cache_lifetime/.test(l));
+            assert.equal(lines.length, 1, lines.join("\n"));
+            assert.match(lines[0], /no cache lifetime declared, as you answered; `sessions\.cache_lifetime` declares one.*`--cache-lifetime` drafts it/);
+            assert.ok(!h.said.some((l) => l.includes(OFFER_ENDS)), "the offer the person just declined is not printed again");
+        }
+    });
+
+    test("a lifetime the flags gave is not asked again, and a pointer is never asked", async () => {
+        const given = scratch();
+        const s = scripted(["", "", "none", "y"]);
+        assert.equal(await run(["--residence", "in-repo", "--cache-lifetime", "1h", given], { ...harness().options, io: s.io }), 0);
+        assert.ok(!s.asked.some((q) => q.startsWith("Five-minute")), "being asked to confirm a flag you just typed reads as not having listened");
+        assert.match(s.said.join("\n"), /^ {2}cache {7}1h, as `sessions\.cache_lifetime`/m);
+        assert.deepEqual(ok(given).sessions, { cache_lifetime: "1h" });
+
+        const pointer = scratch();
+        const p = scripted(["pointer", "", "", "platform", "none", "y"]);
+        assert.equal(await run([pointer], { ...harness().options, io: p.io }), 0);
+        assert.ok(!p.asked.some((q) => q.startsWith("Five-minute")), "a pointer drafts no settings for a lifetime to reach");
+        assert.ok(!p.said.join("\n").includes(LIFETIME_OFFER.reason));
+    });
+
+    test("EOF at the lifetime question is no answer, and nothing is written", async () => {
+        const dir = scratch();
+        const s = scripted(["in-repo", "", "", "none"]);
+        const h = harness();
+        assert.equal(await run([dir], { ...h.options, io: s.io }), 2);
+        assert.equal(s.asked.at(-1), "Five-minute cache writes? [y/N]: ");
+        assert.match(h.warned.join("\n"), /interview ended/);
+        assert.equal(fs.existsSync(path.join(dir, ".portulan")), false);
     });
 });
 
@@ -1662,5 +1728,108 @@ describe("init drafts a boot card and compiles it", () => {
         assert.equal(ignored(".claude/rules/portulan/boot.md"), false, "the compiled card reaches review");
         assert.equal(ignored(".claude/settings.local.json"), true, "everything else under .claude/ stays ignored");
         assert.equal(ignored(".portulan/handoffs-index.md"), true, "the handoff index is not kept");
+    });
+});
+
+// ---------------------------------------------------------------- the cache lifetime, offered and declared
+
+// Proposal 0038, item 4 of its order of work, *`init`'s offer* (2026-09-24): the five-minute cache lifetime,
+// `sessions.cache_lifetime`, written into the manifest where a person chose it and offered where nobody did.
+// `init` never writes `.claude/settings.json`; `compile` is its one writer, and the last case here runs it.
+describe("init offers the cache lifetime, and writes it only where it was chosen", () => {
+    const KEYS = ["portulan", "name", "summary", "kind", "tree", "gates", "slots", "verify", "handoffs", "packs"];
+
+    test("`--cache-lifetime` writes the key, and the manifest declares 2.11, the version that added it", async () => {
+        for (const lifetime of ["5m", "1h"]) {
+            const dir = scratch();
+            const h = harness();
+            assert.equal(await run(["--residence", "in-repo", "--cache-lifetime", lifetime, dir], h.options), 0, h.warned.join("\n"));
+            const manifest = ok(dir);
+            assert.equal(manifest.portulan.spec, "2.11", "a manifest declares the version its content needs");
+            assert.deepEqual(manifest.sessions, { cache_lifetime: lifetime });
+            assert.deepEqual(Object.keys(manifest), [...KEYS, "sessions"], "nothing else moves");
+            assert.equal(fs.existsSync(path.join(dir, ".claude", "settings.json")), false, "init writes no host settings");
+            const said = h.said.join("\n");
+            assert.match(said, new RegExp(`declares a ${lifetime} cache lifetime, \`sessions\\.cache_lifetime\` at Workspace Definition 2\\.11 — run \`portulan compile\``));
+            assert.ok(!said.includes(OFFER_ENDS), "a lifetime chosen is the offer answered");
+        }
+    });
+
+    test("the answers file's `cache-lifetime` does the same, and the flag outranks it", async () => {
+        const dir = scratch();
+        const answers = path.join(scratch(), "answers.json");
+        fs.writeFileSync(answers, JSON.stringify({ residence: "in-repo", "cache-lifetime": "1h" }));
+        assert.equal(await run(["--answers", answers, dir], harness().options), 0);
+        assert.deepEqual(ok(dir).sessions, { cache_lifetime: "1h" });
+        assert.equal(ok(dir).portulan.spec, "2.11");
+
+        const nearer = scratch();
+        assert.equal(await run(["--answers", answers, "--cache-lifetime", "5m", nearer], harness().options), 0);
+        assert.deepEqual(ok(nearer).sessions, { cache_lifetime: "5m" }, "the nearer answer wins");
+    });
+
+    test("with none chosen and nothing asked, the manifest is unchanged at 2.10, and the report prints the offer", async () => {
+        const dir = scratch();
+        const h = harness();
+        assert.equal(await run(["--residence", "in-repo", "--no-interview", dir], h.options), 0);
+        const manifest = ok(dir);
+        assert.equal(manifest.portulan.spec, "2.10");
+        assert.equal(manifest.sessions, undefined);
+        assert.deepEqual(Object.keys(manifest), KEYS);
+        // Byte for byte: an answer of none drafts what an answers object without the key drafts, which is
+        // the shape every draft had before the offer existed.
+        const observed = scan(scratch());
+        const before = { residence: "in-repo", name: "consumer", cycle: true, checkpoints: "rituals/checkpoints", given: new Set(["residence"]), packRoots: [] };
+        assert.equal(draft({ ...before, cacheLifetime: null }, observed).get(".portulan/workspace.json").contents, draft(before, observed).get(".portulan/workspace.json").contents);
+        // Printed as 0036's budget is, on the line after it, prefixed and in order; the offer is the lifetime
+        // alone, so nothing names the multipliers.
+        const at = h.said.findIndex((l) => l.includes("A budget is yours to declare"));
+        assert.ok(at >= 0);
+        assert.deepEqual(h.said.slice(at + 1, at + 1 + offerLines().length), offerLines().map((l) => `init: ${l}`));
+        assert.ok(!h.said.some((l) => l.includes("spend.multipliers")), h.said.join("\n"));
+    });
+
+    test("a lifetime the host does not take is refused, by flag and by answers file, and nothing is written", async () => {
+        for (const bad of ["30m", "5M", "1d"]) {
+            const dir = scratch();
+            const h = harness();
+            assert.equal(await run(["--residence", "in-repo", "--cache-lifetime", bad, dir], h.options), 2, `${bad} must be refused`);
+            assert.match(h.warned.join("\n"), new RegExp(`\`${bad}\` is not a cache lifetime — Claude Code takes \`5m\` and \`1h\``));
+            assert.equal(fs.existsSync(path.join(dir, ".portulan")), false);
+        }
+        const dir = scratch();
+        const answers = path.join(scratch(), "answers.json");
+        fs.writeFileSync(answers, JSON.stringify({ residence: "in-repo", "cache-lifetime": "forever" }));
+        const h = harness();
+        assert.equal(await run(["--answers", answers, dir], h.options), 2);
+        assert.match(h.warned.join("\n"), /`forever` is not a cache lifetime/);
+        assert.equal(fs.existsSync(path.join(dir, ".portulan")), false);
+    });
+
+    test("a pointer refuses the lifetime, by flag and by answers file, with the reason a pointer has", async () => {
+        const dir = scratch();
+        const h = harness();
+        assert.equal(await run(["--residence", "pointer", "--governed-by", "platform", "--cache-lifetime", "5m", dir], h.options), 2);
+        const refusal = h.warned.join("\n");
+        assert.match(refusal, /`--cache-lifetime` does nothing with `--residence pointer` — a pointer drafts no repository whose settings `compile` writes/);
+        assert.doesNotMatch(refusal, /composes no packs/, "the packs' reason is not this option's");
+        assert.equal(fs.existsSync(path.join(dir, ".portulan")), false);
+
+        const answers = path.join(scratch(), "answers.json");
+        fs.writeFileSync(answers, JSON.stringify({ residence: "pointer", "governed-by": "platform", "cache-lifetime": "5m", checkpoints: "rituals/other" }));
+        const both = harness();
+        assert.equal(await run(["--answers", answers, scratch()], both.options), 2);
+        assert.match(both.warned.join("\n"), /`--checkpoints` and `--cache-lifetime` do nothing .* composes no packs, and a pointer drafts no repository/);
+    });
+
+    test("`compile` writes the drafted lifetime into the consumer's settings as `promptCacheTtl`", async () => {
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", "--cache-lifetime", "5m", dir], harness().options), 0);
+        const settings = path.join(dir, ".claude", "settings.json");
+        assert.equal(fs.existsSync(settings), false, "init leaves the settings to compile");
+        execFileSync(process.execPath, [path.join(REPO, "cli", "compile.mjs"), "--workspace", dir, "--pack-root", path.join(REPO, "packs")], { encoding: "utf8", stdio: "pipe" });
+        const text = fs.readFileSync(settings, "utf8");
+        assert.match(text, /"promptCacheTtl": "5m"/);
+        assert.equal(JSON.parse(text).promptCacheTtl, "5m");
     });
 });

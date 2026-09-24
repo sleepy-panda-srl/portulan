@@ -45,6 +45,7 @@ import {
     policyPath,
     policyDeclaration,
     sessionsDeclaration,
+    spendDeclaration,
     CACHE_LIFETIMES,
     resolveWorkspace,
     FILE_WRITERS,
@@ -75,6 +76,7 @@ import {
     IMPORT_DEPTH,
 } from "./compile.mjs";
 import { alwaysTier } from "./context.mjs";
+import { spendFlags } from "./advisory.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
@@ -739,6 +741,226 @@ describe("the session switches", () => {
         delete m.sessions;
         fs.writeFileSync(file, JSON.stringify(m, null, 2));
         assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1);
+    });
+});
+
+// ===========================================================================================
+// The declared figures — Workspace Definition 2.12's `spend`, written onto the advisory's commands
+// ===========================================================================================
+//
+// Proposal `0038`, ruling 2. The advisory is handed its command and the host's payload and nothing else, so
+// the figures ride both of its commands, where `--check` holds them to the manifest. What these cases cannot
+// establish is that a declared figure is the right one for a workspace's host; that is the declaring
+// workspace's to know, and `../spec/slots.md` says so.
+
+/** A scratch workspace whose manifest declares `spend`, on the policy `workspace()` writes. */
+function workspaceWithSpend(spend, p = policy()) {
+    const dir = workspace(p);
+    const file = path.join(dir, ".portulan", "workspace.json");
+    const m = JSON.parse(fs.readFileSync(file, "utf8"));
+    m.portulan.spec = "2.12";
+    m.spend = spend;
+    fs.writeFileSync(file, JSON.stringify(m, null, 2));
+    return dir;
+}
+
+/** The words after the mode on one of the advisory's commands, which is what the advisory is handed. */
+function afterMode(command, mode) {
+    const words = command.split(" ");
+    return words.slice(words.indexOf(mode) + 1);
+}
+
+/** The three advisory commands of compiled settings, each with its mode. */
+function advisoryCommands(settings) {
+    return [
+        [settings.hooks.PostToolUse[0].hooks[0].command, "tool"],
+        [settings.hooks.UserPromptSubmit[0].hooks[0].command, "prompt"],
+        [settings.statusLine.command, "status"],
+    ];
+}
+
+const DECLARED = { manifest: ".portulan/workspace.json", multipliers: { read: 0.05, write: { "5m": 1.5, "1h": 2.5 } }, horizon: 30 };
+
+describe("the declared figures", () => {
+    test("undeclared, or declared with neither half, the settings and the notes read exactly as they did", () => {
+        const plain = claudeCode(parse(policy()));
+        for (const spend of [null, { manifest: ".portulan/workspace.json", multipliers: null, horizon: null }]) {
+            const out = claudeCode(parse(policy()), { spend });
+            assert.equal(out.artifact.text, plain.artifact.text);
+            assert.deepEqual(out.notes, plain.notes);
+        }
+        assert.equal(plain.artifact.value.$portulan.spend, undefined);
+    });
+
+    test("declared, all three advisory commands carry the figures, and the header names where they came from", () => {
+        const settings = claudeCode(parse(policy()), { spend: DECLARED }).artifact.value;
+        const figures = " --read 0.05 --write-5m 1.5 --write-1h 2.5 --horizon 30";
+        assert.deepEqual(
+            settings.hooks.PostToolUse.flatMap((h) => h.hooks.map((x) => x.command)),
+            [`node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" tool${figures}`],
+        );
+        assert.deepEqual(
+            settings.hooks.UserPromptSubmit.flatMap((h) => h.hooks.map((x) => x.command)),
+            [`node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" prompt${figures}`],
+        );
+        assert.equal(settings.statusLine.command, `node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" status${figures}`);
+        assert.equal(settings.$portulan.spend, ".portulan/workspace.json");
+        assert.equal(
+            settings.$portulan.warning,
+            "Generated file. Edit .portulan/gates.json, or `spend` in .portulan/workspace.json, and recompile; `verify/compile.sh` fails on drift.",
+        );
+    });
+
+    test("declared, the figures are said on every run, with what carries them", () => {
+        const out = claudeCode(parse(policy()), { spend: DECLARED });
+        assert.ok(
+            out.notes.includes(
+                "the restart advisory and the status line compute the threshold at the declared figures (`spend`): read 0.05×, " +
+                    "write 1.5× for five minutes and 2.5× for an hour, whichever lifetime the host records, and a horizon of 30 " +
+                    "requests. The compiled commands carry them, so an edit to `spend` is drift until recompiled",
+            ),
+            out.notes.join("\n"),
+        );
+    });
+
+    test("each half is written alone: the multipliers at the general horizon, and a horizon at the general multipliers", () => {
+        const multipliers = claudeCode(parse(policy()), { spend: { ...DECLARED, horizon: null } });
+        assert.match(multipliers.artifact.value.statusLine.command, / status --read 0\.05 --write-5m 1\.5 --write-1h 2\.5$/);
+        assert.ok(multipliers.notes.some((n) => /for an hour, whichever lifetime the host records, and the general horizon of 20 requests\./.test(n)), multipliers.notes.join("\n"));
+        const horizon = claudeCode(parse(policy()), { spend: { ...DECLARED, multipliers: null } });
+        assert.match(horizon.artifact.value.statusLine.command, / status --horizon 30$/);
+        assert.ok(horizon.notes.some((n) => /declared figures \(`spend`\): the general multipliers, and a horizon of 30 requests\./.test(n)), horizon.notes.join("\n"));
+        for (const out of [multipliers, horizon]) assert.equal(out.artifact.value.$portulan.spend, ".portulan/workspace.json");
+    });
+
+    test("the warning names each key where it was declared: two in one manifest once, and two manifests each", () => {
+        const sessions = { manifest: ".portulan/workspace.json", cache_lifetime: "5m" };
+        const header = (options) => claudeCode(parse(policy()), options).artifact.value.$portulan;
+        const both = header({ sessions, spend: DECLARED });
+        assert.equal(
+            both.warning,
+            "Generated file. Edit .portulan/gates.json, or `sessions` and `spend` in .portulan/workspace.json, and recompile; `verify/compile.sh` fails on drift.",
+        );
+        assert.deepEqual(Object.keys(both), ["generated", "source", "sessions", "spend", "warning"]);
+        // An API caller may name two manifests; `compile` reads one.
+        const apart = header({ sessions: { ...sessions, manifest: "a/workspace.json" }, spend: { ...DECLARED, manifest: "b/workspace.json" } });
+        assert.equal(
+            apart.warning,
+            "Generated file. Edit .portulan/gates.json, or `sessions` in a/workspace.json, or `spend` in b/workspace.json, and recompile; `verify/compile.sh` fails on drift.",
+        );
+        // `headless` alone compiles no switch, so `sessions` is not named, and the figures are named alone.
+        const headless = header({ sessions: { manifest: ".portulan/workspace.json", headless: { cache_lifetime: "5m" } }, spend: DECLARED });
+        assert.equal(headless.warning, header({ spend: DECLARED }).warning);
+        assert.equal(headless.sessions, undefined);
+        // And the figures declared with neither half leave the switches' warning as it was.
+        assert.equal(
+            header({ sessions, spend: { ...DECLARED, multipliers: null, horizon: null } }).warning,
+            "Generated file. Edit .portulan/gates.json, or `sessions` in .portulan/workspace.json, and recompile; `verify/compile.sh` fails on drift.",
+        );
+    });
+
+    test("the figures on each command read back, through the advisory's own reader, as the declaration", () => {
+        // Compile writes what `spendFlags` reads, or the advisory falls back and the declaration goes unused.
+        for (const spend of [
+            DECLARED,
+            { manifest: "w.json", multipliers: { read: 1, write: { "5m": 1, "1h": 1 } }, horizon: 1 },
+            { manifest: "w.json", multipliers: { read: 1e-7, write: { "5m": 1e21, "1h": 12.5 } }, horizon: Number.MAX_SAFE_INTEGER },
+            // A whole number `String` spells with an exponent, which `doctor` passes as a positive integer.
+            { manifest: "w.json", multipliers: null, horizon: 1e21 },
+            { manifest: "w.json", multipliers: null, horizon: 7 },
+            { manifest: "w.json", multipliers: { read: 0.25, write: { "5m": 1.25, "1h": 2 } }, horizon: null },
+        ]) {
+            for (const [command, mode] of advisoryCommands(claudeCode(parse(policy()), { spend }).artifact.value)) {
+                assert.deepEqual(spendFlags(afterMode(command, mode)), { declared: spend.multipliers, horizon: spend.horizon, fault: null }, command);
+            }
+        }
+    });
+
+    test("the commands carry no shell syntax: after the runner and its mode, only flags and numbers", () => {
+        const spend = { manifest: "w.json", multipliers: { read: 1e-7, write: { "5m": 1e21, "1h": 2 } }, horizon: 30 };
+        for (const [command, mode] of advisoryCommands(claudeCode(parse(policy()), { spend }).artifact.value)) {
+            assert.doesNotMatch(command, /[|;&><]/, command);
+            for (const word of afterMode(command, mode)) assert.match(word, /^(--[a-z0-9-]+|[0-9][0-9.e+-]*)$/, command);
+        }
+    });
+
+    test("the declaration is read from the manifest in the ledger's shape, and a manifest without it reads as none", () => {
+        assert.equal(spendDeclaration(workspace()), null);
+        const dir = workspaceWithSpend({ multipliers: { read: 0.05, write: { "5m": 1.5, "1h": 2.5 } }, horizon: { requests: 30 } });
+        assert.deepEqual(spendDeclaration(dir), DECLARED);
+        assert.deepEqual(spendDeclaration(workspaceWithSpend({})), { manifest: ".portulan/workspace.json", multipliers: null, horizon: null });
+        // A manifest that is missing or does not parse is not this reader's to judge: `run` stops on the
+        // second before it asks, and `doctor` names both.
+        assert.equal(spendDeclaration(scratch()), null);
+        const broken = workspace();
+        fs.writeFileSync(path.join(broken, ".portulan", "workspace.json"), "{");
+        assert.equal(spendDeclaration(broken), null);
+    });
+
+    for (const [what, spend] of [
+        ["a key it does not take", { budget: 1 }],
+        ["a list in place of the object", [0.1]],
+        ["a read above 1, dearer than the token sent uncached", { multipliers: { read: 1.5, write: { "5m": 1.25, "1h": 2 } } }],
+        ["a read of 0", { multipliers: { read: 0, write: { "5m": 1.25, "1h": 2 } } }],
+        ["a write below 1, cheaper than the token sent uncached", { multipliers: { read: 0.1, write: { "5m": 0.9, "1h": 2 } } }],
+        ["a write missing one of the two lifetimes", { multipliers: { read: 0.1, write: { "5m": 1.25 } } }],
+        ["a lifetime the host does not take", { multipliers: { read: 0.1, write: { "5m": 1.25, "1h": 2, "30m": 1.5 } } }],
+        ["a figure spelled as a string", { multipliers: { read: "0.1", write: { "5m": 1.25, "1h": 2 } } }],
+        ["multipliers without their write", { multipliers: { read: 0.1 } }],
+        ["a horizon that is not a whole number of requests", { horizon: { requests: 2.5 } }],
+        ["a horizon of no requests", { horizon: { requests: 0 } }],
+        ["a horizon spelled as a bare number", { horizon: 20 }],
+    ]) {
+        test(`${what} stops compile with exit 2 and writes nothing`, () => {
+            const dir = workspaceWithSpend(spend);
+            assert.throws(
+                () => spendDeclaration(dir),
+                (error) => error instanceof CompileError && error.message.startsWith("`spend` in .portulan/workspace.json "),
+            );
+            assert.equal(run(["--workspace", dir], { quiet: true }), 2);
+            assert.equal(fs.existsSync(path.join(dir, ".claude", "settings.json")), false);
+        });
+    }
+
+    test("compiled end to end, the commands carry the figures and --check holds them to the manifest", () => {
+        const dir = workspaceWithSpend({ multipliers: { read: 0.05, write: { "5m": 1.5, "1h": 2.5 } }, horizon: { requests: 30 } });
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+        const target = path.join(dir, ".claude", "settings.json");
+        const settings = JSON.parse(fs.readFileSync(target, "utf8"));
+        for (const [command, mode] of advisoryCommands(settings)) {
+            assert.ok(command.endsWith(` ${mode} --read 0.05 --write-5m 1.5 --write-1h 2.5 --horizon 30`), command);
+        }
+        assert.equal(settings.$portulan.spend, ".portulan/workspace.json");
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 0);
+        const file = path.join(dir, ".portulan", "workspace.json");
+        const edit = (change) => {
+            const m = JSON.parse(fs.readFileSync(file, "utf8"));
+            change(m);
+            fs.writeFileSync(file, JSON.stringify(m, null, 2));
+        };
+        // An edited figure is drift until recompiled, because the commands are all the advisory reads.
+        edit((m) => (m.spend.horizon.requests = 40));
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1);
+        // A figure out of its range gets no drift verdict either way: nothing is compared, and nothing written.
+        const before = fs.readFileSync(target, "utf8");
+        edit((m) => (m.spend.multipliers.read = 2));
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 2);
+        assert.equal(run(["--workspace", dir], { quiet: true }), 2);
+        assert.equal(fs.readFileSync(target, "utf8"), before);
+        // Dropping the declaration is drift too, and a recompile returns the commands to the undeclared ones.
+        edit((m) => delete m.spend);
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1);
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+        assert.doesNotMatch(fs.readFileSync(target, "utf8"), /--read|--horizon|"spend"/);
+    });
+
+    test("a manifest declaring `spend` with neither half compiles byte for byte as one without the key", () => {
+        const without = workspace();
+        const empty = workspaceWithSpend({});
+        assert.equal(run(["--workspace", without], { quiet: true }), 0);
+        assert.equal(run(["--workspace", empty], { quiet: true }), 0);
+        const read = (dir) => fs.readFileSync(path.join(dir, ".claude", "settings.json"), "utf8");
+        assert.equal(read(empty), read(without));
     });
 });
 
@@ -3634,6 +3856,25 @@ describe("guidance: written, then byte-compared", () => {
         assert.match(check.out, /GREEN — every compiled guidance file matches its unit/);
     });
 
+    // The figures ride the advisory's commands, which are written only beside a gate policy, so a declaration
+    // with no policy to ride compiles nothing. Said, as the session switches are, rather than dropped unseen.
+    test("a declared `spend` beside guidance and no gate policy compiles nothing, and says so", (t) => {
+        const dir = guidanceCopy();
+        const file = path.join(dir, "workspace.json");
+        const m = JSON.parse(fs.readFileSync(file, "utf8"));
+        m.portulan.spec = "2.12";
+        m.spend = { horizon: { requests: 30 } };
+        fs.writeFileSync(file, JSON.stringify(m, null, 2));
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 0, out);
+        assert.match(out, /note {4}`spend` in workspace\.json compiled nothing: its figures ride the restart advisory's commands in the settings a gate policy compiles to, and this workspace has none/);
+        assert.ok(!fs.existsSync(path.join(dir, ".claude", "settings.json")), "no policy, so no settings");
+        // A refused value stops this run too, before any guidance is written.
+        m.spend = { horizon: { requests: -1 } };
+        fs.writeFileSync(file, JSON.stringify(m, null, 2));
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 2);
+    });
+
     // Before this case, guidance compiled past a `gates` key the compiler refuses, and `--check` went green:
     // the exit 2 such a key had always meant was gone wherever the workspace declared guidance. A `gates.json`
     // at the conventional path is not the policy such a key names either, so it is no reason to go on.
@@ -4440,7 +4681,7 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         const engine = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-engine-"));
         SCRATCH.push(engine);
         fs.mkdirSync(path.join(engine, "cli"));
-        for (const file of ["compile.mjs", "discover.mjs", "inside.mjs", "symbols.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
+        for (const file of ["compile.mjs", "discover.mjs", "inside.mjs", "symbols.mjs", "ledger.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
         fs.mkdirSync(path.join(engine, "core"));
         const leads = "# Leads\n\n- **A lead.**\n";
         fs.writeFileSync(path.join(engine, "core", "inside.md"), leads);

@@ -28,9 +28,10 @@ not documented.
 
 ## Fewer fresh contexts per task
 
-- **Continue until the restart threshold, then restart.** `0038`'s threshold is computed from the
-  multipliers, the fresh context and a horizon, and [`../../cli/advisory.mjs`](../../cli/advisory.mjs)
-  says it once. A restart that finds its prefix still cached costs less than the threshold assumes.
+- **Continue until the restart threshold, then restart.** `0038`'s threshold is computed from the multipliers,
+  the fresh context and a horizon, which a workspace declares in `spend` (Workspace Definition 2.12) and which
+  are the general ones where it does not, and [`../../cli/advisory.mjs`](../../cli/advisory.mjs) says it once.
+  A restart that finds its prefix still cached costs less than the threshold assumes.
 - **Resume a finished worker within its cache lifetime** rather than start a new one: its context is
   read again rather than written again.
 - **A subagent is a fresh context**, on a five-minute cache unless set. Fan out when the reads it keeps
@@ -41,10 +42,14 @@ not documented.
 
 ## The cache lifetime fits the gap
 
-**Five minutes where the next use of the prefix comes within five minutes**: bursts, and headless runs
-that follow one another. **An hour where sessions idle or the next one starts later.** A five-minute
-write costs less than an hour's, and every read renews either; a gap past the lifetime writes the whole
-context again. A subagent's lifetime is set apart from the session's.
+**Five minutes where the next use of the prefix comes within five minutes**: bursts, and headless runs that
+follow one another. **An hour where sessions idle or the next one starts later.** A five-minute write costs
+1.25 times an uncached input token and an hour's 2, and every read renews either; a gap past the lifetime
+writes the whole context again. On this repository's own tasks, run straight through, five-minute writes cut a
+boot's cost by 22 to 30% and an edit's by about 18% against an hour's
+([`../../evals/ab/warm.md`](../../evals/ab/warm.md), row 2 and the measurement beside it); in a long session,
+one pause past five minutes, while a person reads or a review or CI runs, can cost more than every write the
+shorter lifetime saved. A subagent's lifetime is set apart from the session's.
 
 ## A switch that changes the prefix is earned
 
@@ -66,24 +71,30 @@ removes keeps it**:
 
 ## What a workspace declares
 
-**`sessions` in the manifest**, since Workspace Definition 2.11 ([`../../spec/slots.md`](../../spec/slots.md)):
-`git_instructions` and `cache_lifetime` compile into the host's project settings and reach every session
-in the repository; `headless` is what Portulan's own runners apply to the sessions they start. Nothing is
-defaulted: an undeclared switch is the host's own default. This repository declares no switch yet: its
-sessions commit and idle, so the interactive ones wait on a maintainer's A/B, and the headless ones wait
-on the runs [`../../evals/ab/warm.md`](../../evals/ab/warm.md) specifies.
+**`sessions` in the manifest**, since Workspace Definition 2.11
+([`../../spec/slots.md`](../../spec/slots.md)): `git_instructions` and `cache_lifetime` compile into the
+host's project settings and reach every session in the repository; `headless` is what Portulan's own runners
+apply to the sessions they start. Nothing is defaulted: an undeclared switch is the host's own default. This
+repository declares one switch, five-minute writes for its headless runs, which row 2 of
+[`../../evals/ab/warm.md`](../../evals/ab/warm.md) earned. Its interactive sessions keep the host's default,
+because they commit and idle on reviews and CI; the git instructions wait on that page's row 3, and the
+per-machine sections on its row 4.
 
 ## What is machinery today, and what is not
 
-`compile` emits the two interactive keys and says so on every run; `doctor` checks the key's shape and
-version; [`../../cli/warm.mjs`](../../cli/warm.mjs) runs fresh headless sessions in sequence and prices
-each from the host's own usage records, warm against cold, and [`../../evals/ab/warm.md`](../../evals/ab/warm.md)
-is its specification and its record. **Still to land**: the interactive A/B, which needs real local
-sessions and so runs on a maintainer's device; a report of how often sessions start warm, from the
-ledger's first request per context; and carrying the key to adopters through `init`, `vendor` and
-`upgrade`. Until each lands, the rule it would enforce is held by the human gate.
+`compile` emits the two interactive keys and says so on every run, and writes `spend`'s figures onto the
+restart advisory's commands; `doctor` checks the shape and version of `sessions` and `spend`, and reports
+every switch's state in one line; `init` offers an adopter's repository the five-minute lifetime with its
+reason and its trade-off, and writes the key on a yes for `compile` to carry, and `upgrade` prints the same
+offer and writes nothing. [`../../cli/warm.mjs`](../../cli/warm.mjs) runs fresh headless sessions in sequence
+and prices each from the host's own usage records, warm against cold, and
+[`../../evals/ab/warm.md`](../../evals/ab/warm.md) is its specification and its record. **Still to land**: the
+interactive A/B, which needs real local sessions and so runs on a maintainer's device; a report of how often
+sessions start warm, from the ledger's first request per context; an offer of the other switches, once their
+rows have run; and carrying the key through `vendor`. Until each lands, the rule it would enforce is held by
+the human gate.
 
 _(Provenance: the maintainer's five-run measurement of 2026-09-24, whose figures the record in
-[`../../evals/ab/warm.md`](../../evals/ab/warm.md) carries as its before; the techniques survey before it,
-from Claude Code's documentation on prompt caching, settings and the CLI; and each switch read in Claude
-Code 2.1.281's program text on 2026-09-24.)_
+[`../../evals/ab/warm.md`](../../evals/ab/warm.md) carries as its before, and the cache test of the same day,
+which ran its rows 1 and 2; the techniques survey before it, from Claude Code's documentation on prompt
+caching, settings and the CLI; and each switch read in Claude Code 2.1.281's program text on 2026-09-24.)_

@@ -26,6 +26,7 @@ import {
     collect,
     compareHost,
     contextOf,
+    describeMultipliers,
     figureOf,
     foldFigures,
     hostPaths,
@@ -34,9 +35,11 @@ import {
     markRebuilds,
     mayHold,
     multipliers,
+    overflowingWrite,
     print,
     projectKey,
     readLine,
+    readSpend,
     readTranscript,
     restartThreshold,
     run,
@@ -394,6 +397,62 @@ describe("the restart threshold", () => {
     test("a session with no request yet has no threshold", () => {
         assert.equal(figureOf(sessionFigures()), null);
     });
+
+    test("declared multipliers take the write of the lifetime the host recorded, as the general ones do, and say so", () => {
+        // Workspace Definition 2.12's `spend`: a declaration prices both lifetimes, and the records say which one applies.
+        const declared = { read: 0.05, write: { "5m": 1.25, "1h": 2 } };
+        assert.deepEqual(multipliers({ declared, lifetime: "1h" }), { read: 0.05, write: 2, lifetime: "1h", recorded: true, source: "declared" });
+        assert.deepEqual(multipliers({ declared }), { read: 0.05, write: 1.25, lifetime: "5m", recorded: false, source: "declared" });
+        assert.equal(describeMultipliers(multipliers({ declared, lifetime: "5m" })), "multipliers declared: read 0.05×, write 1.25× (the five-minute writes the host recorded)");
+        assert.equal(describeMultipliers(multipliers({ declared })), "multipliers declared: read 0.05×, write 1.25× (a five-minute write, the lifetime the records did not state)");
+        // A fresh context of 40,000 written for an hour, judged 30 requests out: 40,000 × (1 + 2 / (30 × 0.05)).
+        const figure = figureOf({ ...sessionFigures(), fresh: 40000, freshLifetime: "1h", lifetime: "1h", last: 50000 }, { declared, horizon: 30 });
+        assert.deepEqual([figure.threshold, figure.horizon, figure.multipliers.write], [93333, 30, 2]);
+    });
+});
+
+describe("a declared `spend`, as a manifest carries it", () => {
+    // Workspace Definition 2.12, proposal `0038`'s ruling 2. `readSpend` is what `compile` and `--workspace`
+    // read a manifest through, so it refuses what the schema and `doctor` refuse rather than trusting that
+    // `doctor` ran: the first fault, naming the manifest.
+    const write = { "5m": 1.25, "1h": 2 };
+
+    test("undeclared, either half alone, or both, each read as the shape the threshold takes", () => {
+        assert.deepEqual(readSpend(undefined, "w.json"), { multipliers: null, horizon: null });
+        assert.deepEqual(readSpend({}, "w.json"), { multipliers: null, horizon: null });
+        assert.deepEqual(readSpend({ horizon: { requests: 30 } }, "w.json"), { multipliers: null, horizon: 30 });
+        assert.deepEqual(readSpend({ multipliers: { read: 0.05, write }, horizon: { requests: 30 } }, "w.json"), { multipliers: { read: 0.05, write }, horizon: 30 });
+        // The bounds themselves: a read at the cost of an uncached token, and writes at it.
+        assert.deepEqual(readSpend({ multipliers: { read: 1, write: { "5m": 1, "1h": 1 } } }, "w.json").multipliers, { read: 1, write: { "5m": 1, "1h": 1 } });
+        // A horizon past 2^53 is still a whole number, and `doctor`'s positive-integer check passes it, so it is
+        // taken here too: a manifest `doctor` passes must not stop `compile`.
+        assert.equal(readSpend({ horizon: { requests: 1e16 } }, "w.json").horizon, 1e16);
+    });
+
+    for (const [what, spend, says] of [
+        ["a list in place of the object", [], /is not an object/],
+        ["null", null, /is not an object/],
+        ["an unknown key", { price: 1 }, /names `price`, which is neither `multipliers` nor `horizon`/],
+        ["multipliers with no write", { multipliers: { read: 0.1 } }, /at `multipliers` has no `write`/],
+        ["multipliers with no read", { multipliers: { write } }, /at `multipliers` has no `read`/],
+        ["a write for one lifetime only", { multipliers: { read: 0.1, write: { "5m": 1.25 } } }, /at `multipliers\.write` has no `1h`/],
+        ["a lifetime the host does not take", { multipliers: { read: 0.1, write: { ...write, "30m": 1.5 } } }, /at `multipliers\.write` names `30m`, which is neither `5m` nor `1h`/],
+        ["a read of 0, which the threshold would divide by", { multipliers: { read: 0, write } }, /sets `read` to 0, which is not a number above 0 and at most 1/],
+        ["a read above 1", { multipliers: { read: 1.5, write } }, /sets `read` to 1\.5/],
+        ["a read spelled as a string", { multipliers: { read: "0.1", write } }, /sets `read` to "0\.1"/],
+        ["a write under 1", { multipliers: { read: 0.1, write: { ...write, "5m": 0.5 } } }, /at `multipliers\.write` sets `5m` to 0\.5, which is not a number of at least 1/],
+        ["a horizon of 0", { horizon: { requests: 0 } }, /at `horizon` sets `requests` to 0, which is not a positive integer/],
+        ["a fractional horizon", { horizon: { requests: 2.5 } }, /sets `requests` to 2\.5/],
+        ["a horizon with no requests", { horizon: {} }, /at `horizon` has no `requests`/],
+        ["a horizon with a key besides", { horizon: { requests: 20, turns: 3 } }, /names `turns`, which is not `requests`/],
+    ]) {
+        test(`${what} is refused, naming the manifest and the fault`, () => {
+            assert.throws(
+                () => readSpend(spend, "w.json"),
+                (e) => e instanceof LedgerError && e.message.startsWith("`spend` in w.json ") && says.test(e.message),
+            );
+        });
+    }
 });
 
 describe("the host's own totals", () => {
@@ -483,7 +542,91 @@ describe("the command", () => {
     test("--fixture reads nothing but the fixture, so it takes no other argument", () => {
         const out = say();
         assert.equal(run(["--fixture", FIXTURE, "--projects", "/somewhere"], out.fn), 2);
+        assert.equal(run(["--fixture", FIXTURE, "--workspace", REPO], say().fn), 2, "its known threshold is priced at the general multipliers");
         assert.equal(run(["--fixture", path.join(os.tmpdir(), "no-such-fixture-here")], say().fn), 2);
+    });
+
+    test("--workspace prices the threshold at the manifest's `spend`, and without the key or the flag nothing moves", () => {
+        withTemp((dir) => {
+            const host = { cwd: dir, env: { CLAUDE_CONFIG_DIR: dir }, home: dir };
+            // A fresh context of 40,001 written for an hour, now at 80,002: exactly its threshold at the general multipliers.
+            write(path.join(dir, "projects", projectKey(dir), "s.jsonl"), [...blocks({ cwd: dir, w1h: 40000 }), ...blocks({ cwd: dir, uncached: 2, read: 80000 })]);
+            const ws = path.join(dir, "ws");
+            fs.mkdirSync(ws);
+            const manifest = (m) => fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify(m));
+            const restart = (argv) => {
+                const out = say();
+                assert.equal(run(["--branch", "b", ...argv], out.fn, host), 0, out.lines.join("\n"));
+                return out.lines.find((l) => l.startsWith("  restart: "));
+            };
+            const general = restart([]);
+            assert.equal(general, "  restart: session s is at 80,002 tokens and has reached its threshold of 80,002 = 40,001 × (1 + 2 / (20 × 0.1)); multipliers undeclared: the general read 0.1× and the 2× of the one-hour writes the host recorded");
+            manifest({ portulan: { spec: "2.11" } });
+            assert.equal(restart(["--workspace", ws]), general, "a manifest declaring no `spend` prices as no flag does");
+            manifest({ portulan: { spec: "2.12" }, spend: { multipliers: { read: 0.05, write: { "5m": 1.25, "1h": 2 } }, horizon: { requests: 30 } } });
+            assert.equal(
+                restart(["--workspace", ws]),
+                "  restart: session s is at 80,002 tokens and is below its threshold of 93,336 = 40,001 × (1 + 2 / (30 × 0.05)); multipliers declared: read 0.05×, write 2× (the one-hour writes the host recorded)",
+            );
+            manifest({ portulan: { spec: "2.12" }, spend: { horizon: { requests: 10 } } });
+            assert.match(restart(["--workspace", ws]), /threshold of 120,003 = 40,001 × \(1 \+ 2 \/ \(10 × 0\.1\)\); multipliers undeclared/, "the horizon stands alone");
+        });
+    });
+
+    test("a report with no threshold to judge still says the horizon and multipliers one would take, declared or not", () => {
+        withTemp((dir) => {
+            const host = { cwd: dir, env: { CLAUDE_CONFIG_DIR: dir }, home: dir };
+            const ws = path.join(dir, "ws");
+            fs.mkdirSync(ws);
+            const restart = (argv) => {
+                const out = say();
+                assert.equal(run(["--branch", "b", ...argv], out.fn, host), 0, out.lines.join("\n"));
+                assert.ok(out.lines.includes("  no request on b is recorded here"), out.lines.join("\n"));
+                return out.lines.find((l) => l.startsWith("  restart: "));
+            };
+            const unjudged = "  restart: no session on this branch has a request with a time to judge; a threshold would take a horizon of ";
+            assert.equal(restart([]), `${unjudged}20 requests and the general multipliers, undeclared: read 0.1×, writes 1.25× for five minutes and 2× for an hour`);
+            fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify({ portulan: { spec: "2.12" }, spend: { multipliers: { read: 0.05, write: { "5m": 1.25, "1h": 2 } }, horizon: { requests: 30 } } }));
+            assert.equal(restart(["--workspace", ws]), `${unjudged}30 requests and the declared multipliers: read 0.05×, writes 1.25× for five minutes and 2× for an hour`);
+            // A request with no time is counted, and still leaves no session to judge: the second exit says the same.
+            write(path.join(dir, "projects", projectKey(dir), "s.jsonl"), blocks({ cwd: dir, at: null }));
+            const out = say();
+            assert.equal(run(["--branch", "b", "--workspace", ws], out.fn, host), 0, out.lines.join("\n"));
+            assert.ok(!out.lines.includes("  no request on b is recorded here"), out.lines.join("\n"));
+            assert.equal(out.lines.at(-1), `${unjudged}30 requests and the declared multipliers: read 0.05×, writes 1.25× for five minutes and 2× for an hour`);
+        });
+    });
+
+    test("figures each in range that give no finite threshold are refused, and a threshold that overflows is none", () => {
+        const where = "ws/workspace.json";
+        assert.throws(() => readSpend({ multipliers: { read: 0.05, write: { "5m": 1.25, "1h": Number.MAX_VALUE } } }, where), (error) => error instanceof LedgerError && /gives no finite restart threshold, since `write\["1h"\]` divided by `read` overflows/.test(error.message));
+        assert.equal(overflowingWrite({ read: 0.05, write: { "5m": 1.25, "1h": 2 } }), null);
+        // A quotient in range, which a fresh context of 100 still carries past the largest number.
+        assert.throws(() => restartThreshold({ fresh: 100, write: Number.MAX_VALUE, read: 1, horizon: 1 }), (error) => error instanceof LedgerError && /overflows, so these multipliers give none$/.test(error.message));
+    });
+
+    test("--workspace naming a manifest that cannot be read, or a `spend` it refuses, is could-not-run, never a report", () => {
+        withTemp((dir) => {
+            const host = { cwd: dir, env: { CLAUDE_CONFIG_DIR: dir }, home: dir };
+            const ws = path.join(dir, "ws");
+            fs.mkdirSync(ws);
+            for (const [what, text, said] of [
+                ["no manifest", null, /--workspace \S*workspace\.json could not be read as a manifest — ENOENT/],
+                ["a manifest that does not parse", "{", /--workspace \S*workspace\.json could not be read as a manifest — /],
+                ["a manifest that is not an object", "[]", /is not a JSON object, so no `spend` could be read from it/],
+                ["a refused `spend`", JSON.stringify({ spend: { multipliers: { read: 2, write: { "5m": 1.25, "1h": 2 } } } }), /`spend` in \S*workspace\.json at `multipliers` sets `read` to 2/],
+            ]) {
+                if (text === null) fs.rmSync(path.join(ws, "workspace.json"), { force: true });
+                else fs.writeFileSync(path.join(ws, "workspace.json"), text);
+                const out = say();
+                assert.equal(run(["--branch", "b", "--workspace", ws], out.fn, host), 2, what);
+                assert.match(out.lines.join("\n"), said, what);
+                assert.ok(!out.lines.some((l) => l.startsWith("ledger: branch")), `${what}: nothing is reported`);
+            }
+            const out = say();
+            assert.equal(run(["--branch", "b", "--workspace", path.join(dir, "absent")], out.fn, host), 2);
+            assert.match(out.lines.join("\n"), /--workspace \S*absent could not be read — ENOENT/);
+        });
     });
 
     test("an unknown argument, a missing value or one given twice is could-not-run", () => {
