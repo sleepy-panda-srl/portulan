@@ -647,6 +647,36 @@ describe("vendoring into a host", () => {
         assert.deepEqual(await green(path.join(host, ".portulan")), []);
     });
 
+    // The boot card's imports are loads this file's hosts do not make, so each degrades as a tier does: to a
+    // pointer naming the file where the vendored tree holds it. The tree holds only the workspace, so an
+    // import leaving it would dangle, and stops the vendoring.
+    test("an always unit's import rides in AGENTS.md as a pointer to the vendored file, and one leaving the workspace stops the vendoring", async () => {
+        const root = scratch();
+        const src = path.join(root, "feed", "acme");
+        fs.mkdirSync(src, { recursive: true });
+        seedWorkspace(src, { kind: "portfolio", tree: null, card: null, extra: { portulan: { spec: "2.10" } } });
+        const manifest = readManifest(src);
+        manifest.slots.context = "context/";
+        write(src, "workspace.json", json(manifest));
+        write(src, "context/boot.md", "---\ntier: always\n---\n\n# Portulan boot card\n\nWho we are:\n\n@../identity.md\n");
+        const host = path.join(root, "host");
+        fs.mkdirSync(host, { recursive: true });
+        assert.equal(await run([src, "--into", path.join(host, ".portulan"), "--residence", "in-repo", "--host", "generic"], harness().options), 0);
+        const md = fs.readFileSync(path.join(host, "AGENTS.md"), "utf8");
+        assert.match(md, /# Portulan boot card\n\nWho we are:\n\n- `\.portulan\/identity\.md`: read it in full — a host that follows imports loads it here\.\n/);
+        assert.ok(exists(path.join(host, ".portulan", "identity.md")), "the file the pointer names is in the vendored tree");
+
+        write(root, "feed/outside.md", "Outside.\n");
+        write(src, "context/boot.md", "---\ntier: always\n---\n\n# Portulan boot card\n\n@../../outside.md\n");
+        const again = path.join(root, "again");
+        fs.mkdirSync(again, { recursive: true });
+        const h = harness();
+        assert.equal(await run([src, "--into", path.join(again, ".portulan"), "--residence", "in-repo", "--host", "generic"], h.options), 2);
+        assert.match(text(h), /`@\.\.\/\.\.\/outside\.md` \(in context\/boot\.md\) leaves .+, the tree compiled here/);
+        assert.ok(!exists(path.join(again, "AGENTS.md")));
+        assert.ok(!exists(path.join(again, ".portulan")));
+    });
+
     test("a unit `compile` would refuse stops the vendoring before anything is written", async () => {
         const root = scratch();
         const src = path.join(root, "feed", "acme");

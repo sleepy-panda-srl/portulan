@@ -65,6 +65,9 @@ import {
     claudeCodeGuidance,
     agentsMdGuidance,
     HOOK_RUNNERS,
+    BOOT_CARD_UNIT,
+    BOOT_CARD_LINE,
+    IMPORT_DEPTH,
 } from "./compile.mjs";
 import { alwaysTier } from "./context.mjs";
 
@@ -3904,8 +3907,199 @@ describe("guidance: written, then byte-compared", () => {
         assert.ok(!fs.existsSync(path.join(dir, ".claude")));
     });
 
-    test("this repository declares no guidance, and carries no compiled guidance", () => {
-        assert.equal(guidanceUnits(REPO, ".portulan"), null);
-        assert.ok(!fs.existsSync(path.join(REPO, GUIDANCE_RULES_DIR)));
+    test("this repository's guidance opens with its boot card, and what it compiles to is what is committed", () => {
+        const guidance = guidanceUnits(REPO, ".portulan");
+        const card = guidance.units.find((u) => u.name === BOOT_CARD_UNIT);
+        assert.equal(card?.tier, "always");
+        assert.equal(card.text.split("\n")[0], BOOT_CARD_LINE);
+        for (const file of claudeCodeGuidance(guidance).files) {
+            assert.equal(fs.readFileSync(path.join(REPO, ...file.path.split("/")), "utf8"), file.text, file.path);
+        }
+    });
+
+    // The card restates the policy's tiers in every context, and the policy is the one that compiles: a gate
+    // it adds, moves or drops moves on the card in the same change, or the card tells every session otherwise.
+    test("this repository's card names each gate under the tier the composed policy gives it, and no other gate", () => {
+        const policy = JSON.parse(fs.readFileSync(path.join(REPO, ".portulan", "gates.json"), "utf8"));
+        const { contributions } = packContributions(REPO, ".portulan", { packRoots: [path.join(REPO, "packs")] });
+        const held = composeFragments(policy, contributions).policy.rules.map((rule) => `${rule.tier} ${rule.id}`);
+        const card = fs.readFileSync(path.join(REPO, ".portulan", "context", `${BOOT_CARD_UNIT}.md`), "utf8");
+        const labels = new Set(["agent-driven"]); // named on the Propose line beside its gates
+        const named = [];
+        for (const [, tier, body] of card.matchAll(/^- \*\*(Auto|Propose|Gated|Prohibited)\*\*(.*(?:\n {2}.*)*)/gm)) {
+            for (const [, id] of body.matchAll(/`([a-z]+(?:-[a-z]+)+)`/g)) {
+                if (!labels.has(id)) named.push(`${tier.toLowerCase()} ${id}`);
+            }
+        }
+        assert.deepEqual(named.sort(), held.sort());
+    });
+});
+
+// The boot card (records rethink piece 2): the always unit a boot reads in place of the slots. It pulls whole
+// files in by import and the lead sentences of others by a `leads` line, so each fact keeps one source, and
+// `compile` checks every import against what Claude Code 2.1.281 would load before anything is written.
+describe("guidance: the boot card, its imports and its lead lines", () => {
+    /** The guidance fixture, with each of `files` written into it at its path from the root. */
+    function withFiles(files) {
+        const dir = guidanceCopy();
+        for (const [rel, text] of Object.entries(files)) {
+            fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+            fs.writeFileSync(path.join(dir, rel), text);
+        }
+        return dir;
+    }
+    /** A boot card, its lines under the card's own first line. */
+    const card = (...lines) => unitText(["tier: always"], [BOOT_CARD_LINE, "", ...lines].join("\n"));
+    const rule = (dir, name) => fs.readFileSync(path.join(dir, GUIDANCE_RULES_DIR, `${name}.md`), "utf8");
+
+    test("an import is spelled again from the rule it compiles to, and the measurement follows it there", (t) => {
+        const dir = withFiles({ "context/boot.md": card("@../identity.md", "", "A path in a code span, `@nothing.md`, is text.") });
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 0, out);
+        assert.match(rule(dir, "boot"), /^@\.\.\/\.\.\/\.\.\/identity\.md$/m);
+        assert.doesNotMatch(rule(dir, "boot"), /^@\.\.\/identity\.md$/m, "the unit's own spelling resolves from the wrong directory");
+        const measured = alwaysTier(dir);
+        assert.equal(measured.card, path.join(dir, GUIDANCE_RULES_DIR, "boot.md"));
+        assert.ok(measured.entries.some((e) => e.file === path.join(dir, "identity.md") && e.label === "import, depth 1"), "the imported file is in the always tier");
+        assert.deepEqual([measured.missing, measured.outside, measured.tooDeep], [[], [], []]);
+        const check = said(t, ["--workspace", dir, "--check"]);
+        assert.equal(check.code, 0, check.out);
+    });
+
+    test(`a file ${IMPORT_DEPTH} imports below the rule is refused, since the host loads nothing there, and one ${IMPORT_DEPTH - 1} below compiles`, (t) => {
+        const dir = withFiles({ "context/boot.md": card("@../d1.md"), "d1.md": "@d2.md\n", "d2.md": "@d3.md\n", "d3.md": "@d4.md\n", "d4.md": "@d5.md\n", "d5.md": "Five down.\n" });
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 2);
+        assert.match(out, /`@d5\.md` \(in d4\.md\) sits 5 imports below the rule, and the host loads nothing 5 deep/);
+        assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+        fs.writeFileSync(path.join(dir, "d4.md"), "Four down.\n");
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        assert.deepEqual(alwaysTier(dir).tooDeep, []);
+    });
+
+    const refusedImports = [
+        ["an import that leaves the tree compiled", card("@../../outside.md"), /`@\.\.\/\.\.\/outside\.md` \(in context\/boot\.md\) leaves .+, the tree compiled here/],
+        ["a home path", card("@~/notes.md"), /`@~\/notes\.md` \(in context\/boot\.md\) is a home or an absolute path/],
+        ["an absolute path", card("@/etc/hostname"), /`@\/etc\/hostname` \(in context\/boot\.md\) is a home or an absolute path/],
+        ["an import that names no file", card("@../missing.md"), /`@\.\.\/missing\.md` \(in context\/boot\.md\) names no file/],
+        ["an import that shares its line", card("Read @../identity.md first."), /`@\.\.\/identity\.md` \(in context\/boot\.md\) shares its line with other text/],
+        ["an import two files down that names no file", card("@../d1.md"), /`@gone\.md` \(in d1\.md\) names no file/, { "d1.md": "See\n\n@gone.md\n" }],
+    ];
+    for (const [why, text, pattern, more = {}] of refusedImports) {
+        test(`refused, and nothing is written: ${why}`, (t) => {
+            const dir = withFiles({ "context/boot.md": text, ...more });
+            const { code, out } = said(t, ["--workspace", dir]);
+            assert.equal(code, 2);
+            assert.match(out, pattern);
+            assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+        });
+    }
+
+    test("an import through a link out of the tree is refused, and nothing is written", (t) => {
+        const elsewhere = scratch();
+        fs.writeFileSync(path.join(elsewhere, "notes.md"), "Elsewhere.\n");
+        const dir = withFiles({ "context/boot.md": card("@../linked.md") });
+        fs.symlinkSync(path.join(elsewhere, "notes.md"), path.join(dir, "linked.md"));
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 2);
+        assert.match(out, /`@\.\.\/linked\.md` \(in context\/boot\.md\) is a link out of .+, the tree compiled here/);
+        assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+    });
+
+    test("a unit in another tier that imports a file is refused, since it would not load as the unit does; `@` text naming no file is text", (t) => {
+        const onPath = (body) => unitText(["tier: on-path", 'paths: ["api/**"]', "description: Handlers."], body);
+        const dir = withFiles({ "context/api.md": onPath("Ask @copilot.\n\n@../identity.md") });
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 2);
+        assert.match(out, /context\/api\.md: `@\.\.\/identity\.md` names a file, and only an always unit may import one — the host loads a path-scoped rule's imports into every context/);
+        assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+        for (const [tier, why] of [["on-invoke", /compiles to a skill in another directory/], ["on-read", /opened as it stands/]]) {
+            fs.writeFileSync(path.join(dir, "context", "api.md"), unitText([`tier: ${tier}`, "description: Handlers."], "@../identity.md"));
+            const other = said(t, ["--workspace", dir]);
+            assert.equal(other.code, 2);
+            assert.match(other.out, why);
+        }
+        fs.writeFileSync(path.join(dir, "context", "api.md"), onPath("Ask @copilot, and open `identity.md`."));
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+    });
+
+    test("a path in an HTML comment is no import, as the host strips comments before it reads one", (t) => {
+        const dir = withFiles({ "context/boot.md": card("<!-- @../missing.md -->", "", "@../identity.md") });
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 0, out);
+        assert.match(rule(dir, "boot"), /^<!-- @\.\.\/missing\.md -->$/m, "left as the unit wrote it");
+        assert.match(rule(dir, "boot"), /^@\.\.\/\.\.\/\.\.\/identity\.md$/m);
+    });
+
+    test("a leads line is the lead sentence of each item in the file's first list, and a change there is drift", (t) => {
+        const rules = [
+            "# Rules",
+            "",
+            "Prose first. It is not a list.",
+            "",
+            "1. **Ship small.** A reviewer reads a small change whole.",
+            "2. **Run `a.b` first** when the change is a fix. Then the rest,",
+            "   which continues here.",
+            "3. **Say what is enforced!** And what is not.",
+            "",
+            "- A second list, never read.",
+            "",
+        ].join("\n");
+        const dir = withFiles({ "rules.md": rules, "context/boot.md": card("The rules:", "", "<!-- leads: ../rules.md -->", "", "Open `rules.md` for the reasons.") });
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        assert.match(rule(dir, "boot"), /The rules:\n\n1\. \*\*Ship small\.\*\*\n2\. \*\*Run `a\.b` first\*\* when the change is a fix\.\n3\. \*\*Say what is enforced!\*\*\n\nOpen/);
+        fs.writeFileSync(path.join(dir, "rules.md"), rules.replace("Ship small.", "Ship smaller."));
+        const check = said(t, ["--workspace", dir, "--check"]);
+        assert.equal(check.code, 1);
+        assert.match(check.out, /boot\.md has drifted from context\/boot\.md, whose leads are written from rules\.md\. Edit the unit or those files, then recompile\./);
+    });
+
+    const refusedLeads = [
+        ["a file with no list", "# Rules\n\nOnly prose.\n", /the leads of \.\.\/rules\.md were asked for, and it holds no list|the leads of rules\.md were asked for, and it holds no list/],
+        ["an item with no bold lead", "1. **Ship small.** Why.\n2. Plain words.\n", /an item of rules\.md's first list opens without a bold lead/],
+        ["a lead carrying a link", "1. **Ship [small](x.md).** Why.\n", /the lead .+ of rules\.md carries a link/],
+    ];
+    for (const [why, rules, pattern] of refusedLeads) {
+        test(`refused, and nothing is written: a leads line naming ${why}`, (t) => {
+            const dir = withFiles({ "rules.md": rules, "context/boot.md": card("<!-- leads: ../rules.md -->") });
+            const { code, out } = said(t, ["--workspace", dir]);
+            assert.equal(code, 2);
+            assert.match(out, pattern);
+            assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+        });
+    }
+
+    test("refused, and nothing is written: a leads line naming a file outside the tree, or none", (t) => {
+        for (const [target, pattern] of [["../../rules.md", /lies outside the tree compiled here/], ["../missing.md", /names no file/]]) {
+            const dir = withFiles({ "context/boot.md": card(`<!-- leads: ${target} -->`) });
+            const { code, out } = said(t, ["--workspace", dir]);
+            assert.equal(code, 2);
+            assert.match(out, pattern);
+            assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+        }
+    });
+
+    const refusedUnits = [
+        ["a leads line in an on-read unit", "a", unitText(["tier: on-read", "description: A."], "<!-- leads: ../rules.md -->"), /written out only in an always unit, and this one is `on-read`/],
+        ["a boot unit in another tier", BOOT_CARD_UNIT, unitText(["tier: on-read", "description: A."], `${BOOT_CARD_LINE}\n\nA.`), /is an `always` unit, and this one is `on-read`/],
+        ["a boot unit that does not open with the card's line", BOOT_CARD_UNIT, unitText(["tier: always"], "# Boot\n\nA."), /a boot card opens with the line `# Portulan boot card`, which is how the boot skill knows it is loaded/],
+        ["the card's line opening another unit", "welcome", unitText(["tier: always"], `${BOOT_CARD_LINE}\n\nA.`), /only the unit named `boot` is one/],
+    ];
+    for (const [why, name, text, pattern] of refusedUnits) {
+        test(`refused, as could-not-compile: ${why}`, () => {
+            assert.throws(() => parseUnit(name, text), (error) => {
+                assert.ok(error instanceof CompileError, `a ${error.constructor.name}, not a CompileError`);
+                assert.match(error.message, pattern);
+                return true;
+            });
+        });
+    }
+
+    test("the vendored AGENTS.md names each import's file where the vendored tree holds it, one level deep", () => {
+        const dir = withFiles({ "context/boot.md": card("@../identity.md") });
+        const { inline } = agentsMdGuidance(guidanceUnits(dir, "."), ".portulan/context/");
+        const carried = inline.find((body) => body.startsWith(BOOT_CARD_LINE));
+        assert.match(carried, /^- `\.portulan\/identity\.md`: read it in full — a host that follows imports loads it here\.$/m);
+        assert.doesNotMatch(carried, /^@/m, "a host of that file follows no import");
     });
 });

@@ -145,7 +145,7 @@ are not subcommands at all. [`cli/README.md`](cli/README.md) is the single carri
 | `changes/` | [Changelog fragments](changes/), one file per change until the release cut assembles them into [`CHANGELOG.md`](CHANGELOG.md) |
 | `.portulan/` | [This repository's own workspace](.portulan/) — Portulan applied to building Portulan |
 | `.claude-plugin/` | The [plugin](.claude-plugin/plugin.json) and [marketplace](.claude-plugin/marketplace.json) manifests that make this repository an installable feed |
-| `.claude/` | [The compiled enforcement](.claude/settings.json) — permissions and hooks generated from [`.portulan/gates.json`](.portulan/gates.json), committed so it stays reviewable and held to its source by the `compile` verify recipe |
+| `.claude/` | [The compiled enforcement](.claude/settings.json) — permissions and hooks generated from [`.portulan/gates.json`](.portulan/gates.json) — and [the compiled guidance](.claude/rules/portulan/boot.md), this repository's boot card and the rules scoped to paths beside it, generated from [`.portulan/context/`](.portulan/context/); both committed so they stay reviewable, and held to their sources by the `compile` verify recipe |
 | `.github/` | [CI workflows](.github/), which run every verify recipe the workspace yields, and the [Dependabot config](.github/dependabot.yml) that watches their Action pins |
 
 ## Documentation

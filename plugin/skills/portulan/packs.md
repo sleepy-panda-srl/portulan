@@ -1,6 +1,6 @@
 # Boot Portulan — step 3a: the workspace names packs
 
-> **Step 3a of [`SKILL.md`](SKILL.md) in full, read at boot only where the workspace's manifest names a
+> **Step 3a of [`steps.md`](steps.md) in full, read at boot only where the workspace's manifest names a
 > pack in `packs`.** Its step numbers are the skill's, and its reasons are in
 > [`rationale.md`](rationale.md) under 3a. It moved here on 2026-09-23, under proposal 0036 as amended
 > that day: none of it was deleted, and none is kept in both files.

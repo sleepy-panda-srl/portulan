@@ -18,6 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+    ENGINE,
     ESTIMATED_BYTES_PER_TOKEN,
     OFFER_FLOOR_TOKENS,
     REQUIRED_SLOTS,
@@ -66,6 +67,7 @@ function bundle({ engine = true, plugin = true } = {}) {
     const files = {};
     if (engine) {
         files["plugin/skills/portulan/SKILL.md"] = skill("Boot the engine.");
+        files["plugin/skills/portulan/steps.md"] = "# Steps 1 to 5\n\nThe boot in full.\n";
         files["plugin/skills/portulan/pointer-manifest.md"] = "# Step 2a\n\nResolve the pointer.\n";
         files["plugin/skills/portulan/packs.md"] = "# Step 3a\n\nRead the packs key, and only the key.\n";
         files["core/engine.md"] = "# Portulan engine\n\nThe kernel.\n";
@@ -142,12 +144,51 @@ describe("the boot read-set", () => {
         const result = measure(path.join(root, ".portulan"), { bundleRoot });
         assert.deepEqual(
             result.boot.entries.map((e) => e.label),
-            ["boot skill", "kernel", "manifest", "identity", "principles", "constitution", "gates", "dod", "repo card", "memory index"],
+            ["boot skill", "boot steps", "kernel", "manifest", "identity", "principles", "constitution", "gates", "dod", "repo card", "memory index"],
         );
         for (const e of result.boot.entries) assert.equal(e.bytes, fs.statSync(e.file).size, e.label);
         const manifest = result.boot.entries.find((e) => e.label === "manifest").bytes;
         assert.equal(result.figures.records, result.figures.boot - manifest);
-        assert.equal(result.figures.engine, fs.statSync(path.join(bundleRoot, "plugin/skills/portulan/SKILL.md")).size + fs.statSync(path.join(bundleRoot, "core/engine.md")).size);
+        const size = (rel) => fs.statSync(path.join(bundleRoot, rel)).size;
+        assert.equal(result.figures.engine, size("plugin/skills/portulan/SKILL.md") + size("plugin/skills/portulan/steps.md") + size("core/engine.md"));
+    });
+
+    test("a boot whose card is loaded reads the skill, and has the always tier the card sits in", () => {
+        const root = repository({
+            manifest: { packs: ["rituals/checkpoints"] },
+            files: {
+                ".claude/rules/portulan/boot.md": "# Portulan boot card\n\nThe card.\n\n@../../../core/engine.md\n",
+                "core/engine.md": "# Portulan engine\n\nThe kernel, in this tree.\n",
+            },
+        });
+        const bundleRoot = bundle();
+        const result = measure(path.join(root, ".portulan"), { bundleRoot });
+        assert.equal(result.boot.carded, path.join(root, ".claude", "rules", "portulan", "boot.md"));
+        assert.deepEqual(
+            result.boot.entries.map((e) => [e.label, path.relative(e.bundle ? bundleRoot : root, e.file)]),
+            [
+                ["boot skill", path.join("plugin", "skills", "portulan", "SKILL.md")],
+                ["rule", path.join(".claude", "rules", "portulan", "boot.md")],
+                ["import, depth 1", path.join("core", "engine.md")],
+            ],
+        );
+        assert.equal(result.figures.boot, result.figures.always + fs.statSync(path.join(bundleRoot, "plugin/skills/portulan/SKILL.md")).size);
+        assert.equal(result.figures.records, null, "a carded boot reads no manifest, so there is no subtotal without it");
+        assert.match(
+            result.boot.notCounted[0],
+            /^what the card replaces, each opened when the card or an on-path rule sends a session to it: the manifest, `identity`, `principles`, `constitution`, `gates`, `dod`, this repository's card, the memory index, where the card does not import it, the packs step$/,
+        );
+        const { code, out } = measured(root, [], { bundleRoot });
+        assert.equal(code, 0, out);
+        assert.match(out, /boot read-set — carded: \.claude\/rules\/portulan\/boot\.md is this repository's boot card/);
+        assert.doesNotMatch(out, /without manifest/);
+    });
+
+    test("a rule is the card by its first line, and by nothing else", () => {
+        const root = repository({ files: { ".claude/rules/notes.md": "Notes.\n\n# Portulan boot card\n" } });
+        const result = measure(path.join(root, ".portulan"), { bundleRoot: bundle() });
+        assert.equal(result.boot.carded, null);
+        assert.ok(result.boot.entries.some((e) => e.label === "identity"), "a rule that only mentions the line is no card, so the slots are read");
     });
 
     test("prints the subtotal without the manifest before the total with it", () => {
@@ -315,7 +356,7 @@ describe("imports, as the host reads them", () => {
 });
 
 describe("the always tier", () => {
-    test("instruction files and their imports count once each, within the host's five hops", () => {
+    test("instruction files and their imports count once each, and a file five imports down is not loaded", () => {
         const chain = {};
         for (let i = 1; i <= 6; i += 1) chain[`docs/d${i}.md`] = i < 6 ? `@d${i + 1}.md\n` : "deepest\n";
         const root = tree({
@@ -326,9 +367,9 @@ describe("the always tier", () => {
         const always = alwaysTier(root);
         assert.deepEqual(
             always.entries.map((e) => path.relative(root, e.file)),
-            ["CLAUDE.md", ".claude/CLAUDE.md", "docs/d1.md", "docs/d2.md", "docs/d3.md", "docs/d4.md", "docs/d5.md"],
+            ["CLAUDE.md", ".claude/CLAUDE.md", "docs/d1.md", "docs/d2.md", "docs/d3.md", "docs/d4.md"],
         );
-        assert.deepEqual(always.tooDeep, ["@d6.md (in docs/d5.md)"]);
+        assert.deepEqual(always.tooDeep, ["@d5.md (in docs/d4.md)"]);
         assert.deepEqual(always.missing, ["@missing.md (in CLAUDE.md)"]);
         assert.deepEqual(always.outside, ["@~/home.md. (in CLAUDE.md)"]);
     });
@@ -336,6 +377,35 @@ describe("the always tier", () => {
     test("a trailing full stop is not part of the path it ends", () => {
         const root = tree({ "CLAUDE.md": "See @docs/a.md.\n", "docs/a.md": "a\n" });
         assert.deepEqual(alwaysTier(root).entries.map((e) => path.relative(root, e.file)), ["CLAUDE.md", "docs/a.md"]);
+    });
+
+    // Read in Claude Code 2.1.281 and seen on a fixture: a path-scoped rule waits for its path, and what it
+    // imports does not, because an imported file carries no `paths:` of its own.
+    test("a rule's imports load with it, and a path-scoped rule's load everywhere while the rule waits for its path", () => {
+        const root = tree({
+            ".claude/rules/team.md": "# Team\n\n@../../docs/kernel.md\n",
+            ".claude/rules/api.md": '---\npaths:\n  - "api/**"\n---\n\n@../../docs/api-notes.md\n',
+            "docs/kernel.md": "kernel\n",
+            "docs/api-notes.md": "notes\n\n@more.md\n",
+            "docs/more.md": "more\n",
+        });
+        const always = alwaysTier(root);
+        assert.deepEqual(
+            always.entries.map((e) => [e.label, path.relative(root, e.file)]),
+            [
+                ["rule", path.join(".claude", "rules", "team.md")],
+                ["import, depth 1", path.join("docs", "kernel.md")],
+                ["import, depth 1, of a path-scoped rule", path.join("docs", "api-notes.md")],
+                ["import, depth 2, of a path-scoped rule", path.join("docs", "more.md")],
+            ],
+        );
+        assert.equal(always.scoped, 1, "the scoped rule itself is on-path, and not counted");
+        assert.equal(always.card, null);
+    });
+
+    test("a path in an HTML comment is not an import, as the host strips comments before it reads one", () => {
+        const root = tree({ "CLAUDE.md": "<!-- @docs/a.md -->\n<!--\n@docs/b.md\n-->\n@docs/c.md\n", "docs/a.md": "a\n", "docs/b.md": "b\n", "docs/c.md": "c\n" });
+        assert.deepEqual(alwaysTier(root).entries.map((e) => path.relative(root, e.file)), ["CLAUDE.md", path.join("docs", "c.md")]);
     });
 
     test("an import outside the repository is named and not measured", () => {
@@ -729,7 +799,8 @@ describe("this repository", () => {
         const result = measure(path.join(REPO, ".portulan"));
         assert.deepEqual(result.boot.engineMissing, []);
         assert.notEqual(result.figures.steps, null);
-        assert.equal(result.boot.card.selected, "portulan");
+        assert.equal(result.boot.carded, path.join(REPO, ".claude/rules/portulan/boot.md"), "this repository's boot is its card");
+        assert.equal(result.figures.boot, result.figures.always + fs.statSync(path.join(REPO, "plugin/skills/portulan/SKILL.md")).size);
         for (const e of result.boot.entries) assert.equal(e.bytes, fs.statSync(e.file).size, e.label);
         assert.equal(result.plugin.unavailable, undefined);
         const demo = measure(path.join(REPO, "examples"), { repo: "combcount" });
@@ -743,7 +814,7 @@ describe("this repository", () => {
     });
 
     test("every file of the boot skill is the skill, a step file counted here, or its on-read rationale", () => {
-        const known = new Set(["SKILL.md", "rationale.md", ...STEPS.map((s) => path.basename(s.rel))]);
+        const known = new Set(["rationale.md", ...ENGINE.filter((e) => e.rel.startsWith("plugin/")).map((e) => path.basename(e.rel)), ...STEPS.map((s) => path.basename(s.rel))]);
         const unknown = fs.readdirSync(path.join(REPO, "plugin/skills/portulan")).filter((name) => !known.has(name));
         assert.deepEqual(unknown, [], "a boot that reads a new file of the skill needs it in STEPS in context.mjs; one it reads on demand, here");
     });

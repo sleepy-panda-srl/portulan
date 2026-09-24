@@ -7,7 +7,7 @@
 // `governed_by` to the workspace it names (a cache hit, or the honest not installed here
 // sentence)"*. The same amendment fixes where the answer is produced and where it is merely
 // reported: **the boot is a skill, and real resolution stays the CLI's.** So this file resolves and
-// `../plugin/skills/portulan/SKILL.md` reports what it says.
+// the boot skill reports what it says, at step 2a (`../plugin/skills/portulan/pointer-manifest.md`).
 //
 // ## What this closes, and what it deliberately leaves open
 //
