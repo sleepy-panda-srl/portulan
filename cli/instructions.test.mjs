@@ -282,15 +282,28 @@ describe("the join puts each moved section back where its marker is", () => {
         assert.equal(unended.joined.files[0].after, crlf.replace(`${ON_READ_MARK}\r\n\r\n`, "").replace(`${ON_READ_MARK}\r\n`, ""));
     });
 
-    test("a marker naming a file outside `slots.context` is refused, and the file is left where it is", () => {
+    test("a unit a byte-order mark opens goes back with none of its frontmatter, and is no edit", () => {
+        const { joined } = joinAfter((u) => `\uFEFF${u.text}`);
+        assert.deepEqual(joined.refusals, []);
+        assert.equal(joined.files[0].after, FILE.replace(`${ON_READ_MARK}\n\n`, "").replace(`${ON_READ_MARK}\n`, ""));
+        assert.match(joinLine(joined.units[0], "CLAUDE.md"), /, as the move left it$/);
+    });
+
+    test("a marker naming a file outside `slots.context`, or below its top, is refused, and the file is left where it is", () => {
         const planned = split({ "CLAUDE.md": FILE });
         const [build, release] = planned.units;
         const elsewhere = planned.files[0].after.replace(build.source, "docs/build.md");
         const back = split({ "CLAUDE.md": elsewhere, "docs/build.md": build.text, [release.source]: release.text });
         const joined = planJoin({ tree: back.tree, context: SLOT, read: back.read });
         assert.deepEqual(joined.files, []);
-        assert.match(joined.refusals.join("\n"), /^line 5 of CLAUDE\.md names docs\/build\.md, which is outside `slots\.context` \(\.portulan\/context\/\), where the split makes every unit: put the section back by hand, or delete the marker$/);
+        assert.match(joined.refusals.join("\n"), /^line 5 of CLAUDE\.md names docs\/build\.md, which is not at the top of `slots\.context` \(\.portulan\/context\/\), where the split makes every unit: put the section back by hand, or delete the marker$/);
         assert.match(planJoin({ tree: back.tree, context: null, read: back.read }).refusals.join("\n"), /names docs\/build\.md, and the workspace declares no `slots\.context`/);
+        // A file below the slot is no unit `compile` reads, whatever tier its frontmatter names.
+        const below = `${SLOT}notes/build.md`;
+        const nested = split({ "CLAUDE.md": planned.files[0].after.replace(build.source, below), [below]: build.text, [release.source]: release.text });
+        const kept = planJoin({ tree: nested.tree, context: SLOT, read: nested.read });
+        assert.deepEqual(kept.files, []);
+        assert.match(kept.refusals.join("\n"), /^line 5 of CLAUDE\.md names \.portulan\/context\/notes\/build\.md, which is not at the top of `slots\.context`/);
     });
 
     test("a unit re-tiered since, one gone, and one now importing a file are refused, and nothing goes back", () => {
@@ -380,9 +393,9 @@ function consumer() {
     return { repo, ws: path.join(repo, ".portulan") };
 }
 
-async function cli(argv) {
+async function cli(argv, options = {}) {
     const out = [];
-    const code = await run(argv, (line) => out.push(line), { cwd: REPO });
+    const code = await run(argv, (line) => out.push(line), { cwd: REPO, ...options });
     return { code, text: out.join("\n") };
 }
 
@@ -441,6 +454,30 @@ describe("the invented consumer of fixtures/consumer/, split and measured", () =
         assert.equal(code, 0, text);
         assert.match(text, /^instructions: written, and the index compiled: the always tier is [\d,]+ B \(~[\d,]+ tokens\)$/m);
         assert.doesNotMatch(text, /A budget is yours to declare/);
+    });
+
+    test("with an on-read unit in the slot already, its index line stale, the figure the plan printed is still the one measured after", async () => {
+        const { repo, ws } = consumer();
+        const glossary = path.join(ws, "context", "glossary.md");
+        fs.writeFileSync(glossary, '---\ntier: on-read\ndescription: "Glossary"\n---\n\n# Glossary\n\nA shelfmark names where a copy stands.\n');
+        compileGuidance(ws);
+        fs.writeFileSync(glossary, fs.readFileSync(glossary, "utf8").replace('"Glossary"', '"Glossary of the catalogue"'));
+        const { code, text } = await cli(["--workspace", ws, "--write"]);
+        assert.equal(code, 0, text);
+        assert.equal(alwaysBytes(repo), Number(/to ([\d,]+) B \(~/.exec(text)[1].replaceAll(",", "")), "the index counted once, as `compile` rewrites it");
+    });
+
+    test("a write of the index failing partway rolls the split back with it, and nothing is changed", async () => {
+        const { repo, ws } = consumer();
+        // The index is written, then the marker listing it fails.
+        const write = (file, data, options) => {
+            if (/\.compiled\.portulan-upgrade\./.test(file)) throw Object.assign(new Error("denied"), { code: "EACCES" });
+            return fs.writeFileSync(file, data, options);
+        };
+        const { code, text } = await cli(["--workspace", ws, "--write"], { write });
+        assert.equal(code, 2, text);
+        assert.match(text, /^instructions: the index could not be written — .+ could not be written — EACCES; rolled back, nothing is changed$/m);
+        assert.equal(git(repo, "status", "--porcelain", "--untracked-files=all"), "");
     });
 
     test("--join --write puts every section back: CLAUDE.md is the fixture again, and the units and the index are gone", async () => {

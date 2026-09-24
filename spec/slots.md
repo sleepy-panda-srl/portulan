@@ -925,7 +925,7 @@ before it loads the file, so neither costs a context. The unit's text is not rew
 in it still reads from the repository root, as it did in `CLAUDE.md`.
 [`../cli/instructions.mjs`](../cli/instructions.mjs) is the same split on the command line, and `--join`
 puts every section back as it stands, saying which one the digest shows edited since, and refusing a unit
-re-tiered since, or one outside this slot, rather than undo its tier or remove it.
+re-tiered since, or a file not at the top of this slot, rather than undo its tier or remove it.
 
 **An `always` unit may import whole files and write out another file's lead sentences or a gate policy's
 gates**, so a card carries a fact without holding a second copy of it:

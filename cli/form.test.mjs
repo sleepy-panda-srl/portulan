@@ -447,6 +447,12 @@ describe("which form a consumer is in, read from disk", () => {
         assert.equal(formOf(ws, m).pieces.find((p) => p.id === "card").state, "today", "a line with a trailing space is no line `compile` expands");
     });
 
+    test("a workspace whose path holds a space is named quoted, so the command runs as printed", () => {
+        const root = tree({ "team notes/.portulan/context/boot.md": "---\ntier: always\n---\n\n# Portulan boot card\n\nOur own head.\n", "team notes/.claude/rules/portulan/boot.md": "# Portulan boot card\n" });
+        const ws = path.join(root, "team notes", ".portulan");
+        assert.match(formLine(ws, manifest({ slots: { context: "context/" } })), /`portulan upgrade --write '[^'`]*\/team notes\/\.portulan'` moves all but/);
+    });
+
     test("a card at the head of AGENTS.md is the new form on a host that reads it, and one mentioning the line is not", () => {
         const root = tree({ ".portulan/context/boot.md": carded, "AGENTS.md": "# AGENTS.md — acme\n\n# Portulan boot card\n\nThe card.\n" });
         const m = manifest({ slots: { context: "context/" } });

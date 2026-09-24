@@ -21,7 +21,7 @@ import path from "node:path";
 
 import { BOOT_CARD_LINE, BOOT_CARD_UNIT, GUIDANCE_RULES_DIR, leadsOfText } from "./compile.mjs";
 import { CHANGE_SECTIONS, readChanges, renderChanges } from "./index.mjs";
-import { instructionsState, splitCommand } from "./instructions.mjs";
+import { instructionsState, shellWord, splitCommand } from "./instructions.mjs";
 
 /** Anything that means the form could not be read. Carries no verdict. */
 export class FormError extends Error {}
@@ -739,8 +739,8 @@ export function formLine(workspaceDir, manifest, { over = false } = {}) {
     // the command that moves them all the same, as the context line names it (2026-09-24).
     if (over && today.some((p) => p.id === "instructions")) {
         const rest = today.filter((p) => p.id !== "instructions");
-        const after = rest.length === 0 ? "" : `, and \`portulan upgrade --write ${shown}\` ${rest.some((p) => p.hand) ? "moves the rest but what is named to add by hand" : "moves the rest"} once it runs`;
+        const after = rest.length === 0 ? "" : `, and \`portulan upgrade --write ${shellWord(shown)}\` ${rest.some((p) => p.hand) ? "moves the rest but what is named to add by hand" : "moves the rest"} once it runs`;
         return `${said}\`${splitCommand(shown)}\` moves the marked sections, since \`portulan upgrade\` does not run over a breached budget${after}, and until then it boots as it did`;
     }
-    return `${said}\`portulan upgrade --write ${shown}\` ${moves}, and until then it boots as it did`;
+    return `${said}\`portulan upgrade --write ${shellWord(shown)}\` ${moves}, and until then it boots as it did`;
 }

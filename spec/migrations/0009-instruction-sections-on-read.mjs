@@ -16,7 +16,7 @@
 
 import { ESTIMATED_BYTES_PER_TOKEN, alwaysTier, declaredContext, tokensOf } from "../../cli/context.mjs";
 import { notYetForm } from "../../cli/form.mjs";
-import { INSTRUCTION_FILES, contextDir, grouped, indexBytes, marksOf, planSplit, splitLines } from "../../cli/instructions.mjs";
+import { INSTRUCTION_FILES, contextDir, grouped, marksOf, planSplit, splitLines } from "../../cli/instructions.mjs";
 
 /** The split of the workspace's repository, planned through the view `upgrade` gives a step. */
 function splitOf(ws) {
@@ -51,7 +51,7 @@ export const step = {
         if (split.refusals.length) return { owed: true, because: `a marked section cannot move — ${split.refusals.join("; ")}` };
         const ratio = declaredContext(ws.manifest).ratio ?? ESTIMATED_BYTES_PER_TOKEN;
         const before = alwaysTier(ws.repository.dir).entries.reduce((n, e) => n + e.bytes, 0);
-        const after = before - split.files.reduce((n, f) => n + f.removed, 0) + indexBytes(split.units);
+        const after = before - split.files.reduce((n, f) => n + f.removed, 0) + split.index;
         return {
             owed: true,
             because: `${splitLines(split).join("; ")}; the always tier goes from ~${grouped(tokensOf(before, ratio))} to ~${grouped(tokensOf(after, ratio))} tokens`,

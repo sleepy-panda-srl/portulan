@@ -50,8 +50,8 @@
 // that is a link, since the file it names may be one another host loads whole. And once moved, a unit is the
 // team's: one frontmatter line makes it `on-path` with `paths:`, `on-invoke`, or `always` again, and the join
 // then refuses it rather than undo that tier without a word. A unit edited since the move goes back as it
-// stands, and the join says so, unit by unit; and the join removes only a unit in `slots.context`, where the
-// split makes them, whatever else a marker written by hand names.
+// stands, and the join says so, unit by unit; and the join removes only a unit at the top of `slots.context`,
+// where the split makes them, whatever else a marker written by hand names.
 //
 // ## Exit codes
 //
@@ -64,7 +64,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { BOOT_CARD_UNIT, ON_READ_INDEX, claudeCodeGuidance, compileGuidance, importPath, importSpans, parseUnit } from "./compile.mjs";
+import { BOOT_CARD_UNIT, CompileError, GUIDANCE_RULES_DIR, ON_READ_INDEX, claudeCodeGuidance, guidanceEdits, importPath, importSpans, parseUnit } from "./compile.mjs";
 import { isInside } from "./inside.mjs";
 import { outlineMd } from "./symbols.mjs";
 
@@ -388,12 +388,14 @@ function takenWith(lines, at, limit) {
  * @param {{ tree: string, context: string | null, taken: Iterable<string>, read: (rel: string) => string | null }} where
  *   the repository's root; `slots.context`'s directory relative to it (`.portulan/context/`), or null where
  *   none is declared; the unit names already in it; and a reader of a file in the repository, null where absent
- * @returns {{ files: object[], units: object[], refusals: string[], marked: number }}
+ * @returns {{ files: object[], units: object[], refusals: string[], marked: number, index: number }} with
+ *   `index` the bytes the index `compile` writes adds to the always tier once the units are in the slot
  */
 export function planSplit({ tree, context, taken, read }) {
+    const present = [...taken];
     // A name a marker still gives is taken even where its unit is gone, so no new unit answers an old marker.
     const markers = INSTRUCTION_FILES.flatMap((rel) => marksOf(read(rel) ?? "").moved.map((m) => path.posix.basename(m.source, ".md")));
-    const names = new Set([...taken, ...markers].map((n) => n.toLowerCase()));
+    const names = new Set([...present, ...markers].map((n) => n.toLowerCase()));
     const files = [];
     const units = [];
     const refusals = [];
@@ -503,7 +505,7 @@ export function planSplit({ tree, context, taken, read }) {
             refusals.push(`${rel}'s clauses do not land once each (${clauses.missing} missing, ${clauses.doubled} doubled), so nothing of it was moved — this is a defect in the split, not in the file`);
         }
     }
-    return { files, units, refusals, marked };
+    return { files, units, refusals, marked, index: units.length === 0 ? 0 : indexGrowth(units, { context, present, read }) };
 }
 
 /** How many levels of lone title headings a file opens with, which a unit's description does not repeat. */
@@ -518,11 +520,23 @@ function sectionDepth(text) {
 }
 
 /**
- * The bytes the index line of each drafted unit adds to the always tier, as `compile` writes it: the index is
- * one line per on-read unit, so a unit's line is the index a set of that unit alone compiles to.
+ * The bytes the index adds to the always tier once `units` are in the slot: the index `compile` writes for
+ * every on-read unit then, less the one on disk, which the always tier counts as it stands, stale or not. A
+ * unit already in the slot that cannot be read counts no line, since `compile` refuses it, and the write too.
  */
-export function indexBytes(units) {
-    return units.reduce((bytes, { unit }) => bytes + Buffer.byteLength(claudeCodeGuidance({ units: [unit] }).files[0].text, "utf8"), 0);
+function indexGrowth(units, { context, present, read }) {
+    const onRead = present.flatMap((name) => {
+        const source = `${context}${name}.md`;
+        try {
+            const unit = parseUnit(name, read(source) ?? "", source);
+            return unit.tier === "on-read" ? [unit] : [];
+        } catch (error) {
+            if (error instanceof CompileError || error instanceof InstructionsError) return [];
+            throw error;
+        }
+    });
+    const index = claudeCodeGuidance({ units: [...onRead, ...units.map((u) => u.unit)] }).files.find((f) => f.unit === null);
+    return Buffer.byteLength(index.text, "utf8") - Buffer.byteLength(read(`${GUIDANCE_RULES_DIR}/${ON_READ_INDEX}`) ?? "", "utf8");
 }
 
 // ===========================================================================================
@@ -543,8 +557,9 @@ function unitBody(text) {
  * Every moved section put back where its marker is, in the file's own line ends, and its unit removed, with
  * nothing written. A unit goes back as it stands now, and each says whether it was edited since the move, by
  * its marker's digest, and where its description is no longer its heading's, since the file names a section by
- * its heading alone. A unit that is gone, one outside `slots.context` (`context`, as `planSplit` takes it), one
- * importing a file, and one no longer on-read are refused rather than dropped, removed or undone.
+ * its heading alone. A unit that is gone, one not at the top of `slots.context` (`context`, as `planSplit`
+ * takes it), one importing a file, and one no longer on-read are refused rather than dropped, removed or
+ * undone.
  *
  * @returns {{ files: object[], units: object[], refusals: string[] }}
  */
@@ -567,11 +582,12 @@ export function planJoin({ tree, context, read }) {
                 refusals.push(`${source} is named by two markers, line ${line + 1} of ${rel} among them: which one it goes back to is not the join's to guess`);
                 continue;
             }
-            // The join removes the unit it puts back, so it reads only where the split writes one: a marker
-            // written by hand must not remove a file kept anywhere else.
-            if (context === null || !source.startsWith(context)) {
+            // The join removes the unit it puts back, so it reads only where the split writes one, at the top
+            // of the slot, where `compile` reads a unit: a marker written by hand must not remove a file kept
+            // anywhere else.
+            if (context === null || !source.startsWith(context) || source.slice(context.length).includes("/")) {
                 refusals.push(
-                    `line ${line + 1} of ${rel} names ${source}, ${context === null ? "and the workspace declares no `slots.context`" : `which is outside \`slots.context\` (${context})`}, ` +
+                    `line ${line + 1} of ${rel} names ${source}, ${context === null ? "and the workspace declares no `slots.context`" : `which is not at the top of \`slots.context\` (${context})`}, ` +
                         "where the split makes every unit: put the section back by hand, or delete the marker",
                 );
                 continue;
@@ -757,12 +773,14 @@ export function offerText(offers, { over = false, workspace = null } = {}, shown
 
 /**
  * The command that moves a workspace's marked sections where `upgrade` will not run, with `workspace` as a shell
- * reads it from where the command is given, quoted where it holds anything but a path's plain characters.
+ * reads it from where the command is given.
  */
 export function splitCommand(workspace = null) {
-    const word = workspace === null ? "<dir>" : /^[\w./-]+$/.test(workspace) ? workspace : `'${workspace.replaceAll("'", "'\\''")}'`;
-    return `node <plugin root>/cli/instructions.mjs --workspace ${word} --write`;
+    return `node <plugin root>/cli/instructions.mjs --workspace ${workspace === null ? "<dir>" : shellWord(workspace)} --write`;
 }
+
+/** A path as a shell reads it as one word: quoted where it holds anything but a path's plain characters. */
+export const shellWord = (word) => (/^[\w./-]+$/.test(word) ? word : `'${word.replaceAll("'", "'\\''")}'`);
 
 /**
  * `slots.context`'s directory relative to the repository at `tree`, as a reader of it types the path, with a
@@ -845,7 +863,8 @@ function locate(workspaceDir) {
     return { manifest, tree, context, taken };
 }
 
-export async function run(argv, say = (line) => process.stdout.write(`${line}\n`), { cwd = process.cwd() } = {}) {
+// `write` is the suite's, as `applyEdits` takes it: a write failing partway cannot be staged on a real disk.
+export async function run(argv, say = (line) => process.stdout.write(`${line}\n`), { cwd = process.cwd(), write } = {}) {
     let options;
     let where;
     try {
@@ -903,7 +922,7 @@ export async function run(argv, say = (line) => process.stdout.write(`${line}\n`
             }
             for (const line of splitLines(split)) say(`instructions: ${line}`);
             const before = alwaysBytes();
-            const after = before - split.files.reduce((n, f) => n + f.removed, 0) + indexBytes(split.units);
+            const after = before - split.files.reduce((n, f) => n + f.removed, 0) + split.index;
             say(`instructions: the always tier goes from ${grouped(before)} B (${tokens(before)}) to ${grouped(after)} B (${tokens(after)}) at ${ratio} bytes per token, markers counted, which the host drops`);
             edits = [
                 ...split.files.map((f) => ({ root: "tree", file: f.rel, next: f.after })),
@@ -920,18 +939,23 @@ export async function run(argv, say = (line) => process.stdout.write(`${line}\n`
         return 0;
     }
 
-    const applied = applyEdits(workspaceDir, edits, { treeDir: where.tree });
+    const applied = applyEdits(workspaceDir, edits, { treeDir: where.tree, write });
     const undo = (why) => {
         const back = restore(workspaceDir, applied.snapshots, { treeDir: where.tree });
         say(`instructions: ${why}; ${back.ok ? "rolled back, nothing is changed" : `the rollback was INCOMPLETE — not put back: ${back.failed.join(", ")}`}`);
         return 2;
     };
     if (!applied.ok) return undo(`the write failed — ${applied.reason}`);
+    // The index goes through the same writes, as `upgrade`'s `0007` writes it, so a rollback takes it too.
+    let compiled;
     try {
-        compileGuidance(workspaceDir);
+        compiled = guidanceEdits(workspaceDir).edits.map((edit) => ({ root: "tree", file: edit.file, next: edit.next }));
     } catch (error) {
         return undo(`\`compile\` refused the guidance — ${error.message}`);
     }
+    const indexed = applyEdits(workspaceDir, compiled, { treeDir: where.tree, write });
+    applied.snapshots.push(...indexed.snapshots);
+    if (!indexed.ok) return undo(`the index could not be written — ${indexed.reason}`);
     let now;
     try {
         now = alwaysBytes();
