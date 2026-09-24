@@ -17,7 +17,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { finish, fragmentIn, parseArgs, run, treeRoots } from "./finish.mjs";
+import { finish, fragmentIn, parseArgs, run, runRecipe, tailKeeper, treeRoots } from "./finish.mjs";
 
 // A HERMETIC HOST: the recipe set's pack discovery reads the host's plugin cache, and nothing here may.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
@@ -123,20 +123,20 @@ function hostWith(refs = ["tools/thing"]) {
     return host;
 }
 
-function close(work, argv, { stdin } = {}) {
+async function close(work, argv, { stdin } = {}) {
     let out = "";
     let err = "";
-    const code = run(argv, { cwd: work, env: ENV, stdout: { write: (s) => (out += s) }, stderr: { write: (s) => (err += s) }, readStdin: () => stdin });
+    const code = await run(argv, { cwd: work, env: ENV, stdout: { write: (s) => (out += s) }, stderr: { write: (s) => (err += s) }, readStdin: () => stdin });
     return { code, out, err, first: out.split("\n")[0] };
 }
 
 const onOrigin = (origin, branch) => spawnSync("git", ["--git-dir", origin, "rev-parse", "--verify", "-q", `refs/heads/${branch}`], { env: ENV, encoding: "utf8" }).stdout.trim();
 
 describe("a change closes in one call", () => {
-    test("the fragment, the commit, every recipe on it and the push, reported in one line", () => {
+    test("the fragment, the commit, every recipe on it and the push, reported in one line", async () => {
         const { work, origin } = clone({ recipes: [{ id: "docs", run: "true" }, { id: "tests", run: "true" }] });
         change(work);
-        const r = close(work, ["-m", "One", "-m", "Why one."]);
+        const r = await close(work, ["-m", "One", "-m", "Why one."]);
         assert.equal(r.code, 0, r.out);
         assert.equal(r.out.trim().split("\n").length, 1, "a closed change is one line");
         assert.match(r.first, /^finish: closed feat at [0-9a-f]{7,} — committed 2 file\(s\); fragment changes\/one\.added\.md; 2 recipe\(s\) green; pushed to origin\/feat$/);
@@ -146,35 +146,35 @@ describe("a change closes in one call", () => {
         assert.equal(git(work, ["rev-parse", "--abbrev-ref", "@{u}"]), "origin/feat", "the first push sets the upstream");
     });
 
-    test("a second call with nothing new says there is nothing to close", () => {
+    test("a second call with nothing new says there is nothing to close", async () => {
         const { work } = clone();
         change(work);
-        assert.equal(close(work, ["-m", "One"]).code, 0);
-        const r = close(work, []);
+        assert.equal((await close(work, ["-m", "One"])).code, 0);
+        const r = await close(work, []);
         assert.equal(r.code, 0);
         assert.equal(r.first, "finish: nothing to close — the tree is clean and feat matches origin/feat");
     });
 
-    test("a commit made and not pushed is pushed without a new one", () => {
+    test("a commit made and not pushed is pushed without a new one", async () => {
         const { work, origin } = clone();
         change(work);
         git(work, ["add", "-A"]);
         git(work, ["commit", "-q", "-m", "One"]);
-        const r = close(work, []);
+        const r = await close(work, []);
         assert.equal(r.code, 0, r.out);
         assert.match(r.first, /— nothing new to commit; fragment changes\/one\.added\.md; 1 recipe\(s\) green; pushed to origin\/feat$/);
         assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
     });
 
-    test("the message can come whole from standard input, trailers and all", () => {
+    test("the message can come whole from standard input, trailers and all", async () => {
         const { work } = clone();
         change(work);
         const message = "One\n\nWhy one.\n\nSeam-scan: clean against the terms\n";
-        assert.equal(close(work, ["-F", "-"], { stdin: message }).code, 0);
+        assert.equal((await close(work, ["-F", "-"], { stdin: message })).code, 0);
         assert.equal(git(work, ["log", "-1", "--format=%(trailers:key=Seam-scan,valueonly)"]), "clean against the terms");
     });
 
-    test("the entry point exits with the code it reports", () => {
+    test("the entry point exits with the code it reports", async () => {
         const { work } = clone();
         change(work, { fragment: false });
         const r = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env: ENV, encoding: "utf8" });
@@ -184,11 +184,11 @@ describe("a change closes in one call", () => {
 });
 
 describe("the changelog fragment", () => {
-    test("a change with none stops, and nothing is committed or pushed", () => {
+    test("a change with none stops, and nothing is committed or pushed", async () => {
         const { work, origin } = clone();
         change(work, { fragment: false });
         const before = git(work, ["rev-parse", "HEAD"]);
-        const r = close(work, ["-m", "One"]);
+        const r = await close(work, ["-m", "One"]);
         assert.equal(r.code, 1);
         assert.match(r.first, /no changelog fragment since origin\/main: write changes\/<slug>\.<section>\.md, one bullet, or pass --no-fragment "<why>"/);
         assert.equal(git(work, ["rev-parse", "HEAD"]), before);
@@ -196,32 +196,32 @@ describe("the changelog fragment", () => {
         assert.equal(git(work, ["diff", "--cached", "--name-only"]), "", "nothing was staged either");
     });
 
-    test("--no-fragment closes a change that owes none, and the line says why", () => {
+    test("--no-fragment closes a change that owes none, and the line says why", async () => {
         const { work } = clone();
         change(work, { fragment: false });
-        const r = close(work, ["-m", "One", "--no-fragment", "a workflow-only change"]);
+        const r = await close(work, ["-m", "One", "--no-fragment", "a workflow-only change"]);
         assert.equal(r.code, 0, r.out);
         assert.match(r.first, /; no fragment: a workflow-only change; /);
     });
 
-    test("a fragment committed earlier on the branch counts, and so does an edit to one", () => {
+    test("a fragment committed earlier on the branch counts, and so does an edit to one", async () => {
         const { work } = clone();
         change(work);
         git(work, ["add", "-A"]);
         git(work, ["commit", "-q", "-m", "One"]);
         fs.appendFileSync(path.join(work, "f.txt"), "two\n");
-        assert.equal(close(work, ["-m", "Two"]).code, 0);
+        assert.equal((await close(work, ["-m", "Two"])).code, 0);
     });
 
-    test("a tree that keeps no changes/ owes none", () => {
+    test("a tree that keeps no changes/ owes none", async () => {
         const { work } = clone({ fragments: false });
         change(work, { fragment: false });
-        const r = close(work, ["-m", "One"]);
+        const r = await close(work, ["-m", "One"]);
         assert.equal(r.code, 0, r.out);
         assert.match(r.first, /; no fragment owed: this tree keeps no changes\/ directory; /);
     });
 
-    test("only a well-named fragment the change added or edited counts", () => {
+    test("only a well-named fragment the change added or edited counts", async () => {
         assert.equal(fragmentIn([{ status: "A", path: "changes/one.added.md" }]), "changes/one.added.md");
         assert.equal(fragmentIn([{ status: "?", path: "changes/one.fixed.md" }]), "changes/one.fixed.md");
         assert.equal(fragmentIn([{ status: "D", path: "changes/one.added.md" }]), null, "a deletion, as a release cut makes, is not an entry");
@@ -232,7 +232,7 @@ describe("the changelog fragment", () => {
         assert.equal(fragmentIn([{ status: "A", path: "docs/changes/one.added.md" }]), null);
     });
 
-    test("the entry the change adds names it, ahead of an earlier one it extended", () => {
+    test("the entry the change adds names it, ahead of an earlier one it extended", async () => {
         const edited = { status: "M", path: "changes/an-earlier-change.changed.md" };
         assert.equal(fragmentIn([edited, { status: "A", path: "changes/this-change.added.md" }]), "changes/this-change.added.md");
         assert.equal(fragmentIn([edited]), edited.path, "an extension alone still counts");
@@ -240,7 +240,7 @@ describe("the changelog fragment", () => {
 });
 
 describe("what it stages", () => {
-    test("a file nobody staged stops it, listed, and nothing is committed or pushed", () => {
+    test("a file nobody staged stops it, listed, and nothing is committed or pushed", async () => {
         const { work, origin } = clone();
         change(work);
         write(work, "scratch-notes.txt", "notes\n");
@@ -248,7 +248,7 @@ describe("what it stages", () => {
         fs.appendFileSync(path.join(work, ".git/info/exclude"), "ignored.log\n");
         write(work, "ignored.log", "an ignored file is no concern\n");
         const before = git(work, ["rev-parse", "HEAD"]);
-        const r = close(work, ["-m", "One"]);
+        const r = await close(work, ["-m", "One"]);
         assert.equal(r.code, 1);
         assert.match(r.first, /^finish: stopped — 2 untracked path\(s\) that nobody staged\. Stage by name the ones this change created, with `git add <paths> &&` before this command in the same call; leave any other where it is and list it in \.git\/info\/exclude, which is never committed, or ask whoever put it there\. Never delete a file this change did not create\. Nothing was committed or pushed\.$/);
         assert.deepEqual(r.out.trim().split("\n").slice(1), ["    scratch-notes.txt", "    token.json"]);
@@ -258,7 +258,7 @@ describe("what it stages", () => {
 
         fs.rmSync(path.join(work, "scratch-notes.txt"));
         fs.rmSync(path.join(work, "token.json"));
-        const closed = close(work, ["-m", "One"]);
+        const closed = await close(work, ["-m", "One"]);
         assert.equal(closed.code, 0, closed.out);
         assert.match(closed.first, /— committed 2 file\(s\);/, "the tracked edit and the fragment staged by name");
         assert.equal(git(work, ["show", "--name-only", "--format=", "HEAD"]), "changes/one.added.md\nf.txt");
@@ -266,7 +266,7 @@ describe("what it stages", () => {
 });
 
 describe("the packs it composes", () => {
-    test("where the tree carries them, they resolve from the tree, as CI names it, beside an installed copy", () => {
+    test("where the tree carries them, they resolve from the tree, as CI names it, beside an installed copy", async () => {
         const files = {};
         const tree = scratch();
         packAt(tree);
@@ -283,7 +283,41 @@ describe("the packs it composes", () => {
         assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
     });
 
-    test("a pack the tree lacks is refused, as CI refuses it, never found in an installed copy", () => {
+    test("a consumer's own pack beside a composed pack the plugin installs: both resolve, as the bare set resolves them", async () => {
+        const files = {};
+        const tree = scratch();
+        packAt(tree, "tools/mine");
+        for (const rel of ["tools/mine/pack.json", "tools/mine/README.md"]) files[`packs/${rel}`] = fs.readFileSync(path.join(tree, rel), "utf8");
+        const { work, origin } = clone({ manifest: { tree: "../", packs: ["tools/mine", "rituals/checkpoints"] }, files });
+        change(work);
+        const env = { ...ENV, CLAUDE_CONFIG_DIR: hostWith(["rituals/checkpoints"]) };
+        const bare = spawnSync("node", [path.join(REPO, "cli", "recipe-set.mjs"), "--workspace", ".portulan", "--repo-root", "."], { cwd: work, env, encoding: "utf8" });
+        assert.equal(bare.status, 0, bare.stderr);
+        const r = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env, encoding: "utf8" });
+        assert.equal(r.status, 0, r.stdout + r.stderr);
+        assert.match(r.stdout, /; 3 recipe\(s\) green; pushed to origin\/feat$/m);
+        assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
+    });
+
+    test("a workspace that composes no pack never looks at the tree's packs/, so an unreadable one stops nothing", async () => {
+        const { work } = clone({ manifest: { tree: "../" } });
+        fs.symlinkSync("packs", path.join(work, "packs"));
+        fs.appendFileSync(path.join(work, ".git", "info", "exclude"), "packs\n");
+        change(work);
+        const r = await close(work, ["-m", "One"]);
+        assert.equal(r.code, 0, r.out);
+    });
+
+    test("a packs/ directory that holds no pack hides none the plugin installs", async () => {
+        const { work, origin } = clone({ manifest: { tree: "../", packs: ["rituals/checkpoints"] }, files: { "packs/web-app/package.json": "{}\n" } });
+        change(work);
+        const r = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env: { ...ENV, CLAUDE_CONFIG_DIR: hostWith(["rituals/checkpoints"]) }, encoding: "utf8" });
+        assert.equal(r.status, 0, r.stdout + r.stderr);
+        assert.match(r.stdout, /; 2 recipe\(s\) green; pushed to origin\/feat$/m);
+        assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
+    });
+
+    test("named as CI names it, --pack-root packs, a pack the tree lacks is refused, never found in an installed copy", async () => {
         const files = {};
         const tree = scratch();
         packAt(tree);
@@ -291,31 +325,31 @@ describe("the packs it composes", () => {
         const { work, origin } = clone({ manifest: { tree: "../", packs: ["tools/thing", "rituals/other"] }, files });
         change(work);
         const before = git(work, ["rev-parse", "HEAD"]);
-        const r = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env: { ...ENV, CLAUDE_CONFIG_DIR: hostWith(["tools/thing", "rituals/other"]) }, encoding: "utf8" });
+        const r = spawnSync("node", [TOOL, "--pack-root", "packs", "-m", "One"], { cwd: work, env: { ...ENV, CLAUDE_CONFIG_DIR: hostWith(["tools/thing", "rituals/other"]) }, encoding: "utf8" });
         assert.equal(r.status, 2, r.stdout + r.stderr);
         assert.match(r.stdout, /^finish: could not run — the recipe set: .*rituals\/other.*Nothing was committed or pushed\.$/m);
         assert.equal(git(work, ["rev-parse", "HEAD"]), before);
         assert.equal(onOrigin(origin, "feat"), "");
     });
 
-    test("the tree's pack root is named wherever it exists and packs are composed", () => {
+    test("the tree's pack root is named only where it carries every pack composed", async () => {
         const dir = scratch();
         const workspaceDir = path.join(dir, ".portulan");
         assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../", packs: ["tools/thing"] } }), [], "no packs/ in the tree");
         packAt(path.join(dir, "packs"));
         assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../", packs: ["tools/thing"] } }), [path.join(dir, "packs")]);
-        assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../", packs: ["tools/thing", "rituals/other"] } }), [path.join(dir, "packs")], "one it lacks is then refused");
+        assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../", packs: ["tools/thing", "rituals/other"] } }), [], "one it lacks leaves the set resolving as it does bare");
         assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../" } }), [], "no packs composed");
         assert.deepEqual(treeRoots({ workspaceDir, manifest: { packs: ["tools/thing"] } }), [], "no tree declared");
     });
 });
 
 describe("a red stops it, and undoes its own commit", () => {
-    test("a red recipe: named with its last lines, the commit undone and staged, nothing pushed", () => {
+    test("a red recipe: named with its last lines, the commit undone and staged, nothing pushed", async () => {
         const { work, origin } = clone({ recipes: [{ id: "docs", run: "true" }, { id: "tests", run: "echo 'one test failed' >&2; exit 1" }] });
         change(work);
         const before = git(work, ["rev-parse", "HEAD"]);
-        const r = close(work, ["-m", "One"]);
+        const r = await close(work, ["-m", "One"]);
         assert.equal(r.code, 1);
         assert.equal(r.first, "finish: stopped — 1 of 2 recipe(s) not green: tests. The commit is undone and its changes are staged. Nothing was pushed.");
         assert.match(r.out, /\ntests — RED \(exit 1\):\n {4}one test failed\n/);
@@ -324,61 +358,143 @@ describe("a red stops it, and undoes its own commit", () => {
         assert.equal(onOrigin(origin, "feat"), "");
     });
 
-    test("the recipes judge the commit itself, so a message a recipe refuses is caught before the push", () => {
+    test("the recipes judge the commit itself, so a message a recipe refuses is caught before the push", async () => {
         const seam = { id: "docs", run: "git log -1 --format=%B | grep -q '^Seam-scan: clean'" };
         const { work, origin } = clone({ recipes: [seam] });
         change(work);
-        const refused = close(work, ["-m", "One"]);
+        const refused = await close(work, ["-m", "One"]);
         assert.equal(refused.code, 1);
         assert.match(refused.first, /recipe\(s\) not green: docs\. The commit is undone/);
         assert.equal(onOrigin(origin, "feat"), "");
-        const r = close(work, ["-m", "One", "-m", "Seam-scan: clean against the terms"]);
+        const r = await close(work, ["-m", "One", "-m", "Seam-scan: clean against the terms"]);
         assert.equal(r.code, 0, r.out);
         assert.equal(git(work, ["rev-list", "--count", "origin/main..HEAD"]), "1", "one commit: the refused one left no trace");
     });
 
-    test("a recipe that could not run is never a pass, and says so", () => {
+    test("a recipe that could not run is never a pass, and says so", async () => {
         const { work } = clone({ recipes: [{ id: "docs", run: "echo 'node not found' >&2; exit 2" }] });
         change(work);
-        const r = close(work, ["-m", "One"]);
+        const r = await close(work, ["-m", "One"]);
         assert.equal(r.code, 2);
         assert.match(r.out, /\ndocs — could not run \(exit 2\):\n {4}node not found/);
     });
 
-    test("a recipe's last lines are its last, whichever stream wrote them", () => {
+    test("whatever a runner throws or returns, the commit is undone rather than left standing", async () => {
+        const threw = (value) => () => {
+            throw value;
+        };
+        const runners = [
+            [threw(new Error("ENOSPC: no space left on device, write")), 2, "could not run", "ENOSPC: no space left on device, write"],
+            [threw(null), 2, "could not run", "null"],
+            [threw("a string"), 2, "could not run", "a string"],
+            [threw(Object.create(null)), 2, "could not run", "the runner threw a value with no text"],
+            [() => undefined, 2, "could not run", "the runner returned no result"],
+            [() => null, 2, "could not run", "the runner returned no result"],
+            [() => ({}), 2, "could not run", "the runner returned no result"],
+            [() => ({ outcome: "red" }), 1, "RED", ""],
+        ];
+        for (const [runOne, code, said, text] of runners) {
+            const { work, origin } = clone();
+            change(work);
+            const before = git(work, ["rev-parse", "HEAD"]);
+            const r = await finish(parseArgs(["-m", "One"], work), { cwd: work, env: ENV, runOne });
+            assert.equal(r.code, code);
+            assert.equal(r.lines[0], "finish: stopped — 1 of 1 recipe(s) not green: docs. The commit is undone and its changes are staged. Nothing was pushed.");
+            assert.ok(r.lines.join("\n").includes(`\ndocs — ${said} (exit none):\n    ${text}`), r.lines.join("\n"));
+            assert.equal(git(work, ["rev-parse", "HEAD"]), before);
+            assert.equal(onOrigin(origin, "feat"), "");
+        }
+    });
+
+    test("a recipe's output is read from its own pipe, so an unusable TMPDIR stops nothing", async () => {
+        const { work, origin } = clone();
+        change(work);
+        const r = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env: { ...ENV, TMPDIR: path.join(scratch(), "missing") }, encoding: "utf8" });
+        assert.equal(r.status, 0, r.stdout + r.stderr);
+        assert.equal(r.stderr, "");
+        assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
+    });
+
+    test("a recipe's output has no cap: past 64 MiB, a green one is green and a red one's last line is reported", async () => {
+        const loud = "yes x | head -c 67108865";
+        const { work, origin } = clone({ recipes: [{ id: "docs", run: loud }, { id: "tests", run: `${loud}; echo; echo the last line; exit 1` }] });
+        change(work);
+        const r = await close(work, ["-m", "One"]);
+        assert.equal(r.code, 1, r.first);
+        assert.match(r.first, /1 of 2 recipe\(s\) not green: tests\./);
+        assert.match(r.out, /\ntests — RED \(exit 1\):\n(?: {4}x\n)+ {4}the last line\n$/);
+        assert.equal(onOrigin(origin, "feat"), "");
+    });
+
+    test("a recipe's output is drained as it arrives, and only its last bytes are held", () => {
+        const kept = tailKeeper(4096);
+        let all = "";
+        for (let i = 0; i < 1000; i++) {
+            const chunk = `${String(i).padStart(4, "0")} ${"x".repeat(994)}\n`;
+            kept.add(Buffer.from(chunk));
+            all += chunk;
+            assert.ok(kept.held < 4096 + chunk.length, `${kept.held} bytes held after chunk ${i}`);
+        }
+        assert.equal(kept.text(), all.slice(-4096));
+    });
+
+    test("a recipe that runs past its time limit is killed, and could not run", async () => {
+        const started = Date.now();
+        const r = await runRecipe({ id: "slow", run: "sleep 5" }, { root: scratch(), env: ENV, timeout: 300 });
+        assert.deepEqual([r.outcome, r.code], ["could not run", null]);
+        assert.match(r.output, /killed at its time limit of 0\.3 s$/);
+        assert.ok(Date.now() - started < 4000, `took ${Date.now() - started} ms`);
+    });
+
+    test("a process a recipe leaves running is not waited for, and what the shell wrote is still read", async () => {
+        const started = Date.now();
+        const green = await runRecipe({ id: "docs", run: "sleep 5 &" }, { root: scratch(), env: ENV });
+        const red = await runRecipe({ id: "docs", run: "sleep 5 &\necho the last line\nexit 1" }, { root: scratch(), env: ENV });
+        assert.deepEqual(green, { id: "docs", outcome: "green" });
+        assert.deepEqual([red.outcome, red.code, red.output.trim()], ["red", 1, "the last line"]);
+        assert.ok(Date.now() - started < 4000, `took ${Date.now() - started} ms`);
+    });
+
+    test("a recipe that cannot start could not run, and says why", async () => {
+        const r = await runRecipe({ id: "docs", run: "true" }, { root: path.join(scratch(), "missing"), env: ENV });
+        assert.deepEqual([r.outcome, r.code], ["could not run", null]);
+        assert.match(r.output, /spawn bash ENOENT/);
+    });
+
+    test("a recipe's last lines are its last, whichever stream wrote them", async () => {
         const { work } = clone({ recipes: [{ id: "docs", run: "echo first >&2; echo second; echo third >&2; exit 1" }] });
         change(work);
-        const r = close(work, ["-m", "One"]);
+        const r = await close(work, ["-m", "One"]);
         assert.equal(r.code, 1);
         assert.match(r.out, /\ndocs — RED \(exit 1\):\n {4}first\n {4}second\n {4}third\n/);
     });
 
-    test("every recipe runs, so one call reports every red", () => {
+    test("every recipe runs, so one call reports every red", async () => {
         const { work } = clone({ recipes: [{ id: "docs", run: "exit 1" }, { id: "json", run: "true" }, { id: "tests", run: "exit 1" }] });
         change(work);
-        assert.match(close(work, ["-m", "One"]).first, /2 of 3 recipe\(s\) not green: docs, tests\./);
+        assert.match((await close(work, ["-m", "One"])).first, /2 of 3 recipe\(s\) not green: docs, tests\./);
     });
 
-    test("a hook that refuses the commit stops it, with the hook's words", () => {
+    test("a hook that refuses the commit stops it, with the hook's words", async () => {
         const { work, origin } = clone();
         change(work);
         write(work, ".git/hooks/pre-commit", "#!/bin/sh\necho 'lint: trailing space' >&2\nexit 1\n");
         fs.chmodSync(path.join(work, ".git/hooks/pre-commit"), 0o755);
-        const r = close(work, ["-m", "One"]);
+        const r = await close(work, ["-m", "One"]);
         assert.equal(r.code, 1);
         assert.match(r.first, /the commit was refused \(git exit 1\), so nothing was committed or pushed/);
         assert.match(r.out, /lint: trailing space/);
         assert.equal(onOrigin(origin, "feat"), "");
     });
 
-    test("an undo that finds the branch moved under it leaves it where it is, and says so", () => {
+    test("an undo that finds the branch moved under it leaves it where it is, and says so", async () => {
         const { work, origin } = clone();
         change(work);
         const runOne = (recipe) => {
             git(work, ["commit", "-q", "--allow-empty", "-m", "moved while the recipes ran"]);
             return { id: recipe.id, outcome: "red", code: 1, output: "red\n" };
         };
-        const r = finish(parseArgs(["-m", "One"], work), { cwd: work, env: ENV, runOne });
+        const r = await finish(parseArgs(["-m", "One"], work), { cwd: work, env: ENV, runOne });
         assert.equal(r.code, 1);
         assert.match(r.lines[0], /^finish: stopped — 1 of 1 recipe\(s\) not green: docs\. The commit [0-9a-f]{7} could not be undone \(.+\) and stays, unpushed\. Nothing was pushed\.$/);
         assert.equal(git(work, ["log", "-1", "--format=%s"]), "moved while the recipes ran", "the compare-and-swap refused to move a branch it did not leave");
@@ -386,24 +502,24 @@ describe("a red stops it, and undoes its own commit", () => {
         assert.equal(onOrigin(origin, "feat"), "");
     });
 
-    test("a branch that moves while the recipes run is not pushed, since they judged the commit before it", () => {
+    test("a branch that moves while the recipes run is not pushed, since they judged the commit before it", async () => {
         const { work, origin } = clone();
         change(work);
         const runOne = (recipe) => {
             git(work, ["commit", "-q", "--allow-empty", "-m", "not judged"]);
             return { id: recipe.id, outcome: "green" };
         };
-        const r = finish(parseArgs(["-m", "One"], work), { cwd: work, env: ENV, runOne });
+        const r = await finish(parseArgs(["-m", "One"], work), { cwd: work, env: ENV, runOne });
         assert.equal(r.code, 2);
         assert.match(r.lines[0], /^finish: not pushed — feat moved while the recipes ran, from [0-9a-f]{7} to [0-9a-f]{7}, so they did not judge what it holds; both commits stay, unpushed: run this again\.$/);
         assert.equal(onOrigin(origin, "feat"), "");
         assert.equal(git(work, ["log", "-1", "--format=%s"]), "not judged");
     });
 
-    test("a push the remote refuses leaves the green commit and never forces", () => {
+    test("a push the remote refuses leaves the green commit and never forces", async () => {
         const { work, origin } = clone();
         change(work);
-        assert.equal(close(work, ["-m", "One"]).code, 0);
+        assert.equal((await close(work, ["-m", "One"])).code, 0);
         // Someone else moves the remote branch.
         const other = path.join(path.dirname(work), "other");
         git(path.dirname(work), ["clone", "-q", "-b", "feat", origin, other]);
@@ -413,87 +529,87 @@ describe("a red stops it, and undoes its own commit", () => {
         git(other, ["push", "-q", "origin", "feat"]);
         const theirs = onOrigin(origin, "feat");
         fs.appendFileSync(path.join(work, "f.txt"), "two\n");
-        const r = close(work, ["-m", "Two"]);
+        const r = await close(work, ["-m", "Two"]);
         assert.equal(r.code, 2);
-        assert.match(r.first, /^finish: not pushed — origin refused feat: .*The commit [0-9a-f]{7} is green and stays; if the remote moved, merge it in, never force/);
+        assert.match(r.first, /^finish: not pushed — origin refused feat: ! \[rejected\] [0-9a-f]{40} -> feat \(fetch first\)\. The commit [0-9a-f]{7} is green and stays; if the remote moved, merge it in, never force/);
         assert.equal(onOrigin(origin, "feat"), theirs, "their commit is still the remote's");
     });
 });
 
 describe("what it refuses to do at all", () => {
-    test("it never closes a change on the base branch", () => {
+    test("it never closes a change on the base branch", async () => {
         const { work, origin } = clone();
         git(work, ["checkout", "-q", "main"]);
         change(work);
         const before = onOrigin(origin, "main");
-        const r = close(work, ["-m", "One"]);
+        const r = await close(work, ["-m", "One"]);
         assert.equal(r.code, 2);
         assert.match(r.first, /main would push to origin\/main, the branch changes merge into/);
         assert.equal(onOrigin(origin, "main"), before);
     });
 
-    test("nor against a base that names no branch, since nothing then shows the push is not to it", () => {
+    test("nor against a base that names no branch, since nothing then shows the push is not to it", async () => {
         const { work, origin } = clone();
         git(work, ["checkout", "-q", "main"]);
         change(work);
         git(work, ["remote", "set-head", "origin", "-d"]);
         const sha = git(work, ["rev-parse", "origin/main"]);
-        const r = close(work, ["-m", "One", "--base", sha]);
+        const r = await close(work, ["-m", "One", "--base", sha]);
         assert.equal(r.code, 2);
         assert.equal(r.first, `finish: could not run — the base ${sha} names no branch, so nothing shows main is not the branch changes merge into: pass --base <remote>/<branch>`);
         assert.equal(onOrigin(origin, "main"), sha, "main is untouched");
     });
 
-    test("a base from the environment that begins with a dash is refused before git reads it as a flag", () => {
+    test("a base from the environment that begins with a dash is refused before git reads it as a flag", async () => {
         const { work } = clone();
         change(work);
         let out = "";
-        const code = run(["-m", "One"], { cwd: work, env: { ...ENV, PORTULAN_BASE_REF: "--all" }, stdout: { write: (x) => (out += x) }, stderr: { write: () => {} } });
+        const code = await run(["-m", "One"], { cwd: work, env: { ...ENV, PORTULAN_BASE_REF: "--all" }, stdout: { write: (x) => (out += x) }, stderr: { write: () => {} } });
         assert.equal(code, 2);
         assert.equal(out.trim(), 'finish: could not run — the base "--all", from PORTULAN_BASE_REF, is not a ref: a ref never begins with a dash');
     });
 
-    test("a base on another remote names its branch, as a fork's upstream does", () => {
+    test("a base on another remote names its branch, as a fork's upstream does", async () => {
         const { work, origin } = clone();
         git(work, ["remote", "add", "upstream", origin]);
         git(work, ["fetch", "-q", "upstream"]);
         change(work);
-        const r = close(work, ["-m", "One", "--base", "upstream/main"]);
+        const r = await close(work, ["-m", "One", "--base", "upstream/main"]);
         assert.equal(r.code, 0, r.out);
         assert.match(r.first, /; pushed to origin\/feat$/);
     });
 
-    test("nor on a detached HEAD", () => {
+    test("nor on a detached HEAD", async () => {
         const { work } = clone();
         git(work, ["checkout", "-q", "--detach"]);
-        assert.match(close(work, ["-m", "One"]).first, /HEAD is detached/);
+        assert.match((await close(work, ["-m", "One"])).first, /HEAD is detached/);
     });
 
-    test("work to commit needs a message", () => {
+    test("work to commit needs a message", async () => {
         const { work } = clone();
         change(work);
-        const r = close(work, []);
+        const r = await close(work, []);
         assert.equal(r.code, 2);
         assert.match(r.first, /no message was given: pass -m <subject> or -F <file>/);
     });
 
-    test("a base it cannot find is could-not-run, never a guess", () => {
+    test("a base it cannot find is could-not-run, never a guess", async () => {
         const { work } = clone();
         change(work);
-        assert.match(close(work, ["-m", "One", "--base", "origin/nowhere"]).first, /the base "origin\/nowhere" is not a commit here/);
+        assert.match((await close(work, ["-m", "One", "--base", "origin/nowhere"])).first, /the base "origin\/nowhere" is not a commit here/);
     });
 
-    test("where the clone never recorded the remote's head, the remote is asked for it", () => {
+    test("where the clone never recorded the remote's head, the remote is asked for it", async () => {
         const { work } = clone();
         git(work, ["remote", "set-head", "origin", "-d"]);
         change(work);
-        const r = close(work, ["-m", "One"]);
+        const r = await close(work, ["-m", "One"]);
         assert.equal(r.code, 0, r.out);
     });
 });
 
 describe("arguments", () => {
-    test("each value is refused missing, empty, or a flag where a value belongs", () => {
+    test("each value is refused missing, empty, or a flag where a value belongs", async () => {
         assert.match(parseArgs(["-m"]).error, /-m needs a value/);
         assert.match(parseArgs(["-m", " "]).error, /empty value/);
         assert.match(parseArgs(["--base", "--workspace"]).error, /a flag rather than a value/);
@@ -502,27 +618,27 @@ describe("arguments", () => {
         assert.match(parseArgs(["--pack-root", "no-such-directory"]).error, /is not a directory/);
     });
 
-    test("a paragraph may open with a dash, as a message can", () => {
+    test("a paragraph may open with a dash, as a message can", async () => {
         assert.deepEqual(parseArgs(["-m", "- a list", "-m", "Subject"]).paragraphs, ["- a list", "Subject"]);
     });
 
-    test("--help prints the usage and exits 0", () => {
+    test("--help prints the usage and exits 0", async () => {
         let out = "";
-        assert.equal(run(["--help"], { stdout: { write: (s) => (out += s) } }), 0);
+        assert.equal(await run(["--help"], { stdout: { write: (s) => (out += s) } }), 0);
         assert.match(out, /^usage: node cli\/finish\.mjs -m <subject>/);
     });
 
-    test("an unknown argument exits 2 with the usage on stderr", () => {
+    test("an unknown argument exits 2 with the usage on stderr", async () => {
         let err = "";
-        assert.equal(run(["--amend"], { stderr: { write: (s) => (err += s) }, stdout: { write: () => {} } }), 2);
+        assert.equal(await run(["--amend"], { stderr: { write: (s) => (err += s) }, stdout: { write: () => {} } }), 2);
         assert.match(err, /^finish: unknown argument "--amend"\nusage:/);
     });
 
-    test("finish is callable without the entry point, for a runner of its own", () => {
+    test("finish is callable without the entry point, for a runner of its own", async () => {
         const { work } = clone();
         change(work);
         const calls = [];
-        const result = finish({ ...parseArgs(["-m", "One"]) }, { cwd: work, env: ENV, runOne: (recipe) => (calls.push(recipe.id), { id: recipe.id, outcome: "green" }) });
+        const result = await finish({ ...parseArgs(["-m", "One"]) }, { cwd: work, env: ENV, runOne: (recipe) => (calls.push(recipe.id), { id: recipe.id, outcome: "green" }) });
         assert.equal(result.code, 0, result.lines.join("\n"));
         assert.deepEqual(calls, ["docs"]);
     });

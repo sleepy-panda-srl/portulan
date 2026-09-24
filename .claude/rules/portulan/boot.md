@@ -92,10 +92,10 @@ every commit. There is no build step, and none is pending. `./.portulan/verify/d
 recipe, the one the Stop-gate runs, and
 `node cli/recipe-set.mjs --workspace .portulan --repo-root . --pack-root packs` prints every recipe CI
 runs. Close a change with
-`git add <new files> && node cli/finish.mjs -m "<subject>" -m "<why and trailers>"`: one call runs
-every recipe CI runs, checks the changelog fragment, commits and pushes, and on a red commits and pushes
-nothing. `node cli/portulan.mjs <subcommand>` runs the CLI. A build-session bootstrap file at the root is
-git-ignored and never committed: in a diff, it is the bug.
+`git add <new files> && node cli/finish.mjs --pack-root packs -m "<subject>" -m "<why and trailers>"`:
+one call runs every recipe CI runs, checks the changelog fragment, commits and pushes, and on a red
+commits and pushes nothing. `node cli/portulan.mjs <subcommand>` runs the CLI. A build-session bootstrap
+file at the root is git-ignored and never committed: in a diff, it is the bug.
 
 ## Packs: `rituals/checkpoints` and `tools/github`
 

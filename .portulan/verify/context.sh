@@ -59,11 +59,12 @@ cd -- "$root" || exit 2
 }
 
 # The rails, one line each, in bytes.
-RAIL_OWN_BOOT=15650       # .portulan's boot read-set, 15,343 B: the skill, and the boot card with its two
+RAIL_OWN_BOOT=15650       # .portulan's boot read-set, 15,361 B: the skill, and the boot card with its two
                           # imports, lowered from 89,057 B by the boot card, raised from 15,735 B by its line
                           # on closing a change, 233 B to spare requests, and lowered from 15,968 B by the
                           # rules on reading and the cache, which paid for their lines by moving the kernel's
-                          # and the skill's framing to files read on demand (2026-09-24)
+                          # and the skill's framing to files read on demand (2026-09-24), to 15,343 B; the
+                          # closing line's `--pack-root packs`, as CI names the root, spends 18 B
 RAIL_DEMO_BOOT=36975      # examples' boot read-set with the combcount card, 36,250 B, lowered from 37,185 B by
                           # the same move: with no card loaded, a boot reads the skill, which routes, and
                           # then its steps

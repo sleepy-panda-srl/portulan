@@ -45,13 +45,12 @@
 // run, or a push the remote refused. A recipe that could not run is never read as a pass.
 
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
-import { packRoots } from "./compile.mjs";
+import { packRoots, resolvePack } from "./compile.mjs";
 import { CHANGES_DIR, CHANGES_README } from "./form.mjs";
 import { CHANGE_NAME } from "./index.mjs";
 import { recipeSet, resolverFor } from "./recipe-set.mjs";
@@ -61,6 +60,15 @@ export const RECIPE_TIMEOUT_MS = 10 * 60 * 1000;
 
 /** How many of a failing recipe's last lines are printed: the Stop-gate's measure. */
 export const TAIL_LINES = 25;
+
+/** How much of a recipe's output is kept to find those lines: its last 64 KiB. */
+const TAIL_BYTES = 64 * 1024;
+
+/**
+ * How long the pipe is still read once a recipe's shell has exited, for what the shell wrote: no process it
+ * left running holds the run longer.
+ */
+const DRAIN_MS = 1000;
 
 const GIT_TIMEOUT_MS = 2 * 60 * 1000;
 
@@ -154,6 +162,27 @@ const tail = (text, lines = TAIL_LINES) => text.trim().split("\n").slice(-lines)
 
 const lastLine = (text) => tail(text, 1) || "no output";
 
+/** Why git refused a push: its `! [rejected]` line, which names the ref and the reason, not a `hint:` after it. */
+const refusalOf = (text) => text.split("\n").map((line) => line.trim().replace(/\s+/g, " ")).find((line) => line.startsWith("! ")) ?? lastLine(text);
+
+/** What a thrown value says, whatever was thrown: reading it never throws in turn. */
+const textOf = (thrown) => {
+    try {
+        return String(thrown?.message ?? thrown);
+    } catch {
+        return "the runner threw a value with no text";
+    }
+};
+
+/** What a runner returned, as a result: anything but a green, red or could-not-run one could not run. */
+const resultOf = (id, r) => {
+    if (r?.outcome === "green") return { id, outcome: "green" };
+    if (r?.outcome === "red" || r?.outcome === "could not run") {
+        return { id, outcome: r.outcome, code: Number.isInteger(r.code) ? r.code : null, output: typeof r.output === "string" ? r.output : "" };
+    }
+    return { id, outcome: "could not run", code: null, output: "the runner returned no result" };
+};
+
 /**
  * The branch this change merges into: `--base`, else `PORTULAN_BASE_REF` as the recipes read it, else the
  * remote's own recorded default head — never a branch picked by name, `./stop-gate.mjs`'s rule — asked of
@@ -213,16 +242,20 @@ export function fragmentIn(paths) {
 }
 
 /**
- * The pack roots to resolve with where the caller named none: the tree's own, wherever it exists and the
- * workspace composes packs, as CI names it with `--pack-root packs`. So a pack the tree lacks is refused,
- * as CI refuses it, rather than found in a host's installed copy CI never reads, and an installed copy of
- * packs the tree carries cannot make the set refuse them as shadowed. Where the tree keeps no pack root,
- * none is named, and the set resolves as `recipe-set` does bare.
+ * The pack roots to resolve with where the caller named none: the tree's own, when it carries every pack
+ * the workspace composes, so a host with the Portulan plugin installed, carrying the same packs twice, does
+ * not make the set refuse them as shadowed before anything is committed. Otherwise none, and the set
+ * resolves as `recipe-set`, `doctor` and the Stop-gate do bare: the tree's packs beside the installed ones,
+ * which is where a consumer's composed packs live — `init` declares a tree for every consumer, and a
+ * `packs/` of the consumer's own beside it must not hide them. Where CI names the tree's root, the caller
+ * names it too, `--pack-root packs` as this repository's card spells it, and a pack the tree lacks is then
+ * refused as CI refuses it.
  */
 export function treeRoots({ workspaceDir, manifest }) {
     const declared = Array.isArray(manifest?.packs) ? manifest.packs : [];
     if (declared.length === 0) return [];
-    return packRoots(workspaceDir, manifest).filter((dir) => fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory());
+    const roots = packRoots(workspaceDir, manifest).filter((dir) => fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory());
+    return roots.length && declared.every((ref) => resolvePack(String(ref), roots)?.dir) ? roots : [];
 }
 
 /** The recipes the workspace yields with its packs composed, as CI reads them, or `{ why }`. */
@@ -244,38 +277,76 @@ export function recipesOf({ root, workspaceDir, named, forced }) {
     return set.ok ? { recipes: set.recipes } : { why: set.reason };
 }
 
-/**
- * Run one recipe as CI and the Stop-gate do: its `run` through `bash -c`, from the repository root. Both of
- * its streams go to one file, so its lines keep the order it wrote them in and its last lines are its last.
- */
-export function runRecipe(recipe, { root, env }) {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-finish-"));
-    let r;
-    let written = "";
-    try {
-        const file = path.join(dir, "output");
-        const fd = fs.openSync(file, "w");
-        try {
-            r = spawnSync("bash", ["-c", recipe.run], { cwd: root, env, timeout: RECIPE_TIMEOUT_MS, stdio: ["ignore", fd, fd] });
-        } finally {
-            fs.closeSync(fd);
-        }
-        written = fs.readFileSync(file, "utf8");
-    } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
-    }
-    const code = r.error ? null : r.status;
-    const output = `${written}${r.error ? `\n${r.error.message}` : ""}`;
-    if (code === 0) return { id: recipe.id, outcome: "green" };
-    const cannot = code === null || CANNOT_RUN.has(code);
-    return { id: recipe.id, outcome: cannot ? "could not run" : "red", code, output };
+/** A stream's last `limit` bytes, kept as it arrives: what is held never passes `limit` and one chunk. */
+export function tailKeeper(limit = TAIL_BYTES) {
+    const chunks = [];
+    let held = 0;
+    return {
+        add(chunk) {
+            chunks.push(chunk);
+            held += chunk.length;
+            while (held - chunks[0].length >= limit) held -= chunks.shift().length;
+        },
+        get held() {
+            return held;
+        },
+        text: () => Buffer.concat(chunks).subarray(-limit).toString("utf8"),
+    };
 }
 
 /**
- * Close the change the working tree at `cwd` holds. Returns `{ code, lines }`: the exit code and what to
- * print, the first line always the one that says what happened.
+ * Run one recipe as CI and the Stop-gate do: its `run` through `bash -c`, from the repository root. Its
+ * stderr is made its stdout before it starts, one pipe this process drains as it fills, so its lines keep
+ * the order it wrote them in. No file stands between: a write a full disk refused would reach the recipe as
+ * its own failure, and its exit would read as a verdict on the tree. No cap stands between either, and no
+ * store that grows with the output: only its last `TAIL_BYTES` are held, for a failure's report. The shell's
+ * exit ends the run: a process it left running is not waited for, and the pipe it shares is closed.
  */
-export function finish(options, { cwd = process.cwd(), env = process.env, readStdin, runOne = runRecipe } = {}) {
+export function runRecipe(recipe, { root, env, timeout = RECIPE_TIMEOUT_MS }) {
+    return new Promise((resolve) => {
+        const kept = tailKeeper();
+        let failure = null;
+        let late = false;
+        let limit;
+        let drain;
+        const settle = (status) => {
+            clearTimeout(limit);
+            clearTimeout(drain);
+            const code = failure || late ? null : status;
+            if (code === 0) return resolve({ id: recipe.id, outcome: "green" });
+            const why = failure ? `\n${failure.message}` : late ? `\nkilled at its time limit of ${timeout / 1000} s` : "";
+            const cannot = code === null || CANNOT_RUN.has(code);
+            resolve({ id: recipe.id, outcome: cannot ? "could not run" : "red", code, output: `${kept.text()}${why}` });
+        };
+        const child = spawn("bash", ["-c", `exec 2>&1\n${recipe.run}`], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
+        const stop = () => {
+            child.stdout.destroy();
+            child.stderr.destroy();
+        };
+        child.stdout.on("data", kept.add);
+        child.stderr.on("data", kept.add);
+        child.on("exit", () => {
+            clearTimeout(limit);
+            drain = setTimeout(stop, DRAIN_MS);
+        });
+        child.on("error", (error) => {
+            failure = error;
+            settle(null);
+        });
+        child.on("close", settle);
+        limit = setTimeout(() => {
+            late = true;
+            child.kill();
+            stop();
+        }, timeout);
+    });
+}
+
+/**
+ * Close the change the working tree at `cwd` holds. Resolves to `{ code, lines }`: the exit code and what
+ * to print, the first line always the one that says what happened.
+ */
+export async function finish(options, { cwd = process.cwd(), env = process.env, readStdin, runOne = runRecipe } = {}) {
     const stop = (code, ...lines) => ({ code, lines: [`finish: ${lines[0]}`, ...lines.slice(1)] });
     const message = messageOf(options, readStdin);
     if (message?.error) return stop(2, `could not run — ${message.error}`);
@@ -380,7 +451,17 @@ export function finish(options, { cwd = process.cwd(), env = process.env, readSt
     // What the recipes judge, and so the one commit this call may push.
     const judged = git(["rev-parse", "--verify", "-q", "HEAD^{commit}"]).out;
     const recipeEnv = { ...env, PORTULAN_BASE_REF: base.ref };
-    const results = set.recipes.map((recipe) => runOne(recipe, { root, env: recipeEnv }));
+    // A runner that throws judged nothing, whatever it throws, and so does one that returns no result: the
+    // recipe could not run, and the commit is undone as for any recipe that could not run, never left
+    // standing by an error nothing caught.
+    const results = [];
+    for (const recipe of set.recipes) {
+        try {
+            results.push(resultOf(recipe.id, await runOne(recipe, { root, env: recipeEnv })));
+        } catch (error) {
+            results.push({ id: recipe.id, outcome: "could not run", code: null, output: textOf(error) });
+        }
+    }
     const failed = results.filter((r) => r.outcome !== "green");
     if (failed.length) {
         const code = failed.some((r) => r.outcome === "red") ? 1 : 2;
@@ -406,7 +487,7 @@ export function finish(options, { cwd = process.cwd(), env = process.env, readSt
     if (pushed.status !== 0) {
         return stop(
             2,
-            `not pushed — ${remote} refused ${branch}: ${lastLine(pushed.err)}. ${made ? `The commit ${made.slice(0, 7)} is green and stays` : "The branch is green"}; ` +
+            `not pushed — ${remote} refused ${branch}: ${refusalOf(pushed.err)}. ${made ? `The commit ${made.slice(0, 7)} is green and stays` : "The branch is green"}; ` +
                 "if the remote moved, merge it in, never force, and run this again.",
         );
     }
@@ -424,7 +505,7 @@ export function finish(options, { cwd = process.cwd(), env = process.env, readSt
     );
 }
 
-export function run(argv = process.argv.slice(2), { stdout = process.stdout, stderr = process.stderr, cwd = process.cwd(), env = process.env, readStdin } = {}) {
+export async function run(argv = process.argv.slice(2), { stdout = process.stdout, stderr = process.stderr, cwd = process.cwd(), env = process.env, readStdin } = {}) {
     const options = parseArgs(argv, cwd);
     if (options.error) {
         stderr.write(`finish: ${options.error}\n${USAGE}\n`);
@@ -434,11 +515,11 @@ export function run(argv = process.argv.slice(2), { stdout = process.stdout, std
         stdout.write(`${USAGE}\n`);
         return 0;
     }
-    const { code, lines } = finish(options, { cwd, env, readStdin });
+    const { code, lines } = await finish(options, { cwd, env, readStdin });
     stdout.write(`${lines.join("\n")}\n`);
     return code;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-    process.exitCode = run();
+    process.exitCode = await run();
 }
