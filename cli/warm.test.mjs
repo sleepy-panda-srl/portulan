@@ -447,6 +447,10 @@ describe("a switch against its control", () => {
         assert.equal(run(["report", control, treatment], { say: (l) => said.push(l) }), 1);
         assert.match(said.at(-1), /no figure against the control's 100.*a run was not measured/);
         assert.match(reportLines(readSequence(treatment)).at(-1), /; measured 1 of 2; answered 2 of 2;/);
+        const controlRun = path.join(control, JSON.parse(fs.readFileSync(path.join(control, "sequence.json"), "utf8")).runs[1].transcript);
+        fs.writeFileSync(controlRun, fs.readFileSync(controlRun, "utf8").replaceAll('"model":"stub"', '"model":"stub-2"'));
+        const partly = verdict(readSequence(control), readSequence(treatment));
+        assert.deepEqual([partly.measured, partly.pass], [false, false], "a model only the unmeasured run's twin recorded is no other shape");
         fs.writeFileSync(path.join(treatment, runs[0].transcript), "");
         const none = reportLines(readSequence(treatment));
         assert.match(none.at(-3), /A {2}Portulan's share: no figure, since no run was measured$/);
@@ -490,7 +494,7 @@ describe("a switch against its control", () => {
             const t = path.join(other, name);
             fs.writeFileSync(t, fs.readFileSync(t, "utf8").replaceAll(/"model":"stub(?:-2)?"/g, '"model":null'));
         }
-        assert.throws(() => verdict(readSequence(one), readSequence(other)), /differ in shape.*\(recorded none\)/, "measured runs that recorded no model");
+        assert.throws(() => verdict(readSequence(one), readSequence(other)), /differ in shape.*\(recorded run 1 none, run 2 none\)/, "measured runs that recorded no model");
     });
 
     test("what the cache held before a sequence is neither arm's: the first run is priced cold", () => {

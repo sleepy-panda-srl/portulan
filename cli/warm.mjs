@@ -414,7 +414,6 @@ export function summary(runs) {
         cold,
         billed: mean(measured.map((r) => r.figures.billed)),
         cost: mean(measured.map((r) => (r.k === 1 ? r.figures.cold : r.figures.billed))),
-        models: [...new Set(measured.flatMap((r) => r.models ?? []))].sort(),
         share: warm !== null && cold ? warm / cold : null,
     };
 }
@@ -427,16 +426,19 @@ export function summary(runs) {
  * cut against it is not the switch's; and what the cache held before either sequence began is neither arm's. The
  * two must differ in their arm and in nothing else the runner records (the commit they started from, the task,
  * the run count, the checkouts, what lands between runs, where they ran, the model asked for and the models the
- * host recorded, and the host's version), or no difference between them is the switch's. A sequence with no run
- * measured recorded no model, so the models are compared where both measured a run: such a sequence fails as not
- * measured, never as another shape, while a measured run that recorded no model still differs from one that did.
+ * host recorded, and the host's version), or no difference between them is the switch's. The models are compared
+ * run by run, for the runs both sequences measured: a run with no measurement recorded no model, so its sequence
+ * fails as not measured, never as another shape, while a measured run that recorded no model still differs from
+ * one that did.
  */
 export function verdict(control, treatment) {
-    const recorded = control.summary.measured > 0 && treatment.summary.measured > 0;
+    const measuredRun = (s, k) => s.runs.find((r) => r.k === k && r.figures !== null);
+    const both = control.runs.map((r) => r.k).filter((k) => measuredRun(control, k) && measuredRun(treatment, k));
+    const recorded = (s) => both.map((k) => `run ${k} ${[...(measuredRun(s, k).models ?? [])].sort().join(" and ") || "none"}`).join(", ");
     const shape = (s) =>
         `${s.record.task} × ${s.record.runs.length} from ${s.record.source ?? "an unrecorded commit"}, copies ${s.record.copies}, ` +
         `between ${s.record.between ?? "nothing"}${s.record.local ? ", local" : ""}, model ${s.record.model ?? "the host's default"}` +
-        `${recorded ? ` (recorded ${s.summary.models.join(" and ") || "none"})` : ""}, host ${s.record.agent ?? "unknown"}`;
+        `${both.length ? ` (recorded ${recorded(s)})` : ""}, host ${s.record.agent ?? "unknown"}`;
     if (shape(control) !== shape(treatment)) {
         throw new CouldNotRun(`the two sequences differ in shape (${shape(control)} against ${shape(treatment)}), so no difference between them is the switch's`);
     }
