@@ -16,9 +16,12 @@
 // TypeScript CLI at milestone 7. Nothing here touches the network: a check that fails for reasons
 // unrelated to the change under test is worse than no check (../.portulan/verify/README.md).
 //
-// What it does NOT do is written next to what it does, in ../spec/slots.md and in ../cli/README.md.
-// The short list: it never runs a verify recipe, never dereferences a link, and never judges whether a
-// sealed stamp is true.
+// What it does NOT do is written next to what it does, here and in ../spec/slots.md. The short list: it
+// never runs a verify recipe, never dereferences a link, and never judges whether a sealed stamp is
+// true. Two more, about the enforcement report: it covers the two backends `compile` has, Claude Code
+// and the GitHub repository ruleset, and says nothing about a host with neither rather than implying
+// coverage; and whether the repository's live settings match the exported ruleset is an API fact it
+// does not fetch, compared by hand at the supervised checkpoints.
 //
 // **It DOES score agent legibility, since milestone 7 session 7** — this line read "and never scores
 // agent-legibility" until then, which was the honest state from milestone 2 until row 7's 2026-07-28

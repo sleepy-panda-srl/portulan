@@ -75,7 +75,7 @@ printf 'compile: checking .claude/settings.json and .portulan/compile/github-rul
 # discovered copy's policy. `compile` now REFUSES a shadowed pack outright — exit 2, naming both roots
 # — on the emit path and the check path alike, so the pin is a rule rather than a habit. Since #264 the
 # artifact also records which world compiled it (`$portulan.packs`), which is what still catches an
-# artifact emitted before the refusal existed. The spelling to emit with is in `../compile/README.md`.
+# artifact emitted before the refusal existed. The spelling to emit with is in `../gate-map/compiler.md`.
 # ---------------------------------------------------------------------------------------------
 node cli/compile.mjs --workspace . --pack-root packs --check
 status=$?

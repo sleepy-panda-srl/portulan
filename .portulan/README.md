@@ -44,7 +44,7 @@ are the point:
 | [`verify/`](verify/) | The verify recipes — one of which the Stop-gate now runs — and what each check enforces |
 | [`gates.json`](gates.json) | The gate policy the enforcement compiler reads: actions bound to tiers, in this workspace's vocabulary rather than a host's |
 | [`labels.json`](labels.json) | The pull-request label set, read by [`../.github/workflows/pr-labels.yml`](../.github/workflows/pr-labels.yml) — policy here, checker there |
-| [`compile/`](compile/) | The runtime the Claude Code artifact points at — the `PreToolUse` gate and the `Stop` gate — and the compiled platform floor, [`compile/github-ruleset.json`](compile/github-ruleset.json) |
+| [`compile/`](compile/) | The compiled platform floor, [`compile/github-ruleset.json`](compile/github-ruleset.json), generated and never applied. What `compile` emits, and why, is [`gate-map/compiler.md`](gate-map/compiler.md) |
 | [`tools/`](tools/) | Operator tooling — how this repository is *run*, as distinct from how a change is checked |
 | [`repos/`](repos/) | Repo cards — one per repository this workspace covers — and beside a card, a directory of its name for the history a boot need not read |
 | [`memory/`](memory/) | Durable facts with provenance, one per file |

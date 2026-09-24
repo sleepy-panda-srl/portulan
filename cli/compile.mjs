@@ -37,8 +37,8 @@
 // That the host honours what it emits. A schema-valid settings file the host ignores is
 // indistinguishable, from in here, from one it enforces — see
 // ../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md, which cost a milestone.
-// The host behaviours above were measured against a running host on 2026-07-27 and are recorded in
-// ../.portulan/compile/README.md with their probes. Re-measure on upgrade.
+// The host behaviours above were measured against a running host on 2026-07-27, and
+// ../.portulan/gate-map/compiler.md carries the probe that re-measures each. Re-measure on upgrade.
 //
 // Zero dependencies, no network, no install step — same constraints as ./doctor.mjs.
 
@@ -1610,7 +1610,7 @@ export function claudeCode(parsed, options = {}) {
 // asserting facts it cannot know. The envelope and that omission list were read from two live rulesets
 // on 2026-07-27; the `pull_request` and `required_status_checks` parameter blocks were **not** — neither
 // live ruleset carries those rules — so those come from GitHub's documented schema, and
-// ../.portulan/compile/README.md marks them as such rather than folding them into "read from live".
+// ../.portulan/gate-map/compiler.md marks them as such rather than folding them into "read from live".
 //
 // **Recognition is by exact spelling, and that is a limit rather than an oversight.** The action
 // vocabulary has no `ref` kind — a rule says `{"shell": "git push --force"}` — so this backend
@@ -1869,7 +1869,7 @@ export function backends(parsed, options = {}) {
     // oversight.** `githubRuleset` emits to a fixed external schema that has nowhere to carry a
     // `$portulan` block; its provenance is the one line it can carry, in `name`. Both backends compile
     // from ONE root plan per run, so the recorded origins describe the ruleset's inputs too — they are
-    // simply not readable in its file. Stated here and in `../.portulan/compile/README.md` (#264).
+    // simply not readable in its file. Stated here and in `../.portulan/gate-map/compiler.md` (#264).
     return [claudeCode(parsed, options), githubRuleset(parsed, options)];
 }
 

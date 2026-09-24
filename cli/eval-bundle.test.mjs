@@ -453,7 +453,7 @@ describe("fixture repositories — the filter exercised positively, and every re
             // Neutral content on purpose: a fixture `.gitignore` whose body was its own name
             // ignored ITSELF, went untracked, and the partition correctly called it stale — a
             // fixture defect wearing a rail's message.
-            if (/[.]md$|^[.]gitignore$|^CODEOWNERS$|^package[.]json$/.test(top)) file(top, "# fixture\n");
+            if (/[.]md$|^[.](git)?ignore$|^CODEOWNERS$|^package[.]json$/.test(top)) file(top, "# fixture\n");
             else file(`${top}/keep.txt`, `${top}\n`);
         }
         file("README.md", "# Fixture\n\nBody.\n\n## License\n\n[Apache-2.0](LICENSE) © nobody.\n");

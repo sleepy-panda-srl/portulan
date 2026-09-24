@@ -32,10 +32,10 @@
 //  2. **The heading is PREFIX-matched, and an empty step list is could-not-run.** Three spellings exist
 //     — `## The pass`, `## The pass (bounded)`, `## The pass, in order` — so an exact match finds one
 //     skill of three and the other two get an empty denominator that satisfies "every step is bound"
-//     vacuously. That is `../evals/README.md`'s own sentence about clause (d): *"a check whose
-//     enumeration went empty … reports green and has stopped being a rail."* The match is also anchored
-//     at `The pass`, because a loose `/pass/` grabs `consolidate`'s `## The one move this pass may not
-//     make`.
+//     vacuously. That is clause (d)'s own sentence, in `./drills.mjs`: *"a check whose
+//     enumeration went empty — each reports green and each has stopped being a rail."* The match is
+//     also anchored at `The pass`, because a loose `/pass/` grabs `consolidate`'s `## The one move
+//     this pass may not make`.
 //  3. **The quote must anchor EXACTLY ONCE** in the skill's own file, or the case is could-not-run —
 //     `./mutants.mjs`'s discipline, adopted rather than re-derived. A skill whose wording is reworded,
 //     softened or deleted reddens instead of drifting, and nothing in this tree did that before.
@@ -491,8 +491,8 @@ export function run(argv = process.argv.slice(2), io = console) {
             return 2;
         }
         if (corpus.skill !== skill) {
-            // The filename is checked against the file's own field, the repair `../evals/README.md`
-            // records for the gate corpus after a misfiled fixture graded cleanly.
+            // The filename is checked against the file's own field, the repair `./goldens.mjs`'s
+            // `readCorpus` records for the gate corpus after a misfiled fixture graded cleanly.
             io.error(`skill-goldens: ${skill}.json declares skill ${JSON.stringify(corpus.skill)}`);
             return 2;
         }

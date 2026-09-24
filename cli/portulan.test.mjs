@@ -269,7 +269,7 @@ test("`init` really dispatches through the entry point, with the real loader", a
     // Every other case here injects the loader, which is right — re-asserting what `doctor` or
     // `index` already prove would make this file a second carrier of it. But injection cannot show
     // that a subcommand is REACHABLE, only that the dispatcher would reach it if the module were
-    // what the harness says. `cli/README.md` claims `init` is exercised through the entry point as
+    // what the harness says. `cli/README.md` claimed `init` is exercised through the entry point as
     // well as directly, and until this test existed that claim rested on the run-export check alone
     // — a softer thing than the sentence said. Found at the pre-commit checkpoint, in its minor set.
     //

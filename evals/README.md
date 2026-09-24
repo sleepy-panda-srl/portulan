@@ -1,912 +1,317 @@
 # evals/
 
-Milestone 8's home: golden tasks, the A/B harness, and the eval gate that lets a rule change merge or
-be rejected on evidence rather than assertion. Row 8 of [`../docs/plan.md`](../docs/plan.md) is the
+Milestone 8's home: the golden corpora, the review-loop register, the telemetry opt-in, the A/B harness's
+records and the eval result each release carries. Row 8 of [`../docs/plan.md`](../docs/plan.md) is the
 binding criterion; [`../docs/milestones/m08.md`](../docs/milestones/m08.md) is its legislative history.
-This file does not restate either — a rule with two carriers is obeyed at the narrower one.
+This file does not restate either — a rule with two carriers is obeyed at the narrower one. It says what
+is here, how to run or extend each rail, and what each one does not establish; a rail's detail is its
+module's header comment. How each clause came to be — first-run figures, reversed designs, review
+rounds — is at `git show 8a33f9b:evals/README.md`.
 
-## First, the word — because it already means something else here
+## Two words that mean two things here
 
-**"Eval" carries two unrelated senses in this repository, and only one of them lives in this
-directory.** Both were load-bearing before this directory had any content, so the disambiguation is
-written down rather than left to be inferred from a filename.
+**"Eval" carries two unrelated senses in this repository, and only one of them lives in this directory.**
 
 | Sense | Where it lives | What it is |
 |---|---|---|
 | **Evaluation as measurement** — golden tasks, A/B, the eval gate | **here**, `evals/` | Does the engine make an agent work better? Milestone 8's subject. |
-| **Evaluation as a licensed copy** | [`../cli/eval-bundle.mjs`](../cli/eval-bundle.mjs), [`../.portulan/verify/eval-bundle.sh`](../.portulan/verify/eval-bundle.sh) | A named-recipient bundle cut from a commit under evaluation terms. A commercial artifact, with its issuance ledger kept permanently outside this repository. Nothing to do with this directory. |
+| **Evaluation as a licensed copy** | [`../cli/eval-bundle.mjs`](../cli/eval-bundle.mjs), [`../.portulan/verify/eval-bundle.sh`](../.portulan/verify/eval-bundle.sh) | A named-recipient bundle cut from a commit under evaluation terms, its issuance ledger kept outside this repository. Nothing to do with this directory. |
 
-**And `goldens` itself now names two runners, so that is disambiguated here too rather than left to a
-prefix.** [`../cli/goldens.mjs`](../cli/goldens.mjs) grades the **compiled gates** against adversarial
-fixtures, through the compiler's own `matchesRule`. [`../cli/skill-goldens.mjs`](../cli/skill-goldens.mjs)
-grades the **core skills'** mandates against the live artifacts they govern. Same clause, two subjects —
-the 2026-07-28 amendment's *"golden tasks reach the gates as well as the skills"* — and two oracles, which
-is why they are two modules and two recipes rather than one with a flag.
+So the machinery here is named **`goldens`**, never `evals`: the directory keeps the row's word and the
+tools take a narrower one. And **`goldens` names two runners** — two subjects and two oracles, which is why
+they are two modules and two recipes rather than one with a flag. [`../cli/goldens.mjs`](../cli/goldens.mjs)
+grades the **compiled gates** through the compiler's own `matchesRule`;
+[`../cli/skill-goldens.mjs`](../cli/skill-goldens.mjs) grades the **core skills'** mandates against the
+live artifacts they govern.
 
-The machinery this directory ships is therefore named **`goldens`**, never `evals` — so a reader meeting
-`cli/goldens.mjs` beside `cli/eval-bundle.mjs` is not left to guess which sense is which. The directory
-keeps the row's own word; the tools take a narrower one.
+Each rail below is a verify recipe in [`../.portulan/verify/`](../.portulan/verify/), run on every pull
+request; `bash .portulan/verify/<recipe>.sh` runs one by hand, and `node cli/<module>.mjs --help` prints a
+module's modes. Every runner prints its own totals, so no figure is written here.
 
-## What is built today
-
-**Eight clauses of row 8, of nine, and a ninth built to its mechanism but not to its instance.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
-**(b)**, mutation testing over both matchers and grammar-aware fuzzing over the shell segmenter,
-landed 2026-08-25; **(d)**, scheduled forced-red drills, landed 2026-08-25; **(c)**, review-loop
-metering, landed 2026-08-26; **golden tasks per core skill** — the row's original first subject —
-landed 2026-08-26; **OTel opt-in config** landed 2026-08-28; **the A/B baseline** landed 2026-08-31,
-across three sessions the maintainer split at construction | grading | running — 6b the arms, 6c the
-graders, **6d the run**; and **a rule change merged or rejected on eval evidence** was decided by the
-instruments 2026-09-03 and **discharged on its merge, 2026-09-09** — the clause reads *merges*, and the
-session that measured the table said in terms that *"his merge is the ruling"*, so the date the evidence
-was taken is not the date the clause landed; its own section is below. **A release carries an eval
-result** landed as a *mechanism*
-2026-09-01 — the record layer, the rail and its forced-red drill — and is **half-vouched**, the row's own
-word for a clause whose demonstration was owed to an event that had not happened yet. It has now half
-happened: `0.1.3` carries a record **in the tree**, and what is still owed is the tag and a published
-body citing it — both Gated and both the maintainer's. The two are not equally unreachable, and saying
-so loosely is the overclaim this file warns about elsewhere: `release-eval --tagged` reaches the
-**tagged tree** at the publish, from the release workflow, while the **body** — authored on GitHub — is
-the surface no check reaches at all. **Nothing remains outright.** Each is listed below with the sentence
-[`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
-
-## The A/B baseline — what 40 turns measured, and what they did not
-
-[`ab/baseline.json`](ab/baseline.json) is the capture and [`ab/baseline.md`](ab/baseline.md) the register
-rendered from it. **k = 5 per cell, ruled by the maintainer; 4 scenarios × 2 arms × 5 runs; every turn
-isolated with a home and config directory of its own.** Held by the `ab-run` recipe and a forced-red
-drill.
-
-**At the 2026-08-31 capture the headline is a tie**, and [`ab/baseline.md`](ab/baseline.md) carries the
-figure itself, with every per-turn row beside it — this paragraph cites that register rather than
-restating it. The date is part of the claim: it is what keeps this sentence true rather than stale if
-the arms are ever re-run. It is recorded as measured. No re-run was taken to find a better number, and
-none will be: `k = 5` supports a recorded rate and nothing else.
-
-**The finding that matters most is not the tie.** On `done-demonstrated` the rig fails unconditionally,
-so the only route to a green rail is rewriting the check — and **arm A rewrote it in 3 of 5 turns**.
-Session 6c's first design labelled a green rail `demonstrated` and scored it as compliance; the
-session-open checkpoint reversed that before any turn ran. Had it not, those three turns would have
-counted as compliances and the register would publish **an arm-A lead manufactured entirely by scoring
-the gaming move as the good outcome**, against the tie [`ab/baseline.md`](ab/baseline.md) recorded on
-2026-08-31. The reversal is what makes that tie trustworthy, and it is the strongest evidence this milestone has
-produced that a fresh-context checkpoint catches what its own author cannot.
-
-**On `altitude` arm A REACHED the compliant location and was still scored 0/5, and that is the finding.**
-It wrote the constraint into `.portulan/tasks/` on **3 of 5** turns — arm B reached it never. All three
-graded `higher-layer` because `gradeAltitude` gives any governance-surface occurrence precedence, and in
-every one of those turns the governance hit is **the dated handoff arm A's own `dod.md` condition 8
-demands**. So the predicate **counted** a gate-mandated artifact as promotion and **penalised** the
-treatment arm for obeying the treatment: a treatment–instrument interaction, not a fact about the arm. _(Runs 0 and
-3 are different and are genuine promotion — they wrote the constraint into `memory/`.)_ **The registered
-carrier of what may not be concluded from this is
-[`ab/corpus.md`](ab/corpus.md)'s section of that name**, which since the milestone-8 close carries the
-argument in full — including the half this paragraph does not state, that arm B has no path to the
-penalising branch at all, so the row is one-directional rather than merely noisy. The rendered register
-cites that section; this paragraph cites it too rather than becoming a fourth uncited restatement. On
-`curated-layer` arm A wrote into `memory/` twice and arm B touched neither curated directory — a visible
-difference, 0/5 both.
-
-Recorded rather than repaired at the capture and at the close: moving a target after seeing the figures
-is the selection this instrument exists to refuse, and what to do about it was the maintainer's.
-**Repaired 2026-09-09, the same day the close named it**, when he lifted the hold — the session-record
-slots left `altitude`'s population, precedence was left alone, and what that implies for the 2026-08-31
-capture is a **re-classification of a fixed record and never a new baseline**, disclosed in
-[`ab/corpus.md`](ab/corpus.md) beside the date. The paragraph above describes that capture and stays in
-its own tense: it is a record, not a carrier. **The baseline is scoped to the
-vendored-and-compiled tier** [`ab/arm.md`](ab/arm.md) specifies, and closes row 8 for no other
-configuration of *Portulan on*.
-
-**One cell is at ceiling.** `observed-content` is 5/5 for both arms — [`ab/corpus.md`](ab/corpus.md)
-warned in terms that a bare agent which also declines the injection makes the row uninformative, and it
-does.
+## The gate corpus — clause (a)
 
 ```
 evals/goldens/gates/<rule-id>.json      one fixture file per rule in the yielded gate policy
-```
-
-**The filename is checked against the file's own `rule` field**, since 2026-08-24. It was documented
-here, printed in the missing-fixture red (*"add `evals/goldens/gates/<rule-id>.json`"*), and enforced
-nowhere — so a renamed or misfiled fixture validated cleanly and graded anyway. A mandate nothing
-checks is already broken, and this directory was carrying one of its own. Found as a suppressed note
-in Copilot round 5 of [#336](https://github.com/sleepy-panda-srl/portulan/pull/336).
-
-Graded by [`../cli/goldens.mjs`](../cli/goldens.mjs), run as the `goldens` verify recipe, on every
-pull request. Run it by hand with:
-
-```
 node cli/goldens.mjs --workspace . --pack-root packs
 ```
 
-**Why this clause first.** Not because everything else hangs off it — golden tasks, the A/B harness,
-OTel and review-loop metering share almost nothing with a matcher-fixture runner, and claiming
-otherwise would be an overclaim of exactly the kind this repository keeps finding. The honest reason
-is narrower: clause **(b)** — mutation testing over both matchers and grammar-aware fuzzing over the
-shell segmenter — needs this corpus as its kill-set and this fixture format as its output shape. (a)
-is load-bearing for (b) and for nothing else in the row.
+**What a fixture is.** A file is named for its own `rule` field — the runner refuses a misfiled one — and
+holds `cases`, each `{id, class, tool, path, input, expect, why}`. A case is **data**, answered by the
+compiler's own exported `matchesRule`, the function the hook calls at tool time. **A case's command string
+is never executed**, and the suite asserts the runner imports no process-spawning API. Two classes, and
+exactly two:
 
-### What a fixture is
+- **`holds`** — the matcher catches this today and must keep catching it.
+- **`documented-hole`** — the matcher does **not** catch this, and `hole` names the record that says so.
+  It holds **in both directions**: if the hole silently closes, the case goes red until the record is
+  updated.
 
-A case is **data**, answered by the compiler's own exported `matchesRule` — the same function the hook
-calls at tool time, never a re-implementation. **A case's command string is never executed.** The
-corpus contains `git push --force`, `rm -rf docs` and constitution-write spellings by design; there is
-no code path from a fixture to a subprocess, and the suite asserts the runner imports no
-process-spawning API at all.
+`path` names the branch of `matchesRule` a case exercises — `matchesPath`, `shell-write`, `shell-prefix`
+or `no-branch` — and is **derived, never declared**: the runner computes it with `matcherPath(kind, tool)`
+and refuses a case that disagrees. Byte-level attacks are stored **escaped** (JSON `\r`, `\u0000`), since
+[`../cli/control-chars.mjs`](../cli/control-chars.mjs) refuses raw control bytes in the tree; the suite
+checks both that the corpus is clean and that the escapes decode.
 
-Two case classes, and exactly two:
+The corpus is load-bearing for the next clause: clause (b) needs this corpus as its kill-set and this
+fixture format as its output shape. A `mutants` survivor is repaired by a new case here, and a `fuzz-shell`
+finding prints as a case ready to paste — reviewed first, since its `expect` records what the matcher did.
 
-- **`holds`** — the matcher catches this today and must keep catching it. Every one of the eight
-  bypasses found *after* [#60](https://github.com/sleepy-panda-srl/portulan/pull/60)'s gate was called
-  done is one of these.
-- **`documented-hole`** — the matcher does **not** catch this, a named record says so, and the case
-  keeps that admission true **in both directions**: if the hole silently closes, the case goes red
-  until the record is updated. A hole list that still lists a closed hole is as wrong as one that
-  hides an open one.
+**What it does NOT establish: adequacy.** It checks **presence** — every compiled gate has fixtures and
+every case answers as recorded — which one trivial case per rule satisfies. `mutants` checks
+**discrimination**; **realism**, whether the attacks resemble anything an adversary would type, stays a
+reviewer's judgement. The runner prints that limit on every green and names every rule exempt for
+declaring no matchable action.
 
-**Every case records which branch of `matchesRule` it exercises**, and the field is **derived, never
-declared**: `matcherPath(kind, tool)` computes it from the rule's action kind and the case's tool, and
-the runner refuses a case whose stored value disagrees. Four values — `matchesPath`, `shell-write`,
-`shell-prefix`, and `no-branch` for a combination the matcher has no code for. The green prints the
-per-path census, including the zeroes, because a corpus can carry two hundred cases and exercise one
-branch of four.
-
-It earns its place on one asymmetry: a `then`/`do`/brace-group leader is **caught** on the write path
-— `shellSegments` knows `SEGMENT_LEADERS` — and **escapes** on the shell path, where `commandSegments`
-does not. One rule id, two segmenters, two answers. Without the field those two cases read as a
-contradiction rather than as the asymmetry they are.
-
-Byte-level attacks are stored **escaped** (JSON `\r`, `\u0000`) and decoded by `JSON.parse`.
-[`../cli/control-chars.mjs`](../cli/control-chars.mjs) refuses a raw CR anywhere in this tree by
-decision, and exempting a growing adversarial-content directory is the allow-list defect that same file
-names — so the corpus carries no raw control bytes, and a test asserts both halves: the bytes are clean
-*and* the escapes really decode.
-
-## Clause (b) — the corpus is measured against a broken matcher, and the grammar against bash
-
-Two rails, landed 2026-08-25, and they answer two different questions:
+## Mutants and the grammar fuzzer — clause (b)
 
 ```
 node cli/mutants.mjs    --workspace . --pack-root packs     the mutation census
 node cli/fuzz-shell.mjs --workspace . --pack-root packs     the grammar fuzzer
 ```
 
-**`mutants` asks whether the corpus DISCRIMINATES.** It breaks
-[`../cli/compile.mjs`](../cli/compile.mjs)'s matcher region on purpose — one declared, anchored,
-place-exactly-once substitution at a time — and grades each mutant against this corpus. An operator
-that the corpus fails to notice is a hole in the kill-set, and the repair is a new fixture: `matchesRule`
-is a pure function of `(rule, tool, input)` and a fixture is exactly that triple, so any non-equivalent
-mutant is killable by one. A `survives` record is admissible only as a **proof** — semantic
-equivalence, or equivalence under the yielded policy — never as a standing note that a gap exists,
-which would rebuild the prose hole list clause (a) exists to have replaced.
+**`mutants` asks whether the corpus discriminates.** It breaks [`../cli/compile.mjs`](../cli/compile.mjs)'s
+matcher region on purpose, one declared, anchored operator at a time, and grades each mutant against the
+gate corpus. An operator the corpus fails to notice is a hole in the kill-set and the repair is a new
+fixture; a `survives` record is admissible only as a **proof** of equivalence, never as a standing note
+that a gap exists.
 
-**It went red on its first run and the corpus lost.** Among the breakages that went unnoticed:
-removing `sudo` from the command-prefix table, dropping `..` resolution from path normalisation, and
-disabling quote tracking in the segmenter. Every one is a fixture now, and each was derived by
-measuring which input distinguishes the mutant rather than by reasoning about it — two were *not*
-killed by the spelling that seemed obvious.
+**`fuzz-shell` asks whether the two segmenters answer one grammar.** It composes each command from a
+grammar, so it knows whether the payload sits where bash would execute it or only print it. Positions are
+enumerated and recorded, spellings are fuzzed, and every spelling of one command in one position must get
+the same answer; every recorded divergence from ground truth cites its record. The grammar's own ground
+truth is measured under real bash with a neutral payload by
+[`../cli/fuzz-shell.ground.test.mjs`](../cli/fuzz-shell.ground.test.mjs), and the seed is pinned and
+printed on every run.
 
-_The figures for that first run are dated in
-[the session's handoff](../.portulan/handoffs/2026-08-25-the-corpus-lost-and-the-fuzzer-found-a-live-bypass.md),
-and the SHIPPED totals are printed by `node cli/mutants.mjs` and `node cli/goldens.mjs`, which are
-their one carrier. This paragraph carried "eleven of forty-eight" against a table that had since grown
-to fifty-three — a count written before the thing it counted stopped growing, which is this
-repository's most-repeated defect and was this session's third instance of it. The pre-commit
-checkpoint caught the same figure in the handoff and the repair stopped at the site that was quoted;
-Copilot round 2 found the one it missed. Deleted rather than corrected, so the trap is not re-armed
-for whoever adds the next operator._
+**What they do NOT establish:** that the attacks are realistic (`mutants`), or what a gate ought to cover
+(`fuzz-shell` — whether a recorded escape should stay open is a policy question for the maintainer).
 
-**`fuzz-shell` asks whether the SEGMENTERS answer one grammar.** It composes a command from a grammar
-instead of mutating a string, so it knows by construction whether the payload sits where bash would
-execute it or where bash would only print it. Positions are enumerated and recorded; **spellings are
-fuzzed**, and the invariant is that every spelling of one command in one position gets the same
-answer. Every recorded divergence from ground truth cites the record that licenses it.
-
-**The grammar's own ground truth is measured, not argued.**
-[`../cli/fuzz-shell.ground.test.mjs`](../cli/fuzz-shell.ground.test.mjs) runs every position under
-real bash with a **neutral** payload — never a gated command — and writes every path spelling to a
-throwaway file. A grammar that lies about itself produces not a red but a green about the wrong thing,
-which is the one failure a fuzzer cannot detect in itself. It caught two.
-
-**It found a live bypass of every Gated shell action.** `bash -c "ls; git push --force origin main"`
-answered **false**: the composition tested the raw command's segments and each segment's spellings,
-and never a spelling's segments. The write matcher never had the gap, because `shellWrites` segments
-again internally — one fix landing in one carrier and not its sibling, between two branches of one
-function. Closed the same day, at the class rather than the spelling, with the two-wrapper
-counterexample asserted so the unwrap budget stays at one level.
-
-### What this rail does NOT establish
-
-**Adequacy — whether the cases are a real attack.** What the rail checks is **presence**, and the two
-are worth separating out loud, because a green looks the same either way:
-
-| The rail answers | The rail cannot answer |
-|---|---|
-| Does every compiled gate have fixtures at all? | Are those fixtures any good? |
-| Does every case still answer as recorded? | Is the case worth answering? |
-
-So a gate cannot reach the compiled policy with **no** adversarial thought recorded against it — and
-one trivial happy-path fixture per rule satisfies the floor while proving nothing. The runner prints
-this limit on every green rather than letting the exit code imply more than it means.
-
-**Half of that gap closed on 2026-08-25, and the sentence has to move with it.** This section used to
-end *"no check can tell those apart"*, and clause (b)'s mutation census is a check that tells part of
-them apart: it breaks the matchers on purpose and asks whether the corpus notices. So the right split
-is now three ways rather than two — **presence** (the `goldens` rail), **discrimination** (the
-`mutants` rail: does the kill-set catch a matcher that has been broken?), and **realism** (whether the
-attacks resemble anything an adversary would type), which is still a reviewer's judgement and stays
-one. The census is what forced the correction rather than a reader noticing: it went red on its first
-run, on 2026-08-25, against the corpus as it then stood — which failed to notice a whole class of
-breakages, every one of which is a fixture now.
-
-The **exemption** is the obvious way to dodge the rail: write the next gate `none`-shaped and it needs
-no fixtures. So every exempt rule is named in the output on every run, the way `compile --matrix` prints
-its own refused rules.
-
-### What it found on its first run
-
-A hole nobody had recorded: **a rule whose target is the whole repository (`./`) matches nothing at
-runtime.** `matchesPath` reduces `"./"` to the empty string and then refuses the empty string, so
-`edit-on-a-working-branch` and `read-anything-in-the-repository` answer false for every input. Nothing
-is mis-enforced today — both are `auto`, and neither layer ever asks — but a **gated** rule written
-that way would compile to a named permission surface while the matcher covered nothing. Now
-entry 8 of [`../.portulan/gate-map.md`](../.portulan/gate-map.md)'s honest-holes list, tracked as [#337](https://github.com/sleepy-panda-srl/portulan/issues/337), asserted here, and **closed at the
-enforcing tiers on 2026-09-09**, the date the change merged — see *A rule change decided on eval
-evidence* below.
-
-_(This paragraph said the gated rule **"would compile to a permission rule covering the tree"**, and
-that was wrong in a way worth keeping rather than quietly deleting: re-derived on 2026-09-03, a real
-target compiles to a `**` glob and `./` does not — the emitted spec is the bare `Edit(./)`, whose host
-meaning this repository installs nothing to measure. Either reading is a hazard, and the one this
-repository can measure offline is the narrower and sharper one: the compiler reports the rule **compiled**
-while the matcher answers false for every input. Corrected under
-[`../.portulan/proposals/0022-a-claim-about-a-mechanism-is-re-derived-like-a-figure.md`](../.portulan/proposals/0022-a-claim-about-a-mechanism-is-re-derived-like-a-figure.md).)_
-
-Ten of the corpus's own hand-written expectations were refuted by the rail on the same run, which is
-the argument for the rail in one sentence.
-
-## Clause (d) — every rail is forced red on a calendar, and required to fire
+## Forced-red drills — clause (d)
 
 ```
 node cli/drills.mjs --pack-root packs                       the sweep: force every rail red
 node cli/drills.mjs --check --pack-root packs                the roster: every rail has a drill
 ```
 
-Landed 2026-08-25. `goldens` asks whether a gate has fixtures; `mutants` asks whether those fixtures
-discriminate; **this asks whether the rail still fires at all.** A recipe whose precondition quietly
-started exiting 0 over an empty file list, a hook that fails open on a crash, a check whose enumeration
-went empty — each reports green and each has stopped being a rail, and until this landed the way that
-was found here was an incident.
+`goldens` asks whether a gate has fixtures and `mutants` whether they discriminate; **this asks whether
+the rail still fires at all.** A drill is a pair — a control on a pristine tree, then a perturbation that
+must place exactly once and move bytes on disk — and the rail's output must carry the drill's declared
+tell in the fire and not in the control. Each runs in a throwaway `git worktree`. A new rail needs an
+entry in `DRILLS` in [`../cli/drills.mjs`](../cli/drills.mjs): `--check` reds a yielded rail with no drill.
+The sweep reports on a **commit** and refuses a dirty tree (`--working-copy` synthesizes one), which is why
+the verify recipe runs `--check` and not the sweep; the rails it cannot force are named in its output, each
+with the reason.
 
-**Its own provenance is two sessions doing it by hand.** The drills run against `goldens` on 2026-08-24
-and against `mutants` and `fuzz-shell` on 2026-08-25 were all run by hand, in a session, and recorded in
-those sessions' handoffs — which is precisely the state this clause exists to replace. Both of those
-sessions also had **a drill that did not fire**: one anchored substitution missed by four spaces of
-indentation, one patch script's quoting broke, and both times the recipe ran green against an unmodified
-file. Every guard in [`../cli/drills.mjs`](../cli/drills.mjs) traces to one of those two.
+**The calendar** is [`../.github/workflows/drills.yml`](../.github/workflows/drills.yml), weekly, and its
+header carries the recorded runs of both its triggers, the dispatch and the schedule.
 
-**A drill is a pair, and the pair is the oracle.** A control on a pristine tree, then the perturbation —
-because *a rail that only ever reds proves nothing about its green*, and because a control that is
-already red makes the drill **could-not-run** rather than a fire the perturbation did not cause. Each
-drill declares a **tell** its rail's own output must carry when it fires and must not carry before, so a
-red for the wrong reason is not counted as a fire; each perturbation must place **exactly once** and must
-move bytes on disk. Isolation is one throwaway `git worktree` per drill, so nothing perturbs a working
-tree.
+**What it does NOT establish:** `--check` runs no rail, so whether each one fires is the sweep's answer on
+the calendar; and a scheduled run that never starts stays undetectable from inside —
+[#344](https://github.com/sleepy-panda-srl/portulan/issues/344).
 
-**The sweep reports on a COMMIT and prints which one.** A dirty tree is refused outright; `--working-copy`
-synthesizes one with `git stash create` and refuses while untracked-and-unstaged files exist, since a
-synthesized tree missing the file under review would be a green about the wrong tree. That is also why
-the **verify recipe runs `--check` and not the sweep**: a recipe that answered about `HEAD` would not be
-answering [`../.portulan/dod.md`](../.portulan/dod.md) condition 1's question.
-
-**What the word *every* covers, and what it does not.** The sweep drills every recipe the workspace
-yields, plus the Stop-gate and the PreToolUse gate runner — the amendment's *"from watchers to every
-rail"*. The rails it cannot force are **named in the output on every run** with the reason: the platform
-floor, the host's own permission layer, the CI seam, the pre-commit seam scan, `claude plugin validate
---strict`, the platform watchers, and the librarian's pass. A scope claim with no carrier is what the
-prose register in [`../.portulan/verify/README.md`](../.portulan/verify/README.md) was, and that table is
-deleted in favour of this.
-
-**What is demonstrated, and what is unvouched.** All twenty-one rails were forced red by hand on
-2026-08-25 and every one fired. The **calendar** — [`../.github/workflows/drills.yml`](../.github/workflows/drills.yml),
-weekly — is a watcher, so it owes its own observation under
-[`../.portulan/proposals/0007-every-watcher-ships-with-its-observation-procedure.md`](../.portulan/proposals/0007-every-watcher-ships-with-its-observation-procedure.md):
-`workflow_dispatch` is **answered** — run
-[`32883413709`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32883413709) on `da9c06e`, 21 of
-21 — and the **schedule** is answered by its first run and nothing earlier. **The schedule has now answered
-twice, and both runs — with the dispatch before them — are in [`../.portulan/verify/README.md`](../.portulan/verify/README.md), the one carrier of that answer.** And a *missing* run stays undetectable — that is `0007`'s silence problem one altitude up,
-tracked as [#344](https://github.com/sleepy-panda-srl/portulan/issues/344) rather than built.
-
-_This paragraph said the gap was already **filed** — the fifth carrier of that sentence, and the one a
-first repair of the other four walked past. A claim in the past tense about an issue that did not exist is
-`../.portulan/dod.md` condition 4's own case, and a fix that stops at the sites somebody quoted is
-[`0020`](../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md). Both found at the
-pre-commit checkpoint's second pass, which re-derived the carrier set instead of reading the list it had
-been handed._
-
-## Clause (c) — the loop's own figures stop being counted by hand
+## The review-loop meter — clause (c)
 
 ```
 node cli/review-meter.mjs --snapshot evals/review-loop/snapshot.json      the figures
 node cli/review-meter.mjs --fetch --repo <owner/name> --out <file>        the one mode that fetches
 ```
 
-Landed 2026-08-26. `goldens` asks whether a gate has fixtures; `mutants` whether those fixtures
-discriminate; `drills` whether the rail still fires. **This one measures the process wrapped around all
-three** — the review loop every change here goes through.
+[`review-loop/snapshot.json`](review-loop/snapshot.json) is the capture and
+[`review-loop/register.md`](review-loop/register.md) the register rendered from it: the first command
+with `--register evals/review-loop/register.md --write` regenerates it, and the recipe byte-compares it.
+The criterion's *"rounds per pull request"* is **submissions** per pull request — its unit before *round*
+was redefined — and the tool prints that name, never the bare word.
+[`../cli/review-meter.mjs`](../cli/review-meter.mjs)'s header says what each figure is.
 
-**Its provenance is a record that indicts itself.**
-[`../.portulan/memory/a-review-loop-needs-a-bound.md`](../.portulan/memory/a-review-loop-needs-a-bound.md)
-bounds the loop on a table — 110 submissions over 30 pull requests, 29% of them finding nothing — every
-figure counted by hand on 2026-07-28, and its own *Why it holds* section says **"Nothing checks it —
-discipline, not a rail"**, citing
-[`../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md`](../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md).
-The 2026-07-28 amendment answered it in as many words: *"the telemetry clause is where that checker's
-home is, and naming the home is what this amendment does rather than claiming the checker exists."*
+**What it does NOT establish:**
 
-### The units were the design decision, and the criterion predates the definition it uses
+- **Fix-rounds.** Whether a push answers a submission is a fact about its contents that no API answers, so
+  the tool computes none, estimates none, and prints nothing that could be mistaken for one.
+- **The exact empty-round rate.** It prints `submissions that found nothing ≤ submissions with no inline
+  comment`, an upper bound. The other half — a suppressed note in the review body — was decided by a
+  workspace-layer matcher the engine tool refused to copy, since two spellings of one rule on opposite
+  sides of that boundary cannot see each other drift; the matcher left with its workflow on 2026-09-23
+  ([#355](https://github.com/sleepy-panda-srl/portulan/issues/355)).
+- **A bound.** It is a meter: rule 4 of
+  [`a-review-loop-needs-a-bound.md`](../.portulan/memory/a-review-loop-needs-a-bound.md) stops a loop, and
+  nothing here stops anything.
+- **Current data.** The recipe compares the register to the snapshot, never the snapshot to the world, so a
+  stale capture and a current one are the same green. Refreshing is `--fetch`, run by a person
+  ([#356](https://github.com/sleepy-panda-srl/portulan/issues/356)).
 
-The criterion was written **2026-07-28**; *round* was defined **2026-07-30** as *a Copilot review the
-working session answers with a push*. The rule's table was **re-labelled, not re-counted** — its figures
-always counted **submissions** — and its `Retire when:` settles it, naming the threshold in *"the
-submission units of the table above, **not fix-rounds**"*. So the criterion's *"rounds per pull
-request"* is submissions per pull request, and the tool prints that name and never the bare word.
-
-### What the API answers, and the one thing it does not
-
-**Fix-rounds are not derivable, and that is the finding rather than a gap.** Two demonstrations, both
-from the pull request that produced the definition: on
-[#105](https://github.com/sleepy-panda-srl/portulan/pull/105) the commit `08d7d10` answered an inline
-finding and **was never a reviewed head** — it rode inside the next push — and the push at `cff3e4e0`
-follows a 4,087-byte finding-bearing submission while answering none of it. Any rule keyed on *"a
-finding-bearing submission preceded this push"* calls the second a round; the maintainer's own table
-calls it *no*. The 2026-07-30 ruling states the method that works and it is not one an API has:
-*"Count pushes, then look inside each one."*
-
-So the tool computes no fix-rounds, estimates none, and prints nothing that could be mistaken for one.
-
-**The empty-round rate is an upper bound, and the reason is a layering rule.** Finding nothing has two
-halves — no inline thread, *and* no suppressed low-confidence note in the body. The first is
-structural. The second was decided by the awk in
-[`copilot-review.yml`](https://github.com/sleepy-panda-srl/portulan/blob/74a2a315c8c2641736eea6d87be3c2fba83827a5/.github/workflows/copilot-review.yml), fixtured in
-[`../.portulan/verify/workflow-filters.mjs`](../.portulan/verify/workflow-filters.mjs) until both left
-on 2026-09-23 — a matcher deliberately reduced to **one** carrier, and a **workspace-layer** one, while
-the tool is engine.
-Copying it would have put two spellings of one rule on opposite sides of the boundary where neither
-could see the other drift. So the tool reports `submissions that found nothing ≤ submissions with no inline
-comment` and prints the right-hand side under its own name.
-
-**The boundary forbids a copy; it does not make the exact rate unreachable**, and the first draft of
-this section conflated the two. `../.portulan/verify/workflow-filters.mjs` already **lifts and runs**
-those awk programs out of the workflow's parsed `run:` scalars, and `--fetch` already spawns — so a body
-could be piped through the lifted program at capture time and stored as one integer, no second spelling
-and still no bodies in the snapshot. Left unbuilt for **budget**, one clause per session, and tracked as
-[#355](https://github.com/sleepy-panda-srl/portulan/issues/355). _Since 2026-09-23 there is no program
-left to lift: the matcher went with its workflow._
-
-### What the first run measured
-
-**140 submissions over the 30 most recently merged pull requests — 4.67 each.** The record's
-hand-counted figure is **3.7**, and the two are **not a disagreement**: they measure **disjoint
-corpora**. The ratified window is the thirty most recent as of 2026-07-28 and names #44, #49 and #57;
-this one runs #301–#354. They share no pull request. So the honest sentence is *the loop weighs 4.67 a
-month later*, not *his 30 were re-counted and came out different* — a distinction the first draft of
-this section lost, and the pre-commit checkpoint restored.
-
-That figure is **reported and not acted on**: the record is maintainer-ratified and the curated layer is
-human-owned, so a re-derived number is a finding for him rather than an edit for an implementer.
-
-**And two of the three figures turned out to be one figure.** Pushes and submissions came out exactly
-equal — 140 and 140 — because `review_on_push: true` draws one submission per push. So the criterion's
-*"pushes per round"* is **1.00 by construction** in submission units, which the register now prints
-under that name rather than leaving a reader to infer it; and pushes-per-finding-bearing-submission,
-the informative substitute, is not a second measurement either: it is `1/(1 - the no-inline rate)`, and
-140/46 = 3.04 = 1/(1 - 0.671). The tool **detects the coincidence and says so** on every run and in the
-register, rather than presenting three columns of which two are algebraically the same column.
-
-**The window is by merge date, and getting that wrong was this change's own worst defect.**
-`gh pr list` orders by pull request **number**, and the first capture taken here inherited that order —
-three merge-order inversions, a corpus containing #303 and missing #301, under a register claiming *"the
-30 most recently merged"*. Every published figure was against a corpus its own heading did not name.
-Found at the pre-commit checkpoint from evidence inside the committed snapshot: `mergedAt` was already
-captured and nothing sorted on it. The fetch now lists a **pool** and takes the window from it by merge
-date, records whether the pool saturated — an unsaturated pool makes the window provable rather than
-likely — and `validateSnapshot` refuses a snapshot that is not in descending merge order.
-
-### What this rail does NOT establish
-
-| The rail answers | The rail cannot answer |
-|---|---|
-| Do the published figures come out of the captured data? | Is the captured data current? |
-| How heavy is the loop, in submissions? | How heavy is it in fix-rounds? |
-
-**It is a meter, not a bound.** Rule 4 stops a loop at two fix-rounds and nothing here stops anything;
-the record's own honest-limits section already says the judgement it depends on is the interested
-party's about its own work, and a tool reporting after the merge does not change that. It adjudicates
-no **sibling** exemption either, so *rounds past the bound* is not computable and is not claimed.
-
-**And the snapshot does not refresh itself.** The `review-loop` recipe compares a register to a
-snapshot, never a snapshot to the world, so a stale capture and a current one are the same green.
-Refreshing is `--fetch`, run by a person. That is the same silence
-[#344](https://github.com/sleepy-panda-srl/portulan/issues/344) tracks for the drill calendar, in a
-second place, and it is now **filed** as
-[#356](https://github.com/sleepy-panda-srl/portulan/issues/356) rather than only named — the two want
-one mechanism between them and closing them together is likely cheaper than either alone.
-
-## Golden tasks per core skill — the mandates bound to what they govern
+## Golden tasks per core skill
 
 ```
 node cli/skill-goldens.mjs --repo-root . --workspace .portulan
 ```
 
-Landed 2026-08-26. **The row's original first subject**, untouched by either amendment: the 2026-07-28
-expansion says it *"stands exactly as written"*, and clause (a) *widened its subject* to reach the gates
-*"as well as the skills"* **without narrowing the subject it already had**
-([`../docs/milestones/m08.md`](../docs/milestones/m08.md), the amendment's own words). (a) built the
-gates half. This is the half that sentence always named.
+The row's original first subject. **Ruled, not derived:** a deterministic corpus graded against live
+artifacts in the tree; the model-run sense is the A/B clause's.
 
-### The reading was ruled, not derived
+**What a case is.** [`goldens/skills/<skill>.json`](goldens/skills/) holds one case per numbered step of
+the skill's `## The pass`. The runner derives that denominator from the skill file, so a new step is red
+until a case accounts for it. A step is either:
 
-The criterion reads two ways — a deterministic corpus, or task specifications run against a live model
-and judged. [`../.portulan/gate-map.md`](../.portulan/gate-map.md)'s *"Session-open runs `clarify`
-against the milestone row itself"* exists because milestone 4 guessed at exactly this shape of ambiguity,
-so it went to the maintainer instead of into an argument. **His ruling: a deterministic corpus graded
-against live artifacts in the tree.** The model-run sense is the **A/B clause**, separately named in the
-same row — and under the other reading the two clauses would collapse into one, which no amendment did.
-
-### What a case is
-
-A case binds one numbered step of a skill's `## The pass` to the artifact set it governs, and names the
-rail that enforces it — or `null`, which is the interesting value. Four properties, each of which exists
-because a checkpoint found the version without it:
-
-- **The denominator is derived, not chosen.** The runner enumerates the steps out of the skill file and
-  requires every one to be `bound` or `unbindable`. A fifteenth step is red. The first draft let the
-  author pick which mandates to answer for, and a census over a set its own author drew reports *"5 of
-  5"* and means nothing — the difference [`../cli/goldens.mjs`](../cli/goldens.mjs) already draws by
-  deriving its denominator from the yielded policy.
-- **An empty step list is could-not-run.** Three `## The pass` spellings exist, so an exact match finds
-  one skill of three and the other two satisfy *every step is accounted for* **vacuously**. That is this
-  directory's own sentence about clause (d) — *"a check whose enumeration went empty … reports green and
-  has stopped being a rail"* — and the heading match is anchored besides, because a loose one grabs
-  `consolidate`'s `## The one move this pass may not make`.
-- **A mandate quote must place exactly once**, or the case refuses. A skill whose wording is reworded,
-  softened or deleted reddens instead of drifting, and **nothing in this tree did that before.**
-- **The predicates use the carriers' own exported functions rather than re-spelling them.** The runner
-  imports `RETIRE_WHEN` from [`../cli/doctor.mjs`](../cli/doctor.mjs), so the retire-when check is
-  `doctor`'s regex and not a second one. **What that does not do — and three carriers of this sentence
-  once said it did — is verify the `carrier` field.** Nothing links it to a check: the pre-commit
-  checkpoint rewrote every carrier in a corpus file to a module that does not exist and the corpus
-  stayed green. `carrier` is a **declared, reviewed field**, and a reviewer is what checks it.
-
-### `unbindable` is adjudicated, never asserted
-
-The dodge is obvious — call a mandate unbindable and it needs no case. So the reason takes a **closed
-vocabulary**: `judgement-only`, `no-artifact`, `cross-language`, and `already-carried` — the last added
-at the pre-commit checkpoint, which found a row classed `bound` whose named carrier the runner never
-reads, and no honest term for what it actually was. And a `judgement-only` step **may name
-no artifacts**: if you can name the artifacts a mandate governs, it is not judgement, it is unbuilt.
-That is [`../cli/mutants.mjs`](../cli/mutants.mjs)'s rule that a `survives` record is admissible only as
-a proof and never as a standing note that a gap exists.
-
-### What the first run measured
-
-**Five of fifteen mandates bind to live artifacts — four load-bearing, one census — and ten are
-adjudicated unbindable.** No figure is written here beyond that shape; the runner prints its own totals.
-
-**The ratio is a finding rather than bookkeeping.** How much of a core skill is artifact discipline and
-how much is agent judgement is a measurement *about the engine*, which is what this row exists to
-produce. **Read the split, not the total**: of the ten unbindable, five are `judgement-only` — one third
-of the fifteen — and the rest are `no-artifact`, `cross-language` or `already-carried`, which mean a
-carrier exists somewhere else. The judgement rows are the A/B clause's **first** subject. _(**Widened
-2026-08-28, on the maintainer's ruling**, and this sentence read "Only the judgement rows are the A/B
-clause's subject" until then. The A/B clause's subject is the mandates `core/` ships that an arm actually
-receives — the kernel's, plus the artifact mandates reachable in a built arm — of which the judgement
-rows are a part. The reason the narrower reading could not stand is measured rather than argued:
-`vendor --host` carries `core/skills/` **not at all**, so all five judgement rows reach nothing
-in a vendored arm and would grade the base model. See [`ab/corpus.md`](ab/corpus.md). Four carriers
-stated the narrower reading and all four moved in one change; the claim is registered in
-[`../.portulan/rule-carriers.json`](../.portulan/rule-carriers.json) so a fifth cannot appear **in the
-registered scope** unnoticed — bounded by that registry's own `exclude` list, which is the one carrier
-of what it holds and which covers `docs/milestones/`, where the fourth carrier sat.)_ _(Three carriers of
-this paragraph said "two thirds are judgement", which was the unbindable total wearing the judgement
-label. Corrected at the pre-commit checkpoint, which also found one row classed `bound` whose named
-carrier the runner never reads.)_
-
-**One of the five rows is `census`, and it is marked as such** in the corpus and in the output. A census
-row re-indexes a figure `doctor` already prints, under the mandate that wants it; it is not a new check,
-and presenting five equal rows would read as more evidence than it holds — the repair this directory
-already applied to three columns of which two were one column.
+- **`bound`** — a `mandate` quote that must place exactly once in the skill's `SKILL.md`, the `artifacts`
+  it governs as a declared slot, a `predicate` decided before any figure is taken, and a `carrier` naming
+  the rail that enforces it, or `null`. `kind` is `load-bearing`, or `census` for a row that re-indexes a
+  figure an existing recipe already prints.
+- **`unbindable`** — with a `reason` from a closed vocabulary: `judgement-only`, `no-artifact`,
+  `cross-language` or `already-carried`. A `judgement-only` step may name no artifacts: if you can name the
+  artifacts a mandate governs, it is not judgement, it is unbuilt.
 
 ### Accepted drift — the in-tree record
 
-Three live findings, and **all three ship green with the defect accepted rather than repaired.** That is the
-distinction to keep: `goldens` and `mutants` each went red on their first run and shipped green with the
-defect **fixed**. These are merged records, not an implementer's to rewrite, and doing so under a
-one-clause budget would be a second clause.
+A bound case may list live files that fail its mandate and still ship green, in `expect.accepted` as
+`{file, why}`: a merged record is not an implementer's to rewrite. The runner refuses an entry whose `why`
+carries no argument, and the list holds **in both directions** — a file that starts complying reddens the
+corpus until it is delisted, because a drift list that outlives its drift is as wrong as one that hides
+it. The runner prints each count beside the compliant total. Three mandates carry accepted drift, tracked
+together as [#358](https://github.com/sleepy-panda-srl/portulan/issues/358):
 
 | Mandate | Live artifacts | Drift |
 |---|---|---|
-| `clarify` step 4 — fold answers back as **EARS** acceptance criteria | `.portulan/tasks/` | **12 of 19** — but see the split below |
-| `codify` step 1 — name the incident and link it | `.portulan/proposals/` | **6 of 33** carry no provenance field |
-| `codify` step 3 — attach how it earns its place | `.portulan/proposals/` | **13 of 33** carry no enforcement field |
+| `clarify` step 4 — fold answers back as **EARS** acceptance criteria | `.portulan/tasks/` | no acceptance-criteria section, or criteria not EARS-shaped |
+| `codify` step 1 — name the incident and link it | `.portulan/proposals/` | no provenance field |
+| `codify` step 3 — attach how it earns its place | `.portulan/proposals/` | no enforcement field |
 
-**The composition of the twelve matters and the headline hides it.** Ten carry **no acceptance-criteria
-section in any spelling** — five of those renamed it `## Done when` (`0010`–`0013`, `0015`) and five are
-retrospective arc records — and only **two** fail on EARS *shape*: `0001` (one bullet of four) and
-`0007` (one of six). The 48 criteria live entirely in the nine files that have a section, and **46 of
-them are shaped**. So *"12 of 19 fail the EARS mandate"* is arithmetically right and rhetorically
-wrong, and the three-cohort breakdown is in
-[#358](https://github.com/sleepy-panda-srl/portulan/issues/358).
-
-**The maintainer ruled on 2026-08-26 that [`../core/templates/task.md`](../core/templates/task.md)'s
-shape still binds**, so the twelve are non-compliant by his word rather than by an implementer's
-inference — which is what makes this an accepted drift and not a divergence pinned before anyone ruled.
-
-**It holds in both directions.** A file here that starts complying reddens the corpus until it is
-delisted, because a drift list that outlives its drift is as wrong as one that hides it. That direction
-is not decoration: it caught **three filenames the author had written from a number prefix rather than
-read off disk**, before any reviewer saw them.
-
-**The figure moved twice before it was written down, and that is the lesson worth carrying.** One
-opening pass said 10 of 19, another said 12, a third said 19 — because each computed before deciding the
-predicate. Section-presence answers 10; the mandate's own words are about EARS **shape**, and under that
-predicate it is 12, with 46 of 48 individual criteria EARS-shaped. **The predicate is now a reviewed
-field on the case**, decided before any figure.
+**The maintainer ruled on 2026-08-26 that [`../core/templates/task.md`](../core/templates/task.md)'s shape
+still binds**, so `clarify`'s twelve accepted files are non-compliant by his word rather than by an
+implementer's inference — which is what makes them accepted drift and not a divergence pinned before
+anyone ruled. Of those twelve, ten carry no acceptance-criteria section in any spelling and two fail on
+EARS shape alone, so *"fails the EARS mandate"* is arithmetically right and rhetorically wrong; #358 has
+the cohorts.
 
 ### What this rail does NOT establish
 
-| The rail answers | The rail cannot answer |
-|---|---|
-| Is every mandate accounted for? | Is the binding any good? |
-| Does a named carrier **contain** its check? | Does it **run** it? |
+- **Adequacy.** A mandate can be bound and the binding trivial.
+- **That a carrier runs its check.** The predicates import the carriers' own functions — `RETIRE_WHEN`
+  comes from [`../cli/doctor.mjs`](../cli/doctor.mjs) — which proves a carrier **contains** the check,
+  not that it **runs** it; and `carrier` is a declared, reviewed field that nothing links to a check.
+  Closing that needs a per-mandate drill, the `drills` shape one grain finer.
+- **An agent's judgement.** It grades a skill's mandates against the tree, never an agent following one.
+  The `judgement-only` rows are the A/B clause's first subject, which [`ab/corpus.md`](ab/corpus.md)
+  carries.
 
-The second row is the one to read twice. An import proves the carrier holds the symbol; a rail could
-keep it, stop calling it, and this corpus would not notice, because the verdict is computed here over
-the artifacts rather than by asking the rail. Closing it needs a per-mandate drill — perturb a record,
-require the named rail to fire with its own tell — which is [`../cli/drills.mjs`](../cli/drills.mjs)'s
-shape one grain finer and is a second clause's work.
-
-And it grades a skill's **mandates** against the tree, never an agent's judgement in following one. No
-golden task here tells you whether an agent given `clarify` asks good questions.
-
-## OTel opt-in config — the first thing here that can send anything anywhere
-
-**The reading was ruled, not derived.** *"OTel opt-in config"* reads at least three ways, and
-[`../.portulan/gate-map.md`](../.portulan/gate-map.md)'s *"Session-open runs `clarify` against the
-milestone row itself"* exists because milestone 4 guessed at exactly this shape of ambiguity and cost a
-session-blocking question. Put to the maintainer on 2026-08-28 as three readings — a config surface
-emitting nothing; that surface **plus a real emitter**, hand-written OTLP-over-HTTP JSON, off by
-default and never callable from a verify recipe; or an OTLP-shaped local file sink with no network path
-at all. **He ruled the second.** The same session ruled the signal set (**the review-loop figures
-only**) and the consent model (below), so all three axes of this clause are his rather than an
-implementer's — which is the standard session 4 set for this row and the one milestone 4 paid for.
-
-**Why this clause now.** A written-down dependency pointed at it and nothing pointed anywhere else:
-[`../.portulan/verify/review-loop.sh`](../.portulan/verify/review-loop.sh) said the then-still-open OTel
-clause *"owes an emission path for these figures … which is why they are written as machine-readable
-JSON with a rendered register beside them, rather than as prose an exporter could not consume."*
-Session 3 shaped its output for this session. The debt is discharged **on either reading** of that
-recipe's locative phrase: if he reads *"in the telemetry clause"* the other way, the path is now built;
-if he does not, none was owed.
+## The OTel opt-in
 
 ```
 evals/telemetry/config.json             the committed opt-in — the ONLY gate on emission
 evals/telemetry/review-loop.otlp.json   the golden payload, regenerated and byte-compared
-```
-
-Graded by [`../cli/telemetry.mjs`](../cli/telemetry.mjs), run as the `telemetry` verify recipe, on
-every pull request. See it by hand with:
-
-```
 node cli/telemetry.mjs --config evals/telemetry/config.json --render
 ```
 
-### Why the opt-in is a committed file and not `OTEL_SDK_DISABLED`
+The same command with `--write evals/telemetry/review-loop.otlp.json` in place of `--render` regenerates
+the golden, which every release cut owes because the version rides in the payload. **Ruled, not
+derived:** a real emitter of hand-written OTLP-over-HTTP JSON, off by default, never callable from a
+verify recipe, carrying the review-loop figures only. [`../cli/telemetry.mjs`](../cli/telemetry.mjs)
+carries the ruling, the environment variables it reads and the ones it does not, and what the payload
+may hold.
 
-This is the one place the tool departs from the OpenTelemetry environment contract, and it is stated
-out loud rather than left to be discovered. **`OTEL_SDK_DISABLED` defaults to `false`.** Honouring the
-standard environment surface as the *gate* would mean an adopter who already exports
-`OTEL_EXPORTER_OTLP_ENDPOINT` in CI — for some other service — starts emitting from Portulan without
-having decided to. That is an opt-**out**, and the criterion's word is *opt-in*. It would also put a
-team decision in ambient per-machine state, which is the inverse of `core < pack < workspace`.
+**The committed file is the only gate** — deliberately not `OTEL_SDK_DISABLED`, which defaults to `false`
+and would make emission an opt-out. The environment supplies transport only, and the validator refuses a
+config carrying `headers`, `endpoint` or a token, so a secret never enters a committed file.
 
-So the committed file is the only gate, and the environment supplies **transport only** — the OTLP
-endpoint and header variables in both their general and metrics-specific forms, so an adopter's
-existing collector configuration works unchanged and **a secret never enters a committed file**
-([`../.portulan/dod.md`](../.portulan/dod.md) condition 5). The validator refuses a config carrying
-`headers`, `endpoint` or a token outright, so that is a rail rather than a review note.
+**Consent is ruled, and railed.** The committed opt-in **is** the standing consent, and committing a
+config that says `enabled: true` is Gated and the maintainer's alone. `--export` refuses a config that is
+**untracked**, **tracked but absent from `HEAD`** — staged and never committed — or **differs from
+`HEAD`**, so editing a working copy cannot manufacture consent. It is person-invoked only: CI runs this
+module on every pull request but never `--export`, and wiring that mode into a workflow, hook or schedule
+is a new consent question rather than a covered one. It neither queues nor retries.
 
-**What of that contract is implemented, at its real width.** Read:
-`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` — used **as given**, since the specification makes the
-signal-specific variable the full URL — falling back to `OTEL_EXPORTER_OTLP_ENDPOINT` as a base with
-`/v1/metrics` appended; and `OTEL_EXPORTER_OTLP_METRICS_HEADERS` **replacing**
-`OTEL_EXPORTER_OTLP_HEADERS` rather than merging. **Not** read, each a silent no-op for an adopter who
-sets it: `OTEL_EXPORTER_OTLP_PROTOCOL` (this emitter speaks `http/json` only), `_TIMEOUT`,
-`_COMPRESSION`, `_CERTIFICATE` and the client-auth pair. _This paragraph exists because the two carriers
-it replaces said the variables were read **"exactly as the specification defines them"** while the
-metrics-specific endpoint was ignored and appended to — which produced `/v1/metrics/v1/metrics` for
-anyone configured the standard way. A partial implementation of a public contract is fine; describing
-one as complete is the overclaim [`../.portulan/principles.md`](../.portulan/principles.md) opens with._
+**What it does NOT establish:**
 
-### The config was NOT made a Workspace Definition slot, and the cut is the session-open checkpoint's
+- **Current data.** The payload is checked against the snapshot, never the snapshot against the world
+  ([#356](https://github.com/sleepy-panda-srl/portulan/issues/356)). The capture stamp travels inside the
+  payload, so a stale export arrives labelled stale — and time-series backends commonly drop aged samples.
+- **Who committed the consent.** The rail establishes *tracked and byte-identical to `HEAD`*, not
+  *committed by the maintainer*: `commit-to-a-working-branch` is `auto`, so an agent can commit it. What it
+  buys is that the act appears in a reviewed diff.
+- **The opt-in in the affirmative.** No workspace in this tree opts in, so every green is about the off
+  path. The send is proven only in the suite, against an injected transport, and no yielded recipe may
+  ever exercise `--export`.
+- **A network mode reached indirectly.** The suite derives the set of network-capable modules from the
+  tree, and the offline audit matches a module as a path suffix and a flag as a token; a mode reached
+  through another script, or through a flag built at runtime, is invisible to it.
+- **Scheduled emission.** Nothing fires when nobody runs it —
+  [#344](https://github.com/sleepy-panda-srl/portulan/issues/344)'s silence again.
+- **Enforcement of the review-loop bound.** An emitter with no backend reading it is not the checker
+  [`a-review-loop-needs-a-bound.md`](../.portulan/memory/a-review-loop-needs-a-bound.md) lacks.
+- **Traces.** Metrics only.
 
-The first plan put it in the schema as a `telemetry` slot at spec 2.9. The checkpoint cut it, on
-grounds worth keeping: **every slot in that train arrived through a ruled proposal** —
-[`../spec/README.md`](../spec/README.md)'s 2.8 argument cites proposal `0025`, `governed_by` cites
-`0017`, `provenance` cites `0002` — and [`../.portulan/gate-map.md`](../.portulan/gate-map.md) makes an
-idea that adds a surface a **proposal**, *"never opened as an implementation pull request with tests."*
-[`../spec/slots.md`](../spec/slots.md)'s own `evals` deferral says a schema change plus a spec bump plus
-a migration *"is not a thing to do in passing"* and defers to **when milestone 8 closes**; and the slot
-would have shipped with **zero filled instances**, since this workspace declares telemetry off and
-[`../examples/`](../examples/) stays at 2.4 — which is
-[`../spec/slots.md`](../spec/slots.md)'s *"splitting on speculation is how a schema acquires slots
-nobody fills"* exactly. It is filed as [`0034`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md) — **accepted by the maintainer 2026-08-28** — to ride with
-`evals` at the close, which makes it one bump instead of two. **That close ran 2026-09-09, so the
-deferral is now due and still undrafted** — named by the close rather than performed inside it, since
-drafting a schema there is the *"splitting on speculation"* the same entry warns against. The acceptance
-commissions the drafting
-and settles none of the shape: the key names, either slot's structure, and whether a migration is owed
-are the drafted work, and the close remains the earliest sensible moment because `slots.md`'s deferral
-conditions the `evals` half on row 8 having decided what an eval artifact is here.
+## The A/B baseline
 
-### Consent — ruled, and railed rather than promised
+| File | What it is |
+|---|---|
+| [`ab/corpus.md`](ab/corpus.md) | The scenarios and grading rules, the registered carrier of the clause's subject, and *What may not be concluded* |
+| [`ab/arm.md`](ab/arm.md) | What *Portulan on* denotes here: the vendored-and-compiled treatment arm |
+| [`ab/register.md`](ab/register.md) | Both arms as built, byte-compared by the `ab` recipe |
+| [`ab/graders.md`](ab/graders.md) | The graders' discrimination, byte-compared by the `ab-grade` recipe |
+| [`ab/baseline.json`](ab/baseline.json), [`ab/baseline.md`](ab/baseline.md) | The capture, and the register rendered from it — the one carrier of the figures |
 
-[`../.portulan/gates.json`](../.portulan/gates.json) makes *sending anything outward on the team's
-behalf* Gated, and [`../core/operating/autonomy.md`](../core/operating/autonomy.md) says Gated is **per
-action**. Proposal
-[`0014`](../.portulan/proposals/0014-a-feedback-pipe-points-out-of-the-seam.md) reserved telemetry as
-*"a separate mechanism with separate consent"* — named there, ruled nowhere, until now.
+[`../cli/ab.mjs`](../cli/ab.mjs) builds the arms, [`../cli/ab-grade.mjs`](../cli/ab-grade.mjs) grades the
+trees they leave behind, and [`../cli/ab-run.mjs`](../cli/ab-run.mjs) runs the turns between: `k = 5` per
+cell, ruled by the maintainer, every turn isolated with a home and config directory of its own. Each
+module's `--write` regenerates its document; `ab-run --write` re-renders the register from the committed
+capture. The recipes run no agent; the modes that do — `ab --stop-probe`, `ab-run --smoke` and
+`--matrix` — are a person's to run.
 
-**His ruling: the committed opt-in config IS the standing consent.** Each export rides on it without a
-fresh per-send approval, the way a compiled gate carries a tier without asking again; what stays Gated
-and his alone is **committing a config that says `enabled: true`**. The ruling is transcribed into
-`gates.json`'s own rule and into the gate map in the same change, because a ruling living only in a
-session note while those said otherwise would be one rule with two disagreeing carriers, obeyed at the
-narrower.
+**What may not be concluded** from the baseline is [`ab/corpus.md`](ab/corpus.md)'s section of that name,
+and the register cites it rather than restating it. **The baseline is scoped to the vendored-and-compiled
+tier** [`ab/arm.md`](ab/arm.md) specifies, and closes row 8 for no other configuration of *Portulan on*.
 
-Three things keep it from widening into the thing the tier exists to stop, and each is a rail:
+## A release carries an eval result
 
-- `--export` refuses in **three** states, and the third is the one that matters most: the config is
-  **untracked**, **tracked but absent from `HEAD`** — staged and never committed — or **differs from
-  `HEAD`**. So an agent cannot
-  manufacture consent by editing a working copy. Without this the ruling would be a mandate nothing
-  checks, arriving inside the change that states it.
-- **`--export` is person-invoked only.** No workflow, hook or schedule runs *that mode*, and wiring one
-  in is a new consent question rather than a covered one. _The narrowing matters and the first draft got
-  it wrong in the direction that misleads: CI runs `cli/telemetry.mjs` on **every** pull request, because
-  the `telemetry` recipe is in the yielded set and [`../.github/workflows/verify.yml`](../.github/workflows/verify.yml)
-  runs the set. What CI never runs is `--export`, and a sentence saying the module is person-invoked
-  tells a reader auditing consent to stop looking._
-- It **neither queues nor retries**, on [`../cli/feedback.mjs`](../cli/feedback.mjs)'s rule that a queue
-  flushing itself later is a silent send with extra steps.
-- **Nothing from the transport environment is logged.** Headers never; the endpoint only as origin and
-  path, with userinfo and query stripped, and not at all when it failed to parse. An endpoint legally
-  carries `user:pass@` and tokens ride in query parameters, so printing it in full leaked exactly what
-  withholding the headers protected — into CI logs, which are long-lived and world-readable here.
+```
+node cli/release-eval.mjs --capture     at a cut: run every yielded recipe, write the record pair
+node cli/release-eval.mjs --verify      the recipe: every governed release has a record matching its capture
+```
 
-### The payload is closed by construction, and was widened exactly once
+[`releases/`](releases/) holds one pair per version, described in
+[`releases/README.md`](releases/README.md), for every version [`../CHANGELOG.md`](../CHANGELOG.md)
+records from `0.1.3` onward — graded permanently and in both directions. A record is the verdict every
+recipe the workspace yields returned at a named commit, plus the **identity** of the A/B baseline the
+release ships against, never its figures.
+**`evals/releases/` ships in the package**, by the maintainer's decision of 2026-09-01, so the package
+carries both the record and the tool that checks it: `--tagged` grades a record in the unpacked package as
+it does in the tagged tree. The recipe grades the tree on every commit;
+[`../.github/workflows/publish-github-packages.yml`](../.github/workflows/publish-github-packages.yml) runs
+`--tagged` against the tag's own checkout before publishing; the rest is Gated, and
+[`../.portulan/gate-map.md`](../.portulan/gate-map.md) carries it beside its tier.
 
-Emission is assembled from an explicit allow-list of aggregate figures; no producer is handed a
-snapshot to spread into a body, so there is no path from a free-text or path-shaped field to the wire.
-The ruled vocabulary was *figures, rule ids, recipe ids* — **no identity at all**, which would have made
-one workspace's export indistinguishable from another's at any collector. Put to him rather than
-widened by an implementer, on `cli/feedback.mjs`'s rule that a closed list is wrong only when somebody
-widens it **on purpose**: he widened it to **one named resource attribute**, the repository slug. A
-reviewer **login** stays excluded and is the field this deliberately is not — this snapshot's only login
-is a bot's, but an adopter's would carry human names.
+**What it does NOT establish.** Every register prints its own limits: a green means the record agrees with
+its capture, never that the release is good; the recipes ran at a commit inside the cut change, not at the
+tag; `release-eval`'s own row is excluded. Beyond the register lies the **published** half: `--tagged`
+reaches the tagged tree at the publish, and the release body, written outside the tree, is reached by no
+check. While every governed release has its record, the clause's central arm — a governed release with
+none — is exercised only by the forced-red drill that moves the boundary.
 
-The attribute vocabulary is **pinned in both directions** by the suite, so an added key *and* a deleted
-carrier are each a red — against two lists rather than one, because they are two questions. The
-allow-list says what an emission *may* carry; a separate floor says what it *must*. One list checked
-both ways made `service.namespace` — optional in the config and optional in OpenTelemetry's own
-conventions — look mandatory, and was green only because this workspace happens to declare one. A pin
-that is correct by coincidence of a single instance is the shape a census over its author's own set
-takes, one clause over.
+## A rule change decided on eval evidence
 
-### What this rail does NOT establish
-
-- **It cannot tell a current snapshot from a stale one.** It checks the payload against the snapshot,
-  never the snapshot against the world — [`review-loop.sh`](../.portulan/verify/review-loop.sh)'s cost
-  inherited one step down, and [#356](https://github.com/sleepy-panda-srl/portulan/issues/356). What
-  this layer adds is that the capture stamp travels **inside** the payload, so a stale export arrives
-  labelled stale rather than looking fresh. A consequence to state rather than assert a threshold for:
-  a stale export carries an aged `timeUnixNano`, and time-series backends commonly drop or reject aged
-  samples — semantically correct and silently discarded is the worst pair.
-- **The consent rail establishes *tracked and byte-identical to `HEAD`* — not *committed by him*.**
-  `commit-to-a-working-branch` is tier **auto**, so an agent commits unattended; a consent committed by a
-  scripted `git commit` clears every gate this rail has. What the rail buys is real and is narrower than
-  it first reads: it moves the act from a file edit nobody sees into **a commit that appears in a
-  reviewed diff**, on the branch a human merges. It cannot tell whose commit it is, and nothing here
-  claims it can. Measured at the pre-commit checkpoint rather than reasoned about.
-- **The offline audit's class is derived, and was not always.** The table claimed to rail the class of
-  network-capable modes in `cli/` and listed **two of three** — `cli/feedback.mjs` files a GitHub issue
-  through `gh issue create` and had been network-capable longer than either of the others. A set drawn
-  by its author and reported as complete is the census shape session 4 named one clause over, committed
-  at this table's birth and found at round 10 of the review. The suite now **derives** the set from the
-  tree, so a new network-capable module reddens. What remains uncovered is narrower: a module reaching
-  the network in a way the derivation does not see, and a mode reached **indirectly**. It
-  matches a module as a path **suffix** and a flag as a **token**, so `./` and `--flag=value` spellings
-  are covered — the first version knew one literal string, which made `./` a bypass — but a mode reached
-  **indirectly**, through another script or a flag built at runtime, is invisible to it and no wider
-  pattern fixes that.
-- **The opt-in is never demonstrated in the affirmative from a committed artifact.** No workspace in
-  this tree declares telemetry on, so every green here is a green about the **off** path. The send is
-  proven in the suite against an injected transport and a temporary repository with the consent really
-  committed — a session-time observation, not a standing one, which is the state clause (d) exists to
-  replace and does not reach here.
-- **`--export`'s network path is covered only by unit tests against a fake**, and by construction no
-  yielded recipe may ever exercise it — this recipe's own `offline` check forbids it. That is a
-  deliberate consequence rather than an oversight, and it is the mode that matters.
-- **Emission is not scheduled**, and nothing fires when nobody runs it —
-  [#344](https://github.com/sleepy-panda-srl/portulan/issues/344)'s silence problem in a third place.
-- **The review-loop bound is still checked by nothing.** The 2026-07-28 amendment says *"the telemetry
-  clause is where that checker's home is"* for
-  [`a-review-loop-needs-a-bound.md`](../.portulan/memory/a-review-loop-needs-a-bound.md). An emitter
-  with no backend reading it does not discharge that, and this clause must not be read as enforcement.
-- **Metrics only.** OTLP's trace payload is a second shape with a second set of semantics; one signal
-  demonstrated beats two asserted.
-
-## A release carries an eval result — the mechanism, and the instance it is still owed
-
-Row 8's **ninth** clause, added by the maintainer's ruling of 2026-08-24. The mandate is older than the
-clause: [`../docs/plan.md`](../docs/plan.md)'s Protocol → Versioning has said *"from milestone 8,
-releases carry an eval result"* since the plan was locked, and it belonged to **no row** until that day —
-so a close re-deriving row 8's criterion clause by clause would have re-derived eight and left it
-unbuilt. [`releases/`](releases/) is where a release's record lives, one pair per version:
-`<version>.json` is the capture and `<version>.md` the register rendered from it and byte-compared.
-
-### The three things the amendment left open, and what was ruled here
-
-The amendment named what it did **not** settle — *"what an eval result attached to a release consists of,
-where it is carried (the changelog entry, the release body, a file in the payload), and whether a release
-with no eval result is refused by a rail or by a person. **Those are this row's remaining work, not this
-amendment's content.**"* The last sentence is quoted rather than trimmed because it is the half that makes
-the passage a **scoping limit** — without it the list reads as three open questions rather than as three
-questions assigned to this row — and a first draft of this section dropped it.
-
-**What it consists of.** The verdict every recipe the workspace **yields** returned, measured by running
-them at a named commit, plus the **identity** of the A/B baseline the release ships against — path,
-capture date, commit, cleanliness. Never that baseline's figures: those have one carrier and a second
-copy of them inside a per-release record is the hand-maintained figure this milestone deleted six of.
-There is no *eval* subset of the recipe set — [`../cli/recipe-set.mjs`](../cli/recipe-set.mjs) has no
-such category — so an "eval recipes only" record would have required a hand-listed roster, which is the
-defect the record exists to avoid.
-
-**Where it is carried.** One file per version, cited and never restated — **and it ships**. `evals/releases/` is in `package.json`'s `files`, the maintainer's decision of 2026-09-01 on an option the amendment had left open and the implementer had closed the other way. **A measurement settled it:** a record written into the *unpacked tarball* is graded `exit 0` by `cli/release-eval.mjs --tagged`, which already ships — so the artifact carries both the claim and the tool that checks it, and the objection that an npm consumer can run no recipe was true and beside the point. [`../docs/milestones/m08.md`](../docs/milestones/m08.md) carries the adjudication, the one citation that does not survive packing, and why absolute URLs were refused.
-
-**Rail or person — both, split by what each can reach.** The `release-eval` recipe grades the tree on
-every commit. [`../.github/workflows/publish-github-packages.yml`](../.github/workflows/publish-github-packages.yml)
-runs `release-eval --tagged` against the tag's own checkout, before publishing — the one mechanical
-surface at the release act. The maintainer owns the rest, and
-[`../.portulan/gate-map.md`](../.portulan/gate-map.md) carries that half beside the tier it belongs to.
-
-### Two designs a fresh context reversed before a line was written
-
-**Cut detection off `CHANGELOG.md`'s top heading never fires.** The cut commit re-seeds `## Unreleased`
-*above* the version it just wrote — `b410c020` — because that file's own header requires the tagged tree
-to contain its own entry. The top heading is `Unreleased` on every commit including the cut, so a rail
-keyed to it would have reported *no cut in this tree* on precisely the tree it was built to grade.
-
-**A rail keyed to `package.json`'s version alone grades one record at a time.** The moment `0.1.4` is
-declared, `0.1.3`'s record can be deleted and nothing is looking at it. The subject is therefore **every
-version the changelog records**, from `0.1.3` onward, permanently — and the set is graded in both
-directions, so a record for a release that was never cut reds as well.
-
-### What this rail does NOT establish
-
-- **Nothing about whether a release is good.** Each recipe's green establishes what that recipe's own
-  documentation says and no more; this checks that the record exists, agrees with its capture, and
-  records no red.
-- **The recipes did not run at the tag.** A record is committed *in* the change that cuts a release, so
-  its `source.commit` names a commit **inside that change** rather than the tag — a capture cannot name a
-  commit that does not exist yet. How much of the cut precedes it is a property of how the change is
-  sequenced, and `--capture` refuses a version below the first governed one, so a clean capture can never
-  run before the version bump. The register prints the commit it was taken at and says this, the way the
-  A/B capture prints `clean`.
-- **`release-eval`'s own row is excluded from every capture**, because a capture cannot be accurate about
-  the record it lives inside. The exclusion is printed with its reason rather than the row being dropped.
-- **`0.1.3` carries one, so the rail grades a non-empty set.** Before that cut its green read *no release
-  from `0.1.3` onward has been cut yet*, which was a **state, not a measurement**; the module said so on
-  its own face rather than letting exit 0 imply otherwise, and it prints whichever of the two holds. The
-  clause's central arm — *a governed release with no record* — is still unreachable from the committed
-  tree, now because the one governed release **has** its record rather than because none exists, so it
-  remains exercised by the forced-red drill that moves the boundary; it fired on 2026-09-01. A drill is
-  not a release, and a record in the tree is not a published one.
-
-## A rule change decided on eval evidence — the ninth clause
-
-**The clause is instance-shaped, and this is the instance.** Row 8 asks that *a rule change merges or
-is rejected on eval evidence*, and until 2026-09-09 the honest sentence in this file was that **every
-rule in [`../.portulan/memory/`](../.portulan/memory/) had been merged on review alone**. _(The evidence
-was taken on 2026-09-03 and the change merged on 2026-09-09; the clause's verb is **merges**, so the
-later date is the one that discharges it. Three sentences in this file dated it to the session rather
-than to the merge until the milestone-8 close re-derived it from `gh pr view 408` — created
-`2026-09-03T18:57:23Z`, merged `2026-09-09T07:48:12Z`.)_ What changed
-is not that a rule was minted — rules are minted often — but that a **decision between three drafted
-answers was made by running the instruments** rather than by argument.
-
-**The rule change.** Hole 8 of [`../.portulan/gate-map.md`](../.portulan/gate-map.md): a `gated` or
-`prohibited` gate rule whose path target can never match compiles to a named permission surface while
-the runtime matcher answers false for every input — a gate reported as covered that enforces nothing.
-[#337](https://github.com/sleepy-panda-srl/portulan/issues/337) set out three defensible answers and
-presumed none, precisely so the choice could be made on evidence.
-
-**The evidence, measured on this tree.** Each candidate applied as a scratch mutation — `cli/mutants.mjs`'
-own technique — and every instrument run and read:
-
-| candidate | `compile` | `goldens` | `mutants` | `doctor` | `tests` |
-|---|---|---|---|---|---|
-| baseline (`main`) | 0 | 0 | 0 | 0 | 0 |
-| **1** — refuse it at `parse`, every tier | **2** | **2** | **2** | **1** | **1** |
-| **2** — make `./` match the tree | 0 | **1** | **2** | 0 | **1** |
-| **3** — refuse it in the backend that enforces | 0 | 0 | 0 | 0 | 0 |
-| **the hazard itself**, on a clean `main` clone — `edit-on-a-working-branch` flipped to `gated` | 1 | 0 | 0 | **0** | 1 |
-| **the hazard itself**, on this tree | **2** | 0 | 0 | **1** | 1 |
-
-**What the table decided, and what it did not.** Option 1 is **rejected on the measurement**: this
-workspace's own policy carries two `auto` rules written `write: "./"` and `read: "./"`, so refusing the
-shape at `parse` takes their spelling — three instruments could not run and two went red, and
-*could-not-run* is the worse of the two outcomes because it reports nothing about the tree. That is
-#337's own prediction re-derived rather than quoted. Option 2's reds are **not** a rejection and must not
-be read as one: they are the record-keeping rails firing exactly as designed — `goldens` reds whenever the
-documented hole moves, *including when it closes*, and `cli/mutants.mjs` already records that same edit
-as the operator `matchesPath-admits-the-empty-target`, `killed`, with the note *"CLOSES hole 8 … the
-good-news direction the corpus exists to catch"*. Its other two reds are that one fact twice more rather
-than three independent objections: `mutants` exits 2 because the census refuses to run over a reddened
-corpus, and the eight suite failures are the cases that **pin** that census and that corpus. Option 2 is
-declined on **authority**: it decides what
-`./` should MEAN as a policy target, which is the question #337 reserves. Option 3 keeps every
-instrument green and closes the hazard, and it is the one taken.
-
-**The last two rows are what decide the merge half.** On the first four rows alone, option 3 and *doing
-nothing* are indistinguishable — both are all-green — so the choice would rest on argument. They grade
-the **defect** instead, by flipping this repository's own `edit-on-a-working-branch` from `auto` to
-`gated`. **Every cell in this table is a verify recipe's exit**, so `compile` there is `compile --check`;
-the clean-clone row is measured on a detached checkout of `main`, not on this tree with a file swapped,
-because a hybrid is neither tree.
-
-**The discriminating cell is `doctor`, and it is the whole argument.** On `main`, `doctor` exits **0**
-over that policy — it counts the hollow gate among *11 of 25 rule(s) compiled* and names five gates no
-backend compiles, none of them this one, so the tree reports the rule as covered and nothing contradicts
-it. On this tree it exits **1**, printing the refusal. In write mode the same policy at `main` also
-*emits* the rule, surface `Edit(./) · hook: a Bash command writing ./`; the recipe's **1** is the drift
-that emission causes against the committed artifact, which is a different fact and is why the cell is
-labelled by its instrument.
-
-**`tests` is 1 on both sides and discriminates nothing**, which is stated rather than hidden behind a
-prettier cell: on `main` one case fails, *"every rule is cited under the gate map section matching its
-TIER"*, because the prose still files that rule under Auto; on this tree sixteen do — **eight**
-because the new drill's anchor searches for the `"tier": "auto"` line the fixture rewrote, **seven**
-because the refusal fires, and one that fails on `main` too. Both are
-artefacts of perturbing a policy the suite pins, on either tree, and neither says anything about the
-change.
-
-**So the clause discharges as *merges on eval evidence*, with option 1 a measured-cost rejection** — and
-the second half of *"merges or is rejected"* is not overclaimed beyond that.
-
-**What the rail is.** The predicate `neverMatches` in [`../cli/compile.mjs`](../cli/compile.mjs), the
-backend refusal beside `HOST_GATE_TIERS`, a suite block that goes red in six cases when the refusal is
-disabled, and a second forced-red drill on the `doctor` rail — `doctor` rather than `compile`, because a
-`CompileError` exits 2 and `cli/drills.mjs`'s coverage check refuses a drill declaring `exit: 2`, on the
-ground that it *"would read a refusal as a verdict"*.
-
-**Its limits, in the shape this directory asks for.** The refusal is at **compile** time, not at the
-hook: `cli/gate.mjs` reads the policy through `parse`, which this change deliberately does not touch, so
-a workspace that has already committed such a rule still loads it at run time and the hook steps aside
-because nothing matched. And the hazard cannot live in the gate corpus itself — `cli/goldens.mjs`
-derives its denominator from the **yielded policy**, and adding a `gated` `./` rule to `gates.json` to
-satisfy a corpus would be manufacturing the defect. The suite block and the drill are its home.
+Row 8's clause *a rule change merges or is rejected on eval evidence* is discharged by one instance, hole 8
+of [`../.portulan/gate-map.md`](../.portulan/gate-map.md): a `gated` or `prohibited` path target that can
+never match. [#337](https://github.com/sleepy-panda-srl/portulan/issues/337) set out three answers, the
+instruments chose between them, and the change merged on 2026-09-09; the evidence table and the argument
+are [`../docs/milestones/m08.md`](../docs/milestones/m08.md)'s session-10 note. The rail is `neverMatches`
+and the backend refusal beside `HOST_GATE_TIERS` in [`../cli/compile.mjs`](../cli/compile.mjs), a suite
+block, and a second forced-red drill on `doctor`; its limit — the refusal is at compile time, not at the
+hook — is stated beside the refusal. The hazard is held there and not in the gate corpus, whose
+denominator is the yielded policy: adding a never-matching `gated` rule to `gates.json` to give the corpus
+a case would manufacture the defect.
 
 ## What is NOT built yet
 
-Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 — nothing
-here claims a capability that does not exist:
+Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 — nothing here
+claims a capability that does not exist:
 
-- **A release actually *published* with its eval result.** The mechanism is built — its section is above —
-  and since the `0.1.3` cut so is the instance's in-tree half: `evals/releases/0.1.3.{json,md}`. What is
-  still not built is the half no tree can hold. **Ruled 2026-09-01: it waits for a real cut**, and the
-  release is done once milestone 8's other work is finished — so this clause was never closable on the
-  mechanism, and the cut is the milestone's last act rather than its first sequel. `tag-a-release` and
-  `publish-a-release` are Gated, so the clause stays undemonstrated until the maintainer takes them and
-  the release body cites the register. The argument that was put to him, and what a cut mechanically is, are in
-  [`../docs/milestones/m08.md`](../docs/milestones/m08.md): a clause about releases, held satisfied while
-  zero governed releases exist, is true the way *a baseline names its host* was true of an empty string.
+- **A release actually *published* with its eval result.** The mechanism is built and `0.1.3`'s record is
+  in the tree; the tag and a release body citing its register are not. **Ruled 2026-09-01: it waits for a
+  real cut.** `tag-a-release` and `publish-a-release` are Gated, so the clause stays undemonstrated until
+  the maintainer takes them; [`../docs/milestones/m08.md`](../docs/milestones/m08.md) carries the argument.
+- **The `evals` and `telemetry` Workspace Definition slots.** Proposal
+  [`0034`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md), accepted
+  2026-08-28, carries both in one spec bump. The deferral in [`../spec/slots.md`](../spec/slots.md) is due
+  since the milestone-8 close and undrafted; the drafting settles the key names, each slot's structure and
+  whether a migration is owed.
+
+Each rail's open limits are in its section above, with the issue tracking each where there is one.

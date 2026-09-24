@@ -59,6 +59,16 @@
 // Zero dependencies, no network, no install step — same constraints as ./doctor.mjs, ./compile.mjs and
 // ./index.mjs. It is **not** one of the six subcommands ../docs/vision.md names for the milestone-7
 // CLI; like ./plugin-lint.mjs it is a tool on no such list, and ./README.md says so.
+//
+// ## Its observation procedure, which `0007` binds to a watcher
+//
+// Run the pass twice on an unchanged store with the same `--as-of`: what it writes is byte-identical,
+// because it carries dates and never *N days ago*, so its diff moves only when the store or a
+// threshold does. Lower every threshold to 1 day and all three nags fire together; at the real
+// thresholds a young store reports nothing stale, and every section says so. It refuses with exit 2 a
+// shallow clone, a threshold of `0` and a directory git has never seen, and it reports an uncommitted
+// record as undated and never stale, with the count, rather than refusing it. The run recorded when
+// the pass landed is at `git show 8a33f9b:.portulan/verify/README.md`.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";

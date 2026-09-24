@@ -25,12 +25,13 @@
 // subcommand into a list this file does not own. They stay runnable exactly as they are today —
 // `node cli/plugin-lint.mjs …` — and every verify recipe still invokes them that way.
 //
-// **The roster itself is `cli/README.md`'s and is cited rather than repeated here.** This paragraph
-// said **two**, then **three**, and named a different three from the root `README.md`'s three while
-// **four** were on disk — one rule with three carriers, obeyed at the narrowest, in the file whose own
-// comments name that class. _(It also named the wrong ordinal once — *a seventh subcommand*, written
-// when the list held six. A count in prose beside a list nothing derives it from is the drift this
-// file's own suite catches for `SUBCOMMANDS.length` and cannot catch here.)_
+// **The roster itself is rendered into `cli/README.md` by ./roster.mjs, from this list and each
+// file's header, and is cited rather than repeated here.** This paragraph said **two**, then
+// **three**, and named a different three from the root `README.md`'s three while **four** were on
+// disk — one rule with three carriers, obeyed at the narrowest, in the file whose own comments name
+// that class. _(It also named the wrong ordinal once — *a seventh subcommand*, written when the
+// list held six. A count in prose beside a list nothing derives it from is the drift this file's
+// own suite catches for `SUBCOMMANDS.length` and cannot catch here.)_
 //
 // ## All eight are built, and the shape of the answer while one was not is kept
 //
