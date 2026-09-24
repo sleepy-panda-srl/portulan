@@ -75,9 +75,41 @@ lifetime, which is the ledger's to count, not this page's.
 
 ## The record
 
-**Not yet run.** The sequences wait on the maintainer's word, since each starts real sessions. When they
-run, each row gets its sequence's three lines, the figures behind C (first, warm, cold, runs started warm)
-and the switch's verdict, with the host version and the date.
+**Rows 1 and 2 ran on 2026-09-24**, on a maintainer's device with Claude Code 2.1.281, from main at
+`53a0dd0`: the boot task, five runs a sequence in one checkout with nothing between runs, one sequence at
+`--cache-lifetime 1h` and one at `5m`, back to back, reported with `--read 0.05 --output 5`, the read
+multiplier of the model the host recorded for every run of both. Every run was measured and answered as the
+task expects, and none changed a file. A is scored by the split this page names; C's figures are the
+runner's, in input tokens at those multipliers.
+
+| Sequence | A, a run | B, a run | First | Warm | Cold | C, warm against cold | Started warm |
+|---|---|---|---|---|---|---|---|
+| One-hour writes | 27,023 | 80,600 | 40,295 | 15,727 | 56,023 | **28** | 4 of 4 |
+| Five-minute writes | 30,032 | 89,975 | 28,917 | 13,713 | 38,678 | **35** | 4 of 4 |
+
+**Row 1, a warm start.** Every run after the first read 20,391 of its first request's 20,393 tokens (one
+hour) or 20,516 of 20,518 (five minutes) from the run before it and wrote none of them, so a warm boot cost
+28 to 35 of a cold one's 100; the five-minute share is the larger because its cold figure is the smaller.
+A and B differ between the sequences by what the task chose to read, which a lifetime does not change.
+
+**Row 2, five-minute writes against an hour's: PASS**, C **78** against the one-hour control's 100 (18,983
+against 24,213, the mean of the runs with the first priced cold). It is the lifetime of this repository's
+own headless runs, `sessions.headless` in [`../../.portulan/workspace.json`](../../.portulan/workspace.json),
+and the one `init` and `upgrade` offer an adopter, with the trade-off below.
+
+The same day, the maintainer's measurement ran its boot, doctrine and mechanism tasks five times each with
+five-minute writes from the same commit. Against its one-hour runs of earlier that day, from `54c1fb1`, each
+against the same before at 100, C fell from 53 to 37, from 70 to 57 and from 80 to 52; the mechanism task's
+five-minute runs needed fewer requests, 20 against 26.8, a spread between runs rather than the lifetime's. Its
+one-hour runs re-priced at five-minute writes give 37, 57 and 66, so the lifetime alone cut those tasks by
+30%, 19% and 18%. In none of the fifteen did a request read less than half of what the one before it had, so
+none paused five minutes. **That is the trade-off**: a request after a longer pause writes the whole context
+again at 1.25 where an hour's lifetime reads it at the read multiplier, which is why this repository's
+interactive sessions, which idle on reviews and CI, keep the host's default
+([`../../core/operating/sessions.md`](../../core/operating/sessions.md)).
+
+**Rows 3 and 4 have not run.** Row 3 needs a local checkout and a commit between runs, and both wait on the
+maintainer's word, since each starts real sessions.
 
 **Before**, from the A/B/C scoring of the maintainer's five-run measurement of 2026-09-24, the boot task on
 main at `b91055b`, a mean of five runs: **A 175k tokens**, B 371k tokens, and C 111 at one-hour writes and

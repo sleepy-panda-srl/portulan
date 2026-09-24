@@ -341,5 +341,10 @@
   "packs": [
     "rituals/checkpoints",
     "tools/github"
-  ]
+  ],
+  "sessions": {
+    "headless": {
+      "cache_lifetime": "5m"
+    }
+  }
 }
