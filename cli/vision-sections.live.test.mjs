@@ -62,27 +62,35 @@ function sections(markdown) {
 
 const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"];
 
-// Line breaks and comment leaders (`//`, `* `, `#`, `>`) are joined to a space first, so a citation that
-// wraps inside a comment or a paragraph reads as one. A `§` names the file it follows: after another
-// `.md` it is that file's business, and after `vision.md` it must name a thesis or an italic label. A
-// `§` after no file at all, or one this cannot parse, is reported: a citation nothing checks is never a
-// pass. A `§` inside a code span is an example of the form, not a citation, and is dropped first, a
-// line at a time, since a backtick pairs with the next one on its line.
+// Line breaks and comment leaders (`//`, `* `, `#`, `>`) are joined to a space first, so a citation
+// that wraps inside a comment or a paragraph reads as one. A `§` names the file it follows: after
+// another `.md` it is that file's business, and after `vision.md` it must name a thesis or an italic
+// label, or it is reported. After no file, a `§` in a citation's shape, `§ thesis N` or `§ *Label*`, is
+// reported too, since a citation nothing checks is never a pass; any other `§`, such as the section
+// marker in `cli/symbols.mjs`'s outlines, cites nothing, and the text after it stays unread by this
+// match, so a citation that follows it is still found. A `§` inside a code span is an example of the
+// form, not a citation, and is dropped first, a line at a time, since a backtick pairs with the next
+// one on its line. A backtick left open on its line, as a template literal that runs on, opens no span,
+// so what follows it is still read. A plain "thesis N" that a `§` introduces was read with its file,
+// and is not read again as the constitution's.
 function citations(text) {
     const flat = text
         .split("\n")
-        .map((line) => line.split("`").map((part, i) => (i % 2 && part.includes("§") ? " " : part)).join("`"))
+        .map((line) => {
+            const parts = line.split("`");
+            return parts.map((part, i) => (i % 2 && i < parts.length - 1 && part.includes("§") ? " " : part)).join("`");
+        })
         .join("\n")
         .replace(/\r?\n[ \t]*(?:\/\/+[ \t]?|\*[ \t]|#+[ \t]|>[ \t]?)?/g, " ");
     const found = [];
-    for (const m of flat.matchAll(/([\w./-]*)`?\)?\s*§\s*(?:thesis\s+(\d+)|\*([^*]+)\*|(.{0,40}))/g)) {
-        if (!m[1].endsWith(".md")) found.push({ kind: "unreadable", text: m[0].trim().slice(0, 40) });
-        else if (!/(^|\/)vision\.md$/.test(m[1])) continue;
-        else if (m[2]) found.push({ kind: "thesis", n: Number(m[2]) });
+    for (const m of flat.matchAll(/([\w./-]*)`?\)?\s*§\s*(?:thesis\s+(\d+)|\*([^*]+)\*|(?=(.{0,40})))/g)) {
+        if (!/(^|\/)vision\.md$/.test(m[1])) {
+            if (!m[1].endsWith(".md") && (m[2] || m[3])) found.push({ kind: "unreadable", text: m[0].trim().slice(0, 40) });
+        } else if (m[2]) found.push({ kind: "thesis", n: Number(m[2]) });
         else if (m[3]) found.push({ kind: "label", label: m[3] });
         else found.push({ kind: "unreadable", text: m[4] });
     }
-    for (const m of flat.matchAll(/\bthesis\s+(\d+)\b/gi)) found.push({ kind: "thesis", n: Number(m[1]) });
+    for (const m of flat.matchAll(/(?<!§\s*)\bthesis\s+(\d+)\b/gi)) found.push({ kind: "thesis", n: Number(m[1]) });
     for (const m of flat.matchAll(new RegExp(`\\b(${ORDINALS.join("|")})\\s+thesis\\b`, "gi"))) {
         found.push({ kind: "thesis", n: ORDINALS.indexOf(m[1].toLowerCase()) + 1 });
     }
@@ -137,15 +145,28 @@ test("a citation passes only when the section exists, and an unreadable one is a
     assert.deepEqual(problems(c, "the lead (§ *Item*)"), ['a § that names no section: "§ *Item*"'], "a § after no file");
     assert.deepEqual(problems(c, "the form is `vision.md § *Gone*`, as an example"), [], "a code span is an example");
     assert.deepEqual(problems(c, "`.portulan/gate-map.md` § Anything at all"), [], "another file's section");
+    assert.deepEqual(problems(c, "vision.md § thesis 3"), ["thesis 3, of 2"], "a § thesis is one citation, not two");
+    assert.deepEqual(problems(c, "`plan.md` § thesis 3"), [], "another file's thesis");
+    assert.deepEqual(problems(c, "const s = `see vision.md § *Gone*"), ["§ *Gone*, no such section"], "an unclosed backtick opens no span");
+    assert.deepEqual(problems(c, "20-53 // § 2. A section, then vision.md § *Gone*"), ["§ *Gone*, no such section"], "an outline's § cites nothing");
 });
 
+// Tracked paths are listed NUL-separated and kept as bytes: without `-z` git C-quotes a name that holds
+// a control character, and a name that is not UTF-8 does not survive decoding, so either would be read
+// as a file that is not there. A citation of `vision.md` is read as the constitution, so no other
+// tracked file may carry that name.
 function scanned() {
     const exclude = JSON.parse(fs.readFileSync(path.join(REPO, ".portulan/rule-carriers.json"), "utf8")).exclude;
     assert.ok(Array.isArray(exclude) && exclude.length > 0, "rule-carriers.json carries no exclude list to read the record layer from");
-    const files = execFileSync("git", ["-c", "core.quotePath=false", "ls-files"], { cwd: REPO, encoding: "utf8" })
-        .split("\n")
-        .filter(Boolean);
-    return files.filter((f) => f !== VISION && f !== SELF && !exclude.some((p) => f === p || f.startsWith(p)));
+    const listing = execFileSync("git", ["ls-files", "-z"], { cwd: REPO });
+    const files = [];
+    for (let start = 0, end; (end = listing.indexOf(0, start)) !== -1; start = end + 1) {
+        const raw = listing.subarray(start, end);
+        files.push({ raw, name: raw.toString("utf8") });
+    }
+    const visions = files.map((f) => f.name).filter((name) => /(^|\/)vision\.md$/.test(name));
+    assert.deepEqual(visions, [VISION], "another tracked vision.md would make a citation of `vision.md` name either");
+    return files.filter(({ name }) => name !== VISION && name !== SELF && !exclude.some((p) => name === p || name.startsWith(p)));
 }
 
 test("every section this repository cites is one the constitution has", () => {
@@ -156,12 +177,22 @@ test("every section this repository cites is one the constitution has", () => {
 
     const found = [];
     let sectioned = 0;
-    for (const file of scanned()) {
-        const text = fs.readFileSync(path.join(REPO, file));
+    for (const { raw, name } of scanned()) {
+        const at = Buffer.concat([Buffer.from(REPO + path.sep), raw]);
+        let stat;
+        try {
+            stat = fs.lstatSync(at);
+        } catch {
+            found.push(`${name}: tracked but not in the working tree, so nothing read it`);
+            continue;
+        }
+        // A link is read where its target is tracked, and a submodule is another repository's.
+        if (!stat.isFile()) continue;
+        const text = fs.readFileSync(at);
         if (text.includes(0)) continue;
         const utf8 = text.toString("utf8");
         sectioned += citations(utf8).filter((c) => c.kind === "label").length;
-        for (const p of problems(constitution, utf8)) found.push(`${file}: ${p}`);
+        for (const p of problems(constitution, utf8)) found.push(`${name}: ${p}`);
     }
     assert.ok(sectioned > 0, "no file cites a section as `vision.md § *…*`: the scan or the convention is gone");
     assert.deepEqual(found, []);
