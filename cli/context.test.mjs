@@ -667,6 +667,46 @@ describe("a budget is a rail only where it is declared", () => {
     });
 });
 
+describe("a large instruction file is offered the split, in one clause of the line", () => {
+    const lineOf = (root) => {
+        const ws = path.join(root, ".portulan");
+        return alwaysLine(ws, JSON.parse(fs.readFileSync(path.join(ws, "workspace.json"), "utf8")), { bundleRoot: bundle() });
+    };
+    const big = `# Big\n\n## Loans\n\n${"Every loan is recorded at the desk. ".repeat(900)}\n\n## Rooms\n\nRooms are booked a week ahead.\n`;
+
+    test("over 0036's offer floor, the line names the mark, the command and the largest sections, and is a report", () => {
+        const line = lineOf(repository({ files: { "CLAUDE.md": big } }));
+        assert.equal(line.verdict, "undeclared", line.line);
+        assert.match(
+            line.line,
+            /; CLAUDE\.md is ~10,\d{3} tokens in every context, and a line `<!-- portulan: on-read -->` under a heading moves that section to an on-read unit at the next `portulan upgrade --write`: its largest are "Loans" ~10,\d{3} and "Rooms" ~\d+ tokens$/,
+        );
+    });
+
+    test("under the floor nothing is said, and over a declared budget even a small file is offered, by the command that runs then", () => {
+        const small = "# Small\n\n## Loans\n\nEvery loan is recorded at the desk.\n";
+        assert.doesNotMatch(lineOf(repository({ files: { "CLAUDE.md": small } })).line, /portulan: on-read/);
+        const budget = { context: { always: { budget: { tokens: 5 } }, ratio: { bytes_per_token: 3, calibrated_by: "a-host" } } };
+        const line = lineOf(repository({ manifest: budget, files: { "CLAUDE.md": small } }));
+        assert.equal(line.verdict, "over", line.line);
+        // `doctor` fails over a budget, and `upgrade` will not run on a failing `doctor`, so the clause names the
+        // command that splits all the same.
+        assert.match(
+            line.line,
+            /; CLAUDE\.md is ~\d+ tokens in every context, and a line `<!-- portulan: on-read -->` under a heading moves that section to an on-read unit at the next `node <plugin root>\/cli\/instructions\.mjs --workspace \.portulan --write`: its largest is "Loans" ~\d+ tokens$/,
+        );
+    });
+
+    test("two large instruction files are one clause, naming both files and the largest sections of the two", () => {
+        const line = lineOf(repository({ files: { "CLAUDE.md": big, ".claude/CLAUDE.md": big.replace("## Loans", "## Fines") } }));
+        assert.equal(line.line.split("; ").filter((part) => part.includes("portulan: on-read")).length, 1, line.line);
+        assert.match(
+            line.line,
+            /; CLAUDE\.md is ~10,\d{3} tokens in every context and \.claude\/CLAUDE\.md ~10,\d{3}, and a line `<!-- portulan: on-read -->` under a heading moves that section to an on-read unit at the next `portulan upgrade --write`: their largest are "Loans" \(CLAUDE\.md\) ~10,\d{3}, "Fines" \(\.claude\/CLAUDE\.md\) ~10,\d{3} and "Rooms" \(CLAUDE\.md\) ~\d+ tokens$/,
+        );
+    });
+});
+
 describe("over a budget, a card importing the identity whole is told it can become an on-demand read", () => {
     const context = (tokens) => ({ context: { always: { budget: { tokens } }, ratio: { bytes_per_token: 3, calibrated_by: "a-host" } } });
     const carded = (manifest) =>

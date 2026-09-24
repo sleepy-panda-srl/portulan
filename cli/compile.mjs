@@ -2619,7 +2619,7 @@ export function parseUnit(name, text, source = `${name}.md`) {
         const [which] = written;
         throw new CompileError(`${where}: a \`<!-- ${which}: … -->\` line is written out only in an always unit, and this one is \`${tier}\``);
     }
-    return { name, tier, paths, description, body: `${rest.join("\n")}\n`, source };
+    return { name, tier, paths, description, body: `${rest.join("\n")}\n`, source, bytes: Buffer.byteLength(text, "utf8") };
 }
 
 /**
@@ -2777,6 +2777,9 @@ function rebasedText(unit, root, to) {
 /** A string as YAML reads it, double-quoted. JSON's escapes are a subset of YAML's double-quoted ones. */
 const quoted = (s) => JSON.stringify(s);
 
+/** A unit's size as its index line gives it: in whole KB, and under one as `<1 KB`. */
+const kilobytes = (bytes) => (bytes < 1024 ? "<1 KB" : `~${Math.round(bytes / 1024).toLocaleString("en-US")} KB`);
+
 /**
  * The Claude Code targets of a set of units: one file per unit, in the tier's own form, plus the index
  * of pointers when any unit is on-read. Paths are relative to the repository root, and nothing here
@@ -2802,11 +2805,14 @@ export function claudeCodeGuidance(guidance) {
     }
     if (pointers.length) {
         // One line per unit and nothing else: the index is an always-tier file, and a pointer may not point
-        // at another pointer.
+        // at another pointer. Each line carries its unit's size in whole KB, the order of magnitude a session
+        // needs to know what it passes over and whether to read a large unit by one section (the coordinator
+        // session's delegated calls of 2026-09-24). Rounded, an edit drifts the index only where it moves that
+        // figure, and is drift until recompiled then, as an edit to a file a `leads` line names is.
         files.push({
             unit: null,
             path: `${GUIDANCE_RULES_DIR}/${ON_READ_INDEX}`,
-            text: pointers.map((u) => `- \`${u.source}\`: ${u.description}\n`).join(""),
+            text: pointers.map((u) => `- \`${u.source}\` (${kilobytes(u.bytes)}): ${u.description}\n`).join(""),
         });
     }
     return { backend: "claude-code", label: GUIDANCE_HOSTS["claude-code"].label, files };

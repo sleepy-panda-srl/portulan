@@ -37,6 +37,7 @@ import { readChanges, renderChanges } from "./index.mjs";
 import { compileGuidance } from "./compile.mjs";
 import { offerLines } from "./sessions.mjs";
 import { run as init } from "./init.mjs";
+import { unitDigest } from "./instructions.mjs";
 import { execFileSync } from "node:child_process";
 
 // A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
@@ -1592,6 +1593,84 @@ describe("the steps that move a consumer to the new form, on a real repository i
         assert.match(h.text(), /over the 100 declared/);
         assert.match(h.text(), /imports \.portulan\/identity\.md whole[^;]*on-demand read/);
         assert.equal(git(repo, "status", "--porcelain", "--untracked-files=all"), "", "every file is as it was, the deleted index among them");
+    });
+});
+
+describe("0009 — a section a team marks in its instruction file moves to an on-read unit", () => {
+    const FILE = "# Desk\n\nThe desk lends books to every member.\n\n## Loans\n<!-- portulan: on-read -->\n\nA loan lasts three weeks. It renews twice.\n\n## Rooms\n\nRooms are booked a week ahead.\n";
+
+    /** A consumer as `init` drafts one today, in the new form, whose CLAUDE.md is `claude`, committed. */
+    function marked(claude, more = {}) {
+        const repo = scratch();
+        git(repo, "init", "-q");
+        git(repo, "config", "user.email", "fixture@example.invalid");
+        git(repo, "config", "user.name", "Fixture");
+        execFileSync(process.execPath, [path.join(REPO, "cli", "init.mjs"), "--residence", "in-repo", "--no-interview", "--no-cycle", repo], { stdio: "pipe" });
+        for (const [rel, text] of Object.entries({ "CLAUDE.md": claude, ...more })) {
+            fs.mkdirSync(path.dirname(path.join(repo, rel)), { recursive: true });
+            fs.writeFileSync(path.join(repo, rel), text);
+        }
+        git(repo, "add", "-A");
+        git(repo, "commit", "-qm", "a marked section");
+        return { repo, ws: path.join(repo, ".portulan") };
+    }
+
+    test("the plan names the move and its proof; --write moves it and compiles its index line in one run, and a second owes nothing", async () => {
+        const { repo, ws } = marked(FILE);
+        const h = harness();
+        assert.equal(await run([ws], { ...h.options, today: TODAY }), 0, h.text());
+        assert.match(h.text(), /0009-instruction-sections-on-read \(form\)[\s\S]*"Loans" in CLAUDE\.md → \.portulan\/context\/loans\.md, \d+ B; CLAUDE\.md reassembles from its units byte for byte, and of its 4 clauses 2 stay and 2 move, none missing and none doubled; the always tier goes from ~[\d,]+ to ~[\d,]+ tokens/);
+        assert.equal(git(repo, "status", "--porcelain"), "", "a bare run wrote");
+        const w = harness();
+        assert.equal(await run([ws, "--write"], { ...w.options, today: TODAY }), 0, w.text());
+        assert.match(w.text(), /applied 2 step\(s\)[\s\S]*doctor is green/);
+        const loans = fs.readFileSync(path.join(ws, "context", "loans.md"), "utf8");
+        assert.equal(loans, '---\ntier: on-read\ndescription: "Loans"\n---\n\n## Loans\n\nA loan lasts three weeks. It renews twice.\n');
+        assert.equal(
+            fs.readFileSync(path.join(repo, "CLAUDE.md"), "utf8"),
+            `# Desk\n\nThe desk lends books to every member.\n\n<!-- portulan: on-read .portulan/context/loans.md ${unitDigest(loans)} -->\n\n## Rooms\n\nRooms are booked a week ahead.\n`,
+        );
+        assert.equal(fs.readFileSync(path.join(repo, ".claude", "rules", "portulan", "on-read.md"), "utf8"), "- `.portulan/context/loans.md` (<1 KB): Loans\n");
+        const again = harness();
+        assert.equal(await run([ws, "--write"], { ...again.options, today: TODAY }), 0, again.text());
+        assert.match(again.text(), /owes nothing/);
+    });
+
+    test("a mark the split refuses keeps the step owed and refuses the run, and nothing is written", async () => {
+        const { repo, ws } = marked(FILE.replace("A loan lasts", "@docs/loans.md\n\nA loan lasts"), { "docs/loans.md": "# Loans\n" });
+        const h = harness();
+        assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 2);
+        assert.match(h.text(), /0009-instruction-sections-on-read — a marked section cannot move, so none is moved — the section "Loans" \(line 5 of CLAUDE\.md\) imports @docs\/loans\.md/);
+        assert.equal(git(repo, "status", "--porcelain", "--untracked-files=all"), "");
+    });
+
+    test("an instruction file that is a link is read through it: unmarked it owes nothing, and marked it is owed by hand while the rest runs", async () => {
+        const { repo, ws } = marked("# Desk\n", { "AGENTS.md": FILE.replace("<!-- portulan: on-read -->\n", "") });
+        fs.rmSync(path.join(repo, "CLAUDE.md"));
+        fs.symlinkSync("AGENTS.md", path.join(repo, "CLAUDE.md"));
+        git(repo, "add", "-A");
+        git(repo, "commit", "-qm", "CLAUDE.md is AGENTS.md");
+        const plain = harness();
+        assert.equal(await run([ws], { ...plain.options, today: TODAY }), 0, plain.text());
+        assert.match(plain.text(), /owes nothing/);
+        fs.writeFileSync(path.join(repo, "AGENTS.md"), FILE);
+        fs.appendFileSync(path.join(repo, ".claude", "rules", "portulan", "boot.md"), "A line compile did not write.\n");
+        git(repo, "commit", "-qam", "a section marked through the link, and a compiled card edited by hand");
+        const h = harness();
+        assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 1, h.text());
+        assert.match(h.text(), /applied 1 step\(s\) to \S+ — \.\.\/\.claude\/rules\/portulan\/boot\.md\. doctor is green/);
+        assert.match(
+            h.text(),
+            /0009-instruction-sections-on-read is owed and not placed — a marked section cannot move, so none is moved — CLAUDE\.md is a link, to AGENTS\.md, and another host may load that file whole: the split moves sections of a file of its own — make CLAUDE\.md one to split it, or take the marks out, then upgrade again$/m,
+        );
+        assert.equal(fs.readFileSync(path.join(repo, "AGENTS.md"), "utf8"), FILE, "the file the link names is as the team left it");
+    });
+
+    test("with no mark, nothing is owed, and the reason says what a mark is", async () => {
+        const { ws } = marked(FILE.replace("<!-- portulan: on-read -->\n", ""));
+        const [entry] = (await planFor(readWorkspace(ws).ws, { spec: bundleSpec(), today: TODAY }, steps.filter((s) => s.id.startsWith("0009")))).entries;
+        assert.equal(entry.owed, false);
+        assert.match(entry.because, /no section of CLAUDE\.md or \.claude\/CLAUDE\.md is marked `<!-- portulan: on-read -->`/);
     });
 });
 

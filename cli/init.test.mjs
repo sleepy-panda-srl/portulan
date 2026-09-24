@@ -1702,6 +1702,18 @@ describe("init drafts a boot card and compiles it", () => {
         assert.match(line, /offers the larger of 8,000 tokens and that, 8,000, as `context\.always\.budget\.tokens`/);
     });
 
+    test("a large instruction file is offered the split, printed, and not one byte of it changed", async () => {
+        const claude = `# Big\n\n## Loans\n\n${"Every loan is recorded at the desk. ".repeat(900)}\n`;
+        const dir = scratch({ "CLAUDE.md": claude });
+        const h = harness();
+        assert.equal(await run(["--residence", "in-repo", dir], h.options), 0);
+        assert.match(h.said.join("\n"), /init: CLAUDE\.md is ~10,\d{3} tokens in every context, and a line `<!-- portulan: on-read -->` under a heading moves that section/);
+        assert.equal(fs.readFileSync(path.join(dir, "CLAUDE.md"), "utf8"), claude);
+        const small = harness();
+        assert.equal(await run(["--residence", "in-repo", scratch({ "CLAUDE.md": "# Small\n\n## Loans\n\nShort.\n" })], small.options), 0);
+        assert.doesNotMatch(small.said.join("\n"), /portulan: on-read/);
+    });
+
     test("a rule written by hand where the card goes is left alone, and the draft boots through its slots", async () => {
         const dir = scratch({ ".claude/rules/portulan/boot.md": "mine\n" });
         const h = harness();

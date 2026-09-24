@@ -2813,7 +2813,7 @@ export async function inspect(workspaceDir, options = {}) {
     // a failure here would turn every workspace drafted before the new form red on the day it arrived.
     let form;
     try {
-        form = formLine(dir, workspace);
+        form = formLine(dir, workspace, { over: always.verdict === "over" });
     } catch (error) {
         form = `not read — ${error.message}`;
     }

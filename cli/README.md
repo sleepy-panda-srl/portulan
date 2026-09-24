@@ -60,6 +60,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`fuzz-shell.mjs`](fuzz-shell.mjs) | Grammar-aware fuzzing over this repository's two shell segmenters. |
 | [`goldens.mjs`](goldens.mjs) | Grade this workspace's compiled gates against a corpus of adversarial fixtures. |
 | [`inside.mjs`](inside.mjs) | Is one path inside another? One predicate, one file, no dependencies. |
+| [`instructions.mjs`](instructions.mjs) | `instructions` — the sections a team marks in its own instruction file, moved to on-read units and proved. |
 | [`ledger.mjs`](ledger.mjs) | What a change spends, measured — the ledger proposal `0038` names. |
 | [`librarian.mjs`](librarian.mjs) | `librarian` — the scheduled pass over the curated layer: reindex, staleness, nags, demotion drafts. |
 | [`manifest.mjs`](manifest.mjs) | The two facts every tool here needs out of `package.json`, read once and in a module that imports nothing of ours. |
@@ -112,6 +113,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`goldens.test.mjs`](goldens.test.mjs) | The gate-corpus rail's suite. Every contracted state is exercised POSITIVELY — green, a missing fixture, a regression, a hole that closed, every malformed-fixture refusal, and could-not-run — because a failure path nobody has run is one nobody has seen work. |
 | [`index.test.mjs`](index.test.mjs) | Tests for `index` — the memory index generator and its budget rail. |
 | [`init.test.mjs`](init.test.mjs) | Tests for `init` — the onboarding subcommand that drafts a workspace for a repository that has none. |
+| [`instructions.test.mjs`](instructions.test.mjs) | `instructions`: the sections a team marks in its own instruction file, moved to on-read units and proved. The marks, the split and its proof, what it refuses, the join, the offer `doctor` and `init` print, and the invented consumer of `fixtures/consumer/`, split by the command line and measured. |
 | [`ledger.test.mjs`](ledger.test.mjs) | Tests for `ledger` — what a change spends, from the host's own usage records. |
 | [`librarian.test.mjs`](librarian.test.mjs) | Tests for `librarian` — the scheduled pass over the curated layer. |
 | [`list-quoting.live.test.mjs`](list-quoting.live.test.mjs) | Every recipe that enumerates the tree reads the pathname git actually carries. |

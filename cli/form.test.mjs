@@ -366,6 +366,31 @@ describe("which form a consumer is in, read from disk", () => {
         assert.deepEqual(piece, { id: "session-log", state: "today", text: "a Session log with entries in packages/acme/.portulan/notes.md" });
     });
 
+    test("a marked section of the instruction file is today's form, a moved one the new, and a unit gone is named", () => {
+        const piece = (files) => formOf(path.join(tree(files), ".portulan"), manifest()).pieces.find((p) => p.id === "instructions");
+        assert.equal(piece({ "CLAUDE.md": "# A\n\nText.\n" }), undefined, "no mark, no marker: nothing is said");
+        assert.deepEqual(piece({ "CLAUDE.md": "## A\n<!-- portulan: on-read -->\n\nText.\n" }), { id: "instructions", state: "today", text: "1 section of CLAUDE.md marked to move to on-read units" });
+        assert.deepEqual(piece({ "CLAUDE.md": "<!-- portulan: on-read .portulan/context/a.md 0123abcd -->\n<!-- portulan: on-read .portulan/context/b.md 4567cdef -->\n", ".portulan/context/a.md": "a\n" }), {
+            id: "instructions",
+            state: "new",
+            text: "2 sections of CLAUDE.md moved to on-read units, and .portulan/context/b.md, named by a marker, is not there",
+        });
+    });
+
+    test("a marked instruction file that is a link is named to make a file of its own by hand, and no command is said to move it", () => {
+        const root = tree({ "AGENTS.md": "## A\n<!-- portulan: on-read -->\n\nText.\n" });
+        fs.symlinkSync("AGENTS.md", path.join(root, "CLAUDE.md"));
+        const ws = path.join(root, ".portulan");
+        assert.deepEqual(formOf(ws, manifest()).pieces.find((p) => p.id === "instructions"), {
+            id: "instructions",
+            state: "today",
+            hand: true,
+            text: "1 section of CLAUDE.md marked to move to on-read units, and CLAUDE.md is a link, whose sections the split does not move: make it a file of its own, or take the marks out",
+        });
+        assert.match(formLine(ws, manifest()), /take the marks out — `portulan upgrade --write \S+` moves all but what is named to add by hand, and until then it boots as it did$/);
+        assert.doesNotMatch(formLine(ws, manifest(), { over: true }), /instructions\.mjs/, "over a declared budget too, since the split does not move a link's sections");
+    });
+
     test("no tree, no pieces, and the report says why", () => {
         const ws = tree();
         assert.deepEqual(formOf(ws, { kind: "demo" }), { tree: null, pieces: [] });
@@ -434,6 +459,12 @@ describe("which form a consumer is in, read from disk", () => {
         assert.match(formLine(ws, m), /— `portulan upgrade --write [^`]+` moves all but what is named to add by hand, and until then it boots as it did$/);
         fs.writeFileSync(path.join(ws, "context", "boot.md"), `---\ntier: always\n---\n\n# Portulan boot card\n\n<!-- engine: operating/context.md#every-request-pays-for-what-the-session-has-read --> \n`);
         assert.equal(formOf(ws, m).pieces.find((p) => p.id === "card").state, "today", "a line with a trailing space is no line `compile` expands");
+    });
+
+    test("a workspace whose path holds a space is named quoted, so the command runs as printed", () => {
+        const root = tree({ "team notes/.portulan/context/boot.md": "---\ntier: always\n---\n\n# Portulan boot card\n\nOur own head.\n", "team notes/.claude/rules/portulan/boot.md": "# Portulan boot card\n" });
+        const ws = path.join(root, "team notes", ".portulan");
+        assert.match(formLine(ws, manifest({ slots: { context: "context/" } })), /`portulan upgrade --write '[^'`]*\/team notes\/\.portulan'` moves all but/);
     });
 
     test("a card at the head of AGENTS.md is the new form on a host that reads it, and one mentioning the line is not", () => {

@@ -90,6 +90,7 @@ import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 import { CACHE_LIFETIMES, compileGuidance } from "./compile.mjs";
 import { alwaysTier, ESTIMATED_BYTES_PER_TOKEN, OFFER_FLOOR_TOKENS, tokensOf } from "./context.mjs";
 import { cardIgnored, changesReadme, claudeRulesUnignore, COMPILED_CARD, draftCard, handoffIndexIgnore, handoffsReadme, withIgnoreLines } from "./form.mjs";
+import { offerText, splitOffers } from "./instructions.mjs";
 // The cache lifetime's offer, from the one module `upgrade` prints the same offer from, so the two cannot
 // word it differently (proposal `0038`, item 4, 2026-09-24).
 import { offerLines } from "./sessions.mjs";
@@ -1180,6 +1181,10 @@ function reportCard(target, say, warn) {
             `A budget is yours to declare: 0036 offers the larger of ${OFFER_FLOOR_TOKENS.toLocaleString("en-US")} tokens and that, ` +
             `${Math.max(OFFER_FLOOR_TOKENS, tokens).toLocaleString("en-US")}, as \`context.always.budget.tokens\`, beside a \`context.ratio\` Claude Code's exact count measured here`,
     );
+    // A large instruction file is offered the split, printed and never made: which sections may leave every
+    // context is the team's to mark (2026-09-24).
+    const offer = offerText(splitOffers(target, { ratio: ESTIMATED_BYTES_PER_TOKEN, floor: OFFER_FLOOR_TOKENS }));
+    if (offer !== null) say(`init: ${offer}`);
 }
 
 /**

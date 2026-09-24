@@ -3751,7 +3751,7 @@ describe("guidance: a unit declares its tier, and what cannot be read is refused
     });
 
     test("each tier reads, with `paths` as a flow list or a block list", () => {
-        assert.deepEqual(parseUnit("a", unitText(["tier: always"], "# A\n\nText.")), { name: "a", tier: "always", paths: null, description: null, body: "# A\n\nText.\n", source: "a.md" });
+        assert.deepEqual(parseUnit("a", unitText(["tier: always"], "# A\n\nText.")), { name: "a", tier: "always", paths: null, description: null, body: "# A\n\nText.\n", source: "a.md", bytes: 33 });
         assert.deepEqual(parseUnit("b", unitText(["tier: on-path", 'paths: ["api/**", "db/*.sql"]', "description: Handlers."])).paths, ["api/**", "db/*.sql"]);
         assert.deepEqual(parseUnit("b", unitText(["tier: on-path", "paths:", '  - "api/**"', "  - db/*.sql", "description: Handlers."])).paths, ["api/**", "db/*.sql"]);
         assert.equal(parseUnit("c", unitText(["tier: on-invoke", 'description: "Release: the checklist."'])).description, "Release: the checklist.");
@@ -3818,10 +3818,22 @@ describe("guidance: Claude Code gets one file per unit, in its tier's own form",
         assert.match(skill, /^---\nname: release\ndescription: "Cut a release\. The checklist, for when a release is what the task is\."\n---\n\n<!-- compiled by `portulan compile` from context\/release\.md;/);
     });
 
-    test("on-read is one pointer line per unit in the index, and nothing else", () => {
+    test("on-read is one pointer line per unit in the index, naming its file's size, and nothing else", () => {
         const index = files.get(`${GUIDANCE_RULES_DIR}/${ON_READ_INDEX}`);
-        assert.equal(index, "- `context/history.md`: Why the service is split the way it is. Read it before restructuring it.\n");
+        assert.equal(index, "- `context/history.md` (<1 KB): Why the service is split the way it is. Read it before restructuring it.\n");
         assert.ok(!files.has(`${GUIDANCE_RULES_DIR}/history.md`), "the on-read unit itself is never copied into a rule");
+    });
+
+    test("an index line's size is the unit file's bytes in whole KB, and one under a KB is `<1 KB`", () => {
+        // 42 bytes of frontmatter and blank line around the guidance, so `n` of it makes a file of n + 42.
+        const line = (n) => claudeCodeGuidance({ units: [parseUnit("big", unitText(["tier: on-read", "description: Big."], "x".repeat(n)))] }).files[0].text;
+        assert.equal(line(981), "- `big.md` (<1 KB): Big.\n", "1,023 B");
+        assert.equal(line(982), "- `big.md` (~1 KB): Big.\n", "1,024 B");
+        assert.equal(line(1493), "- `big.md` (~1 KB): Big.\n", "1,535 B");
+        assert.equal(line(1494), "- `big.md` (~2 KB): Big.\n", "1,536 B, rounded half up");
+        assert.equal(line(1_536_000 - 42), "- `big.md` (~1,500 KB): Big.\n", "thousands grouped, as the context line groups them");
+        const marked = parseUnit("marked", `\uFEFF${unitText(["tier: on-read", "description: Marked."], "é")}`);
+        assert.equal(marked.bytes, 3 + Buffer.byteLength(unitText(["tier: on-read", "description: Marked."], "é")), "a byte-order mark and a two-byte letter are bytes the file holds");
     });
 
     test("the vendored AGENTS.md carries always inline and every other tier as a pointer", () => {
@@ -4262,7 +4274,7 @@ describe("guidance: written, then byte-compared", () => {
         fs.mkdirSync(path.join(dir, ".portulan", "context"));
         fs.writeFileSync(path.join(dir, ".portulan", "context", "history.md"), unitText(["tier: on-read", "description: Why."]));
         assert.equal(said(t, ["--workspace", dir]).code, 0);
-        assert.equal(fs.readFileSync(path.join(dir, GUIDANCE_RULES_DIR, ON_READ_INDEX), "utf8"), "- `.portulan/context/history.md`: Why.\n");
+        assert.equal(fs.readFileSync(path.join(dir, GUIDANCE_RULES_DIR, ON_READ_INDEX), "utf8"), "- `.portulan/context/history.md` (<1 KB): Why.\n");
         assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")));
         const { code, out } = said(t, ["--workspace", dir, "--check"]);
         assert.equal(code, 0, out);
