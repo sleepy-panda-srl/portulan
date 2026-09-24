@@ -49,8 +49,8 @@ Re-expressed from public practice (Letta — consolidation; compounding engineer
 — curated beats generated). Invocable on demand, and **schedulable as of milestone 5**: `cli/librarian.mjs`
 runs reindex over both generated indexes, staleness (the sealed-stamp re-validation nag, and record age
 from git), proposal nagging, demotion drafts, **mining** and **consolidation**, and renders what it
-found as a record a workspace's scheduler files as a pull request — this persona is the contract it
-executes.
+found as a report, which a workspace's scheduler files with the pull request the pass opens when it
+changed the tree — this persona is the contract it executes.
 
 **Every subject in the charter above is now reached on a cadence, and one of them is reached less
 deeply than the charter describes — which is the distinction between this persona and that tool.** A

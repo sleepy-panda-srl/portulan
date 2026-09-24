@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-07-25
 **scope:** workspace — every agent working in this repository
 **provenance:** `form=link` `href=../../docs/vision.md`
 — the constitution's own header, locked 24 July 2026 ([`../../docs/vision.md`](../../docs/vision.md)),

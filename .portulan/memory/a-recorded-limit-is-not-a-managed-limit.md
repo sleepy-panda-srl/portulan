@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-08-18
 **scope:** workspace — this repository's Known-limits sections and the records that stand in for rails
 **provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/129`
 

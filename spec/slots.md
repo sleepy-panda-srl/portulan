@@ -414,7 +414,7 @@ dependency between two keys needs `if`/`then` or `dependentRequired`, and neithe
 to anyone reading the schema alone. Stated loudly rather than hidden, because "read the schema to know
 the contract" is otherwise false in these places, and an unmarked exception is worse than a marked one.
 
-**It is now one of nine**, and [`README.md`](README.md) keeps the running count because the number is
+**It is now one of ten**, and [`README.md`](README.md) keeps the running count because the number is
 the thing to watch. Two arrived with `memory` at 2.3 — a declared `memory` object needs a
 `slots.memory` store to index, and `memory.index.path` must resolve *outside* it — two more with
 `librarian` at 2.4, and then that same store-and-siting pair twice again: over the handoff series at 2.5
@@ -507,6 +507,7 @@ the store is the single source, committed so a change to what is always loaded i
 | `index.budget.columns` | The most columns one line may hold — refused, never truncated. |
 | `store.budget.kilobytes` | The most the store's records may total, in 1024-byte KB. |
 | `store.budget.record_kilobytes` | Added at 2.8. The most any **one** record may hold. |
+| `store.budget.cutoff` | Added at 2.11, beside `record_kilobytes` only. The day after which that cap binds; forward only. |
 
 **Four numbers rather than one, because they are different axes — and each pairs with a per-unit cap
 that closes the hole the aggregate has.** The index is what gets loaded to decide what else to load,
@@ -527,6 +528,16 @@ forms stay independent and a workspace may declare either, both, or neither: thi
 workspace declares `record_kilobytes` alone, and [`../examples/workspace.json`](../examples/workspace.json)
 declares `kilobytes`, so both rails have a live carrier in the tree rather than one of them being a
 key the schema accepts and nothing exercises.
+
+**The per-record cap can bind forward only, since 2.11**, in proposal `0037`'s shape for a handoff. With
+`store.budget.cutoff` declared, the cap binds the records dated after the cutoff, and a record dated on or
+before it is reported, never railed. A record's date is its `**dated:**` line, the day its text last
+changed, because a verify rail may not read git; an edit re-dates a record, so an old one meets the cap
+in the change that next rewrites it, and a cap lowered today does not turn a whole store red with no
+change to the records. A missing or unreal date is refused, and so is one more than a day after the UTC
+date the check runs on. The cutoff is the declaring change's date or the newest record's, whichever is
+later; it moves only in a change that tightens the cap, and never earlier. The cutoff requires
+`record_kilobytes` beside it, one more conditional requirement the subset cannot write.
 
 **Nothing is defaulted**, on the `floor` object's rule from 2.2: a default here would be this
 specification setting a policy for every workspace that ever adopts it, in a key nobody typed. An

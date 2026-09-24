@@ -927,17 +927,11 @@ than left as a symmetry a reader has to notice, on the rule the same change mint
 
 ## Known limits
 
-- **The librarian's record is not byte-checked, and nothing can check it.** Every other generated file
-  here is byte-compared by a recipe — `memory-index.md` by `index`, the compiled artifacts by
-  `compile`. The pass's handoff is the first committed artifact in this repository that a machine
-  writes and no rail verifies, and the reason is not shallow checkouts: its content is **time**
-  dependent, so a record crossing a threshold changes it with no change to the tree, and a
-  byte-compare would go red on a store nobody touched. What stands in for a rail is that it is a
-  *dated* record rather than a current-state claim — a handoff, like every one beside it, true
-  as of the date in its own filename and never re-derived. One consequence worth knowing: because
-  `docs.sh` walks every tracked `.md`, a later change that deletes a record the pass's handoff links
-  goes red on `links` until the handoff is edited. That is a partial accidental rail and a small churn
-  tax on unrelated changes, and both halves are stated rather than only the flattering one.
+- **The librarian's report is not byte-checked, and nothing can check it**: its content is **time**
+  dependent, so a record crossing a threshold changes it with no change to the tree. Since 2026-09-24
+  it is not committed either: it is the description of the pull request a pass opens when it changed
+  the tree, and its run's summary when it did not. The handoffs passes wrote before that stay in the
+  series, dated and never re-derived.
 - **A new proposal's pointer cannot exist before its pull request does**, so `proposal` is red on a
   branch that adds one until the number is known. The red is accurate — nothing has filed it yet — and
   it costs no extra push in practice, because [`a-review-loop-needs-a-bound`](../memory/a-review-loop-needs-a-bound.md)

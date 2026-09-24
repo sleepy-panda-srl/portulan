@@ -1,4 +1,5 @@
 **type:** decision
+**dated:** 2026-08-18
 **scope:** workspace — the `portulan` repository
 **provenance:** [`../../docs/plan.md`](../../docs/plan.md), locked decision 2 and the milestone-0 exit
 criterion; verified against the live remote at the milestone-0 close and again in milestone 1, session 3.

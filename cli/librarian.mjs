@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 // `librarian` — the scheduled pass over the curated layer: reindex, staleness, nags, demotion drafts.
 //
-//   node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--log <path>] <workspace-dir> [...]
+//   node cli/librarian.mjs [--as-of YYYY-MM-DD] [--since YYYY-MM-DD] [--write] [--report <path>] [--reviews <path>] <workspace-dir> [...]
+//
+// `--write` regenerates an index that has drifted, which is the pass's only write to the tree. `--report`
+// writes what the pass found, as Markdown, to a path its scheduler names outside the tree, and the
+// scheduler files it: with the pull request when the tree changed. The pass writes no handoff, since
+// a handoff carries a session's open work and a scheduled pass leaves none (the coordinator session's
+// delegated call of 2026-09-24), and no Session log entry, since the log retired on 2026-09-23.
 //
 // Exit 0 the pass ran and recorded what it found · 2 it could not run. **There is no 1**, and that is
 // the design rather than an omission: `doctor`, `index` and `compile` are checkers, where 1 means red
@@ -45,7 +51,7 @@
 // automatically.
 //
 // The claim is worded that way rather than as *authors no prose*, which a pre-commit checkpoint
-// pointed out is false on its face — the handoff below is full of sentences. The distinction between
+// pointed out is false on its face — the report below is full of sentences. The distinction between
 // *written by a reviewed change* and *written by an unattended run* is the one that matters, and it is
 // the difference between this and having the pass write a summary in its own words, which would put an
 // unreviewed sentence into a permanent history on a cron.
@@ -68,9 +74,6 @@ import { pathToFileURL } from "node:url";
 import { inspect as inspectIndex, IndexError, recordType, dateOf, isInside } from "./index.mjs";
 import { parseProvenance } from "./doctor.mjs";
 
-/** Windows separators never reach a Markdown link: a backslash there is a filename character. */
-const posix = (p) => p.split(path.sep).join(path.posix.sep);
-
 /** Raised when the pass cannot run, or cannot report honestly. Always exit 2. */
 export class LibrarianError extends Error {
     constructor(message) {
@@ -83,7 +86,7 @@ export class LibrarianError extends Error {
 // no pass, which is the shape every workspace had yesterday. Same reasoning and same refusal as
 // ./index.mjs's KNOWN_SPECS: a tool that reads a manifest it does not understand reports about a
 // workspace it may have misread.
-const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9", "2.10"]);
+const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9", "2.10", "2.11"]);
 
 // The store's own signpost, not a record — the one name ./index.mjs and ./doctor.mjs both exclude.
 // Three tools now share this judgement and none of them shares the code, which is issue #74; this
@@ -356,8 +359,9 @@ const listMarkdown = (dir) => {
  * than fetched because this file makes no network call: the workflow fetches, and every line of the
  * reading is then exercised by the suite against a fixture instead of at 06:00 on a Monday.
  */
-export function passWorkspace(dir, { asOf, reviews } = {}) {
+export function passWorkspace(dir, { asOf, reviews, since } = {}) {
     parseDate(asOf, "--as-of");
+    if (since !== undefined) parseDate(since, "--since");
 
     const manifestPath = path.join(dir, "workspace.json");
     let workspace;
@@ -404,14 +408,8 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
 
     // ---- reindex: READ ONLY, always
     //
-    // **This pass reads; the command writes, and only after the record is on disk.** The ordering is
-    // load-bearing now that a second series is indexed: a pass is a session, so it ends by writing a
-    // dated handoff INTO `slots.handoffs` — the very series the handoff index covers. An index
-    // regenerated here would be stale the moment the record landed, and the pull request the pass
-    // files would carry a handoff index that `index.sh` reds. The pass would have broken the one
-    // demonstration it exists to produce, on its first real run, with nobody watching.
-    //
-    // Reading drift here and writing later also makes an earlier fix structural instead of careful.
+    // **This pass reads; the command writes.** Reading drift here and writing later makes an earlier
+    // fix structural instead of careful.
     // `inspect` in write mode regenerates and *then* compares, so it never reports drift — it has
     // just removed it — and reading `drifted` off that result said "current" about an index the pass
     // had regenerated a line earlier, putting "no index drift" into a machine-written record of the
@@ -423,7 +421,7 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
     // the two indexes then had "current" printed about an index that does not exist: the exact
     // sentence `./index.mjs`'s `run` was fixed for on #72, reproduced in the record the pass files.
     // Raised on #85 round one in both channels at once, which is what a two-site defect looks like.
-    let index = { declared: false, drifted: false, series: {}, findings: [] };
+    let index = { declared: false, drifted: false, series: {}, findings: [], notes: [] };
     try {
         const result = inspectIndex(dir, { write: false });
         const of = (which) => ({
@@ -441,6 +439,8 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
             // stopped the render, which `index.sh` is red for anyway.
             expected: result.series.memory.expected,
             findings: result.findings.map((f) => f.message),
+            // What a forward-only cap leaves unbound (Workspace Definition 2.11): reported, never red.
+            notes: result.notes.map((n) => n.message),
         };
     } catch (cause) {
         if (!(cause instanceof IndexError)) throw cause;
@@ -552,9 +552,7 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
         }
     }
 
-    // The handoffs slot rides along so the command knows where a pass record belongs without
-    // re-reading the manifest — and reads it from the slot rather than assuming the directory name,
-    // which is the whole reason slots exist.
+    // Read from the slot rather than assuming the directory name, which is the whole reason slots exist.
     const handoffsDir = workspace.slots?.handoffs ? path.resolve(dir, workspace.slots.handoffs) : null;
 
     // ---- the handoff series: aged and reported, never railed
@@ -589,7 +587,7 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
     }
 
     const mining = {
-        incidents: mineIncidents(series, curated),
+        incidents: mineIncidents(series, curated, { since }),
         reviews: mineReviews(reviews, { treeRoot: workspace.tree ? path.resolve(dir, workspace.tree) : null }),
     };
 
@@ -631,7 +629,6 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
         drafts,
         proposals,
         counts,
-        handoffsDir,
         handoffs: series,
         mining,
         consolidation,
@@ -654,7 +651,7 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
 // So mining names CANDIDATES, in the shape the demotion drafts already established: a file, a fact
 // about it, and a fixed recommendation. The maintainer's ruling of 2026-07-29.
 
-/** The pass's own records, named by the constant `run` writes them under — not a guess at a shape. */
+/** The records passes wrote into the series until 2026-09-24, named as `run` wrote them — not a guess at a shape. */
 const PASS_RECORD = /-librarian-pass\.md$/;
 
 /**
@@ -671,17 +668,19 @@ const PASS_RECORD = /-librarian-pass\.md$/;
  * **The ratio is the trend; the LIST is windowed.** 25 of this repository's 35 handoffs are unlinked,
  * and a pass that listed all 25 would print the same 25 lines every week over a series that only
  * grows — a nag nobody can finish, which is how a whole report gets skimmed. So the totals are always
- * stated and the candidates are those since the last pass. The window's anchor is derived, not
- * remembered: this pass keeps no state, and the newest pass record in the series *is* the record of
- * when it last ran. Before there is one, the window is the newest date in the series — the last
- * session's incidents, which is small, real, and does not pretend the backlog is not there.
+ * stated and the candidates are those since the last pass. The window's anchor is never remembered:
+ * this pass keeps no state. Its scheduler owns the cadence, so it names the previous pass's date with
+ * `--since`; with none named, the newest pass record an earlier pass left in the series stands in, as
+ * it did while every pass wrote one (until 2026-09-24). With neither, the window is the newest date in
+ * the series — the last session's incidents, which is small, real, and does not pretend the backlog is
+ * not there.
  */
-export function mineIncidents(series, curated) {
+export function mineIncidents(series, curated, { since: named } = {}) {
     if (!series.declared) return { declared: false, total: null, linked: 0, since: null, candidates: [] };
 
     const incidents = series.files.filter((f) => !PASS_RECORD.test(f.file));
     const passes = series.files.filter((f) => PASS_RECORD.test(f.file) && f.date);
-    const since = passes.reduce((a, b) => (a === null || b.date > a ? b.date : a), null);
+    const since = named ?? passes.reduce((a, b) => (a === null || b.date > a ? b.date : a), null);
 
     const isLinked = (file) => curated.some((source) => source.includes(file));
     const linked = incidents.filter((i) => isLinked(i.file)).length;
@@ -864,18 +863,14 @@ const renderedLines = (expected) =>
     expected === null || expected === undefined ? 0 : expected.split("\n").length - (expected.endsWith("\n") ? 1 : 0);
 
 // ===========================================================================================
-// The record the pass writes
+// The report the pass renders
 // ===========================================================================================
 //
-// A pass is a session — the maintainer's ruling of 2026-07-28, taken on a category his 2026-07-25
-// cadence ruling predates. So it ends the way every session here ends: a dated handoff, and one
-// Session log entry pointing at it. That is why this file renders Markdown at all; the alternative
-// was a bespoke report format with a bespoke rail, and the repository already has rails for these two.
-//
-// Both renderings are held to the shape ../.portulan/verify/docs.sh's `record` check enumerates —
-// including the two traps a generated entry can walk into that a hand-written one rarely does: the
-// ten-line budget binding every entry dated after 2026-07-28, and issue #79, where an unindented
-// `- YYYY-` bullet inside an entry is read as the start of the next one.
+// A pass was a session (the maintainer's ruling of 2026-07-28), so it ended as every session did: a
+// dated handoff and a Session log entry. Since 2026-09-23 a handoff carries only open work and the log
+// is retired, so the pass writes neither into the tree (the coordinator session's delegated call of
+// 2026-09-24). Its findings are a report addressed to the maintainer, rendered as Markdown because
+// its scheduler files it as the description of the pull request the pass opens when the tree changed.
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -886,38 +881,24 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
  * branched on the pair-wide flag. A workspace declaring only one of the two indexes then read
  * "current" about the other, which does not exist.
  *
- * **It reports drift, never a repair, and the tense is the whole of it.** This record is composed
- * before `run` regenerates anything — it has to be, since the record is itself a member of one of the
- * indexed series — and the regeneration can still fail. *Has been regenerated* is therefore a sentence
- * the artifact cannot know to be true at the moment it writes it, and in a local run or a partial
- * failure it is a committed record asserting work that did not happen. What is true when this is
+ * **It reports drift, never a repair, and the tense is the whole of it.** The report is composed
+ * before `run` regenerates anything, and the regeneration can still fail. *Has been regenerated* is
+ * therefore a sentence the report cannot know to be true when it is written, and in a local run or a
+ * partial failure it asserts work that did not happen. What is true when this is
  * written is that the index was out of date **when the pass arrived**, so that is what it says. Raised
  * by Copilot on #85 round two, in the suppressed channel, against three sites at once.
  */
 const indexState = (s) => (s.declared ? (s.drifted ? "**was out of date when this pass arrived**" : "current") : "none declared");
 
-/** The pass's handoff: what it looked at, what it found, and the date all of that is true as of. */
-export function renderRecord(results, { asOf }) {
+/** The pass's report: what it looked at, what it found, and the date all of that is true as of. */
+export function renderReport(results, { asOf }) {
     const out = [
-        "# Handoff — the librarian's scheduled pass",
+        "# The librarian's scheduled pass",
         "",
-        `**Date:** ${asOf} · **Scheduled librarian pass** · Filed by \`cli/librarian.mjs\` on a cron.`,
+        `**Date:** ${asOf} · Filed by \`cli/librarian.mjs\` on a cron.`,
         "",
         "**State.** Every figure below is **as of " + asOf + "**, read from git history rather than from the",
         "filesystem, and nothing here is a decision. This pass drafts; the maintainer disposes.",
-        "",
-        // Counts are read before this record is written, and the ordering is forced rather than
-        // incidental: a pass IS a session, so it ends by writing a dated handoff INTO the very series
-        // it just counted. Regenerating an index any earlier would leave it stale in the commit the
-        // job pushes, `index.sh` would red the pull request, and a scheduled pass could never file
-        // anything mergeable. So the series count here is always one lower than the index regenerated
-        // in the same pull request, and on #86 a reviewer read that gap as an off-by-one — correctly
-        // noticing it, wrongly diagnosing it, because nothing in the artifact said why. A number that
-        // needs an explanation it does not carry is what gets read as a defect (issue #90).
-        "**What the counts include.** They are as of **read time**, taken before this record existed, so",
-        "every series figure below **excludes the handoff this pass is about to write**. Expect the",
-        "regenerated index in the same pull request to show exactly one more: the two numbers describe",
-        "the series this pass examined and the series as it now stands, and both are true.",
         "",
     ];
 
@@ -936,7 +917,8 @@ export function renderRecord(results, { asOf }) {
                     : "") +
                 ". Index: " +
                 indexState(r.index.series.memory) +
-                ".",
+                "." +
+                r.index.notes.map((n) => ` ${n}.`).join(""),
             "",
         );
 
@@ -1127,15 +1109,13 @@ export function renderRecord(results, { asOf }) {
     }
 
     out.push(
-        "**Open questions.** None raised by machinery. Every nag above is addressed to the maintainer,",
-        "and none of them is answered by re-running this pass.",
+        "**Next action.** Every nag above is addressed to the maintainer, and none is answered by",
+        "re-running this pass. Where the pass opened a pull request, merge or close it: an unmerged pass",
+        "is itself a nag.",
         "",
-        "**Next action.** Read the nags; merge, close, or act. An unmerged pass is itself a nag.",
-        "",
-        "**Recoverability.** This pass writes this handoff, appends one Session log entry when it is",
-        "given a log to append to, and regenerates a memory index only when one had drifted. Nothing",
-        "outside the tree is touched. Closing the pull request unopened loses nothing — the next pass",
-        "reaches the same conclusions from the same store and says them again.",
+        "**Recoverability.** This pass writes nothing into the tree but an index that had drifted, and",
+        "this report where its scheduler asks. Closing its pull request unopened loses nothing: the next",
+        "pass reaches the same conclusions from the same store and says them again.",
         "",
     );
     return out.join("\n");
@@ -1146,58 +1126,12 @@ const oldest = (records) => {
     return o ? `\`${o.file}\` at ${plural(o.days, "day")}` : "none — the store is empty";
 };
 
-/**
- * The Session log entry: a pointer, at most ten lines, carrying a seam attestation.
- *
- * **The attestation is earned, not asserted.** This pass cannot run the seam scan — the term list
- * lives outside the repository, deliberately, and a machine on a cron has no access to it. It never
- * claims one ran. What it states, and what is true, is that it composes no new prose at run time:
- * every line it writes is a literal from this reviewed file, or a filename, a
- * date git recorded, a count, or a condition quoted verbatim out of a record that passed the scan when
- * it landed. A diff with no new prose cannot carry a new seam hit. The residual limit, stated rather
- * than left to be found: if a term had already leaked into a filename or a record, this pass would
- * quote it forward — but that leak would already be in the history, which is the thing the scan exists
- * to prevent and not something this pass could cause.
- */
-export function renderLogEntry(results, { asOf, handoff }) {
-    const declared = results.filter((r) => r.declared);
-    const stale = declared.reduce((n, r) => n + r.stale.length, 0);
-    const seals = declared.reduce((n, r) => n + r.seals.filter((s) => s.due).length, 0);
-    const proposals = declared.reduce((n, r) => n + (r.proposals?.filter((p) => p.due).length ?? 0), 0);
-    const reindexed = declared.filter((r) => r.index.drifted).map((r) => r.name);
-    const incidents = declared.reduce((n, r) => n + r.mining.incidents.candidates.length, 0);
-    const paths = declared.reduce((n, r) => n + (r.mining.reviews?.paths.length ?? 0), 0);
-    const shared = declared.reduce((n, r) => n + r.consolidation.shared.length, 0);
-
-    // Nine lines, against the ten `.portulan/verify/docs.sh`'s `record` check allows every entry dated
-    // after 2026-07-28. The margin is one line and it is deliberate: this entry grew by one line when
-    // mining and consolidation joined it, so the next thing added here has to displace something
-    // rather than append — which is the right pressure on a generated record that a rail is watching.
-    return (
-        [
-            `- ${asOf} · M5 (Memory lifecycle & librarian) · **Scheduled librarian pass**, filed by`,
-            "  `cli/librarian.mjs` rather than by a person: " + `${plural(declared.length, "workspace")} passed,`,
-            `  ${stale} stale record(s), ${seals} sealed stamp(s) due for re-validation, ` +
-                `${proposals} proposal(s) nagged` +
-                // Drift found, not drift repaired: this entry is appended before `run` regenerates,
-                // and a log line is permanent. Same correction as `indexState`, same round.
-                (reindexed.length ? `, index drift found in ${reindexed.join(", ")}.` : ", no index drift."),
-            `  · Mined: ${incidents} incident(s) with nothing pointing back at them, ${paths} path(s) drawing`,
-            `  repeat review findings, ${shared} record group(s) citing one incident.`,
-            "  · No supervisor checkpoint: a scheduled pass makes no decision for one to grade.",
-            "  · Seam scan clean by construction — this pass composes no new prose at run time, so its",
-            "  diff carries nothing the scan had not already passed.",
-            `  Handoff: [\`${asOf}\`](${handoff}).`,
-        ].join("\n") + "\n"
-    );
-}
-
 // ===========================================================================================
 // The command
 // ===========================================================================================
 
 const USAGE =
-    "usage: node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--log <path>] [--reviews <path>] <workspace-dir> [...]";
+    "usage: node cli/librarian.mjs [--as-of YYYY-MM-DD] [--since YYYY-MM-DD] [--write] [--report <path>] [--reviews <path>] <workspace-dir> [...]";
 
 /**
  * Parse `argv` strictly, or throw `LibrarianError`.
@@ -1205,11 +1139,12 @@ const USAGE =
  * **Strictly**, because the permissive version fails silently in both directions and this tool runs
  * unattended. An unknown flag was dropped, so `--wrtie` produced a run that reported everything it
  * found and wrote nothing — a success message over work that did not happen. And a value-bearing flag
- * with no value ate the next argument, so `--log .portulan` set the log path to a *workspace* and then
+ * with no value ate the next argument, so `--log .portulan` (a flag since retired with the Session log)
+ * set the log path to a *workspace* and then
  * passed over no workspaces at all: a green having examined nothing, which is the enumeration
  * fail-open this repository has now found five of in its own scaffolding. Raised by Copilot on #81.
  *
- * The residual limit, stated rather than left to be found: `--log .portulan` is *not* detectable here.
+ * The residual limit, stated rather than left to be found: `--report .portulan` is *not* detectable here.
  * `.portulan` is a perfectly good value and any `--flag value` grammar consumes it. What catches that
  * caller is the layer above — no workspaces left, so `run` prints the usage and exits 2 rather than
  * reporting a green over an empty list. That check is now the only thing standing between the typo and
@@ -1218,10 +1153,10 @@ const USAGE =
  * `cli/compile.mjs` parses explicitly for the same reason; this now matches it.
  */
 export function parseArgs(argv) {
-    const opts = { asOf: undefined, logPath: undefined, reviewsPath: undefined, write: false, dirs: [] };
+    const opts = { asOf: undefined, since: undefined, reportPath: undefined, reviewsPath: undefined, write: false, dirs: [] };
     const value = (flag, next) => {
-        // A flag's value may not be another flag. Without this, `--log --write .portulan` sets the log
-        // path to `--write` and silently drops the mode the caller asked for.
+        // A flag's value may not be another flag. Without this, `--report --write .portulan` sets the
+        // report path to `--write` and silently drops the mode the caller asked for.
         if (next === undefined || next.startsWith("--")) {
             throw new LibrarianError(`${flag} needs a value.\n${USAGE}`);
         }
@@ -1234,8 +1169,11 @@ export function parseArgs(argv) {
             case "--as-of":
                 opts.asOf = value(arg, argv[(i += 1)]);
                 break;
-            case "--log":
-                opts.logPath = value(arg, argv[(i += 1)]);
+            case "--since":
+                opts.since = value(arg, argv[(i += 1)]);
+                break;
+            case "--report":
+                opts.reportPath = value(arg, argv[(i += 1)]);
                 break;
             case "--reviews":
                 opts.reviewsPath = value(arg, argv[(i += 1)]);
@@ -1252,9 +1190,9 @@ export function parseArgs(argv) {
 }
 
 export function run(argv, say = console.log) {
-    let asOfArg, logPath, reviewsPath, write, dirs;
+    let asOfArg, since, reportPath, reviewsPath, write, dirs;
     try {
-        ({ asOf: asOfArg, logPath, reviewsPath, write, dirs } = parseArgs(argv));
+        ({ asOf: asOfArg, since, reportPath, reviewsPath, write, dirs } = parseArgs(argv));
     } catch (error) {
         if (!(error instanceof LibrarianError)) throw error;
         say(`  ✗ ${error.message}`);
@@ -1269,6 +1207,7 @@ export function run(argv, say = console.log) {
     const asOf = asOfArg ?? new Date().toISOString().slice(0, 10);
     try {
         parseDate(asOf, "--as-of");
+        if (since !== undefined) parseDate(since, "--since");
     } catch (error) {
         say(`  ✗ ${error.message}`);
         return 2;
@@ -1291,7 +1230,7 @@ export function run(argv, say = console.log) {
     let worst = 0;
     for (const dir of dirs) {
         try {
-            const result = passWorkspace(dir, { asOf, reviews });
+            const result = passWorkspace(dir, { asOf, reviews, since });
             results.push(result);
             if (!result.declared) {
                 say(`  · ${dir}: declares no librarian pass`);
@@ -1315,53 +1254,22 @@ export function run(argv, say = console.log) {
         }
     }
 
-    const filing = results.find((r) => r.declared && r.handoffsDir);
-    if (write && results.some((r) => r.declared) && !filing) {
-        // A pass is a session (the maintainer's ruling, 2026-07-28), and a session ends with a dated
-        // handoff. A workspace with nowhere to put one cannot end a session, so this is said out loud
-        // rather than being a silent no-op that looks like a clean run.
-        say("  ✗ no workspace declares a `slots.handoffs`, so this pass has nowhere to record itself");
-        worst = 2;
-    } else if (write && filing) {
-        const record = renderRecord(results, { asOf });
-        const name = `${asOf}-librarian-pass.md`;
-        const target = path.join(filing.handoffsDir, name);
+    // The report is composed before any index is regenerated, so it says what the pass found rather
+    // than what it repaired (`indexState`). It goes where the scheduler names, never into a series.
+    if (reportPath !== undefined) {
         try {
-            fs.mkdirSync(path.dirname(target), { recursive: true });
-            fs.writeFileSync(target, record);
-            say(`  ok wrote ${target}`);
-            if (logPath) {
-                // Relative to the LOG's directory, derived from the two paths rather than spelled —
-                // the slot exists so a directory name is never assumed, and a hardcoded
-                // `../.portulan/handoffs/` sat three lines under the comment saying so. Getting it
-                // wrong dangles a link in the file every session reads to boot, and `docs.sh` would
-                // catch it only after the pass had already filed.
-                const href = path.posix
-                    .relative(path.posix.dirname(posix(path.resolve(logPath))), posix(target))
-                    .split(path.sep)
-                    .join(path.posix.sep);
-                const entry = renderLogEntry(results, { asOf, handoff: href });
-                const current = fs.readFileSync(logPath, "utf8");
-                fs.writeFileSync(logPath, current.replace(/\n*$/, "\n\n") + entry);
-                say(`  ok appended a Session log entry to ${logPath}`);
-            }
+            fs.mkdirSync(path.dirname(path.resolve(reportPath)), { recursive: true });
+            fs.writeFileSync(reportPath, renderReport(results, { asOf }));
+            say(`  ok wrote the report to ${reportPath}`);
         } catch (cause) {
-            say(`  ✗ cannot write the pass record — ${cause.code ?? cause.message}`);
+            say(`  ✗ cannot write the report — ${cause.code ?? cause.message}`);
             worst = 2;
         }
     }
 
-    // ---- the indexes, LAST, and that is the ordering this whole split exists for.
-    //
-    // A pass is a session, so it just wrote a dated handoff into `slots.handoffs` — a member of the
-    // series the handoff index covers. Regenerated any earlier, that index would be stale in the very
-    // commit the pass pushes, and `index.sh` would red the pull request the pass exists to file. The
-    // failure would have arrived on the first real run, unattended, on the one artifact this
-    // milestone's criterion names. So the rule is one sentence with no exceptions in it: **nothing
-    // regenerates an index until every record this pass writes is on disk.**
-    //
-    // Only in write mode, and never when the record could not be written: an index regenerated over a
-    // series missing the handoff that belongs in it would be current about the wrong tree.
+    // ---- the indexes, LAST, in write mode only, and only when the run did everything else it was
+    // asked: a pass that could not read a workspace or write its report files nothing, so it changes
+    // nothing either.
     if (write && worst < 2) {
         for (const r of results) {
             if (!r.declared) continue;

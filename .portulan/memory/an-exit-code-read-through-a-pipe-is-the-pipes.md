@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-08-18
 **scope:** workspace — Portulan's build sessions
 **provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/blob/main/.portulan/handoffs/2026-07-25-ci-runs-declared-recipes.md`
 

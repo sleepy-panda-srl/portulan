@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-08-19
 **scope:** workspace — any check run before an irreversible or outward act, and the seam scan above all
 **provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/309`
 — on 2026-08-19 a client identifier from the private context reached this **public** repository in a

@@ -18,8 +18,10 @@ description: Bring a memory store back under its budget by merging, compressing,
   decides which move applies**, and the finding names it: the index's `lines` (too many records —
   merge or retire; compressing removes no line and splitting adds one), the store's `kilobytes` (too
   much in total), or a record's `record_kilobytes` (one record too large — split, compress, or demote;
-  step 2 and step 4). A fourth red, the index's `columns`, is **not** this pass's work: one over-long
-  line is repaired by renaming the record, and nothing is consolidated.
+  step 2 and step 4), which binds only the records dated after a declared `cutoff`: one dated on or
+  before it is reported, never red, and meets the cap when its text next changes. A fourth red, the
+  index's `columns`, is **not** this pass's work: one over-long line is repaired by renaming the record,
+  and nothing is consolidated.
 - Two records say the same thing, or say opposite things.
 - A record's `Retire when:` condition has fired.
 - The librarian's scheduled pass runs.

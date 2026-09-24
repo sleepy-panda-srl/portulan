@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-07-25
 **scope:** workspace — anyone writing a validator, linter, or compiler here
 **provenance:** `form=link` `href=../../spec/README.md`
 — the declared JSON Schema subset, written in milestone 2 session 1 with the reasoning that a validator

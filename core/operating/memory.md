@@ -39,6 +39,14 @@ over individually-authored records is a **commons**: the record that grew never 
 write time, and some unrelated writer hits it later. A per-record cap fires on the author growing the
 record, at the moment of growth, and never blocks anyone else. _(Proposal `0025`.)_
 
+**The cap can bind forward only** (Workspace Definition 2.11): with `memory.store.budget.cutoff`
+declared beside it, it binds the records dated after the cutoff, and one dated on or before it is
+reported, never railed, in proposal `0037`'s shape for a handoff. A record's date is its `**dated:**`
+line, the day its text last changed, because a verify rail may not read git; an edit re-dates it, so
+an old record meets the cap in the change that next rewrites it, while compression is that change's
+to do. A record whose date cannot be read is refused. The cutoff never moves earlier, and moves later
+only with a cap that tightens.
+
 **The other half of that sentence is not machinery, and saying so is the point.** Nothing checks that
 a budget was not simply raised in the change the breach appeared in — refusing that needs a checker
 that reads history, and a check that reads history produces false reds in a shallow CI checkout,
@@ -62,8 +70,8 @@ curated context improves it, and the difference is measurable. So capture is age
 consolidation into the curated layer is a reviewed step. _(Provenance: ETH Zurich, arXiv:2602.11988 —
 generated context hurts, curated helps. The scheduled librarian arrived in milestone 5: a pass that
 regenerates each generated index, ages every record from git, nags a sealed stamp's owner, chases
-undecided proposals, drafts demotions, and **runs consolidation** — filed as a pull request nobody has
-to remember to open. What consolidation means on a schedule is bounded rather than claimed: the pass
+undecided proposals, drafts demotions, and **runs consolidation** — its report filed with a pull request
+nobody has to remember to open whenever the pass changed the tree. What consolidation means on a schedule is bounded rather than claimed: the pass
 reports how close each budget is to its rail, and surfaces records citing one incident as a
 **question**, because `../skills/consolidate/SKILL.md` merges records that are one *mechanism* and one
 incident routinely teaches several. Its steps 3 and 4 — surfacing contradictions and compressing what

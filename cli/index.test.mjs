@@ -553,6 +553,86 @@ describe("the budget is a rail", () => {
     });
 });
 
+// ---------------------------------------------------------------- the forward-only cap
+
+describe("a cutoff makes the per-record cap forward-only (Workspace Definition 2.11)", () => {
+    // Proposal `0037`'s shape for a handoff, on a record: the cap binds records dated after the cutoff,
+    // reports the rest, and refuses a record whose date it cannot read. A record's date is its
+    // `**dated:**` line, because this rail may not read git.
+    const TODAY = "2026-09-24";
+    const dated = (date, body) => record("rule", body).replace("**scope:**", `**dated:** ${date}\n**scope:**`);
+    const capped = (budget) =>
+        wellFormed({
+            memory: {
+                index: { path: "memory-index.md", budget: { lines: 60, columns: 140 } },
+                store: { budget: { kilobytes: 500, record_kilobytes: 1, cutoff: "2026-09-24", ...budget } },
+            },
+        });
+    const fat = "x".repeat(3000);
+
+    test("red for a record dated after the cutoff and over the cap, naming the record and the cutoff's no-move", () => {
+        const dir = workspace({ "memory/a-new-one.md": dated("2026-09-25", fat) }, capped());
+        const bad = failures(inspect(dir, { write: true, today: TODAY }));
+        assert.equal(bad.length, 1);
+        assert.equal(bad[0].check, "budget");
+        assert.match(text(bad), /a-new-one\.md/);
+        assert.match(text(bad), /moving the cutoff/);
+    });
+
+    test("a record dated on or before the cutoff is reported, never railed, the cutoff day included", () => {
+        const dir = workspace(
+            { "memory/an-old-one.md": dated("2026-07-27", fat), "memory/the-cutoff-day.md": dated("2026-09-24", fat), "memory/small.md": dated("2026-09-25") },
+            capped(),
+        );
+        const result = inspect(dir, { write: true, today: TODAY });
+        assert.deepEqual(failures(result), []);
+        assert.equal(result.notes.length, 1);
+        assert.match(result.notes[0].message, /^2 record\(s\) dated on or before the cutoff \(2026-09-24\)/);
+    });
+
+    test("a record with no date, or a date that is no real day, is refused however small", () => {
+        for (const body of [record("rule"), dated("2026-02-30"), record("rule").replace("**scope:**", "**dated:** soon\n**scope:**")]) {
+            const bad = failures(inspect(workspace({ "memory/a-record.md": body }, capped()), { write: true, today: TODAY }));
+            assert.equal(bad.length, 1, body);
+            assert.equal(bad[0].check, "date");
+            assert.match(text(bad), /\*\*dated:\*\* YYYY-MM-DD/);
+        }
+    });
+
+    test("a record dated more than a day after today is refused; tomorrow is the time zones' day and passes", () => {
+        const ahead = failures(inspect(workspace({ "memory/a-record.md": dated("2026-09-26") }, capped()), { write: true, today: TODAY }));
+        assert.equal(ahead.length, 1);
+        assert.equal(ahead[0].check, "date");
+        assert.match(text(ahead), /more than a day after 2026-09-24/);
+        assert.deepEqual(failures(inspect(workspace({ "memory/a-record.md": dated("2026-09-25") }, capped()), { write: true, today: TODAY })), []);
+    });
+
+    test("without a cutoff no date is asked, and the cap binds every record as at 2.8", () => {
+        const manifest = capped();
+        delete manifest.memory.store.budget.cutoff;
+        const bad = failures(inspect(workspace({ "memory/an-old-one.md": record("rule", fat) }, manifest), { write: true, today: TODAY }));
+        assert.equal(bad.length, 1);
+        assert.equal(bad[0].check, "budget");
+        assert.match(text(bad), /Raising the cap in the change that broke it/);
+    });
+
+    test("a cutoff that is no real day, or one with no per-record cap beside it, is refused with exit 2", () => {
+        for (const cutoff of ["2026-02-30", "24/09/2026", 20260924]) {
+            assert.throws(() => inspect(workspace({ "memory/a.md": dated("2026-09-01") }, capped({ cutoff })), { today: TODAY }), IndexError, String(cutoff));
+        }
+        const alone = capped();
+        delete alone.memory.store.budget.record_kilobytes;
+        assert.throws(() => inspect(workspace({ "memory/a.md": dated("2026-09-01") }, alone), { today: TODAY }), /configures nothing/);
+    });
+
+    test("the run prints a report line and stays green", () => {
+        const dir = workspace({ "memory/an-old-one.md": dated("2026-07-27", fat) }, capped());
+        const said = [];
+        assert.equal(run([dir], (line) => said.push(line)), 0);
+        assert.ok(said.some((line) => /· .*1 record\(s\) dated on or before the cutoff/.test(line)), said.join("\n"));
+    });
+});
+
 // ---------------------------------------------------------------- drift
 
 describe("--check compares and never repairs", () => {

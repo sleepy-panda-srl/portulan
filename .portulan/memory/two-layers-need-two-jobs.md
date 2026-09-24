@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-07-27
 **scope:** workspace — anyone emitting belt-and-braces enforcement into a host
 **provenance:** `form=link` `href=../handoffs/2026-07-27-the-enforcement-compiler.md`
 — milestone 4, session 0. The enforcement compiler emitted every gate twice, as a permission rule and

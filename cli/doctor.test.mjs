@@ -553,9 +553,50 @@ describe("the guidance slot, which compile reads", () => {
     });
 });
 
+describe("the memory cap's cutoff", () => {
+    // Workspace Definition 2.11. The subset types it with a pattern, which admits a day that does not exist,
+    // and cannot say it needs `record_kilobytes` beside it; both are `doctor`'s, and the key is gated to 2.11.
+    const withCutoff = (spec, budget) =>
+        tree(scratch(), {
+            ...minimalFiles,
+            "memory/r.md": "x\n",
+            "workspace.json": JSON.stringify({
+                ...wellFormed(),
+                portulan: { spec },
+                slots: { ...wellFormed().slots, memory: "memory/" },
+                memory: { store: { budget } },
+            }),
+        });
+
+    test("declared at 2.11 beside `record_kilobytes`, it passes", async () => {
+        const { findings } = await inspect(withCutoff("2.11", { record_kilobytes: 2, cutoff: "2026-09-24" }), { schema: SCHEMA });
+        assert.deepEqual(severities(findings, "fail"), []);
+    });
+
+    test("in a manifest declaring 2.10 it is a failure that names 2.11", async () => {
+        const { findings } = await inspect(withCutoff("2.10", { record_kilobytes: 2, cutoff: "2026-09-24" }), { schema: SCHEMA });
+        assert.ok(
+            severities(findings, "fail").some((f) => /`memory\.store\.budget\.cutoff` is Workspace Definition 2\.11's/.test(f.message)),
+            JSON.stringify(findings),
+        );
+    });
+
+    for (const bad of ["2026-02-30", "2026-13-01"]) {
+        test(`${bad} passes the pattern and is refused as no real day`, async () => {
+            const { findings } = await inspect(withCutoff("2.11", { record_kilobytes: 2, cutoff: bad }), { schema: SCHEMA });
+            assert.ok(severities(findings, "fail").some((f) => /not a real day/.test(f.message)), JSON.stringify(findings));
+        });
+    }
+
+    test("with no `record_kilobytes` beside it, it is refused as configuring nothing", async () => {
+        const { findings } = await inspect(withCutoff("2.11", { kilobytes: 200, cutoff: "2026-09-24" }), { schema: SCHEMA });
+        assert.ok(severities(findings, "fail").some((f) => /configures nothing/.test(f.message)), JSON.stringify(findings));
+    });
+});
+
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 10 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 11 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -1847,9 +1888,9 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
             return tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
         };
         assert.equal(await run([build("9.9")], { quiet: true }), 2, "a MAJOR ahead");
-        // `2.11`, not a string one character on: the MINOR is compared as a number, so this also holds
-        // the comparison to its arithmetic now that the current version is `2.10`, the first MINOR of two digits.
-        assert.equal(await run([build("2.11")], { quiet: true }), 2, "a MINOR ahead");
+        // `2.12`, not a string one character on: the MINOR is compared as a number, so this also holds
+        // the comparison to its arithmetic now that the current MINOR has two digits.
+        assert.equal(await run([build("2.12")], { quiet: true }), 2, "a MINOR ahead");
         assert.equal(await run([build("2.0")], { quiet: true }), 0, "the current version");
     });
 
@@ -2066,7 +2107,7 @@ describe("the packs a workspace declares", () => {
 
     test("the two version trains are read by different functions and do not collide", () => {
         assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 10 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 11 });
         // The workspace reader must not accept the pack `$id` as a workspace version.
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });
