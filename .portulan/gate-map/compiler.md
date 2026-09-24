@@ -154,10 +154,12 @@ and removes only what it wrote — the rules its `.compiled` marker lists and th
 writes nothing through a link, and refuses a slot inside a directory it writes. Section 3c of compile.mjs
 carries each of those rules.
 
-**This workspace declares no guidance**, because moving its own guidance between tiers is a change to its
-curated layer, which is the maintainer's. [`../../cli/fixtures/guidance/`](../../cli/fixtures/guidance/)
-declares one unit in each tier, and that a running host loads each when its tier says is milestone 12's second
-demonstration, not a test.
+**This workspace declares four units** in [`../context/`](../context/): the boot card in the `always` tier,
+and the gates, doctrine and records rules in the `on-path` tier, each scoped to the paths where it binds.
+`compile` writes them into `.claude/rules/portulan/`, and the `compile` recipe is red while a written file
+differs from what they compile to. [`../../cli/fixtures/guidance/`](../../cli/fixtures/guidance/) declares one
+unit in each tier, and milestone 12's second demonstration compiles it and opens it in a running host, because
+no test here can show that a host loads a rule when its path is first touched, and not before.
 
 ## The pressure valve
 

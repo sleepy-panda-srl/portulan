@@ -101,6 +101,11 @@ describe("what a row quotes", () => {
         assert.equal(headerOf("/** Inline opening.\n * continued.\n */\n"), "Inline opening. continued.");
     });
 
+    test("a /** */ block closed on a line of text keeps the text and drops the delimiter", () => {
+        assert.equal(headerOf("/** One-line header. */\nexport const x = 1;\n"), "One-line header.");
+        assert.equal(headerOf("/**\n * First line,\n * last sentence. */\nexport const x = 1;\n"), "First line, last sentence.");
+    });
+
     test("nothing, when the file opens with code or a blank comment line", () => {
         assert.equal(headerOf("import x from 'y';\n// late comment\n"), "");
         assert.equal(headerOf("//\n// after a blank\n"), "");
@@ -129,6 +134,20 @@ describe("the render refuses what it cannot quote", () => {
             const rows = rowsOf(render(root));
             assert.deepEqual(rows, ["a.mjs"]);
             assert.match(render(root), /\| \[`a\.mjs`\]\(a\.mjs\) \| A tool\. \|/);
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    test("a page --write cannot write is could-not-run, not a stack trace", () => {
+        const root = scratchRepo({ "a.mjs": "// A tool.\n" });
+        try {
+            // A directory where the page goes refuses the write for every user, root included.
+            fs.mkdirSync(path.join(root, "cli", "README.md"));
+            const said = [];
+            const sink = { write() {} };
+            assert.equal(run(["--write"], sink, { write: (text) => said.push(text) }, root), 2);
+            assert.match(said.join(""), /could not run: cli\/README\.md could not be written/);
         } finally {
             fs.rmSync(root, { recursive: true, force: true });
         }

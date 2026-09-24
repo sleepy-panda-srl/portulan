@@ -6,7 +6,7 @@
 //   node cli/roster.mjs --check    exit 1 when cli/README.md is not exactly what this renders
 //
 // Exit 0 printed, written or current · 1 out of date (`--check` only) · 2 could not run: not a git
-// repository, or a listed file with no header to quote.
+// repository, a listed file with no header to quote, or a page `--write` could not write.
 //
 // Each file's header comment is its full account, and the page quotes the first paragraph of it: the
 // leading `//` lines, or a leading `/** */` block, up to the first blank comment line. A Markdown file
@@ -80,14 +80,14 @@ export function headerOf(source) {
             para.push(text);
         }
     } else if (lines[i]?.trim().startsWith("/**")) {
-        const opening = lines[i].trim().slice(3).trim();
-        if (opening) para.push(opening);
-        for (i++; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (line.startsWith("*/")) break;
-            const text = line.replace(/^\*/, "").trim();
-            if (!text) break;
-            para.push(text);
+        // `*/` may close the block on a line that also carries text, the opening line included: the text
+        // before it is the paragraph's last, and nothing after it is header.
+        for (let first = true; i < lines.length; i++, first = false) {
+            const line = first ? lines[i].trim().slice(3) : lines[i].trim().replace(/^\*(?!\/)/, "");
+            const close = line.indexOf("*/");
+            const text = (close === -1 ? line : line.slice(0, close)).trim();
+            if (text) para.push(text);
+            if (close !== -1 || (!text && !first)) break;
         }
     }
     return para.join(" ");
@@ -181,7 +181,8 @@ export function render(root = ROOT) {
     return `${out.join("\n")}\n`;
 }
 
-export function run(argv, stdout = process.stdout, stderr = process.stderr) {
+export function run(argv, stdout = process.stdout, stderr = process.stderr, root = ROOT) {
+    const readme = path.join(root, "cli", "README.md");
     const write = argv.includes("--write");
     const check = argv.includes("--check");
     const unknown = argv.filter((a) => a !== "--write" && a !== "--check");
@@ -191,7 +192,7 @@ export function run(argv, stdout = process.stdout, stderr = process.stderr) {
     }
     let page;
     try {
-        page = render();
+        page = render(root);
     } catch (error) {
         if (error instanceof CannotRun) {
             stderr.write(`roster: could not run: ${error.message}\n`);
@@ -200,7 +201,13 @@ export function run(argv, stdout = process.stdout, stderr = process.stderr) {
         throw error;
     }
     if (write) {
-        fs.writeFileSync(README, page);
+        // A page that could not be written is could-not-run, never a stack trace a caller reads as red.
+        try {
+            fs.writeFileSync(readme, page);
+        } catch (error) {
+            stderr.write(`roster: could not run: cli/README.md could not be written: ${error.message}\n`);
+            return 2;
+        }
         stdout.write(`roster: wrote cli/README.md\n`);
         return 0;
     }
@@ -210,7 +217,7 @@ export function run(argv, stdout = process.stdout, stderr = process.stderr) {
     }
     let current = null;
     try {
-        current = fs.readFileSync(README, "utf8");
+        current = fs.readFileSync(readme, "utf8");
     } catch {
         // Absent is out of date, the same verdict as a stale page.
     }

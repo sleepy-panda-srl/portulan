@@ -82,7 +82,7 @@ export const EXCLUDED = {
         "written rather than after a totality check demanded a class for it",
     "roster.mjs":
         "the generator of this directory's README. The page ships as a file; the tool that renders it " +
-        "from this repository's own tree is workshop",
+        "from this repository's own tree is workshop tooling",
 };
 
 /**

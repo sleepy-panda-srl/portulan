@@ -5,4 +5,4 @@
   verify and evals READMEs and the compiler's page in the gate map keep their rules, limits and procedures
   and name the `git show` that holds how each was found, and the compile README merged into the
   compiler's page. `.ignore` files keep ripgrep out of the handoffs, the closed milestones and the done
-  tasks, which stay in place until the maintainer decides on deleting them.
+  tasks until a following change deletes them.
