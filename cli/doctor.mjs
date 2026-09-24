@@ -1012,8 +1012,9 @@ function loadSchema({ schema, schemaPath }) {
 // 3b. Agent legibility
 // ===========================================================================================
 //
-// Row 7's 2026-07-28 amendment: `doctor` scores agent legibility — the audit `docs/vision.md`'s
-// influence map calls the **unclaimed niche**, "repo affordances scored by doctor".
+// Row 7's 2026-07-28 amendment: `doctor` scores agent legibility — the audit `docs/vision.md` §
+// *Agent-native / AX* calls the **unclaimed niche**, where `doctor` scores the repository's
+// affordances.
 //
 // **It moves no exit code, and that is the design rather than a shortfall.** A score is a
 // measurement; `doctor`'s exit codes are verdicts about conformance. A score that could fail a
@@ -1022,9 +1023,9 @@ function loadSchema({ schema, schemaPath }) {
 //
 // **Every carrier of the amendment says the `affordances` slot "is its input", and this reads six
 // keys besides.** That is a reading, stated rather than taken in silence: the constitution's own
-// gloss is *"repo affordances scored by doctor"* — the repository's affordances, of which the slot
-// is the written half — and a score confined to the slot could not tell two workspaces apart at
-// all. **The slot is the named input, not the only one.**
+// row scores the *repository's* affordances, of which the slot is the written half — and a score
+// confined to the slot could not tell two workspaces apart at all. **The slot is the named input, not
+// the only one.**
 //
 // What each dimension has in common is the property that makes a score honest: every one is
 // **optional in the Workspace Definition**, so it can genuinely be absent, and none of them
@@ -2424,11 +2425,12 @@ export async function inspect(workspaceDir, options = {}) {
 
     // ---- the per-host degradation report
     //
-    // `../docs/vision.md`: "the enforcement backends are per-host with an honest degradation
-    // report." The compiler's accounting IS that report's data — every rule ends as compiled or
-    // refused-with-a-reason, per backend — so this reads the backends rather than re-deriving what
-    // they cover. Two implementations of one accounting is the drift this repository keeps finding,
-    // and it is the reason `./gate.mjs` imports the matcher instead of copying it.
+    // `../docs/vision.md` § *LLM-agnostic by construction*: the enforcement backends are per-host, with
+    // an honest degradation report, and this tool gives it. The compiler's accounting IS that report's
+    // data — every rule ends as compiled or refused-with-a-reason, per backend — so this reads the
+    // backends rather than re-deriving what they cover. Two implementations of one accounting is the
+    // drift this repository keeps finding, and it is the reason `./gate.mjs` imports the matcher
+    // instead of copying it.
     //
     // Reported, never failed, with one exception below: nothing legislates a coverage floor, and
     // `doctor` does not enforce what nobody legislated — the same reasoning that made `retirement`
@@ -2833,8 +2835,8 @@ export async function run(argv, options = {}) {
         // where discovery finds a root**, and it was not: measured on the workspace `init` drafts by
         // default plus one pack of the adopter's own, `doctor` exited **1** with no flag and **0** under
         // `auto`. The maintainer ruled a behaviour change rather than a row amendment; a fresh supervisor
-        // graded that sound from `../docs/vision.md`, which defines this tool as a **per-host capability
-        // report** — answering about the host is what it is for.
+        // graded that sound from `../docs/vision.md` § *LLM-agnostic by construction*, which makes this
+        // tool the **per-host report** — answering about the host is what it is for.
         //
         // **The boundary it replaces, sharpened, is: a verdict about the *repository* must not depend on
         // the machine.** Three things hold it, and none of them is the absence of a default:

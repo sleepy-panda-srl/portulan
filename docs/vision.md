@@ -2,8 +2,8 @@
 
 This file is ground truth: the build supervisor grades every session's work against it. Changes to
 it are **human-owned** (Marius Cetanas). Agents may edit it since his word of 2026-09-24 06:16 UTC,
-each edit recording that word in its commit; the edit gate's removal follows in its own pull request.
-Locked 24 July 2026. Companion: `plan.md` (the milestone map).
+each edit recording that word in its commit. Locked 24 July 2026. Companion: `plan.md` (the
+milestone map).
 
 Portulan is an **operating framework for agentic engineering** — the tailored context, standards,
 gates, and institutional memory a team needs so any coding agent works *their* way. It is an
@@ -14,11 +14,11 @@ the doctrine.**
 
 **The name.** *Portulan* is the Romanian word for a portolan chart — a mariner's map compiled from the
 accumulated observations of real voyages: hard-won local knowledge, closely guarded, more valuable
-with every trip. That is the product thesis in one object, in Sleepy Panda SRL's own language: **the
-engine is the chartmaking method; your workspace is your portulan.** Decided final 24 Jul 2026;
-**portulan.dev registered by Sleepy Panda SRL the same day.** A knockout trademark sweep in classes
-9/42 cleared before the repository's first public window. The name proceeds on that sweep; no formal
-clearance opinion is sought, by the maintainer's ruling of 17 Aug 2026.
+with every trip. That is the product thesis in one object: **the engine is the chartmaking method;
+your workspace is your portulan.** Decided final 24 Jul 2026; **portulan.dev registered by Sleepy
+Panda SRL the same day.** A knockout trademark sweep in classes 9/42 cleared before the first public
+window, and by the maintainer's ruling of 17 Aug 2026 the name proceeds on it, with no formal
+clearance opinion sought.
 
 ## The thesis
 
@@ -39,13 +39,12 @@ clearance opinion is sought, by the maintainer's ruling of 17 Aug 2026.
    rules whose incidents can no longer occur. It cannot judge a sealed rule, so it nags the owner to
    re-validate instead.
 5. **Human-curated, agent-drafted.** Agents may draft the curated layer, never own it
-   (ETH Zurich, arXiv:2602.11988: generated context hurts, curated helps). Supervised evolution —
-   proposals reviewed by humans, eval-gated where possible — is the moat against drift.
+   (ETH Zurich, arXiv:2602.11988: generated context hurts, curated helps). Supervised evolution is the
+   moat against drift.
 6. **Tailored answers; owned specifics.** Core and packs carry the universal best practice; at
    work-time the engine reads the team's own specifics — workspace, repo card, memory — and returns
    an answer tailored to them, never a generic guideline. Those specifics persist only in the layer
-   their owner controls (their workspace, their portulan); core and packs never absorb the team's.
-   Storage follows ownership.
+   their owner controls; core and packs never absorb the team's. Storage follows ownership.
 
 ## Product identity
 
@@ -57,22 +56,19 @@ clearance opinion is sought, by the maintainer's ruling of 17 Aug 2026.
   it.** Commercial value in **private feeds**: customer workspaces and premium packs delivered as
   private-marketplace plugins, plus support/onboarding.
 - **Delivery tiers:** (1) Claude Code plugin — primary; (2) `npx` CLI: `init` (interview + codebase
-  scan → drafted workspace, human curates) · `doctor` (schema validation + per-host capability
-  report + agent-legibility score) · `compile` (gates/verify → host enforcement) · `vendor`
-  (materialise a workspace where it is needed: a self-contained AGENTS.md + .portulan/ into any
-  host, and the reverse — out of a repository and into a feed-side workspace that names it) ·
-  `index` · `upgrade` · `new` (scaffold a skill · persona · pack · workspace · gate policy ·
-  repo card from a core template, into your own layer, never into `core/`) · `feedback` (file an
-  issue from a report you previewed, seam-scanned before it leaves the machine, under the Gated
-  tier); (3) vendored standards mode for cloud/CI/non-Claude hosts.
+  scan → drafted workspace) · `doctor` · `compile` · `vendor` (into any host, and out of a repository
+  into a feed-side workspace that names it) · `index` · `upgrade` · `new` (from a core template,
+  never into `core/`) · `feedback` (an issue from a report you previewed, seam-scanned before it
+  leaves the machine, under the Gated tier); (3) vendored standards mode, a self-contained AGENTS.md +
+  .portulan/, for cloud/CI/non-Claude hosts.
 - **LLM-agnostic by construction.** Standards first (AGENTS.md + SKILL.md), host adapters second,
   repo-side enforcement always. ~80% of value ships identically on every host; the enforcement
-  backends are per-host with an honest degradation report. The **platform floor** (branch
-  protection, required checks, CODEOWNERS, PR-as-gate) is the universal gate no model can bypass.
-- **Reference workspaces:** a private pilot workspace at a design-partner company (local-only,
-  never part of this repository), a fictional demo workspace (in `examples/`, public whenever the
-  repository is), and the Sleepy Panda SRL portfolio workspace (all Sleepy Panda SRL products, via the private
-  `portulan-internal` feed).
+  backends are per-host with an honest degradation report, which `doctor` gives. The **platform
+  floor** (branch protection, required checks, CODEOWNERS, PR-as-gate) is the universal gate no model
+  can bypass.
+- **Reference workspaces:** a local-only pilot workspace at a design-partner company, a fictional
+  demo workspace in `examples/`, and the Sleepy Panda SRL portfolio workspace (all its products, via
+  the private `portulan-internal` feed).
 
 ## Non-goals (as binding as the goals)
 
@@ -85,8 +81,7 @@ clearance opinion is sought, by the maintainer's ruling of 17 Aug 2026.
   Slack/webhook approvals for gated actions), shipped self-hostable first.
 - **No auto-generated curated context.** `init` drafts; humans accept.
 - **No unsupervised self-evolution.** Rule changes are proposals → human/eval-gated PRs.
-- **No ceremony that can't scale down.** The triage lane is a first-class feature
-  (BMAD's failed promise is our differentiator).
+- **No ceremony that can't scale down.** The triage lane is a first-class feature.
 - **No client references — ever.** This repository (files, history, commit messages, branch names)
   carries no names, identifiers, paths, or artifacts of any private client engagement. Client-side
   context lives outside the repo and is governed there.

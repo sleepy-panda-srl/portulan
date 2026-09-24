@@ -780,10 +780,10 @@ export function namedWithAuto(named = [], forced = false) {
  * bound checkpoint pack's two gate fragments into nothing. Three of five tools were unusable unasked.
  *
  * The maintainer ruled a **behaviour change rather than a row amendment**: the row's word stands and
- * the implementation meets it. A fresh supervisor graded that ruling sound from `../docs/vision.md`,
- * which defines `doctor` as a **per-host capability report** — answering about the host is what it is
- * for — and sharpened the boundary to: **a verdict about the *repository* must not depend on the
- * machine.**
+ * the implementation meets it. A fresh supervisor graded that ruling sound from `../docs/vision.md`
+ * § *LLM-agnostic by construction*, which makes `doctor` the **per-host report** — answering about the
+ * host is what it is for — and sharpened the boundary to: **a verdict about the *repository* must not
+ * depend on the machine.**
  *
  * **What holds that boundary is the PIN, not this branch.** Six required invocations name their root
  * (2026-08-13), a named root **replaces** every other source, and `../cli/pinned-roots.live.test.mjs`

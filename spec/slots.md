@@ -326,9 +326,10 @@ at someone else's workspace.
 
 ## `products[]` — repeated, even though customer zero has one
 
-The criterion says *portfolio-aware: many products per workspace*, and the vision's Reference workspaces
-bullet describes a Sleepy Panda SRL workspace covering **all** Sleepy Panda SRL products. So the product layer is
-per-product from the start, not a workspace-level field that a later milestone has to unpick.
+The criterion says *portfolio-aware: many products per workspace*, and
+[`vision.md`](../docs/vision.md) § *Reference workspaces* gives the Sleepy Panda SRL workspace **all**
+its products. So the product layer is per-product from the start, not a workspace-level field that a
+later milestone has to unpick.
 
 This is the schema's most deliberate act of resisting its own evidence. Derived faithfully from the only
 available sample, `products` would be a singular object — customer zero has exactly one product, and a
@@ -353,9 +354,10 @@ claim it cannot check is whether the mission written there is still true.
 
 ## `affordances` — what the product offers an agent
 
-The unclaimed niche in the influence map: *agent-legibility, repo affordances scored by `doctor`*. The
-slot holds what an agent can rely on — entry points, contracts, budgets, commands — **and** what it must
-not assume, which is the half that makes the document worth reading. Customer zero's
+The unclaimed niche [`vision.md`](../docs/vision.md) § *Agent-native / AX* names: agent legibility,
+the repository's affordances scored by `doctor`. The slot holds what an agent can rely on — entry
+points, contracts, budgets, commands — **and** what it must not assume, which is the half that makes
+the document worth reading. Customer zero's
 [affordances document](../.portulan/products/portulan/affordances.md) is a filled example.
 
 It resolves down the cascade *inside* the workspace: a workspace-level `affordances` is the default, and

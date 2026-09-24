@@ -9,9 +9,9 @@
 //
 // ## What it writes, and what it refuses to write
 //
-// It drafts. `docs/vision.md` carries *"No auto-generated curated context. `init` drafts; humans
-// accept"* as a binding non-goal, so every file here is a starting point with the questions left
-// visible in it — never a filled-in workspace that reads as finished. The two hard refusals:
+// It drafts, and humans accept: a binding non-goal, `docs/vision.md` § *No auto-generated curated
+// context*. So every file here is a starting point with the questions left visible in it — never a
+// filled-in workspace that reads as finished. The two hard refusals:
 //
 // **It never overwrites a residence.** A repository already carrying a workspace or a pointer is
 // governed, and replacing that is not onboarding — it is the switch, which `cli/vendor.mjs` carries as
@@ -49,16 +49,17 @@
 // one they do not.
 //
 // **The interview asks where somebody is there to answer — milestone 7 session 7.** `docs/vision.md`
-// glosses `init` as *interview + codebase scan*, and until this session the second half shipped and the
-// first did not: the substrate — every question modelled as an answer, with a validator each — was
-// built first precisely because a prompt loop cannot be run by CI, by a test, or by a headless host.
-// It now drives a loop, under two conditions that keep both halves honest: the interview runs only
-// where **stdin and stdout are both TTYs**, so every non-interactive invocation is byte-for-byte what
-// it was before; and it decides nothing the flags path could not decide, so the two are one tool with
-// two front doors rather than two tools. `--no-interview` is the escape for a terminal that wants the
-// refusals. _(This paragraph read "there is no interactive interview yet" and left whether flags
-// satisfy the gloss to the maintainer at milestone 7's close. The question is retired rather than
-// answered: the loop exists, so nobody has to rule on whether its absence was acceptable.)_
+// § *Delivery tiers* glosses `init` as an interview plus a codebase scan, and until this session the
+// second half shipped and the first did not: the substrate — every question modelled as an answer, with
+// a validator each — was built first precisely because a prompt loop cannot be run by CI, by a test, or
+// by a headless host. It now drives a loop, under two conditions that keep both halves honest: the
+// interview runs only where **stdin and stdout are both TTYs**, so every non-interactive invocation is
+// byte-for-byte what it was before; and it decides nothing the flags path could not decide, so the two
+// are one tool with two front doors rather than two tools. `--no-interview` is the escape for a
+// terminal that wants the refusals. _(This paragraph read "there is no interactive interview yet" and
+// left whether flags satisfy the gloss to the maintainer at milestone 7's close. The question is
+// retired rather than answered: the loop exists, so nobody has to rule on whether its absence was
+// acceptable.)_
 //
 // ## Exit codes
 //
@@ -1428,11 +1429,11 @@ function terminal() {
 /**
  * Ask for what the flags did not supply, and fill `answers` in place.
  *
- * **What the gloss asked for and what this closes.** `docs/vision.md` glosses `init` as *interview +
- * codebase scan → drafted workspace, human curates*. The scan has shipped since session 1 and the
- * substrate — every question modelled as an answer, with one validator each — since then; the prompt
- * loop was the open half, and this is it. Nothing here decides anything the flags path could not
- * decide, which is the property that keeps the two paths one tool.
+ * **What the gloss asked for and what this closes.** `docs/vision.md` § *Delivery tiers* glosses `init`
+ * as an interview plus a codebase scan that drafts a workspace, which humans curate. The scan has
+ * shipped since session 1 and the substrate — every question modelled as an answer, with one validator
+ * each — since then; the prompt loop was the open half, and this is it. Nothing here decides anything
+ * the flags path could not decide, which is the property that keeps the two paths one tool.
  *
  * **A question is re-asked, never fatal.** The flags path refuses a bad value because there is nobody
  * to ask again; here there is, and aborting an interview on a typo would make the interactive path the

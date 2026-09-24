@@ -139,6 +139,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`upgrade.test.mjs`](upgrade.test.mjs) | `upgrade` — the migration chain, and the three kinds of step. |
 | [`vendor.test.mjs`](vendor.test.mjs) | Tests for `vendor` — the subcommand that materialises a workspace where it is needed, and carries the residence switch in both directions. |
 | [`version-carriers.test.mjs`](version-carriers.test.mjs) | The rail's suite. Every contracted state is exercised POSITIVELY — green, drift, a carrier reworded away, and could-not-run — because a failure path nobody has run is one nobody has seen work. Two cases exist only because this repository's own corpus refutes the naive design: the record layer must be IGNORED, and a `g` regex must not carry lastIndex between files. |
+| [`vision-sections.live.test.mjs`](vision-sections.live.test.mjs) | The constitution is cited by its sections, not by its words, and this holds every citation to it. |
 | [`warm.test.mjs`](warm.test.mjs) | The warm-start A/B's suite. **No case runs a real agent**: a stub stands in, writing a transcript where the host would and printing the host's JSON result, because a test starting `claude` would put a session and a credential inside a verify recipe. What the stub cannot stand in for is the host honouring a switch; that is the recorded run's to show (`../evals/ab/warm.md`). |
 
 ### Other files

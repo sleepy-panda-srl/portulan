@@ -50,10 +50,11 @@
 // ## What is deliberately not here
 //
 // No OAuth device flow — the user's existing `gh` login and nothing else. No relay: proposal `0014`'s
-// Q5(b) is a hosted service and `docs/vision.md` permits exactly one by name, so it is constitutional
-// and unbuilt. No telemetry, no crash reporter, no attachments, no screenshots, no log bundles — every
-// one is an unbounded channel through the wall this file is about. And **no labels**: `0014` rules that
-// the repository owns its own labels, so the form's title prefix is what marks the kind.
+// Q5(b) is a hosted service and `docs/vision.md` § *No hosted SaaS* permits exactly one by name, so it
+// is constitutional and unbuilt. No telemetry, no crash reporter, no attachments, no screenshots, no
+// log bundles — every one is an unbounded channel through the wall this file is about. And **no
+// labels**: `0014` rules that the repository owns its own labels, so the form's title prefix is what
+// marks the kind.
 
 import crypto from "node:crypto";
 import fs from "node:fs";

@@ -1324,9 +1324,9 @@ describe("the store reports its own growth", () => {
 
 // ------------------------------------------------- the per-host degradation report
 //
-// `docs/vision.md` promises that "the enforcement backends are per-host with an honest degradation
-// report". The compiler's per-rule accounting is that report's data — every rule ends as compiled or
-// refused-with-a-reason, per backend — so this reads it rather than re-deriving it. Two
+// `docs/vision.md` § *LLM-agnostic by construction* promises per-host enforcement backends with an
+// honest degradation report. The compiler's per-rule accounting is that report's data — every rule ends
+// as compiled or refused-with-a-reason, per backend — so this reads it rather than re-deriving it. Two
 // implementations of one accounting is the drift this repository keeps finding.
 //
 // Report severity, never failure, for the same reason `retirement` is: nothing legislates a coverage
