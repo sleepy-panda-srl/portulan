@@ -1373,8 +1373,8 @@ describe("the shared matcher", () => {
     // `matchesRule` documents that it never throws, and that promise is load-bearing rather than
     // tidy: ./gate.mjs catches and steps aside, so an exception here does not
     // surface as an error — it silently removes whatever gate was being evaluated. For the shell
-    // half of `edit-the-constitution` that is the only layer there is (hole 3), so a throw is a
-    // fail-open wearing a stack trace.
+    // half of a Gated or Prohibited `write:` rule that is the only layer there is (hole 3), so a throw
+    // is a fail-open wearing a stack trace.
     //
     // It threw on all four of these until 2026-07-28, introduced on this branch by the fix that
     // began passing the raw payload to `commandSegments` instead of an already-stringified spelling.
@@ -2267,9 +2267,15 @@ describe("customer zero", () => {
         }
     });
 
-    test("the constitution is prohibited, not merely gated", () => {
+    test("the constitution changes by pull request, and no gate refuses or prompts an edit to it", () => {
+        // Prohibited from milestone 4 until 2026-09-24, when the maintainer lifted the prohibition. The file
+        // stays human-owned: it changes by pull request under his review, which is the Propose tier.
         const rule = real.rules.find((r) => r.action?.write === "docs/vision.md");
-        assert.equal(rule.tier, "prohibited", "an approvable constitution edit is not a prohibition");
+        assert.equal(rule.tier, "propose", "the constitution changes by pull request");
+        const refusing = real.rules.filter(
+            (r) => (r.tier === "gated" || r.tier === "prohibited") && matchesRule(r, "Edit", { file_path: path.join(REPO, "docs", "vision.md") }),
+        );
+        assert.deepEqual(refusing.map((r) => r.id), [], "a rule refuses or prompts an edit the maintainer allowed");
     });
 
     test("the two destructive push spellings are gated; the ordinary one is not", () => {

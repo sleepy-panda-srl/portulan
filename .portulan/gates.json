@@ -17,13 +17,6 @@
 
   "rules": [
     {
-      "id": "edit-the-constitution",
-      "tier": "prohibited",
-      "action": { "write": "docs/vision.md" },
-      "reason": "docs/vision.md is the constitution and is human-owned. Every other change here is graded against it, so an agent that can edit it can launder any other change past its own grader. Raise the question with the maintainer and stop."
-    },
-
-    {
       "id": "force-push-without-a-lease",
       "tier": "gated",
       "action": { "shell": "git push --force" },
@@ -119,6 +112,12 @@
       "tier": "propose",
       "action": { "write": ".portulan/" },
       "reason": "Anything in this workspace, including the gate map and this policy file, changes by pull request."
+    },
+    {
+      "id": "change-the-constitution",
+      "tier": "propose",
+      "action": { "write": "docs/vision.md" },
+      "reason": "docs/vision.md is the constitution and is human-owned. It changes by pull request under the maintainer's review, and an agent's edit cites his word in its commit message."
     },
     {
       "id": "change-the-plan",

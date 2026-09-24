@@ -29,8 +29,8 @@
 // ../.portulan/gate-map.md defines Gated as "explicit human approval, per action, before it
 // happens" — which is what `ask` is: interactively it prompts; headless, where nobody can approve,
 // it blocks. Compiling Gated to `deny` would be the *prohibition* semantics wearing the Gated
-// tier's name, and it would make the tier above it — the constitution, which has no approval path
-// at all — indistinguishable from an ordinary push.
+// tier's name, and it would make the tier above it — a rule with no approval path at all —
+// indistinguishable from an ordinary push.
 //
 // ## What this file cannot tell you
 //
@@ -585,7 +585,7 @@ export function shellWords(command) {
             //   1. `fuzz-shell` — the `crlf-continuation-in-the-payload|write-named` EXPECT cell, whose
             //      recorded divergence CLOSES. Good news, and a red until the record absorbs it.
             //   2. `goldens` — the `a-CRLF-continuation` fixture in
-            //      `../evals/goldens/gates/edit-the-constitution.json` regresses.
+            //      `../evals/goldens/gates/change-the-constitution.json` regresses.
             //   3. `./compile.test.mjs` — **two** direct assertions fail, *a CRLF continuation before
             //      the path* and *a CRLF continuation after `>`*.
             //   4. `mutants` — exit **2, could-not-run**, downstream of 2: a census over a red corpus
@@ -1162,7 +1162,7 @@ export function matchesRule(rule, tool, input = {}) {
         // A `write:` rule names a PATH, not a tool. For one milestone it reached only the three tools
         // that carry a `file_path`, so `echo x >> docs/vision.md` through Bash was gated by neither
         // layer: the permission rule rejects the tool, and this matcher fell through to `false`. The
-        // rule's own sentence is what that cost — an agent that can edit the constitution can launder
+        // rule's own sentence was what that cost — an agent that could edit the constitution could launder
         // any other change past its own grader — and it was reachable inside a session, with only the
         // platform floor stopping it from landing. See `shellWrites` above for what this covers and,
         // more to the point, for what it does not.

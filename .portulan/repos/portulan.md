@@ -12,8 +12,8 @@ permanent, and **all of that history is world-readable**: the repository was pub
 - run: `node cli/portulan.mjs <subcommand>` since milestone 7 — the eight `docs/vision.md` names, **all of which dispatch** since session 9, when `upgrade` (the last) was built. Do not read that list from here either: `node -e 'import("./cli/portulan.mjs").then(m => console.log(m.SUBCOMMANDS.map(s => s.name + (s.module ? "" : " (unbuilt)")).join(" · ")))'` derives it, and this line is a hand-maintained copy the way the recipe counts above are. Or `./.portulan/verify/doctor.sh` — the nearest thing to running the product: it validates both workspaces against the Workspace Definition. From milestone 3 there is a second sense of "run": install the repository as a Claude Code plugin and invoke `/portulan`, which boots the engine ([`../../plugin/`](../../plugin/))
 
 **Gates.** Inherits [`../gate-map.md`](../gate-map.md) with no deviations. Two worth keeping in front of
-mind because they are unusual: [`../../docs/vision.md`](../../docs/vision.md) is never edited by an agent
-at all, and repository **visibility** is Gated — **public**, after a first public window of
+mind because they are unusual: [`../../docs/vision.md`](../../docs/vision.md) is human-owned, changed by
+pull request under the maintainer's review, and repository **visibility** is Gated — **public**, after a first public window of
 2026-07-27 → 2026-08-03 and a private one from 2026-08-03. The setting has now moved **three** times,
 each time by the maintainer's decision; further visibility changes stay Gated, by decision, not by accident
 ([`../memory/a-published-window-cannot-be-unpublished.md`](../memory/a-published-window-cannot-be-unpublished.md)).
@@ -35,7 +35,7 @@ remaining top-level directories are scaffolding that fills in milestone by miles
   load-bearing for *every* task.
 - [`../../docs/plan.md`](../../docs/plan.md) is a living document — its Status column moves when
   milestone state moves, and it is what a session boots from. [`../../docs/vision.md`](../../docs/vision.md)
-  sits next to it and is the opposite: frozen, human-owned, never agent-edited.
+  sits next to it and is the opposite: human-owned and rarely changed.
 - A build-session bootstrap file at the repository root is deliberately git-ignored and never committed.
   If it appears in a diff, that is the bug.
 - History cleanliness is load-bearing here in a way it is not in most repositories: this history **is**

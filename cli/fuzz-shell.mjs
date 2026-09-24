@@ -88,8 +88,8 @@ export const DEFAULT_SEED = 20260825;
  */
 export const PAYLOADS = {
     shell: { rule: "force-push-without-a-lease", tool: "Bash", what: "a gated force-push" },
-    "write-redirect": { rule: "edit-the-constitution", tool: "Bash", what: "a redirection into the constitution" },
-    "write-named": { rule: "edit-the-constitution", tool: "Bash", what: "a writer NAMING the constitution" },
+    "write-redirect": { rule: "change-the-constitution", tool: "Bash", what: "a redirection into the constitution" },
+    "write-named": { rule: "change-the-constitution", tool: "Bash", what: "a writer NAMING the constitution" },
 };
 
 /**
@@ -172,7 +172,7 @@ export function respell(word, rand) {
 /**
  * Spellings of `docs/vision.md` that a shell resolves to the same file.
  *
- * Every one of these must reach the constitution's write gate. They are the "two path spellings" the
+ * Every one of these must reach the constitution's write rule. They are the "two path spellings" the
  * 2026-07-28 amendment names among the eight bypasses #60 shipped with, generalised: `normalisePath`
  * exists for exactly this list and `./fuzz-shell.ground.test.mjs` writes each one to a throwaway file
  * under a temp directory to prove bash agrees.

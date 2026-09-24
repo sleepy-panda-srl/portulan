@@ -17,9 +17,7 @@
     "warning": "Generated file. Edit .portulan/gates.json and recompile; `verify/compile.sh` fails on drift."
   },
   "permissions": {
-    "deny": [
-      "Edit(./docs/vision.md)"
-    ],
+    "deny": [],
     "ask": [
       "Bash(git push --force:*)",
       "Bash(git push --delete:*)",
@@ -37,33 +35,6 @@
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR}/cli/gate.mjs\""
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR}/cli/gate.mjs\""
-          }
-        ]
-      },
-      {
-        "matcher": "NotebookEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR}/cli/gate.mjs\""
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
         "hooks": [
           {
             "type": "command",

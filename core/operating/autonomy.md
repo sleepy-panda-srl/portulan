@@ -54,7 +54,7 @@ else safe.)_
 by changing the rule itself through the evolution gate — never by runtime approval.
 
 That distinction is the whole reason the fourth tier exists rather than being folded into Gated, and it
-is not academic: a compiler with three tiers must file *"no agent edits the constitution"* under Gated,
+is not academic: a compiler with three tiers must file *"no session certifies its own checkpoint"* under Gated,
 and Gated compiles to a prompt. *Never* would become *unless somebody clicks yes* — a difference no
 reader of the gate map would see, produced entirely by the vocabulary being one word short. _(Found by
 building the compiler: milestone 4 needed a fourth class before it had a schema, and the workspace layer
