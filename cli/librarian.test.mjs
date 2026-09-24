@@ -1332,18 +1332,44 @@ describe("a pass leaves the tree it just wrote to green", () => {
     test("a report named inside the tree is refused, and nothing is written or regenerated", () => {
         // A report in the tree is a file the next commit carries, as the workflow stages with `git add
         // -A`, and in the store it would be read as a record. Refused inside the workspace, inside the
-        // tree it declares, and through a link from outside into either.
+        // tree it declares, and through a link from outside into either, dangling or not: Copilot, #457,
+        // a dangling link names a file that does not exist yet, and a write through it creates it.
         const m = MANIFEST({ tree: "../", librarian: { staleness: STALENESS }, memory: { index: { path: "memory-index.md" } } });
         const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: m });
-        const link = path.join(scratch(), "into-tree");
-        fs.symlinkSync(dir, link);
-        for (const report of [path.join(dir, ".portulan/memory/zz.md"), path.join(dir, "report.md"), path.join(link, "report.md")]) {
+        const outside = scratch();
+        fs.symlinkSync(dir, path.join(outside, "into-tree"));
+        fs.symlinkSync(path.join(dir, "new-report.md"), path.join(outside, "dangling.md"));
+        fs.symlinkSync("dangling.md", path.join(outside, "chain.md"));
+        fs.symlinkSync(path.join(dir, ".portulan/memory/new"), path.join(outside, "dangling-dir"));
+        const reports = [
+            path.join(dir, ".portulan/memory/zz.md"),
+            path.join(dir, "report.md"),
+            path.join(outside, "into-tree", "report.md"),
+            path.join(outside, "dangling.md"),
+            path.join(outside, "chain.md"),
+            path.join(outside, "dangling-dir", "report.md"),
+        ];
+        for (const report of reports) {
             const out = say();
             assert.equal(run(["--as-of", "2026-06-15", "--write", "--report", report, path.join(dir, ".portulan")], out), 2, report);
             assert.match(out.lines.join("\n"), /refusing to write the report inside/);
             assert.equal(fs.existsSync(report), false, report);
         }
+        assert.equal(fs.existsSync(path.join(dir, "new-report.md")), false, "nothing was written through a dangling link");
+        assert.equal(fs.existsSync(path.join(dir, ".portulan/memory/new")), false, "nor a directory made through one");
         assert.equal(fs.existsSync(path.join(dir, ".portulan/memory-index.md")), false, "and no index was regenerated");
+    });
+
+    test("a workspace whose pass failed still keeps the report out of the tree it declares", () => {
+        // The tree is read from the manifest, not from the pass's result, which a pass that threw
+        // never returns: a workspace this tool refuses to pass still governs its tree.
+        const m = { ...MANIFEST({ tree: "../" }), portulan: { spec: "9.9" } };
+        const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: m });
+        const report = path.join(dir, "report.md");
+        const out = say();
+        assert.equal(run(["--as-of", "2026-06-15", "--report", report, path.join(dir, ".portulan")], out), 2);
+        assert.match(out.lines.join("\n"), /refusing to write the report inside/);
+        assert.equal(fs.existsSync(report), false);
     });
 });
 

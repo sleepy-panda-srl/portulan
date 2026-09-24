@@ -381,9 +381,7 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
     }
 
     const name = workspace.name ?? dir;
-    // The tree the workspace governs, which the report must stay out of (`run`), declared or not.
-    const tree = workspace.tree ? path.resolve(dir, workspace.tree) : null;
-    if (!workspace.librarian) return { dir, name, tree, declared: false };
+    if (!workspace.librarian) return { dir, name, declared: false };
 
     const staleness = workspace.librarian.staleness ?? {};
     const thresholds = {
@@ -591,7 +589,7 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
 
     const mining = {
         incidents: mineIncidents(series, curated, { since }),
-        reviews: mineReviews(reviews, { treeRoot: tree }),
+        reviews: mineReviews(reviews, { treeRoot: workspace.tree ? path.resolve(dir, workspace.tree) : null }),
     };
 
     const consolidation = {
@@ -623,7 +621,6 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
     return {
         dir,
         name,
-        tree,
         declared: true,
         thresholds,
         index,
@@ -1194,22 +1191,48 @@ export function parseArgs(argv) {
 }
 
 /**
- * A path with its links resolved as far as it exists: the nearest existing ancestor through
- * `realpathSync`, the rest appended. A report path need not exist yet, and a link from outside into a
- * tree must not carry a write past the containment check `run` makes.
+ * Where a write to `p` lands, links resolved: the nearest existing ancestor through `realpathSync`, the
+ * rest appended, and a dangling link followed to its target, which a write through it would create. A
+ * report path need not exist yet, and no link from outside into a tree, dangling or not, may carry a
+ * write past the containment check `run` makes. Copilot, #457: `realpathSync` alone refuses a dangling
+ * link, so the walk stopped at the link's own name, outside the tree, and the write followed it in.
  */
 function realish(p) {
     const rest = [];
     let at = p;
-    for (;;) {
+    for (let hops = 0; ; ) {
         try {
             return path.join(fs.realpathSync(at), ...rest);
         } catch {
+            // A dangling link resolves against its real parent, as the kernel resolves it; forty hops is
+            // Linux's own limit on a chain, past which the write fails rather than lands.
+            let target = null;
+            try {
+                if (fs.lstatSync(at).isSymbolicLink()) {
+                    target = path.resolve(fs.realpathSync(path.dirname(at)), fs.readlinkSync(at));
+                }
+            } catch {
+                // Not there at all, or unreadable: an ancestor is resolved instead, below.
+            }
+            if (target !== null && hops++ < 40) {
+                at = target;
+                continue;
+            }
             const up = path.dirname(at);
-            if (up === at) return p;
+            if (up === at) return path.join(at, ...rest);
             rest.unshift(path.basename(at));
             at = up;
         }
+    }
+}
+
+/** The tree a workspace declares, read from its manifest, so a pass that failed still names it. */
+function declaredTree(dir) {
+    try {
+        const { tree } = JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8"));
+        return typeof tree === "string" && tree !== "" ? path.resolve(dir, tree) : null;
+    } catch {
+        return null;
     }
 }
 
@@ -1282,18 +1305,20 @@ export function run(argv, say = console.log) {
     // than what it repaired (`indexState`). It goes where the scheduler names, never into a series,
     // and never into a tree it reported on: a report written there is a file the next commit carries,
     // which the workflow's `git add -A` would, and in a store it is read as a record. So a path inside
-    // any named workspace, or inside the tree one declares, is refused, links resolved first.
+    // any named workspace, or inside the tree one declares (read from the manifest, so a workspace
+    // whose pass failed still counts), is refused, links resolved first; and the write goes to the
+    // resolved path, so the file written is the file judged.
     if (reportPath !== undefined) {
         const target = realish(path.resolve(reportPath));
-        const roots = [...dirs.map((dir) => path.resolve(dir)), ...results.map((r) => r.tree).filter(Boolean)];
+        const roots = dirs.flatMap((dir) => [path.resolve(dir), declaredTree(dir)]).filter(Boolean);
         const inside = roots.find((root) => isInside(realish(root), target));
         if (inside !== undefined) {
             say(`  ✗ refusing to write the report inside ${inside}: a report goes outside the tree, where no commit carries it`);
             worst = 2;
         } else {
             try {
-                fs.mkdirSync(path.dirname(path.resolve(reportPath)), { recursive: true });
-                fs.writeFileSync(reportPath, renderReport(results, { asOf }));
+                fs.mkdirSync(path.dirname(target), { recursive: true });
+                fs.writeFileSync(target, renderReport(results, { asOf }));
                 say(`  ok wrote the report to ${reportPath}`);
             } catch (cause) {
                 say(`  ✗ cannot write the report — ${cause.code ?? cause.message}`);
