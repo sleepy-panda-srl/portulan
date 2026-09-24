@@ -8,9 +8,10 @@
 // map school. This suite holds every such name, and every "thesis N", to the file as it stands. It
 // checks that the section exists and never that any words match, so the text under a section is free to
 // change and a renamed lead or a renumbered thesis goes red where it is cited. Case and spacing are not
-// part of a name: two sections that differ only in them count as duplicates, so a citation can never
-// match the wrong one. A rename that changes only case therefore stays green, and one that changes a
-// word or a punctuation mark goes red.
+// part of a name, and neither is a heading's parenthetical aside or the stop, colon, comma or semicolon
+// that closes a bold lead, since no citation carries them. Two sections that differ only in those count
+// as duplicates, so a citation can never match the wrong one. A rename that changes only them therefore
+// stays green, and one that changes a word or a punctuation mark within the name goes red.
 //
 // **The record layer is out.** A handoff, proposal or milestone file cites a thesis by the number it
 // had on the record's day, and records are forward-only. `.portulan/rule-carriers.json`'s `exclude` is
