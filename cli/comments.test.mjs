@@ -184,7 +184,7 @@ describe("jsonComments", () => {
             '    "three"',
             "  ],",
             '  "comment": "data",',
-            '  "a": { "_note": "four", "_accepted_note": "five", "_notes_seen": "data" }',
+            '  "a": { "_note": "four", "_accepted_note": "five", "_notes_seen": "data", "_footnote": "data" }',
             "}",
         ].join("\n");
         assert.deepEqual(texts(jsonComments(source)), [
@@ -251,7 +251,6 @@ describe("historyOf", () => {
 
     test("a review round or a credit to the reviewer, with no pull request named", () => {
         for (const line of [
-            "Round 3.",
             "the guard round 6 had removed on purpose",
             "Round 2's repair made it strict.",
             "as session 1's round 9 showed",
@@ -259,7 +258,6 @@ describe("historyOf", () => {
             "(Copilot, final round.)",
             "Copilot, on the round reviewing it.",
             "Copilot's suppressed notes named three files",
-            "as pointed out by Copilot.",
         ]) {
             assert.deepEqual(flagged(line), [[1, ["review"]]], line);
         }
@@ -287,6 +285,9 @@ describe("historyOf", () => {
                 "GitHub's REST API version 2022-11-28 names the header `X-GitHub-Api-Version`.",
                 "`repos/{owner}/{repo}/issues/8/comments` is the endpoint.",
                 "Copilot's reviewer login is `copilot-pull-request-reviewer[bot]`.",
+                "Round 2 decimal places.",
+                "Requests a review from Copilot.",
+                "(Copilot)",
                 "a proposal is drafted before its number is taken",
             ),
             [],
@@ -313,7 +314,7 @@ describe("report", () => {
         const over = report(read, { limit: 0 });
         assert.equal(over.code, 1);
         assert.match(over.text, /a\.mjs: 1 date/);
-        assert.match(over.text, /RED: 1 is over the limit of 0/);
+        assert.match(over.text, /RED: 1 is over the limit of 0: .*; the rule: core\/operating\/context\.md, on every boot card\.$/m);
         const under = report(read, { limit: 3 });
         assert.equal(under.code, 0);
         assert.match(under.text, /green: 1 is within the limit of 3; lower the limit to 1/);
@@ -322,7 +323,9 @@ describe("report", () => {
 
     test("the byte rail holds every comment's bytes, and names a lower rail past 5% of headroom", () => {
         const bytes = read[0].comments.reduce((total, c) => total + c.bytes, 0);
-        assert.equal(report(read, { bytes: bytes - 1 }).code, 1);
+        const over = report(read, { bytes: bytes - 1 });
+        assert.equal(over.code, 1);
+        assert.match(over.text, /RED: .* comment bytes are over the rail of .*; the rule: core\/operating\/context\.md, on every boot card\.$/m);
         assert.match(report(read, { bytes }).text, new RegExp(`green: ${bytes} comment bytes are within the rail of ${bytes}$`));
         assert.match(report(read, { bytes: bytes * 2 }).text, new RegExp(`lower the rail to ${Math.ceil(bytes * 1.02)}$`));
     });

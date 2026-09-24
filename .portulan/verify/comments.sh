@@ -23,8 +23,8 @@ cd -- "$root" || exit 2
 
 # LIMIT is only ever lowered, to the count a change leaves. BYTES rails every comment byte at the figure
 # plus 2%, as ./context.sh rails a boot: lowered when comments are cut, raised only with its reason here.
-LIMIT=1817
-BYTES=2416709             # 2,369,322 B
+LIMIT=1791
+BYTES=2416415             # 2,369,034 B
 
 node cli/comments.mjs --limit "$LIMIT" --bytes "$BYTES"
 status=$?

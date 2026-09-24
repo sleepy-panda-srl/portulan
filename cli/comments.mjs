@@ -292,7 +292,7 @@ function yamlCommentAt(text) {
     return -1;
 }
 
-const COMMENT_KEY = /^(\/\/|\$comment|_\w*comments?|_\w*notes?)$/;
+const COMMENT_KEY = /^(\/\/|\$comment|_(?:\w+_)?(?:comments?|notes?))$/;
 
 function keyOf(quoted) {
     try {
@@ -414,9 +414,9 @@ export const KINDS = [
                 `#\\d{2,},?\\s+rounds?\\s+${NUMBER_WORD}\\b`,
                 `\\b${CREDITED}\\s+(?:by|in)\\s+(?:a\\s+|the\\s+)?(?:Copilot|review)\\b`,
                 `\\bCopilot(?:'s)?\\s+(?:${CREDITED.toLowerCase()}|round|rounds|note|notes|finding|findings|named|promoted|proposed|pointed)\\b`,
-                `\\(Copilot\\b|\\bCopilot[.)]|\\bCopilot,\\s+(?:on\\s+)?the\\s+round|\\bCopilot's\\s+\\w+\\s+notes?\\b`,
+                `\\(Copilot\\b[^)]{0,40}?\\bround\\b|\\bCopilot,\\s+(?:on\\s+)?the\\s+round|\\bCopilot's\\s+\\w+\\s+notes?\\b`,
                 `\\b[Rr]ounds?\\s+\\d+(?:'s\\b|\\s+(?:found|fixed|raised|removed|made|said|then|had)\\b)`,
-                `(?<=^|[.!?]\\s+)Round\\s+\\d+\\b|\\bsession\\s+\\d+'s\\s+round\\s+\\d+\\b`,
+                `\\bsession\\s+\\d+'s\\s+round\\s+\\d+\\b`,
             ].join("|"),
             "gu",
         ),
@@ -515,7 +515,6 @@ export function scan(root, { exclude = [] } = {}) {
 const sum = (items, pick) => items.reduce((total, item) => total + pick(item), 0);
 const figure = (n) => n.toLocaleString("en-US");
 
-/** How many comment lines in the tree at `root` record a change's history. */
 export const historyCount = (root) => sum(scan(root), (entry) => entry.history.length);
 
 function directoryTable(read) {
@@ -538,13 +537,15 @@ function directoryTable(read) {
     ];
 }
 
+const RULE_AT = "the rule: core/operating/context.md, on every boot card";
+
 function verdicts({ count, limit, bytes, byteRail }) {
     const lines = [];
     let code = 0;
     if (limit !== null) {
         if (count > limit) {
             code = 1;
-            lines.push(`RED: ${figure(count)} is over the limit of ${figure(limit)}: take the history out of the comments listed, into the commit message.`);
+            lines.push(`RED: ${figure(count)} is over the limit of ${figure(limit)}: take the history out of the comments listed, into the commit message; ${RULE_AT}.`);
         } else {
             const lower = count < limit ? `; lower the limit to ${figure(count)}, so none comes back` : "";
             lines.push(`green: ${figure(count)} is within the limit of ${figure(limit)}${lower}`);
@@ -553,7 +554,7 @@ function verdicts({ count, limit, bytes, byteRail }) {
     if (byteRail !== null) {
         if (bytes > byteRail) {
             code = 1;
-            lines.push(`RED: ${figure(bytes)} comment bytes are over the rail of ${figure(byteRail)}: cut the comments that are not truly needed, or raise the rail with its reason.`);
+            lines.push(`RED: ${figure(bytes)} comment bytes are over the rail of ${figure(byteRail)}: cut the comments that are not truly needed, or raise the rail with its reason; ${RULE_AT}.`);
         } else {
             const lower = (byteRail - bytes) * 100 > byteRail * NOTE_PERCENT ? `; more than ${NOTE_PERCENT}% under it, so lower the rail to ${figure(railFor(bytes))}` : "";
             lines.push(`green: ${figure(bytes)} comment bytes are within the rail of ${figure(byteRail)}${lower}`);

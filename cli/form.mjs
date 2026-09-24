@@ -147,7 +147,6 @@ export function withIgnoreLines(text, lines) {
     return `${base}${sep}${lines.join("\n")}\n`;
 }
 
-/** The recipe holding a tree's comment lines that record a change's history at a limit that only falls. */
 export const COMMENTS_RECIPE = "comments";
 
 /** Whether the workspace declares that recipe itself: a pack's recipes are namespaced apart from it. */
@@ -156,7 +155,6 @@ export function declaresCommentsRecipe(manifest) {
     return own.ok && own.recipes.some((recipe) => recipe.id === COMMENTS_RECIPE);
 }
 
-/** The manifest's entry for that recipe, for a workspace at `workspaceRel` from the tree's root. */
 export function commentsRecipeEntry(workspaceRel) {
     const run = workspaceRel === "." ? "./verify/comments.sh" : `./${workspaceRel}/verify/comments.sh`;
     return { id: COMMENTS_RECIPE, run, requires: ["bash", "git", "node"] };
