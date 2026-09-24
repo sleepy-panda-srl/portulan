@@ -6,7 +6,8 @@ requirement — *standards first, host adapters second* — so what is specific 
 
 | Path | What it is |
 |---|---|
-| [`skills/portulan/SKILL.md`](skills/portulan/SKILL.md) | The boot skill. Loads the kernel, finds the *project's* workspace, reads its slots, and reports what is and is not enforced. Invoked as `/portulan`. |
+| [`skills/portulan/SKILL.md`](skills/portulan/SKILL.md) | The boot skill. Where the project's boot card is loaded, the card is the boot; otherwise it sends the boot to its steps. Invoked as `/portulan`. |
+| [`skills/portulan/steps.md`](skills/portulan/steps.md) | Steps 1 to 5 of the boot, in full: loads the kernel, finds the *project's* workspace, reads its slots, and reports what is and is not enforced. Read at boot only where no boot card is loaded. |
 | [`skills/portulan/pointer-manifest.md`](skills/portulan/pointer-manifest.md) | Step 2a of the boot, in full: how a boot resolves a pointer manifest through the CLI. Read at boot only where the project's manifest is a pointer. |
 | [`skills/portulan/packs.md`](skills/portulan/packs.md) | Step 3a of the boot, in full: what a declared pack does and does not deliver here, in the four limits the report gives. Read at boot only where the workspace names packs. |
 | [`skills/portulan/rationale.md`](skills/portulan/rationale.md) | Why each boot step is shaped as it is: the measurements and incidents behind the skill's instructions. Read on demand, never at boot, so a boot does not pay for it. |
@@ -178,7 +179,7 @@ payload beforehand, which is what makes the transcript proof rather than asserti
 **denied**, because `${CLAUDE_PLUGIN_ROOT}` lies outside the project and a session scoped to the project
 refuses it. The boot handled the workspace half correctly regardless — which is the dangerous part, since
 it looks like a boot with no engine in context. Step 1 of
-[`skills/portulan/SKILL.md`](skills/portulan/SKILL.md) now says so.
+[`skills/portulan/steps.md`](skills/portulan/steps.md) now says so.
 
 **Settings ship in the payload, and they are inert for you.**
 [`../.claude/settings.json`](../.claude/settings.json) is this repository's own compiled enforcement —

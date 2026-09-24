@@ -111,6 +111,7 @@ test("every 6b disposition — a move the specification did not reach — is one
     assert.deepEqual(sixB, [
         "README.md",
         "compile/",
+        "context/",
         "handoffs-index.md",
         "labels.json",
         "memory-index.md",

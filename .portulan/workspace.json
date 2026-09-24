@@ -1,6 +1,6 @@
 {
   "portulan": {
-    "spec": "2.8"
+    "spec": "2.10"
   },
   "name": "portulan",
   "summary": "Sleepy Panda SRL building Portulan: one maintainer, coding agents under a supervised-build protocol, a docs-first repository whose product is its files.",
@@ -18,7 +18,8 @@
     "tasks": "tasks/",
     "handoffs": "handoffs/",
     "proposals": "proposals/",
-    "personas": "personas/"
+    "personas": "personas/",
+    "context": "context/"
   },
   "verify": {
     "default": "docs",

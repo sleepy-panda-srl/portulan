@@ -9,7 +9,7 @@
 > which is the registered carrier of that subject and is cited here rather than restated.
 
 - **Source workspace:** `.portulan`
-- **Moves:** 25 — 6 keep · 6 emptying · 3 substitution · 10 deletion
+- **Moves:** 26 — 6 keep · 6 emptying · 3 substitution · 11 deletion
 - **Arm A files:** 22 · **arm B files:** 0
 - **Hooks pinned to this machine:** 6
 
@@ -46,6 +46,7 @@ noticed by this file.
 | `labels.json` | deletion | 6b |
 | `README.md` | deletion | 6b |
 | `compile/` | deletion | 6b |
+| `context/` | deletion | 6b |
 | `tools/` | deletion | 6b |
 
 ## Arm A, as constructed

@@ -1,6 +1,6 @@
 # Boot Portulan — step 2a: the manifest is a pointer
 
-> **Step 2a of [`SKILL.md`](SKILL.md) in full, read at boot only where the manifest's `kind` is
+> **Step 2a of [`steps.md`](steps.md) in full, read at boot only where the manifest's `kind` is
 > `pointer`.** Its step numbers are the skill's, and its reasons are in [`rationale.md`](rationale.md)
 > under 2a. It moved here on 2026-09-23, under proposal 0036 as amended that day: none of it was
 > deleted, and none is kept in both files.
