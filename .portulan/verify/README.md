@@ -511,6 +511,7 @@ Observations of the rebuilt checks, each run on this tree and reverted:
 | a fragment named `x.improved.md` | **red**, naming the file and the six sections |
 | a fragment that is a link to a good one, a directory holding one, or a submodule | **red**, naming it; `--changes` refuses each too, exit 1 |
 | a cut: every fragment deleted, `changes/README.md` kept | green, and the evaluation bundle's partition holds; with the README deleted too, **red** here, and the partition refuses `changes` as no longer tracked (Copilot, the round on 2ed9dd7) |
+| `changes/README.md` deleted from the tree while still tracked, then replaced by a link | **red** on both, naming it; `--changes` refuses the link, exit 1. Both passed before Copilot's round on e15e980 |
 | `changes/` itself a link to a directory of good fragments | **red**, naming the link; `--changes` refuses it, exit 2. Green before Copilot's round on 84d2857, with no fragment examined |
 | a bullet added under `## Unreleased` in `CHANGELOG.md` | **red**, with the count |
 | `## Unreleased` renamed `## [Unreleased]` with a bullet under it, then the heading deleted | **red** on both, naming the missing heading; the rename passed as none before Copilot's round on #451 |

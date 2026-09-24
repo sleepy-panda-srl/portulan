@@ -1380,14 +1380,15 @@ export function readChanges(dir) {
     const fragments = [];
     const problems = [];
     for (const entry of entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
-        if (NOT_A_RECORD.has(entry.name)) continue;
         if (!entry.isFile()) {
             // A link or a directory is refused, never followed or skipped, and `docs.sh` refuses both
             // alike: one that passed there and failed here was a green the cut could not assemble.
+            // Before the README is skipped, so a README that is a link or a directory is refused too.
             // Copilot, #451.
             problems.push({ name: entry.name, message: "is not a regular file: a fragment is a file of its own, never a link or a directory" });
             continue;
         }
+        if (NOT_A_RECORD.has(entry.name)) continue;
         const match = CHANGE_NAME.exec(entry.name);
         if (!match) {
             problems.push({

@@ -519,8 +519,11 @@ fi
     printf '%s is a link: fragments are files of this tree, read where they are written\n' "$CHANGES" >>"$tmp/badfragments"
 # Its README stays through a cut, which deletes every fragment: git keeps no empty directory, and the
 # evaluation bundle ships `changes` as a tracked top-level path (Copilot, #451).
-grep -qx "$CHANGES/README.md" "$manifest" ||
-    printf '%s/README.md is missing: a cut deletes every fragment, and git keeps no empty directory for the evaluation bundle to ship\n' "$CHANGES" >>"$tmp/badfragments"
+# Listed and in the tree as a file of its own: the manifest still lists a tracked file deleted from the
+# tree, and the loop below skips the README by name (Copilot, #451).
+if ! grep -qx "$CHANGES/README.md" "$manifest" || [ -L "$CHANGES/README.md" ] || [ ! -f "$CHANGES/README.md" ]; then
+    printf '%s/README.md is missing or not a regular file: a cut deletes every fragment, and git keeps no empty directory for the evaluation bundle to ship\n' "$CHANGES" >>"$tmp/badfragments"
+fi
 while IFS= read -r f; do
     [ -e "$f" ] || [ -L "$f" ] || continue
     base=${f#"$CHANGES"/}

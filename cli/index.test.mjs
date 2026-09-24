@@ -1312,6 +1312,14 @@ describe("changelog fragments", () => {
         assert.equal(run(["--changes", link], (l) => said.push(l)), 2);
     });
 
+    test("a README that is a link is refused like any entry, before it is skipped by name", () => {
+        // Copilot, #451: the README was skipped before its type was looked at.
+        const dir = tree(scratch(), { "fine.changed.md": "- Fine.\n", "notes.md": "# Notes\n" });
+        fs.symlinkSync("notes.md", path.join(dir, "README.md"));
+        const { problems } = readChanges(dir);
+        assert.ok(problems.some((p) => p.name === "README.md" && /not a regular file/.test(p.message)));
+    });
+
     test("a missing directory is an empty set, since the cut deletes every fragment", () => {
         const said = [];
         assert.equal(run(["--changes", path.join(scratch(), "changes")], (l) => said.push(l)), 0);
