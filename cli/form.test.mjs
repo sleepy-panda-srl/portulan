@@ -32,6 +32,7 @@ import {
     sessionLogsIn,
     unreleasedCount,
     unreleasedFragments,
+    unreleasedRewrites,
     withIgnoreLines,
 } from "./form.mjs";
 import { renderChanges } from "./index.mjs";
@@ -145,6 +146,17 @@ describe("the changelog's Unreleased entries, as fragments", () => {
         );
         assert.equal(moved.fragments[0].text, "- A fix\n  over two lines.\n");
         assert.equal(moved.fragments[1].text, "- Starred.\n", "a fragment writes its bullet `- `, whichever marker the changelog used");
+    });
+
+    test("an entry not opening `- ` is the one change the move makes: its first two characters become `- `, and its line is named", () => {
+        const text = changelog("### Added", "", "* Starred.", "  * nested", "+   Plussed wide.", "-\tTabbed.", "-   Spaced.", "- Plain.", "", "```md", "* not an entry", "```");
+        assert.deepEqual(unreleasedRewrites(text), [7, 9, 10]);
+        assert.deepEqual(
+            unreleasedFragments(text).fragments.map((f) => f.text),
+            ["- Starred.\n  * nested\n", "-   Plussed wide.\n", "- Tabbed.\n", "-   Spaced.\n", "- Plain.\n"],
+            "the spacing after `- ` stays as written, since the cut reads a fragment that opens `- `",
+        );
+        assert.deepEqual(unreleasedRewrites("# Changelog\n\n* Under no Unreleased heading.\n"), []);
     });
 
     test("fenced code under Unreleased is prose: a bullet in it is no entry, and a heading in it ends nothing", () => {
@@ -329,16 +341,35 @@ describe("which form a consumer is in, read from disk", () => {
         assert.match(formLine(ws, { kind: "demo" }), /^not reported: this workspace declares no tree/);
     });
 
-    test("a handoff index counts as not kept where the root .gitignore names it, with its slash or without", () => {
-        for (const line of ["/.portulan/handoffs-index.md", ".portulan/handoffs-index.md"]) {
-            const root = tree({ ".gitignore": `${line}\n`, ".portulan/handoffs-index.md": "" });
-            const pieces = formOf(path.join(root, ".portulan"), manifest({ handoffs: { index: { path: "handoffs-index.md" } } })).pieces;
-            assert.deepEqual(pieces.find((p) => p.id === "handoff-index"), { id: "handoff-index", state: "new", text: "the handoff index is printed on demand, not kept" });
+    test("a handoff index git ignores is not kept, whether the root .gitignore names it with its slash or without, or a nested one does", () => {
+        const handoffs = { index: { path: "handoffs-index.md" } };
+        for (const [file, line] of [
+            [".gitignore", "/.portulan/handoffs-index.md"],
+            [".gitignore", ".portulan/handoffs-index.md"],
+            [".portulan/.gitignore", "handoffs-index.md"],
+        ]) {
+            const root = repo({ [file]: `${line}\n`, ".portulan/handoffs-index.md": "" });
+            const pieces = formOf(path.join(root, ".portulan"), manifest({ handoffs })).pieces;
+            assert.deepEqual(pieces.find((p) => p.id === "handoff-index"), { id: "handoff-index", state: "new", text: "the handoff index is printed on demand, not kept" }, `${file}: ${line}`);
         }
-        const kept = tree({ ".portulan/handoffs-index.md": "" });
-        const piece = formOf(path.join(kept, ".portulan"), manifest({ handoffs: { index: { path: "handoffs-index.md" } } })).pieces.find((p) => p.id === "handoff-index");
-        assert.equal(piece.state, "today");
-        assert.match(piece.text, /is not git-ignored, and a copy is kept$/);
+    });
+
+    test("a handoff index is kept, as `0003` judges it, where git does not ignore it or still tracks the copy it ignores", () => {
+        const handoffs = { index: { path: "handoffs-index.md" } };
+        const piece = (root) => formOf(path.join(root, ".portulan"), manifest({ handoffs })).pieces.find((p) => p.id === "handoff-index");
+        const tracked = repo({ ".gitignore": "/.portulan/handoffs-index.md\n", ".portulan/handoffs-index.md": "" });
+        execFileSync("git", ["-C", tracked, "add", "-f", ".portulan/handoffs-index.md"]);
+        assert.deepEqual(piece(tracked), { id: "handoff-index", state: "today", text: "the handoff index at handoffs-index.md is git-ignored and still tracked" });
+        const unignored = repo({ ".portulan/handoffs-index.md": "" });
+        assert.deepEqual(piece(unignored), { id: "handoff-index", state: "today", text: "the handoff index at handoffs-index.md is not git-ignored, and a copy is kept" });
+    });
+
+    test("where no git work tree answers, the handoff index is no piece, since `0003` has nothing to decide there", () => {
+        const handoffs = { index: { path: "handoffs-index.md" } };
+        for (const files of [{ ".portulan/handoffs-index.md": "" }, { ".gitignore": "/.portulan/handoffs-index.md\n", ".portulan/handoffs-index.md": "" }]) {
+            const pieces = formOf(path.join(tree(files), ".portulan"), manifest({ handoffs })).pieces;
+            assert.equal(pieces.find((p) => p.id === "handoff-index"), undefined);
+        }
     });
 
     test("a card drafted and not compiled is today's, and compiled it is the new form", () => {

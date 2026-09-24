@@ -1251,6 +1251,19 @@ describe("the steps that move a consumer to the new form, on a real repository i
         assert.equal(git(repo, "status", "--porcelain"), "", "a bare run wrote");
     });
 
+    test("an entry not opening `- ` is named by its line before anything moves, and its fragment opens `- `", async () => {
+        const { repo, ws } = todayForm({ changelog: TODAY_CHANGELOG.replace("- Another thing.", "*   Another thing.").replace("- A fix.", "-\tA fix.") });
+        const h = harness();
+        assert.equal(await run([ws], { ...h.options, today: TODAY }), 0, h.text());
+        assert.match(h.text(), /3 entries under CHANGELOG\.md's Unreleased \(those at lines 9 and 13 do not open `- `, which their fragments do, as the release cut accepts no other opening\)/);
+        assert.equal(git(repo, "status", "--porcelain"), "", "a bare run wrote");
+        const w = harness();
+        assert.equal(await run([ws, "--write"], { ...w.options, today: TODAY }), 0, w.text());
+        const read = readChanges(path.join(repo, "changes"));
+        assert.deepEqual(read.problems, [], "every fragment opens `- `, as the cut reads one");
+        assert.match(renderChanges(read.fragments), /\n-   Another thing\.\n[\s\S]*### Fixed\n\n- A fix\.$/);
+    });
+
     test("--write moves every record, proves the changelog, compiles the card, and a second run owes nothing", async () => {
         const { repo, ws } = todayForm();
         const sha = git(repo, "log", "-1", "--format=%h", "--", "docs/notes.md").trim();
