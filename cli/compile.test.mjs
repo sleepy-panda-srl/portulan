@@ -4208,6 +4208,29 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         assert.match(rule(dir, "boot"), /^@\.\.\/\.\.\/\.\.\/identity\.md$/m);
     });
 
+    // Found in the coordinator session's review of #452 after its push, and read in the lexer Claude Code
+    // 2.1.281 bundles: a list item's text reaches the host as one raw block, which it reads for imports before
+    // it skips the code spans inside, a loose item's as much as a tight one's. So a code span there hides no
+    // import, and the refusals that sent text into one sent it where the host still reads it.
+    test("in a list item a code span hides no import, tight or loose, and a refusal sends text that is not one elsewhere", (t) => {
+        const advice = /text that is not an import (goes )?in a fenced block, or in a code span outside a list/;
+        for (const list of [["- Run `cat @../identity.md now` first.", "- Then the rest."], ["- Run `cat @../identity.md now` first.", "", "- Then the rest."]]) {
+            const dir = withFiles({ "context/boot.md": card(...list) });
+            const { code, out } = said(t, ["--workspace", dir]);
+            assert.equal(code, 2, out);
+            assert.match(out, /`@\.\.\/identity\.md` \(in context\/boot\.md\) shares its line with other text/);
+            assert.match(out, advice);
+            assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+        }
+        const below = said(t, ["--workspace", withFiles({ "context/boot.md": card("@../notes.md"), "notes.md": "- Run `cat @gone.md now` first.\n" })]);
+        assert.equal(below.code, 2, below.out);
+        assert.match(below.out, /`@gone\.md` \(in notes\.md\) names no file, so the host would load nothing/);
+        assert.match(below.out, advice);
+        const text = card("Run `cat @../identity.md now` first.", "", "```", "- cat @../identity.md", "```", "", "- Open `@../identity.md` on demand.");
+        const kept = said(t, ["--workspace", withFiles({ "context/boot.md": text })]);
+        assert.equal(kept.code, 0, `a paragraph's code span, a fenced block, and an \`@\` straight after a backtick are text: ${kept.out}`);
+    });
+
     test("a leads line is the lead sentence of each item in the file's first list, and a change there is drift", (t) => {
         const rules = [
             "# Rules",

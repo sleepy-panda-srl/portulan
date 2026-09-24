@@ -848,8 +848,9 @@ gates**, so a card carries a fact without holding a second copy of it:
 
 - **An import is `@` and a path, alone on its line, relative to the unit's own file.** Claude Code 2.1.281
   loads a rule as it loads `CLAUDE.md`: it resolves an import against the file making it, follows it only
-  inside the project, skips code and HTML comments, and loads nothing five imports below the rule. A rule
-  scoped by `paths:` loads on its path, and the files it imports load into every context, since an
+  inside the project, skips code blocks, skips code spans and HTML comments except in a list item's text,
+  which it reads whole (2026-09-24), and loads nothing five imports below the rule. A rule scoped by
+  `paths:` loads on its path, and the files it imports load into every context, since an
   imported file carries no `paths:` of its own (read in the program text, and seen on a fixture). So
   `compile` spells each import again from the rule it compiles to, and refuses one that is a home or an
   absolute path, leaves or links out of the tree it compiles, names no file, shares its line, or sits five

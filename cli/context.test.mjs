@@ -403,6 +403,31 @@ describe("imports, as the host reads them", () => {
         assert.deepEqual(always.entries.map((e) => path.relative(root, e.file)), ["CLAUDE.md", path.join("docs", "my file.md"), path.join("docs", "a.md")]);
         assert.deepEqual(always.missing, []);
     });
+
+    // Found in the coordinator session's review of #452 after its push, and read in the lexer Claude Code
+    // 2.1.281 bundles: a list item's text reaches the host whole, so a code span or a comment in it hides no
+    // import, in a loose list as in a tight one, while in a paragraph both still do.
+    test("in a list item's text a code span or a comment hides no import, and the file it names is counted", () => {
+        const text = [
+            "Run `cat @docs/para.md now` in a paragraph.",
+            "",
+            "- Run `cat @docs/tight.md now`, and <!-- @docs/comment.md --> this.",
+            "- Open `@docs/after-backtick.md`, whose `@` follows the backtick.",
+            "",
+            "1. A loose list: `cat @docs/loose.md now`.",
+            "",
+            "   ```",
+            "   @docs/fenced.md",
+            "   ```",
+            "",
+            "2. Last.",
+        ].join("\n");
+        assert.deepEqual(importsOf(text), ["docs/tight.md", "docs/comment.md", "docs/loose.md"]);
+        const root = tree({ "CLAUDE.md": "- Load `cat @docs/a.md now`.\n", "docs/a.md": "a\n" });
+        const always = alwaysTier(root);
+        assert.deepEqual(always.entries.map((e) => path.relative(root, e.file)), ["CLAUDE.md", path.join("docs", "a.md")]);
+        assert.deepEqual(always.missing, []);
+    });
 });
 
 describe("the always tier", () => {

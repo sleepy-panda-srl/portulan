@@ -440,9 +440,9 @@ export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, 
 
 /**
  * The paths the host reads from the `@path` imports in an instruction file's text, in order. The host
- * evaluates none inside a code span or a fenced block, so neither does this; `importSpans` and
- * `importPath` in `./compile.mjs` are the one reader, so a unit `compile` checks and a rule this counts
- * are read alike.
+ * evaluates none inside a fenced block, nor inside a code span outside a list item's text, which it reads
+ * whole, so neither does this; `importSpans` and `importPath` in `./compile.mjs` are the one reader, so a
+ * unit `compile` checks and a rule this counts are read alike.
  */
 export function importsOf(text) {
     return importSpans(text)

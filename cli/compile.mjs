@@ -2082,32 +2082,64 @@ const STRAY_IMPORT = {
 
 /**
  * The `@` imports in a text, as the host finds them: a token after the start of a line or a space, running
- * to the next space that no `\` escapes, outside code spans, fenced blocks and HTML comments, each with the
- * offset where its path starts. Claude Code 2.1.281 lexes the file, skips code, and strips `<!-- … -->`
- * before it reads a token, so a path in a comment is no import. `./context.mjs` counts what they load and
- * `compile` checks them where a unit is compiled, so both find the same ones.
+ * to the next space that no `\` escapes, outside fenced blocks, and outside code spans and HTML comments
+ * except in a list item's text, each with the offset where its path starts. Claude Code 2.1.281 lexes the
+ * file, skips code, and strips `<!-- … -->` before it reads a token, so a path in a comment is no import. A
+ * list item's text is the exception: the lexer hands it over as one raw block, which the host reads for
+ * tokens before it skips the code spans inside, so there a code span or a comment hides nothing. In a list
+ * item, a code span holding `cat @a.md now` imports `a.md`, and one holding just `@a.md` does not, its `@`
+ * following the backtick with no space. Tight or loose makes no difference to this host: the lexer it
+ * bundles keeps a loose item's text raw too, where marked 18.0.14 would make it a paragraph. `./context.mjs`
+ * counts what they load and `compile` checks them where a unit is compiled, so both find the same ones.
+ *
+ * A line is an item's text when it opens an item, is indented under one, or runs on from one with no indent
+ * and opens no block (`OPENS_BLOCK`), and does not itself open a heading, a block quote or a comment. The
+ * limits, all rare in an instruction file: a list inside a block quote is read as the quote's text, so an
+ * import in a code span there is missed; and a line the host's lexer keeps out of an item's text (a tag or a
+ * `#` straight under one, a numbered line inside a paragraph, a paragraph after a list nested in the item,
+ * an indented code block or an HTML block) is read as more of it, so there this can find an import the host
+ * does not. Found in the coordinator session's review of #452 after its push, and read in the host's own
+ * lexer.
  */
 export function importSpans(text) {
     const found = [];
     let fence = null;
     let comment = false;
+    let listed = false; // the line is in a list, which a blank line alone does not end
+    let flowing = false; // the line above is a line of that list, which a line with no indent may run on from
+    const opensInItem = /^(?:#{1,6}(?:[ \t]|$)|>|<!--)/; // a heading, a block quote or a comment, read as elsewhere
     let offset = 0;
     for (const line of text.split("\n")) {
         const start = offset;
         offset += line.length + 1;
+        let raw = false;
         if (!comment) {
             const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
             if (marker) {
                 if (fence === null) fence = marker[1];
                 else if (marker[1][0] === fence[0] && marker[1].length >= fence.length && /^\s{0,3}[`~]+\s*$/.test(line)) fence = null;
+                flowing = false;
                 continue;
             }
             if (fence !== null) continue;
+            const item = /^\s*(?:[-+*]|\d{1,9}[.)])(?:[ \t]+|$)/.exec(line);
+            if (line.trim() === "") {
+                flowing = false;
+            } else if (item && (listed || /^ {0,3}\S/.test(line))) {
+                listed = flowing = true;
+                raw = !opensInItem.test(line.slice(item[0].length));
+            } else if (listed && (/^\s/.test(line) || (flowing && !OPENS_BLOCK.test(line)))) {
+                flowing = true;
+                raw = !opensInItem.test(line.trimStart());
+            } else {
+                listed = flowing = false;
+            }
         }
-        // The line as the host reads it for imports: each code span and comment blanked where it stands, so
-        // every offset stays put, and a comment still open at the line's end running on to the one that closes it.
-        let seen = "";
-        let at = 0;
+        // The line as the host reads it for imports: in an item's text, whole; elsewhere with each code span and
+        // comment blanked where it stands, so every offset stays put, and a comment still open at the line's end
+        // running on to the one that closes it.
+        let seen = raw ? line : "";
+        let at = raw ? line.length : 0;
         while (at < line.length) {
             if (comment) {
                 const end = line.indexOf("-->", at);
@@ -2173,7 +2205,7 @@ function checkedImports(text, dir, root, where) {
             if (bare === null) continue;
             const spelled = `\`@${target}\` (in ${from})`;
             if (depth === 0 && line.trim() !== `@${target}`) {
-                throw new CompileError(`${spelled} shares its line with other text — an import stands alone on its line, so compile can spell it again from the file it compiles to; text that is not an import goes in a code span`);
+                throw new CompileError(`${spelled} shares its line with other text — an import stands alone on its line, so compile can spell it again from the file it compiles to; text that is not an import goes in a fenced block, or in a code span outside a list, since the host reads a list item's code spans for imports too`);
             }
             if (bare.startsWith("~") || path.isAbsolute(bare)) {
                 throw new CompileError(`${spelled} is a home or an absolute path — an import here is relative to the file that makes it, and stays inside ${shown}`);
@@ -2184,7 +2216,7 @@ function checkedImports(text, dir, root, where) {
             try {
                 real = fs.realpathSync(file);
             } catch {
-                throw new CompileError(`${spelled} names no file, so the host would load nothing — put text that is not an import in a code span`);
+                throw new CompileError(`${spelled} names no file, so the host would load nothing — put text that is not an import in a fenced block, or in a code span outside a list`);
             }
             if (!isInside(fs.realpathSync(root), real)) throw new CompileError(`${spelled} is a link out of ${shown}, the tree compiled here`);
             if (!fs.statSync(real).isFile()) throw new CompileError(`${spelled} names no file, so the host would load nothing`);
