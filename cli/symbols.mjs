@@ -1,14 +1,16 @@
 #!/usr/bin/env node
-// A code file's outline, one line per symbol, printed from the code at read time.
+// A code file's outline, one line per symbol, and a Markdown file's, one line per heading with its size,
+// printed from the file at read time.
 //
 // A session that needs one function of a module thousands of lines long used to page through it from
 // line 1: the host cuts a read at 25,000 tokens by default, and every line read is paid again on every
 // later request. This prints what is in a file — each declaration, class member, test and titled section
 // with its first and last line — so the session reads only the spans it needs, with the Read tool's
-// `offset` and `limit`. `--find <name>` says where a name is defined across the tracked code, the "go to
-// definition" the techniques survey of 2026-09-23 adopted from code-intelligence tools, with no language
-// server. `../core/operating/context.md` holds the rule: which reads stay whole, and why an Edit may
-// follow a span.
+// `offset` and `limit`. A doctrine page or an instruction file is read the same way, by its headings, and
+// `<file>#<heading>` prints one section, found by the anchor a link to it carries or by its text.
+// `--find <name>` says where a name is defined across the tracked code, the "go to definition" the
+// techniques survey of 2026-09-23 adopted from code-intelligence tools, with no language server.
+// `../core/operating/context.md` holds the rule: which reads stay whole, and why an Edit may follow a span.
 //
 // ## Why it prints and nothing is committed
 //
@@ -25,14 +27,16 @@
 // bracket, then splits statements at the top level, in class bodies and in test suites. Shell (`.sh`, and
 // a tracked file with no extension whose first line runs `sh`, `bash` or `node`) by its function
 // definitions and titled banner comments. A span opens at the comment directly above its declaration,
-// so reading it brings the why with the code. Anything else is refused rather than guessed at.
+// so reading it brings the why with the code. Markdown (`.md`, `.markdown`) by its headings, each span a
+// section with its sub-sections and its size in bytes. Anything else is refused rather than guessed at.
 //
 // ## Exit codes, per ../.portulan/memory/verify-preconditions-fail-closed.md
 //
 //   0  printed
-//   1  `--find`: a name is defined nowhere in the tracked code
-//   2  could not run: a usage error, a file unreadable or of a type it does not read, or one whose
-//      brackets it cannot match, so no outline it printed could be trusted
+//   1  `--find`: a name is defined nowhere in the tracked code; `<file>#<heading>`: no heading answers it
+//   2  could not run: a usage error, a file unreadable or of a type it does not read, one whose
+//      brackets it cannot match, so no outline it printed could be trusted, or a fragment naming more
+//      than one heading
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -40,18 +44,19 @@ import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
-const USAGE = "usage: node cli/symbols.mjs <file>... | --find <name>...";
+const USAGE = "usage: node cli/symbols.mjs <file>... | <file.md>#<heading>... | --find <name>...";
 
 /** Past this many characters a line's code is cut with `…`, so an outline stays one line per symbol. */
 const WIDTH = 110;
 
 export class CannotOutline extends Error {}
 
-/** `js`, `sh`, or null for a file this does not read: by extension, then by a `#!` line. */
+/** `js`, `sh`, `md`, or null for a file this does not read: by extension, then by a `#!` line. */
 export function languageOf(file, firstLine = "") {
     const ext = path.extname(file);
     if ([".mjs", ".js", ".cjs"].includes(ext)) return "js";
     if ([".sh", ".bash"].includes(ext)) return "sh";
+    if ([".md", ".markdown"].includes(ext)) return "md";
     if (ext !== "" || !firstLine.startsWith("#!")) return null;
     if (/\bnode\b/.test(firstLine)) return "js";
     if (/\b(ba|da|z)?sh\b/.test(firstLine)) return "sh";
@@ -824,7 +829,199 @@ function order(entries) {
 }
 
 // ===========================================================================================
-// 5. Files, lookups, and the command line
+// 5. Markdown: headings, and the section under each
+// ===========================================================================================
+
+// A Markdown file's outline is its headings, each spanning its section: from the heading to the line
+// before the next heading of its level or a higher one, so a section holds its sub-sections. Each carries
+// its size in bytes, which is what reading it costs, and the anchor a link to it carries. A heading is
+// read as CommonMark reads one: a line of one to six `#`, or a line of `=` or `-` under a paragraph that
+// opens at the margin. Nothing in fenced code, an HTML comment or the frontmatter is a heading. A heading
+// set under a list item by `=` or `-` is missed rather than guessed at, since CommonMark reads that line as
+// a rule.
+
+/** A heading's text as it reads rendered: a code span's content kept, links and images their text, and emphasis, tags and escapes gone. */
+function plainText(title) {
+    const inline = (text) =>
+        text
+            .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+            .replace(/!?\[([^\]]*)\]\[[^\]]*\]/g, "$1")
+            .replace(/<[^>]*>/g, "")
+            .replace(/\\([!-/:-@[-`{-~])/g, "$1")
+            .replace(/(^|[^\p{L}\p{N}*_])[*_]+|[*_]+(?=[^\p{L}\p{N}*_]|$)/gu, "$1");
+    let out = "";
+    let at = 0;
+    for (const span of title.matchAll(/(`+)(.+?)\1(?!`)/g)) {
+        out += inline(title.slice(at, span.index)) + span[2].replace(/^ (.*) $/, "$1");
+        at = span.index + span[0].length;
+    }
+    return out + inline(title.slice(at));
+}
+
+/** The anchor GitHub gives a heading: its text lower-cased, anything but letters, digits, `_`, `-` and spaces dropped, each space a `-`. */
+export function anchorOf(title) {
+    return plainText(title).toLowerCase().replace(/[^\p{L}\p{M}\p{N}_\- ]/gu, "").replace(/ /g, "-");
+}
+
+const loose = (text) => plainText(text).replace(/\s+/g, " ").trim().toLowerCase();
+
+// A line that opens a block other than a paragraph, so no `=` or `-` line under it makes it a heading.
+const NOT_PARAGRAPH = /^(?: {4}|\t| {0,3}(?:>|[-*+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|<[A-Za-z/!?]|\|))/;
+const RULE = /^ {0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})$/;
+
+/** The outline of a Markdown file: `{lines, bytes, entries}`, an entry per heading, nested by level. */
+export function outlineMd(src) {
+    const srcLines = src.split("\n");
+    const lines = src.endsWith("\n") ? srcLines.length - 1 : srcLines.length;
+    const at = (i) => srcLines[i].replace(/\r$/, "");
+    const offsets = [0];
+    for (let i = 0; i < lines; i++) offsets.push(offsets[i] + Buffer.byteLength(srcLines[i]) + (i < srcLines.length - 1 ? 1 : 0));
+    const found = [];
+    let i = 0;
+    if (lines > 0 && /^---[ \t]*$/.test(at(0))) {
+        let close = 1;
+        while (close < lines && !/^(?:---|\.\.\.)[ \t]*$/.test(at(close))) close++;
+        if (close < lines) i = close + 1;
+    }
+    let fence = null;
+    let comment = false;
+    let para = null; // the line a paragraph opened at, at the margin, while it is open
+    let above = "start"; // what the line above was: start, blank, heading, rule, para or other
+    for (; i < lines; i++) {
+        const line = at(i);
+        if (fence) {
+            if (fence.test(line)) {
+                fence = null;
+                above = "rule";
+            }
+            continue;
+        }
+        if (comment) {
+            if (line.includes("-->")) {
+                comment = false;
+                above = "rule";
+            }
+            continue;
+        }
+        const open = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+        if (open && !(open[1][0] === "`" && open[2].includes("`"))) {
+            fence = new RegExp(`^ {0,3}${open[1][0]}{${open[1].length},}[ \\t]*$`);
+            para = null;
+            continue;
+        }
+        if (/^ {0,3}<!--/.test(line)) {
+            comment = !line.slice(line.indexOf("<!--") + 4).includes("-->");
+            para = null;
+            above = "rule";
+            continue;
+        }
+        const atx = /^ {0,3}(#{1,6})(?:[ \t]+|$)(.*)$/.exec(line);
+        if (atx) {
+            found.push({ start: i + 1, level: atx[1].length, title: atx[2].replace(/(?:^|[ \t]+)#+[ \t]*$/, "").trim() });
+            para = null;
+            above = "heading";
+            continue;
+        }
+        const underline = /^ {0,3}(=+|-+)[ \t]*$/.exec(line);
+        if (underline && para !== null && above === "para") {
+            const title = srcLines.slice(para - 1, i).map((l) => l.trim()).join(" ");
+            found.push({ start: para, level: underline[1][0] === "=" ? 1 : 2, title });
+            para = null;
+            above = "heading";
+            continue;
+        }
+        if (line.trim() === "") {
+            para = null;
+            above = "blank";
+        } else if (RULE.test(line)) {
+            para = null;
+            above = "rule";
+        } else if (NOT_PARAGRAPH.test(line)) {
+            para = null;
+            above = "other";
+        } else if (above !== "para" && above !== "other") {
+            // A paragraph a setext line may underline opens at the margin; one indented may sit in a list.
+            para = /^\S/.test(line) ? i + 1 : null;
+            above = para === null ? "other" : "para";
+        }
+    }
+    const taken = new Map();
+    const unique = (slug) => {
+        let result = slug;
+        while (taken.has(result)) {
+            taken.set(slug, taken.get(slug) + 1);
+            result = `${slug}-${taken.get(slug)}`;
+        }
+        taken.set(result, 0);
+        return result;
+    };
+    const entries = [];
+    const stack = [];
+    found.forEach((h, k) => {
+        const next = found.slice(k + 1).find((n) => n.level <= h.level);
+        const end = next ? next.start - 1 : lines;
+        const entry = {
+            start: h.start,
+            end,
+            level: h.level,
+            title: h.title,
+            anchor: unique(anchorOf(h.title)),
+            bytes: offsets[end] - offsets[h.start - 1],
+            text: cut(`${"#".repeat(h.level)} ${h.title}`),
+            name: null,
+            children: [],
+        };
+        while (stack.length && stack.at(-1).level >= h.level) stack.pop();
+        (stack.length ? stack.at(-1).children : entries).push(entry);
+        stack.push(entry);
+    });
+    return { lines, bytes: offsets[lines], entries };
+}
+
+/** No heading answers a fragment: what `--find` finding no definition is to code, exit 1. */
+export class NoSection extends CannotOutline {}
+
+/**
+ * The section a fragment names, with its lines, its size and its text. The fragment is the anchor a link
+ * carries, or the heading's text, with `Parent > Child` narrowing one that repeats; a fragment naming no
+ * heading is `NoSection`, and one naming more than one is refused with the anchor of each.
+ */
+export function sectionOf(src, fragment) {
+    const { entries } = outlineMd(src);
+    const all = [];
+    const walk = (list, chain) => {
+        for (const e of list) {
+            all.push({ e, chain });
+            walk(e.children, [...chain, e]);
+        }
+    };
+    walk(entries, []);
+    let want = fragment.trim();
+    try {
+        want = decodeURIComponent(want);
+    } catch {
+        // not percent-encoded, so read as written
+    }
+    let hits = all.filter(({ e }) => e.anchor === want);
+    if (hits.length === 0) hits = all.filter(({ e }) => loose(e.title) === loose(want));
+    if (hits.length === 0 && want.includes(">")) {
+        const parts = want.split(/\s*>\s*/).map(loose);
+        hits = all.filter(({ e, chain }) => {
+            if (loose(e.title) !== parts.at(-1)) return false;
+            let k = 0;
+            for (const a of chain) if (k < parts.length - 1 && loose(a.title) === parts[k]) k++;
+            return k === parts.length - 1;
+        });
+    }
+    if (hits.length === 0) throw new NoSection(`no heading answers #${fragment}`);
+    if (hits.length > 1) throw new CannotOutline(`#${fragment} names ${hits.length} headings: ${hits.map(({ e }) => `#${e.anchor} (line ${e.start})`).join(", ")}`);
+    const { e } = hits[0];
+    const text = src.split("\n").slice(e.start - 1, e.end).join("\n");
+    return { start: e.start, end: e.end, level: e.level, title: e.title, anchor: e.anchor, bytes: e.bytes, text };
+}
+
+// ===========================================================================================
+// 6. Files, lookups, and the command line
 // ===========================================================================================
 
 /** The outline of one file, or `CannotOutline` saying why there is none; `shown` is the name it gives. */
@@ -835,9 +1032,9 @@ export function outlineFile(file, shown = file, src = null) {
         throw new CannotOutline(`cannot read ${shown}: ${error.code ?? error.message}`);
     }
     const language = languageOf(file, src.split("\n", 1)[0]);
-    if (!language) throw new CannotOutline(`${shown} is not JavaScript or shell; read it whole or by section`);
+    if (!language) throw new CannotOutline(`${shown} is not JavaScript, shell or Markdown; read it whole`);
     try {
-        const outline = language === "js" ? outlineJs(src) : outlineSh(src);
+        const outline = language === "js" ? outlineJs(src) : language === "sh" ? outlineSh(src) : outlineMd(src);
         check(outline);
         return outline;
     } catch (error) {
@@ -861,12 +1058,19 @@ function check({ lines, entries }) {
     walk(entries, 1, Math.max(lines, 1));
 }
 
-/** The lines an outline prints: the file, then one line per entry, children indented under theirs. */
-export function render(file, { lines, entries }) {
-    const out = [`${file}: ${lines} lines`];
+const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+/**
+ * The lines an outline prints: the file, then one line per entry, children indented under theirs. A Markdown
+ * heading's carries its anchor, which names it in `<file>#<anchor>` where its text is repeated, and its size.
+ */
+export function render(file, { lines, bytes, entries }) {
+    const out = [`${file}: ${lines} line${lines === 1 ? "" : "s"}${bytes === undefined ? "" : `, ${grouped(bytes)} B`}`];
     const walk = (list, indent) => {
         for (const e of list) {
-            out.push(`${indent}${e.start === e.end ? e.start : `${e.start}-${e.end}`} ${e.text}`);
+            const anchor = e.anchor === undefined ? "" : ` #${e.anchor}`;
+            const size = e.bytes === undefined ? "" : ` (${grouped(e.bytes)} B)`;
+            out.push(`${indent}${e.start === e.end ? e.start : `${e.start}-${e.end}`} ${e.text}${anchor}${size}`);
             walk(e.children, `${indent}  `);
         }
     };
@@ -874,7 +1078,7 @@ export function render(file, { lines, entries }) {
     return out;
 }
 
-/** The tracked files this reads, relative to `cwd`: every one `languageOf` names, by extension or `#!`. */
+/** The tracked code this reads, relative to `cwd`: every file `languageOf` names JavaScript or shell, by extension or `#!`. */
 export function trackedCode(cwd) {
     let listed;
     try {
@@ -883,7 +1087,8 @@ export function trackedCode(cwd) {
         throw new CannotOutline("--find reads the tracked code, and this is not a git work tree");
     }
     return listed.split("\0").filter(Boolean).filter((file) => {
-        if (languageOf(file)) return true;
+        const language = languageOf(file);
+        if (language) return language !== "md";
         if (path.extname(file) !== "") return false;
         let fd;
         try {
@@ -930,6 +1135,28 @@ export function find(cwd, name) {
     return hits;
 }
 
+/**
+ * A `<file>#<heading>` argument, read: the Markdown file, its text and the fragment, or null for an argument
+ * naming a file as it stands. A path may hold a `#` of its own, so the file is the shortest prefix before
+ * a `#` that names one.
+ */
+function sectionArg(cwd, arg) {
+    const isFile = (rel) => fs.statSync(path.resolve(cwd, rel), { throwIfNoEntry: false })?.isFile() ?? false;
+    if (!arg.includes("#") || isFile(arg)) return null;
+    let at = arg.indexOf("#");
+    while (at !== -1 && !isFile(arg.slice(0, at))) at = arg.indexOf("#", at + 1);
+    const file = at === -1 ? arg.slice(0, arg.indexOf("#")) : arg.slice(0, at);
+    if (at === -1) throw new CannotOutline(`cannot read ${file}: ENOENT`);
+    if (languageOf(file) !== "md") throw new CannotOutline(`${file} is not Markdown, and only a Markdown file is read by #heading`);
+    let src;
+    try {
+        src = fs.readFileSync(path.resolve(cwd, file), "utf8");
+    } catch (error) {
+        throw new CannotOutline(`cannot read ${file}: ${error.code ?? error.message}`);
+    }
+    return { file, src, fragment: arg.slice(at + 1) };
+}
+
 export function main(argv, stdout, stderr, cwd = process.cwd()) {
     const args = argv.slice(2);
     if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
@@ -959,9 +1186,25 @@ export function main(argv, stdout, stderr, cwd = process.cwd()) {
             stderr.write(`symbols: unknown option ${option}; ${USAGE}\n`);
             return 2;
         }
-        const printed = args.map((file) => render(file, outlineFile(path.resolve(cwd, file), file)).join("\n"));
-        stdout.write(`${printed.join("\n\n")}\n`);
-        return 0;
+        const printed = [];
+        let missing = 0;
+        for (const arg of args) {
+            const read = sectionArg(cwd, arg);
+            if (read === null) {
+                printed.push(render(arg, outlineFile(path.resolve(cwd, arg), arg)).join("\n"));
+                continue;
+            }
+            try {
+                const { start, end, bytes, text } = sectionOf(read.src, read.fragment);
+                printed.push(`${read.file}:${start}-${end} (${grouped(bytes)} B)\n${text.replace(/\n$/, "")}`);
+            } catch (error) {
+                if (!(error instanceof NoSection)) throw new CannotOutline(`${read.file}: ${error.message}`);
+                stderr.write(`symbols: ${read.file}: ${error.message}; outline it to see its headings\n`);
+                missing++;
+            }
+        }
+        if (printed.length) stdout.write(`${printed.join("\n\n")}\n`);
+        return missing ? 1 : 0;
     } catch (error) {
         // An unexpected throw is could-not-run, never a finding: exit 1 says a name is defined nowhere,
         // and a crash read that way would send a session looking for code that exists.
