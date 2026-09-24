@@ -23,3 +23,6 @@ the answer changes the build, a plan amendment. Never a quiet reinterpretation.
 
 **Retire when:** never, while `vision.md` remains the grading standard. If it is ever demoted to a
 non-binding document, this rule retires with it.
+
+**Amended 2026-09-24, his 06:16 message:** prohibition lifted. Still his: an edit lands by PR under his
+review (`change-the-constitution`, Propose) and cites his word.

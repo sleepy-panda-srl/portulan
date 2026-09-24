@@ -11,10 +11,10 @@
 # nothing would ever merge — the same arithmetic that produced the "0 required approving reviews"
 # decision in .portulan/proposals/0001-platform-floor-on-main.md.
 #
-# So this file is a routing table and a statement of ownership, and the sentence that matters is the one
-# it does NOT let anyone write: `docs/vision.md` is still protected by prohibition rather than by the
-# platform. Switch the setting on when a second reviewer exists — that is the change that makes this file
-# a rail, and it is a repository-settings change, which is Gated (.portulan/gate-map.md).
+# So this file is a routing table and a statement of ownership, and it does not protect `docs/vision.md`.
+# Nothing refuses an edit to it since the maintainer lifted the prohibition on 2026-09-24; it changes by
+# pull request under his review. Switch the setting on when a second reviewer exists — that is the change
+# that makes this file a rail, and it is a repository-settings change, which is Gated (.portulan/gate-map.md).
 #
 # Syntax note: patterns follow gitignore rules, last matching pattern wins, and a pattern with no owner
 # clears ownership for those paths. An owner is `@username`, `@org/team-name`, or an email address on
@@ -39,8 +39,9 @@
 # Everything, by default.
 *                       @sleepy-panda-srl/maintainers
 
-# The constitution. Human-owned, never edited by an agent at all — see .portulan/gate-map.md,
-# "Above the tiers". This line does not enforce that; it records who must be asked.
+# The constitution. Human-owned: an agent's edit lands by pull request under the maintainer's review and
+# cites his word in its commit message — see .portulan/gate-map.md, Propose. This line does not enforce
+# that; it records who must be asked.
 /docs/vision.md         @sleepy-panda-srl/maintainers
 
 # The living plan: milestone status and the session log are the build's own record.

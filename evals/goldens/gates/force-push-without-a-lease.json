@@ -378,7 +378,7 @@
         "command": "if true; then git push --force origin main; fi"
       },
       "expect": false,
-      "why": "Note the asymmetry with edit-the-constitution.json, where the same leader is CAUGHT: the write half reads segments through `shellSegments`, which knows SEGMENT_LEADERS, and the shell half reads them through `commandSegments`, which does not. Two segmenters, one rule, different answers."
+      "why": "Note the asymmetry with change-the-constitution.json, where the same leader is CAUGHT: the write half reads segments through `shellSegments`, which knows SEGMENT_LEADERS, and the shell half reads them through `commandSegments`, which does not. Two segmenters, one rule, different answers."
     },
     {
       "id": "a-do-body-still-escapes",

@@ -43,8 +43,8 @@ its spelling.
   full-lane work the pre-commit checkpoint, are still owed.
 - **Propose**, reviewed before it counts: `open-a-pull-request`, with a label from
   `.portulan/labels.json` and `agent-driven` beside it; `change-doctrine`, `change-this-workspace`,
-  `change-the-plan` and `change-a-verify-recipe`. An idea that adds an axis, a mode or a surface starts
-  as a proposal in `.portulan/proposals/`.
+  `change-the-constitution`, `change-the-plan` and `change-a-verify-recipe`. An idea that adds an axis,
+  a mode or a surface starts as a proposal in `.portulan/proposals/`.
 - **Gated**, the maintainer's approval for each action, never inferred and never standing:
   `merge-a-pull-request`, its head not behind `main`; `delete-a-remote-branch`,
   `force-push-without-a-lease`, `change-repository-settings`, `create-a-repository`,
@@ -52,8 +52,7 @@ its spelling.
   `publish-to-a-package-registry`, `spend-money-or-register-a-domain` and
   `send-something-outside-this-repository`; and `commit-without-the-hooks`, from the
   `rituals/checkpoints` pack.
-- **Prohibited**, where no approval exists: `edit-the-constitution`, and `self-certify-a-checkpoint`
-  from the same pack.
+- **Prohibited**, where no approval exists: `self-certify-a-checkpoint`, from the same pack.
 
 **Open `.portulan/gate-map.md` before a merge, a release, a settings change, a branch deletion, a review
 round, or an edit to what a gate guards.** It holds each gate's conditions, the honest holes where no

@@ -93,9 +93,9 @@ things, now:
 1. **The wrapper spelling.** `Bash(git push:*)` is a literal prefix match, so `bash -c "git push …"` is
    invisible to it — measured. [`gate.mjs`](../../cli/gate.mjs) peels one shell wrapper before matching, so that
    spelling reaches a gate. Demonstrated live, both directions.
-2. **A shell write to a path a `write:` rule protects.** `Edit(./docs/vision.md)` denies all three
+2. **A shell write to a path a `write:` rule protects.** `Edit(./<path>)` denies all three
    file-editing tools — **the one emitted pattern, and the host matches it for every one of them**;
-   `echo x >> docs/vision.md` is a fourth way to the same bytes, and it was gated by neither layer until
+   `echo x >> <path>` is a fourth way to the same bytes, and it was gated by neither layer until
    the matcher grew a shell half. See [the boundary below](#the-shell-half-of-a-write-gate-is-a-table).
 
 In exactly those cases the permission layer has nothing to say, so the hook's decision *and* its sentence
@@ -104,15 +104,16 @@ are what the agent gets.
 Two layers, two jobs: one cannot fail open, the other covers more ground. **The second case is the one
 place where that trade is uncomfortable**, because there the ground is covered *only* by the layer that
 fails open — which is why it is in the honest-holes list in [`../gate-map.md`](../gate-map.md) and why
-`compile` prints it as a note on every run.
+`compile` prints it as a note on every run, for each Gated or Prohibited `write:` rule. This policy has
+none since 2026-09-24.
 
 ## The shell half of a write gate is a table
 
 A `write:` rule names a **path**, not a tool. For one milestone it compiled to `Edit`, `Write` and
 `NotebookEdit` and stopped there, so a `Bash` call reached neither layer: the permission rule rejects the
 tool, and the shared matcher returned false because `action.shell` was undefined. `echo x >> docs/vision.md`
-was therefore an ungated write to this repository's constitution — the one file whose rule says that an
-agent able to edit it "can launder any other change past its own grader".
+was therefore an ungated write to this repository's constitution — the one file whose rule then said that
+an agent able to edit it "can launder any other change past its own grader".
 
 [`../../cli/compile.mjs`](../../cli/compile.mjs) now answers for `Bash` on a `write:` rule, over the same
 one-wrapper spellings as everything else. It recognises exactly two shapes:
@@ -230,15 +231,16 @@ number in it moved. `Bash(git push --force:*)` is a prefix pattern on the host, 
 reaches a command in second position. What the fix must not do is widen a gate, and the control is asserted —
 `git push --force-with-lease` is **Auto** by the maintainer's ruling and stays Auto, mid-line or not.
 
-## Why Gated is `ask` and the constitution is `deny`
+## Why Gated is `ask` and Prohibited is `deny`
 
 [`../gate-map.md`](../gate-map.md) defines Gated as *explicit human approval, per action* — which is
 what `ask` is. Interactively it prompts; headless, where nobody can approve, it blocks. Measured: a
 `git push` under an `ask` rule in `claude -p` is refused and the remote receives nothing.
 
 Compiling Gated to `deny` would have been the *prohibition* semantics wearing the Gated tier's name,
-and it would have flattened the one rule that has no approval path at all — nobody edits
-[`../../docs/vision.md`](../../docs/vision.md) — into an ordinary push. That is why the policy carries
+and it would have flattened a rule with no approval path at all into an ordinary push — the one this
+policy was written around was the constitution's, [`../../docs/vision.md`](../../docs/vision.md), until
+the maintainer lifted it on 2026-09-24. That is why the policy carries
 four tier classes where core names three: `prohibited` is not a stronger `gated`, it is a different
 answer to a different question.
 

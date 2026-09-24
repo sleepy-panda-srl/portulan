@@ -90,6 +90,9 @@ Reversible but consequential: it changes what the repository says, or how it beh
   nobody is present to open; a session applies it in its `gh pr create`.
 - `change-doctrine` — [`../core/`](../core/), a template, a persona, or a skill.
 - `change-this-workspace` — anything here, including this file and [`gates.json`](gates.json).
+- `change-the-constitution` — [`../docs/vision.md`](../docs/vision.md), **human-owned**: an agent's edit
+  cites the maintainer's word in its commit message.
+  [Prohibited until 2026-09-24](gate-map/prohibited.md#the-constitutions-rule-prohibited-until-2026-09-24).
 - `change-the-plan` — the milestones and their Status column in [`../docs/plan.md`](../docs/plan.md).
 - `change-a-verify-recipe` — and *relaxing* a check is the case to scrutinise hardest, because it is the
   one change that makes every future "green" mean less.
@@ -194,13 +197,6 @@ that did the work is not a checkpoint: [`0018`](proposals/0018-a-verdict-from-th
 rule given a tier — *no approval exists* for a session signing off on its own diff, which is why it is
 here and not under Gated. [Why neither backend compiles it](gate-map/prohibited.md#self-certify-a-checkpoint-composed).
 
-`edit-the-constitution` — [`../docs/vision.md`](../docs/vision.md) is the constitution, and it is
-**human-owned**. No agent edits it — not with approval, not as a proposal that rewrites it in place. An
-agent that believes the constitution is wrong raises the question with the maintainer and stops.
-
-_Why this is a prohibition rather than Gated, and the shell half of its gate, which only the hook holds:
-[`gate-map/prohibited.md`](gate-map/prohibited.md#edit-the-constitution)._
-
 ## What the compiler refuses
 
 [`../cli/compile.mjs`](../cli/compile.mjs) turns [`gates.json`](gates.json) into
@@ -225,9 +221,9 @@ backends and what each refuses, the gates neither compiles, and composition.
    group still escapes it, and the permission rule matches only a command's start. A Gated command is
    Gated wherever it sits.
 3. **A gate whose only layer is the hook — and the hook is the one that fails open.** The shell half of
-   the constitution's gate is the hook alone, and an error in the hook removes that half while the
-   `Edit` denial still stands. No shell command writes `docs/vision.md`, whether or not anything
-   refuses it.
+   a Gated or Prohibited `write:` rule is the hook alone, and an error in the hook removes that half
+   while the `Edit` rule stands; none is declared here since 2026-09-24. A shell write to a path such a
+   rule guards takes its tier, whether or not anything refuses or prompts.
 4. **A local `allow` rule beside the compiled gates is unmeasured.** What a broad allow in
    `.claude/settings.local.json` does to a wrapper spelling has not been measured, so a local allow is
    never approval for a Gated act.
