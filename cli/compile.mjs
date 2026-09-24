@@ -1495,12 +1495,24 @@ export function claudeCode(parsed, options = {}) {
     const packs = (options.packProvenance ?? [])
         .map((c) => ({ pack: c.pack, origin: c.origin, version: c.version ?? null }))
         .sort((a, b) => a.pack.localeCompare(b.pack));
+    // **The session switches, Workspace Definition 2.11's `sessions`, emitted only where declared**, so a
+    // manifest without the key compiles byte for byte as before. Two of the three are project settings on
+    // Claude Code; the third, the dynamic-sections exclusion, is no setting at all, which is why `headless`
+    // is read by the runners that start sessions and never reaches this file. `../core/operating/sessions.md`.
+    const sessions = options.sessions ?? null;
+    const switches = {};
+    if (sessions?.git_instructions !== undefined) switches.includeGitInstructions = sessions.git_instructions;
+    if (sessions?.cache_lifetime !== undefined) switches.promptCacheTtl = sessions.cache_lifetime;
+    const sessionsFrom = Object.keys(switches).length ? sessions.manifest : null;
     const value = {
         $portulan: {
             generated: "cli/compile.mjs",
             source,
+            ...(sessionsFrom ? { sessions: sessionsFrom } : {}),
             ...(packs.length ? { packs } : {}),
-            warning: `Generated file. Edit ${source} and recompile; \`verify/compile.sh\` fails on drift.`,
+            warning: sessionsFrom
+                ? `Generated file. Edit ${source}, or \`sessions\` in ${sessionsFrom}, and recompile; \`verify/compile.sh\` fails on drift.`
+                : `Generated file. Edit ${source} and recompile; \`verify/compile.sh\` fails on drift.`,
         },
         permissions: { deny, ask, allow: [] },
         hooks: {
@@ -1522,6 +1534,7 @@ export function claudeCode(parsed, options = {}) {
         },
         // The same figure for the human, from the host's own last-call counts, at no token cost.
         statusLine: { type: "command", command: `node ${advisoryRunner} status` },
+        ...switches,
     };
 
     // The shell half of every write gate, reported on every run rather than left for a reader to
@@ -1553,6 +1566,27 @@ export function claudeCode(parsed, options = {}) {
             `set in user settings, in this repository only. To keep your own here, set \`statusLine\` in \`.claude/settings.local.json\`, which ` +
             `outranks this file; the restart advisory at the prompt is unaffected`,
     );
+    // The session switches are said on every run that emits one, because each changes what every session
+    // in this repository starts with, and the way back for one session is not in this file.
+    if (switches.includeGitInstructions === false) {
+        notes.push(
+            `the git instructions are compiled off (\`sessions.git_instructions\`): every session here starts without the host's ` +
+                `startup git snapshot and its commit and pull-request instructions. A session that needs them starts with ` +
+                `\`CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=0\`, which outranks this file (read in Claude Code 2.1.281's program text)`,
+        );
+    }
+    if (switches.promptCacheTtl !== undefined) {
+        notes.push(
+            `the main conversation's cache lifetime is compiled as ${switches.promptCacheTtl} (\`sessions.cache_lifetime\`); ` +
+                `\`CLAUDE_CODE_PROMPT_CACHE_TTL\` outranks it for one session, and subagents keep a lifetime of their own`,
+        );
+    }
+    if (sessions?.headless !== undefined) {
+        notes.push(
+            `\`sessions.headless\` is not compiled: it is what the runners that start sessions apply, today \`cli/warm.mjs\`, ` +
+                `and the dynamic-sections exclusion it can carry is no host setting`,
+        );
+    }
     if (editCoveredGates.length) {
         notes.push(
             `${editCoveredGates.length} write gate(s) — ${editCoveredGates.join(", ")} — emit \`Edit(path)\` as their only ` +
@@ -2963,6 +2997,50 @@ export function policyPath(workspaceRoot, workspaceDir = ".portulan") {
     return policyDeclaration(workspaceRoot, workspaceDir).file;
 }
 
+/** The cache lifetimes Claude Code takes, as `../spec/slots.md` spells them for `sessions`. */
+export const CACHE_LIFETIMES = ["5m", "1h"];
+
+const SESSION_SWITCHES = {
+    git_instructions: (v) => typeof v === "boolean",
+    cache_lifetime: (v) => CACHE_LIFETIMES.includes(v),
+};
+const HEADLESS_SWITCHES = { ...SESSION_SWITCHES, exclude_dynamic_sections: (v) => typeof v === "boolean" };
+
+/**
+ * A workspace's session switches, Workspace Definition 2.11's `sessions`, or null where it declares none.
+ *
+ * **Refused whole on any shape the schema refuses**, for `policyDeclaration`'s reason: what this returns
+ * is written into the settings the host reads on every session, and this runner must not depend on `doctor`
+ * having been run. So an unknown key, a switch that is not a boolean, or a lifetime the host does not take
+ * stops the run with exit 2 rather than compile a guess. A manifest that cannot be read is not this
+ * function's to judge: it answers null, as `policyDeclaration` falls back, and `doctor` names the fault.
+ */
+export function sessionsDeclaration(workspaceRoot, workspaceDir = ".portulan") {
+    const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
+    let declared;
+    try {
+        declared = JSON.parse(fs.readFileSync(manifest, "utf8")).sessions;
+    } catch {
+        return null;
+    }
+    if (declared === undefined) return null;
+    const where = path.relative(workspaceRoot, manifest).split(path.sep).join("/");
+    const refuse = (what) =>
+        new CompileError(`\`sessions\` in ${where} ${what}; ../spec/slots.md gives its shape, and \`doctor\` names every finding`);
+    const plain = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+    const check = (value, allowed, at) => {
+        if (!plain(value)) throw refuse(`${at}is not an object`);
+        for (const [key, v] of Object.entries(value)) {
+            if (key === "headless" && at === "") continue;
+            if (!Object.hasOwn(allowed, key)) throw refuse(`${at}names \`${key}\`, which is no session switch`);
+            if (!allowed[key](v)) throw refuse(`${at}sets \`${key}\` to ${JSON.stringify(v)}, which it does not take`);
+        }
+    };
+    check(declared, SESSION_SWITCHES, "");
+    if (declared.headless !== undefined) check(declared.headless, HEADLESS_SWITCHES, "at `headless` ");
+    return { manifest: where, ...declared };
+}
+
 /**
  * What to say when a workspace declares no gate policy and none is there by convention.
  *
@@ -3811,6 +3889,9 @@ export function run(argv, options = {}) {
         // policy still has something to compile.
         const guidance = guidanceUnits(workspaceRoot, workspaceDir);
         const guidancePlan = showMatrix ? null : planGuidance(guidance, workspaceRoot);
+        // Read beside the guidance and for the same reason: a malformed declaration is a reason this run cannot
+        // compile honestly whichever half it reaches first.
+        const sessions = sessionsDeclaration(workspaceRoot, workspaceDir);
         const { file: policyFile, declared: policyDeclared, reason: policyReason } = policyDeclaration(workspaceRoot, workspaceDir);
         // **Declared-and-missing and never-declared are different answers.** Only the first is a
         // failure to read something this workspace claimed to have; the second is a shape `policyPath`
@@ -3827,6 +3908,12 @@ export function run(argv, options = {}) {
             // A workspace with no gate policy is a legitimate shape (`policyPath`), and its guidance is not
             // enforcement: it compiles alone, and the state of the policy is said rather than refused.
             say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, true)}`);
+            if (sessions !== null) {
+                say(
+                    `note    \`sessions\` in ${sessions.manifest} compiled nothing: its host switches ride the settings a gate ` +
+                        `policy compiles to, and this workspace has none`,
+                );
+            }
             say();
             if (showMatrix) {
                 printGuidanceMatrix(say, guidance);
@@ -3882,6 +3969,7 @@ export function run(argv, options = {}) {
             // What resolved each pack, carried to the artifact so the file the rail compares says
             // which world compiled it (#264).
             packProvenance: contributions,
+            sessions,
         });
 
         // Printed before the backends, because a rule's provenance changes how its compiled line reads

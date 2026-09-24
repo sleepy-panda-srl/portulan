@@ -49,6 +49,11 @@ so loosely is the overclaim this file warns about elsewhere: `release-eval --tag
 the surface no check reaches at all. **Nothing remains outright.** Each is listed below with the sentence
 [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
 
+**The warm-start A/B**, [`ab/warm.md`](ab/warm.md), is a sibling of the baseline rather than a clause of row 8: it
+prices fresh sessions warm against cold from the host's own records, in the three lines every measurement
+reports, and says which host switch earns a place in `sessions`. Its runner is built and its record waits on
+the maintainer's word, since every run starts real sessions.
+
 ## The A/B baseline — what 40 turns measured, and what they did not
 
 [`ab/baseline.json`](ab/baseline.json) is the capture and [`ab/baseline.md`](ab/baseline.md) the register
