@@ -20,9 +20,9 @@
 // 213,002 bytes at the proposal, 95,602 after the gate map's split, 92,895 after the boot skill's.
 // **Those records left the manifest out**, although step 2 reads it whole, so the output prints the
 // figure both ways: the subtotal without it, which is theirs, and the total with it, which is the
-// boot's. The engine half — the skill and the kernel — is the part every adopter's boot pays and no
-// adopter can slim, so it is printed apart, and so are the skill's step files, which a boot reads only
-// where each applies.
+// boot's. The engine half — the skill, its `steps.md` and the kernel — is the part every adopter's boot
+// pays and no adopter can slim, so it is printed apart, and so are the skill's step files, which a boot
+// reads only where each applies.
 //
 // **A boot whose card is loaded reads the skill and stops there**: the host loaded the card, with what
 // it imports and the rest of the always tier, before the boot began. Its read-set is the skill and that
