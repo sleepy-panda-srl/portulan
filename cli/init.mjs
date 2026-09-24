@@ -90,9 +90,9 @@ import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 import { CACHE_LIFETIMES, compileGuidance } from "./compile.mjs";
 import { alwaysTier, ESTIMATED_BYTES_PER_TOKEN, OFFER_FLOOR_TOKENS, tokensOf } from "./context.mjs";
 import { cardIgnored, changesReadme, claudeRulesUnignore, COMPILED_CARD, draftCard, handoffIndexIgnore, handoffsReadme, withIgnoreLines } from "./form.mjs";
-// The cache lifetime's offer and the multipliers' note, from the one module `upgrade` prints the same offer
-// from, so the two cannot word it differently (proposal `0038`, item 4, 2026-09-24).
-import { MULTIPLIERS_NOTE, offerLines } from "./sessions.mjs";
+// The cache lifetime's offer, from the one module `upgrade` prints the same offer from, so the two cannot
+// word it differently (proposal `0038`, item 4, 2026-09-24).
+import { offerLines } from "./sessions.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -1189,8 +1189,7 @@ function reportCard(target, say, warn) {
  *
  * **Printed and not written, like the budget.** The offer carries its trade-off, because five minutes is the
  * dearer lifetime for a session that pauses, and it names the key and the version it needs, since the drafted
- * manifest stays at 2.10 unless a lifetime was chosen. The multipliers' note follows it once and asks nothing:
- * the key that declares them is Workspace Definition 2.12's (proposal `0038`, item 4, 2026-09-24).
+ * manifest stays at 2.10 unless a lifetime was chosen (proposal `0038`, item 4, 2026-09-24).
  */
 function reportLifetime(answers, say) {
     const lifetime = answers.cacheLifetime ?? null;
@@ -1207,7 +1206,6 @@ function reportLifetime(answers, say) {
     } else {
         for (const line of offerLines()) say(`init: ${line}`);
     }
-    say(`init:   ${MULTIPLIERS_NOTE}`);
 }
 
 // ------------------------------------------------------------------------- writing

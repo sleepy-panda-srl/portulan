@@ -128,7 +128,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`release-eval.test.mjs`](release-eval.test.mjs) | The release-eval suite. Every case exists because something here was already wrong in that way, or because a fresh-context reviewer named the way it would be before a line was written. |
 | [`review-meter.test.mjs`](review-meter.test.mjs) | The review-loop meter's suite. Every counting trap this repository has already PAID to discover is a case here, because the whole argument for the tool is that a hand count kept getting them wrong — a suite that only exercised the happy path would be the hand count with more steps. |
 | [`rule-carriers.test.mjs`](rule-carriers.test.mjs) | Tests for `rule-carriers` — the rail that keeps a reduced rule reduced. |
-| [`sessions.test.mjs`](sessions.test.mjs) | `sessions` — the cache lifetime's offer, the multipliers' note, and `doctor`'s one line on the session switches. |
+| [`sessions.test.mjs`](sessions.test.mjs) | `sessions` — the cache lifetime's offer, and `doctor`'s one line on the session switches. |
 | [`shadowed-pack.test.mjs`](shadowed-pack.test.mjs) | A shadowed pack is refused rather than picked — #316. |
 | [`shadowed-resolution.test.mjs`](shadowed-resolution.test.mjs) | `index` and `recipe-set` refuse a shadowed pack, and the divergence they would otherwise ship — #318. |
 | [`skill-goldens.test.mjs`](skill-goldens.test.mjs) | The core-skill corpus's suite. Every refusal is exercised POSITIVELY, because a failure path nobody has run is one nobody has seen work — and three of these exist only because this session's own opening passes produced the defect they now pin. |

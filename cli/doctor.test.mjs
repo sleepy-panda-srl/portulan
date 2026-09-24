@@ -742,7 +742,7 @@ describe("where every session switch stands is one line, reported and never fail
     // 2026-09-24, proposal 0038's item 4: the line is ./sessions.mjs's, the module `init` and `upgrade` print
     // the cache lifetime's offer from; sessions.test.mjs pins each clause of it. These pin that `doctor`
     // prints it once, as a report, on a real inspection.
-    const DEFAULTS = "cache lifetime the host's default, an hour on a subscription and five minutes on an API key; git instructions the host's default; multipliers the general ones";
+    const DEFAULTS = "cache lifetime the host's default, an hour on a subscription within its usage limits and five minutes on an API key; git instructions the host's default; multipliers the general ones";
     const line = async (manifest) => {
         const { findings } = await inspect(tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(manifest) }), { schema: SCHEMA });
         const hits = checks(findings, "sessions");
@@ -766,7 +766,7 @@ describe("where every session switch stands is one line, reported and never fail
     test("the git switch, declared off, says so and leaves the lifetime the host's", async () => {
         assert.equal(
             await line({ ...wellFormed(), portulan: { spec: "2.11" }, sessions: { git_instructions: false } }),
-            "cache lifetime the host's default, an hour on a subscription and five minutes on an API key; git instructions off; multipliers the general ones; `portulan upgrade` prints the five-minute lifetime's offer and its trade-off",
+            "cache lifetime the host's default, an hour on a subscription within its usage limits and five minutes on an API key; git instructions off; multipliers the general ones; `portulan upgrade` prints the five-minute lifetime's offer and its trade-off",
         );
     });
 

@@ -82,10 +82,10 @@ multiplier of the model the host recorded for every run of both. Every run was m
 task expects, and none changed a file. A is scored by the split this page names; C's figures are the
 runner's, in input tokens at those multipliers.
 
-| Sequence | A, a run | B, a run | First | Warm | Cold | C, warm against cold | Started warm |
-|---|---|---|---|---|---|---|---|
-| One-hour writes | 27,023 | 80,600 | 40,295 | 15,727 | 56,023 | **28** | 4 of 4 |
-| Five-minute writes | 30,032 | 89,975 | 28,917 | 13,713 | 38,678 | **35** | 4 of 4 |
+| Sequence | A, a run | B, a run | First | Warm | Cold | C, warm against cold | Started warm | Sequence's cost |
+|---|---|---|---|---|---|---|---|---|
+| One-hour writes | 27,023 | 80,600 | 40,295 | 15,727 | 56,023 | **28** | 4 of 4 | 24,213 |
+| Five-minute writes | 30,032 | 89,975 | 28,917 | 13,713 | 38,678 | **35** | 4 of 4 | 18,983 |
 
 **Row 1, a warm start.** Every run after the first read 20,391 of its first request's 20,393 tokens (one
 hour) or 20,516 of 20,518 (five minutes) from the run before it and wrote none of them, so a warm boot cost
@@ -93,9 +93,10 @@ hour) or 20,516 of 20,518 (five minutes) from the run before it and wrote none o
 A and B differ between the sequences by what the task chose to read, which a lifetime does not change.
 
 **Row 2, five-minute writes against an hour's: PASS**, C **78** against the one-hour control's 100 (18,983
-against 24,213, the mean of the runs with the first priced cold). It is the lifetime of this repository's
-own headless runs, `sessions.headless` in [`../../.portulan/workspace.json`](../../.portulan/workspace.json),
-and the one `init` and `upgrade` offer an adopter, with the trade-off below.
+against 24,213, each the sequence's cost in the table: its runs' mean as billed, with the first priced cold).
+It is the lifetime of this repository's own headless runs, `sessions.headless` in
+[`../../.portulan/workspace.json`](../../.portulan/workspace.json), and the one `init` and `upgrade` offer an
+adopter, with the trade-off below.
 
 The same day, the maintainer's measurement ran its boot, doctrine and mechanism tasks five times each with
 five-minute writes from the same commit. Against its one-hour runs of earlier that day, from `54c1fb1`, each

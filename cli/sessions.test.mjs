@@ -1,4 +1,4 @@
-// `sessions` — the cache lifetime's offer, the multipliers' note, and `doctor`'s one line on the session switches.
+// `sessions` — the cache lifetime's offer, and `doctor`'s one line on the session switches.
 //
 //   node --test "cli/**/*.test.mjs"
 //
@@ -16,8 +16,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { CACHE_LIFETIMES } from "./compile.mjs";
-import { GENERAL_READ, WRITE_BY_LIFETIME } from "./ledger.mjs";
-import { LIFETIME_OFFER, MULTIPLIERS_NOTE, OFFER_ENDS, offerLines, sessionsLine } from "./sessions.mjs";
+import { WRITE_BY_LIFETIME } from "./ledger.mjs";
+import { LIFETIME_OFFER, OFFER_ENDS, offerLines, sessionsLine } from "./sessions.mjs";
 
 // A HERMETIC HOST. `sessions` never asks the host where packs are installed, but this suite imports
 // `./compile.mjs`, which can, so it neutralises the installed-plugin record the way every suite in that
@@ -29,7 +29,7 @@ process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /** The line `doctor` prints for a manifest that declares no switch, by kind. */
-const DEFAULTS = "cache lifetime the host's default, an hour on a subscription and five minutes on an API key; git instructions the host's default; multipliers the general ones";
+const DEFAULTS = "cache lifetime the host's default, an hour on a subscription within its usage limits and five minutes on an API key; git instructions the host's default; multipliers the general ones";
 const TO_UPGRADE = "; `portulan upgrade` prints the five-minute lifetime's offer and its trade-off";
 
 describe("the offer states what is true of the key it offers", () => {
@@ -53,7 +53,7 @@ describe("the offer states what is true of the key it offers", () => {
 
     test("it names the command that writes the setting, the setting, and the host's two defaults", () => {
         assert.match(LIFETIME_OFFER.what, /`portulan compile` writes into \.claude\/settings\.json as `promptCacheTtl`/);
-        assert.match(LIFETIME_OFFER.what, /unset, Claude Code writes for an hour on a subscription and for five minutes on an API key, where this changes nothing$/);
+        assert.match(LIFETIME_OFFER.what, /unset, Claude Code writes for an hour on a subscription within its usage limits and for five minutes on an API key, where this changes nothing$/);
     });
 
     test("the multipliers it states are the ones the ledger prices a threshold with", () => {
@@ -62,19 +62,12 @@ describe("the offer states what is true of the key it offers", () => {
         assert.equal(WRITE_BY_LIFETIME["1h"], 2);
         assert.match(LIFETIME_OFFER.reason, /^A five-minute cache write costs 1\.25 times an uncached input token where an hour's costs 2\./);
         assert.match(LIFETIME_OFFER.tradeOff, /writes the whole context again at 1\.25 times/);
-        assert.equal(GENERAL_READ, 0.1);
-        assert.match(MULTIPLIERS_NOTE, /price a cache read at a tenth of an uncached input token, the general figure/);
     });
 
     test("the reason carries its measurement and its date, and the trade-off says who it suits", () => {
         assert.match(LIFETIME_OFFER.reason, /cut the cost of a boot by 22 to 30% and of an edit by about 18% against an hour's \(measured 2026-09-24\)\.$/);
         assert.match(LIFETIME_OFFER.tradeOff, /^A pause of over five minutes between two requests/);
         assert.match(LIFETIME_OFFER.tradeOff, /so it suits sessions that work straight through\.$/);
-    });
-
-    test("the multipliers' note names the key that declares them and asks nothing", () => {
-        assert.match(MULTIPLIERS_NOTE, /until `spend\.multipliers` \(Workspace Definition 2\.12\) declares your model's own/);
-        assert.doesNotMatch(MULTIPLIERS_NOTE, /\?/);
     });
 
     test("the texts are frozen, so no caller can reword the offer for everyone", () => {
@@ -91,7 +84,7 @@ describe("the offer as `init` and `upgrade` print it", () => {
             `  ${LIFETIME_OFFER.tradeOff}`,
             `  ${OFFER_ENDS}`,
         ]);
-        assert.equal(OFFER_ENDS, 'Declare "1h" to keep an hour\'s lifetime and end this offer.');
+        assert.equal(OFFER_ENDS, 'Declaring either lifetime ends this offer; on an API key "5m" is already the host\'s default.');
         assert.ok(lines.every((l) => !l.includes("\n")), "a line a caller prefixes is one line");
     });
 
@@ -101,7 +94,7 @@ describe("the offer as `init` and `upgrade` print it", () => {
         assert.match(lines[0], /^Five-minute cache writes: `"sessions"/);
         assert.ok(lines[0].endsWith("where this changes nothing."));
         assert.deepEqual(lines.slice(1), [`  ${LIFETIME_OFFER.reason}`, `  ${LIFETIME_OFFER.tradeOff}`]);
-        assert.ok(lines.every((l) => !/not written|end this offer/.test(l)), "the answer is what ends it, and a yes writes it");
+        assert.ok(lines.every((l) => !/not written|ends this offer/.test(l)), "the answer is what ends it, and a yes writes it");
     });
 });
 

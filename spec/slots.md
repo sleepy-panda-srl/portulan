@@ -838,9 +838,9 @@ priced by nobody's.
 
 **What is not here.** Ruling 2 has `init` offer the declaration from the host's own pricing setting where the
 host exposes one, else from a dated per-host table in the engine. Both are keyed by the model a host records,
-so both wait for their own change: until then `init` names the key and offers no figures, and a workspace
-writes its own by hand. Nothing checks a declared figure against what the workspace is billed; keeping it true
-is the declaring workspace's work.
+so both wait for their own change: until then `init` offers no figures, and a workspace writes its own by
+hand. Nothing checks a declared figure against what the workspace is billed; keeping it true is the declaring
+workspace's work.
 
 **Checked by the schema and by `doctor`, and refused by every reader.** The schema holds the shape: both
 halves of `multipliers`, both lifetimes of `write`, and no key it does not name. The subset types the four
@@ -851,8 +851,6 @@ the advisory hold the same ranges themselves rather than trusting that `doctor` 
 exit 2; the advisory, whose exit 2 would erase the person's prompt, says once on stderr what it could not use
 and prices that half at the general figures. `doctor` refuses the key in a manifest declaring a version before
 2.12, gated from birth as `sessions` was.
-
-
 
 ## `slots.context` — the guidance a host loads, each unit in its tier
 

@@ -35,7 +35,7 @@ import { fileURLToPath } from "node:url";
 
 import { InitError, SLUG, slugify, parseArgs, scan, draft, collisions, residenceAt, run } from "./init.mjs";
 import { compileGuidance } from "./compile.mjs";
-import { LIFETIME_OFFER, MULTIPLIERS_NOTE, OFFER_ENDS, offerLines } from "./sessions.mjs";
+import { LIFETIME_OFFER, OFFER_ENDS, offerLines } from "./sessions.mjs";
 
 // A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
 // 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
@@ -1419,7 +1419,6 @@ describe("the interview asks, and only where somebody is there to answer", () =>
             assert.equal(lines.length, 1, lines.join("\n"));
             assert.match(lines[0], /no cache lifetime declared, as you answered; `sessions\.cache_lifetime` declares one.*`--cache-lifetime` drafts it/);
             assert.ok(!h.said.some((l) => l.includes(OFFER_ENDS)), "the offer the person just declined is not printed again");
-            assert.equal(h.said.filter((l) => l.includes(MULTIPLIERS_NOTE)).length, 1);
         }
     });
 
@@ -1753,7 +1752,6 @@ describe("init offers the cache lifetime, and writes it only where it was chosen
             const said = h.said.join("\n");
             assert.match(said, new RegExp(`declares a ${lifetime} cache lifetime, \`sessions\\.cache_lifetime\` at Workspace Definition 2\\.11 — run \`portulan compile\``));
             assert.ok(!said.includes(OFFER_ENDS), "a lifetime chosen is the offer answered");
-            assert.equal(h.said.filter((l) => l.includes(MULTIPLIERS_NOTE)).length, 1, "the multipliers' note is said once, and asks nothing");
         }
     });
 
@@ -1783,12 +1781,12 @@ describe("init offers the cache lifetime, and writes it only where it was chosen
         const observed = scan(scratch());
         const before = { residence: "in-repo", name: "consumer", cycle: true, checkpoints: "rituals/checkpoints", given: new Set(["residence"]), packRoots: [] };
         assert.equal(draft({ ...before, cacheLifetime: null }, observed).get(".portulan/workspace.json").contents, draft(before, observed).get(".portulan/workspace.json").contents);
-        // Printed as 0036's budget is, on the line after it, prefixed and in order, with the multipliers' note once.
+        // Printed as 0036's budget is, on the line after it, prefixed and in order; the offer is the lifetime
+        // alone, so nothing names the multipliers.
         const at = h.said.findIndex((l) => l.includes("A budget is yours to declare"));
         assert.ok(at >= 0);
         assert.deepEqual(h.said.slice(at + 1, at + 1 + offerLines().length), offerLines().map((l) => `init: ${l}`));
-        assert.equal(h.said[at + 1 + offerLines().length], `init:   ${MULTIPLIERS_NOTE}`);
-        assert.equal(h.said.filter((l) => l.includes(MULTIPLIERS_NOTE)).length, 1);
+        assert.ok(!h.said.some((l) => l.includes("spend.multipliers")), h.said.join("\n"));
     });
 
     test("a lifetime the host does not take is refused, by flag and by answers file, and nothing is written", async () => {

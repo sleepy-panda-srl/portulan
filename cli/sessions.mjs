@@ -4,19 +4,19 @@
 // Workspace Definition 2.11 added `sessions`, and `compile` writes its `cache_lifetime` into a repository's
 // `.claude/settings.json` as Claude Code's `promptCacheTtl` (`../core/operating/sessions.md`). Nothing told a
 // repository outside this one that the key exists. Unset, Claude Code writes the cache for an hour on a
-// subscription and for five minutes on an API key, and a cache test on 2026-09-24 measured Portulan's own
-// tasks, run straight through: five-minute writes cut a boot's cost by 22 to 30% and an edit's by about 18%
-// against one-hour writes, and no run paused five minutes. So `init` offers the lifetime, `upgrade` prints
-// the offer until the manifest declares one, and `doctor` says where every switch stands. Proposal `0038`,
-// item 4 of its order of work, *`init`'s offer* (`../.portulan/proposals/0038-what-a-change-spends-is-measured.md`).
+// subscription within its usage limits and for five minutes on an API key, and a cache test on 2026-09-24
+// measured Portulan's own tasks, run straight through: five-minute writes cut a boot's cost by 22 to 30% and
+// an edit's by about 18% against one-hour writes, and no run paused five minutes. So `init` offers the
+// lifetime, `upgrade` prints the offer until the manifest declares one, and `doctor` says where every switch
+// stands. Proposal `0038`, item 4 of its order of work, *`init`'s offer*
+// (`../.portulan/proposals/0038-what-a-change-spends-is-measured.md`).
 //
 // **The offer is the five-minute lifetime and nothing else**, as decided for this change on 2026-09-24.
-// Dropping the git instructions removes what a session that commits needs (`sessions.md`), and `headless`
-// is read only by Portulan's own runners, which the package does not ship (`../spec/slots.md`). The
-// multipliers are a note and not a question: `0038` has `init` offer them from the host's pricing or a dated
-// per-host table, and that table is its own change, made from a local session because it names models. The
-// trade-off is printed beside the reason, because five minutes is the dearer lifetime for a session that
-// pauses.
+// Dropping the git instructions removes what a session that commits needs (`sessions.md`), and `headless` is
+// read only by Portulan's own runners, which the package does not ship (`../spec/slots.md`). Nor are the
+// multipliers offered: `0038` has `init` offer them from the host's pricing or a dated per-host table, and
+// that table is its own change, made from a local session because it names models. The trade-off is printed
+// beside the reason, because five minutes is the dearer lifetime for a session that pauses.
 //
 // **Offered, never written by the offer.** `init` writes the key where a person chose it, by a flag, an
 // answers file or a yes at its question, and never writes `.claude/settings.json`: `compile` is that file's
@@ -31,7 +31,7 @@ export const LIFETIME_OFFER = Object.freeze({
     what:
         'five-minute cache writes: `"sessions": { "cache_lifetime": "5m" }` in the manifest, at Workspace Definition 2.11 or later, ' +
         "which `portulan compile` writes into .claude/settings.json as `promptCacheTtl`; unset, Claude Code writes for an hour on a " +
-        "subscription and for five minutes on an API key, where this changes nothing",
+        "subscription within its usage limits and for five minutes on an API key, where this changes nothing",
     reason:
         "A five-minute cache write costs 1.25 times an uncached input token where an hour's costs 2. On Portulan's own tasks, run " +
         "straight through, five-minute writes cut the cost of a boot by 22 to 30% and of an edit by about 18% against an hour's " +
@@ -43,17 +43,7 @@ export const LIFETIME_OFFER = Object.freeze({
 });
 
 /** The sentence that closes the offer: declaring either lifetime is what stops `upgrade` printing it. */
-export const OFFER_ENDS = 'Declare "1h" to keep an hour\'s lifetime and end this offer.';
-
-/**
- * What `init` says of the multipliers, and asks nothing about: `0038`'s ruling 2 has the manifest declare
- * them, and the key that does, `spend.multipliers`, arrives at 2.12. The tenth is `./ledger.mjs`'s
- * `GENERAL_READ`.
- */
-export const MULTIPLIERS_NOTE =
-    "The restart advisory and the ledger price a cache read at a tenth of an uncached input token, the general figure, until " +
-    "`spend.multipliers` (Workspace Definition 2.12) declares your model's own; a model's reads cost between a fortieth and a " +
-    "tenth, and the tenth puts the restart line early, the cheaper way to err.";
+export const OFFER_ENDS = 'Declaring either lifetime ends this offer; on an API key "5m" is already the host\'s default.';
 
 /**
  * The offer as `init` and `upgrade` print it, one line each, unprefixed: each caller adds its own `init: ` or
@@ -123,7 +113,7 @@ export function sessionsLine(manifest) {
 
     const parts = [
         lifetime === null
-            ? "cache lifetime the host's default, an hour on a subscription and five minutes on an API key"
+            ? "cache lifetime the host's default, an hour on a subscription within its usage limits and five minutes on an API key"
             : `cache lifetime ${lifetime}, compiled as \`promptCacheTtl\``,
         sessions.git_instructions === false
             ? "git instructions off"
