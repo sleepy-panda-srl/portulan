@@ -3,11 +3,13 @@
 //   node --test cli/symbols.test.mjs
 //
 // The fixtures hold the constructs a hand-written scanner gets wrong: braces inside strings, templates,
-// nested templates and regular expressions; a `/` that divides; statements with no semicolon; doc
-// comments that attach and one a blank line detaches; a class's members, a suite's tests, a section
-// inside a function; a shell function whose here-document carries a `}` at column zero. Each outline is
-// pinned whole, so a change to what a session is shown fails here first. `symbols.live.test.mjs` holds
-// the same parser to every code file this repository tracks.
+// nested templates and regular expressions; a `/` that divides, after `++`, a property named `default`
+// or an object literal; statements with no semicolon; doc comments that attach and one a blank line
+// detaches; a class's members, a suite's tests, a section inside a function; a shell function whose
+// here-document carries a `}` at column zero, whose body holds a brace group, and whose strings,
+// expansions and comments hold braces. Each outline is pinned whole, so a change to what a session is
+// shown fails here first. `symbols.live.test.mjs` holds the same parser to every code file this
+// repository tracks.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -146,10 +148,33 @@ describe("a JavaScript outline", () => {
         assert.deepEqual(render("asi.mjs", outlineJs(src)).slice(1), ["1 const a = 1", "2-3 const b = () => {", "4 foo()", "5-6 bar()"]);
     });
 
+    test("reads a `/` after a value as division, and after a keyword or a block as a regular expression", () => {
+        const src = [
+            "let value = 1;",
+            "const ratio = value++ / 2;",
+            "const half = options.default / 2;",
+            "const nothing = {} / 2;",
+            "if (ratio) {}",
+            "/[}]/.test(String(half)) && run([nothing]);",
+            "export default /[a{]/;",
+            "",
+        ].join("\n");
+        assert.deepEqual(render("slash.mjs", outlineJs(src)).slice(1), [
+            "1 let value = 1;",
+            "2 const ratio = value++ / 2;",
+            "3 const half = options.default / 2;",
+            "4 const nothing = {} / 2;",
+            "5 if (ratio)",
+            "6 /[}]/.test(String(half)) && run([nothing]);",
+            "7 export default /[a{]/;",
+        ]);
+    });
+
     test("refuses a source whose brackets it cannot match, naming the line", () => {
         assert.throws(() => outlineJs("function f() {\n  return [1, 2;\n}\n"), (error) => error instanceof CannotOutline && /line 2/.test(error.message));
         assert.throws(() => outlineJs("const s = `open ${x\n"), CannotOutline);
         assert.throws(() => outlineJs("const s = 'no end\n"), CannotOutline);
+        assert.throws(() => outlineJs("const r = /no end"), CannotOutline);
     });
 });
 
@@ -165,6 +190,23 @@ describe("a shell outline", () => {
             "17-19 other()",
             "21-22 # § 2. second",
         ]);
+    });
+
+    test("ends a function at the brace closing its body, whatever braces its words, strings and comments hold", () => {
+        const src = [
+            "f() { { echo hi; }",
+            "  echo bye",
+            "}",
+            "g() {",
+            "{",
+            '  echo "a }',
+            "}\" '}' ${x} {a,b} \\} # }",
+            "}",
+            "  echo g",
+            "}",
+            "",
+        ].join("\n");
+        assert.deepEqual(render("braces.sh", outlineSh(src)).slice(1), ["1-3 f()", "4-10 g()"]);
     });
 
     test("refuses a here-document that never ends and a function that never closes", () => {
@@ -201,6 +243,19 @@ describe("the command", () => {
         assert.equal(run(["--find", "Box.size"], dir).out, "lib/a.mjs:2-4 size()\n");
         assert.deepEqual(run(["--find", "nothing"], dir), { code: 1, out: "", err: "symbols: no definition of nothing in the tracked code\n" });
         assert.equal(run(["--find", "size"], scratch()).code, 2);
+    });
+
+    test("refuses to search when a tracked file cannot be read, and passes over one the work tree deleted", () => {
+        const dir = scratch();
+        execFileSync("git", ["init", "-q"], { cwd: dir });
+        fs.writeFileSync(path.join(dir, "a.mjs"), "export function size() {}\n");
+        fs.writeFileSync(path.join(dir, "gone.mjs"), "export function size() {}\n");
+        fs.symlinkSync("loop.mjs", path.join(dir, "loop.mjs"));
+        execFileSync("git", ["add", "a.mjs", "gone.mjs", "loop.mjs"], { cwd: dir });
+        fs.rmSync(path.join(dir, "gone.mjs"));
+        assert.deepEqual(run(["--find", "size"], dir), { code: 2, out: "", err: "symbols: could not outline — cannot read loop.mjs: ELOOP\n" });
+        execFileSync("git", ["rm", "-q", "--cached", "loop.mjs"], { cwd: dir });
+        assert.deepEqual(run(["--find", "size"], dir), { code: 0, out: "a.mjs:1 export function size()\n", err: "" });
     });
 
     test("prints its usage for --help, and exits 2 on none or an unknown option", () => {

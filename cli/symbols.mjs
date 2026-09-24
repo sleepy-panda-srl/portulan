@@ -63,7 +63,7 @@ export function languageOf(file, firstLine = "") {
 // ===========================================================================================
 
 const KEYWORDS_BEFORE_REGEX = new Set(["return", "typeof", "instanceof", "in", "of", "new", "delete", "void",
-    "throw", "case", "do", "else", "yield", "await"]);
+    "throw", "case", "default", "do", "else", "yield", "await"]);
 const TEST_CALLS = new Set(["describe", "test", "it", "suite", "before", "after", "beforeEach", "afterEach"]);
 const NAME_START = /[A-Za-z_$\u0080-\uffff]/;
 const NAME_PART = /[\w$\u0080-\uffff]/;
@@ -77,34 +77,50 @@ const NAME_PART = /[\w$\u0080-\uffff]/;
 export function scanJs(src) {
     const tokens = [];
     const comments = [];
-    let prev = null;
-    const push = (type, value, start, end) => {
-        const token = { type, value, start, end };
-        tokens.push(token);
-        prev = token;
-    };
-    const regexAllowed = () =>
-        prev === null ||
-        (prev.type === "punct" && ![")", "]"].includes(prev.value)) ||
-        (prev.type === "name" && KEYWORDS_BEFORE_REGEX.has(prev.value));
+    const push = (type, value, start, end) => tokens.push({ type, value, start, end });
     const newline = src.indexOf("\n");
-    scan(src, src.startsWith("#!") ? (newline === -1 ? src.length : newline) : 0, false, { push, comments, regexAllowed });
+    scan(src, src.startsWith("#!") ? (newline === -1 ? src.length : newline) : 0, false, { push, comments });
     return { tokens, comments };
+}
+
+// Whether a `/` opens a regular expression, from the tokens before it: it does at the start, after an
+// operator or an opening bracket, after a keyword that takes an expression, and after a `}` that closes a
+// block; it divides after a value, which is a name, a literal, `)`, `]`, a postfix `++` or `--`, a
+// property named like a keyword (`options.default`), or the `}` of an object literal. A `{` opens an
+// object literal where an expression goes: after an operator, an opening bracket, `:` or such a keyword.
+function slashReader() {
+    let prev = null;
+    const braces = [];
+    const expressionKeyword = (token) => token.type === "name" && !token.property && KEYWORDS_BEFORE_REGEX.has(token.value);
+    return {
+        note(type, value) {
+            const token = { type, value, property: prev?.type === "punct" && (prev.value === "." || prev.value === "?.") };
+            if (type === "punct" && value === "{") {
+                braces.push(prev !== null && (prev.type === "punct" ? ![")", ";", "{", "}", "=>"].includes(prev.value)
+                    : prev.type !== "name" || (expressionKeyword(prev) && prev.value !== "do" && prev.value !== "else")));
+            }
+            if (type === "punct" && value === "}") token.literal = braces.pop() === true;
+            prev = token;
+        },
+        regexAllowed: () =>
+            prev === null ||
+            (prev.type === "punct" && (prev.value === "}" ? !prev.literal : ![")", "]", "++", "--"].includes(prev.value))) ||
+            expressionKeyword(prev),
+    };
 }
 
 // One scanner for the file and for each `${}`: `nested` stops it at the brace closing the expression,
 // and a nested scan records nothing, so only the file's own level reaches the token list.
 function scan(src, i, nested, sink) {
     let depth = 0;
-    let prevLocal = null;
-    const local = {
-        push: (type, value) => { prevLocal = { type, value }; },
-        regexAllowed: () =>
-            prevLocal === null ||
-            (prevLocal.type === "punct" && ![")", "]"].includes(prevLocal.value)) ||
-            (prevLocal.type === "name" && KEYWORDS_BEFORE_REGEX.has(prevLocal.value)),
+    const slash = slashReader();
+    const out = {
+        push: (type, value, start, end) => {
+            slash.note(type, value);
+            if (!nested) sink.push(type, value, start, end);
+        },
+        regexAllowed: slash.regexAllowed,
     };
-    const out = nested ? local : sink;
     const n = src.length;
     while (i < n) {
         const c = src[i];
@@ -157,6 +173,7 @@ function scan(src, i, nested, sink) {
                 else if (src[j] === "\n") throw new CannotOutline(`an unterminated regular expression at offset ${i}`);
                 j++;
             }
+            if (j >= n) throw new CannotOutline(`an unterminated regular expression at offset ${i}`);
             j++;
             while (j < n && NAME_PART.test(src[j])) j++;
             out.push("regex", src.slice(i, j), i, j);
@@ -585,6 +602,74 @@ function patternNames(t, open, match) {
 const SH_FUNCTION = /^(\s*)(?:function\s+([A-Za-z_][\w:.-]*)\s*(?:\(\s*\))?|([A-Za-z_][\w:.-]*)\s*\(\s*\))\s*(\{.*)?$/;
 const HEREDOC = /<<(-?)\s*(['"]?)([A-Za-z_][\w-]*)\2/;
 
+// Words after which another command may start: a brace or a keyword standing where a command does.
+const SH_COMMAND_WORDS = new Set(["{", "}", "!", "then", "do", "else", "elif", "if", "while", "until", "time"]);
+
+// The line whose `}` closes the `{` a function's body opens with, `from` the `{` on code[at]. A brace
+// counts only as a word of its own where a command may start, so the braces of `${x}`, `{a,b}`, `'{'`,
+// `\}` or a comment never do. Quotes, `$'…'`, `${…}`, `$(…)` and backquotes may run over lines, and a
+// here-document's lines are not in `code`. A body that never closes is refused, never cut short.
+function functionEnd(code, at, from, name, line) {
+    const stack = [];
+    let depth = 0;
+    let command = true;
+    let word = "";
+    // Ends the word being read; true when it is the `}` that closes the body. `next` says whether a
+    // command may start after what ended it, when that is not the word's own say.
+    const endWord = (next) => {
+        const brace = word !== "" && command && (word === "{" || word === "}");
+        if (brace) depth += word === "{" ? 1 : -1;
+        if (word !== "") command = command && SH_COMMAND_WORDS.has(word);
+        if (next !== undefined) command = next;
+        word = "";
+        return brace && depth === 0;
+    };
+    for (let k = at; k < code.length; k++) {
+        const text = code[k].text;
+        let continued = false;
+        for (let i = k === at ? from : 0; i < text.length; i++) {
+            const c = text[i];
+            const top = stack.at(-1);
+            if (top === "'") { if (c === "'") stack.pop(); continue; }
+            if (top === "$'" || top === "`") {
+                if (c === "\\") i++;
+                else if (c === top.at(-1)) stack.pop();
+                continue;
+            }
+            if (top === '"' || top === "${") {
+                if (c === "\\") i++;
+                else if (c === (top === '"' ? '"' : "}")) stack.pop();
+                else if (c === "$" && (text[i + 1] === "(" || text[i + 1] === "{")) stack.push(`$${text[++i]}`);
+                else if (c === "`") stack.push("`");
+                else if (top === "${" && (c === '"' || (c === "'" && !stack.includes('"')))) stack.push(c);
+                continue;
+            }
+            // Code: the file's own level, or inside `$(…)`, where `)` closes the substitution.
+            if (c === " " || c === "\t") { if (endWord() && !stack.length) return code[k].line; continue; }
+            if (c === "#" && word === "") break;
+            if (c === "\\") {
+                if (i === text.length - 1) continued = true;
+                else word += text[++i];
+                word += "\\";
+                continue;
+            }
+            if (c === "$" && (text[i + 1] === "(" || text[i + 1] === "{" || text[i + 1] === "'")) {
+                stack.push(text[i + 1] === "(" ? "$(" : text[i + 1] === "{" ? "${" : "$'");
+                word += c + text[++i];
+                continue;
+            }
+            if (c === "'" || c === '"' || c === "`") { stack.push(c); word += c; continue; }
+            if (c === ")" && top === "$(") { stack.pop(); word += c; continue; }
+            if (";&|()".includes(c)) { if (endWord(true) && !stack.length) return code[k].line; continue; }
+            if (c === "<" || c === ">") { if (endWord(false) && !stack.length) return code[k].line; continue; }
+            word += c;
+        }
+        if (stack.length && stack.at(-1) !== "$(") continue;
+        if (endWord(continued ? undefined : true) && !stack.length) return code[k].line;
+    }
+    throw new CannotOutline(`no closing brace for ${name}() on line ${line}`);
+}
+
 /** The outline of a shell script: its functions, its titled banners and the comment that opens it. */
 export function outlineSh(src) {
     const srcLines = src.split("\n");
@@ -612,13 +697,7 @@ export function outlineSh(src) {
         let at = k;
         if (!open && code[k + 1]?.text.trim().startsWith("{")) { at = k + 1; open = code[k + 1].text.trim(); }
         if (!open) continue;
-        let end;
-        if (/[;&\s]\}\s*(#.*)?$/.test(open)) end = code[at].line;
-        else {
-            const close = code.slice(at + 1).find((c) => c.text.startsWith(`${fn[1]}}`) && /^\s*\}\s*([;&|<>].*|#.*)?$/.test(c.text));
-            if (!close) throw new CannotOutline(`no closing brace for ${name}() on line ${line}`);
-            end = close.line;
-        }
+        const end = functionEnd(code, at, code[at].text.length - open.length, name, line);
         let start = line;
         while (start > 1 && /^\s*#/.test(srcLines[start - 2]) && !srcLines[start - 2].startsWith("#!") && !isBanner(srcLines[start - 2])) start--;
         entries.push({ start, end, text: cut(oneLine(`${name}()`)), name: [name], children: [] });
@@ -744,14 +823,17 @@ export function trackedCode(cwd) {
     return listed.split("\0").filter(Boolean).filter((file) => {
         if (languageOf(file)) return true;
         if (path.extname(file) !== "") return false;
+        let fd;
         try {
-            const fd = fs.openSync(path.join(cwd, file), "r");
+            fd = fs.openSync(path.join(cwd, file), "r");
             const head = Buffer.alloc(80);
             const n = fs.readSync(fd, head, 0, 80, 0);
-            fs.closeSync(fd);
             return languageOf(file, head.subarray(0, n).toString("utf8").split("\n")[0]) !== null;
-        } catch {
-            return false;
+        } catch (error) {
+            if (error.code === "ENOENT" || error.code === "EISDIR") return false;
+            throw new CannotOutline(`cannot read ${file}: ${error.code ?? error.message}`);
+        } finally {
+            if (fd !== undefined) fs.closeSync(fd);
         }
     });
 }
@@ -764,8 +846,11 @@ export function find(cwd, name) {
         let text;
         try {
             text = fs.readFileSync(full, "utf8");
-        } catch {
-            continue;
+        } catch (error) {
+            // A tracked path the work tree no longer holds as a file holds no definition; one it holds and
+            // cannot read might, so the search refuses rather than answer that there is none.
+            if (error.code === "ENOENT" || error.code === "EISDIR") continue;
+            throw new CannotOutline(`cannot read ${file}: ${error.code ?? error.message}`);
         }
         if (!text.includes(name.split(".").at(-1))) continue;
         const { entries } = outlineFile(full, file, text);
