@@ -12,10 +12,12 @@
 // `0.1.0`, closing #242, so that user now exists. See `../.portulan/identity.md`. This file is the runner: it decides which
 // steps a workspace owes, applies them, and grades the result with the real validator.
 //
-// **Two kinds of step**, by the maintainer's ruling of 2026-08-12: a `version` step migrates a
+// **Three kinds of step.** By the maintainer's ruling of 2026-08-12, a `version` step migrates a
 // Workspace Definition MAJOR, and a `repair` fixes something a rewriter owes a workspace it touched.
 // Without the second kind this tool would be machinery with no subject — the train's only MAJOR
-// migration is `1.0 → 2.0` and **nothing in this repository declares 1.0**.
+// migration is `1.0 → 2.0` and **nothing in this repository declares 1.0**. Since 2026-09-24, a
+// `form` step moves a consumer's records and boot to the form Portulan moved its own to, and may
+// edit or delete a file in the tree beside the workspace, which the rollback puts back as well.
 //
 // ## The three states a workspace can be in relative to this bundle, and why two of them are refusals
 //

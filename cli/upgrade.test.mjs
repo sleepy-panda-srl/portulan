@@ -1,4 +1,4 @@
-// `upgrade` — the migration chain, and the two kinds of step.
+// `upgrade` — the migration chain, and the three kinds of step.
 //
 //   node --test "cli/**/*.test.mjs"
 //
