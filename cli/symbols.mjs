@@ -395,6 +395,8 @@ export function outlineJs(src) {
         let k = first;
         while (["export", "default", "async", "static", "get", "set", "accessor", "function", "class", "const", "let", "var"].includes(t[k]?.value) && t[k].type === "name") k++;
         if (t[k]?.value === "*") k = k + 1;
+        // `class extends Base` has no name of its own; `extends` is the next word, not the class's name.
+        if (t[k]?.value === "extends" && t[k - 1]?.value === "class") return null;
         return t[k]?.type === "name" && k <= last ? t[k].value : null;
     };
 

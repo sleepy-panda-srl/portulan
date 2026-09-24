@@ -143,6 +143,11 @@ describe("a JavaScript outline", () => {
         assert.deepEqual(names, [["one"], ["re", "other"], ["x", "z", "rest"]]);
     });
 
+    test("names no class that has no name of its own", () => {
+        const src = "export default class extends Base {\n    size() {}\n}\n";
+        assert.deepEqual(outlineJs(src).entries.map((e) => [e.name, e.children.map((m) => m.name)]), [[null, ["size"]]]);
+    });
+
     test("ends a statement where a line with no semicolon ends it", () => {
         const src = "const a = 1\nconst b = () => {\n}\nfoo()\nbar()\n    .baz()\n";
         assert.deepEqual(render("asi.mjs", outlineJs(src)).slice(1), ["1 const a = 1", "2-3 const b = () => {", "4 foo()", "5-6 bar()"]);
