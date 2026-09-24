@@ -184,6 +184,26 @@ describe("the boot read-set", () => {
         assert.doesNotMatch(out, /without manifest/);
     });
 
+    test("a card that does not carry the kernel has the boot read the plugin's, as the router says", () => {
+        const root = repository({ files: { ".claude/rules/portulan/boot.md": "# Portulan boot card\n\nThe card.\n" } });
+        const bundleRoot = bundle();
+        const result = measure(path.join(root, ".portulan"), { bundleRoot });
+        assert.deepEqual(result.boot.entries.map((e) => e.label), ["boot skill", "rule", "kernel"]);
+        const size = (rel) => fs.statSync(path.join(bundleRoot, rel)).size;
+        assert.equal(result.figures.boot, result.figures.always + size("plugin/skills/portulan/SKILL.md") + size("core/engine.md"));
+    });
+
+    test("this repository's card, in the list of what waits, is the one the boot selects, not a file beside it", () => {
+        const root = repository({
+            cards: ["app", "other"],
+            files: { ".claude/rules/portulan/boot.md": "# Portulan boot card\n\n@../../../.portulan/repos/other.md\n" },
+        });
+        const waits = (repo) => measure(path.join(root, ".portulan"), { bundleRoot: bundle(), repo }).boot.notCounted[0];
+        assert.match(waits("app"), /, this repository's card, /);
+        assert.doesNotMatch(waits("other"), /this repository's card/);
+        assert.match(waits(null), /, this repository's card, /, "with two cards and none named, no card is selected, so none is loaded");
+    });
+
     test("a file the card imports is counted where it loads, and not listed as one opened on demand", () => {
         const root = repository({
             files: {
@@ -367,6 +387,16 @@ describe("imports, as the host reads them", () => {
             "@after.md",
         ].join("\n");
         assert.deepEqual(importsOf(text), ["docs/a.md", "b.md.", "after.md"]);
+    });
+
+    // Read in Claude Code 2.1.281: a token runs to the next space no `\` escapes, is cut at `#`, reads `\ `
+    // as a space, and is no import unless it opens as a path can.
+    test("an import's path is cut at `#`, reads an escaped space as a space, and opens as a path can", () => {
+        assert.deepEqual(importsOf("@docs/my\\ file.md and @docs/a.md#part, not @#tag or @(x)\n"), ["docs/my file.md", "docs/a.md"]);
+        const root = tree({ "CLAUDE.md": "@docs/my\\ file.md\n\n@docs/a.md#part\n", "docs/my file.md": "m\n", "docs/a.md": "a\n" });
+        const always = alwaysTier(root);
+        assert.deepEqual(always.entries.map((e) => path.relative(root, e.file)), ["CLAUDE.md", path.join("docs", "my file.md"), path.join("docs", "a.md")]);
+        assert.deepEqual(always.missing, []);
     });
 });
 

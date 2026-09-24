@@ -3966,6 +3966,19 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         assert.equal(check.code, 0, check.out);
     });
 
+    test("an escaped space and a fragment are read as the host reads them, and kept where the import is spelled again", (t) => {
+        const dir = withFiles({ "context/boot.md": card("@../my\\ notes.md#part"), "my notes.md": "Notes.\n" });
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 0, out);
+        assert.match(rule(dir, "boot"), /^@\.\.\/\.\.\/\.\.\/my\\ notes\.md#part$/m);
+        assert.ok(alwaysTier(dir).entries.some((e) => e.file === path.join(dir, "my notes.md")), "the file whose name holds a space loads");
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
+        fs.writeFileSync(path.join(dir, "context", "api.md"), unitText(["tier: on-path", 'paths: ["api/**"]', "description: Handlers."], "@../my\\ notes.md"));
+        const stray = said(t, ["--workspace", dir]);
+        assert.equal(stray.code, 2);
+        assert.match(stray.out, /`@\.\.\/my\\ notes\.md` names a file, and only an always unit may import one/);
+    });
+
     test(`a file ${IMPORT_DEPTH} imports below the rule is refused, since the host loads nothing there, and one ${IMPORT_DEPTH - 1} below compiles`, (t) => {
         const dir = withFiles({ "context/boot.md": card("@../d1.md"), "d1.md": "@d2.md\n", "d2.md": "@d3.md\n", "d3.md": "@d4.md\n", "d4.md": "@d5.md\n", "d5.md": "Five down.\n" });
         const { code, out } = said(t, ["--workspace", dir]);

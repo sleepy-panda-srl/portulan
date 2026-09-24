@@ -2029,11 +2029,11 @@ const STRAY_IMPORT = {
 };
 
 /**
- * The `@` imports in a text, as the host finds them: a token after the start of a line or a space, outside
- * code spans, fenced blocks and HTML comments, each with the offset where its path starts. Claude Code
- * 2.1.281 lexes the file, skips code, and strips `<!-- … -->` before it reads a token, so a path in a comment
- * is no import. `./context.mjs` counts what they load and `compile` checks them where a unit is compiled,
- * so both find the same ones.
+ * The `@` imports in a text, as the host finds them: a token after the start of a line or a space, running
+ * to the next space that no `\` escapes, outside code spans, fenced blocks and HTML comments, each with the
+ * offset where its path starts. Claude Code 2.1.281 lexes the file, skips code, and strips `<!-- … -->`
+ * before it reads a token, so a path in a comment is no import. `./context.mjs` counts what they load and
+ * `compile` checks them where a unit is compiled, so both find the same ones.
  */
 export function importSpans(text) {
     const found = [];
@@ -2083,16 +2083,19 @@ export function importSpans(text) {
             seen += close === -1 ? hit[0] : " ".repeat(to - hit.index);
             at = to;
         }
-        for (const match of seen.matchAll(/(?:^|\s)@([^\s`]+)/g)) {
+        for (const match of seen.matchAll(/(?:^|\s)@((?:[^\s\\]|\\ )+)/g)) {
             found.push({ target: match[1], index: start + match.index + match[0].length - match[1].length, line });
         }
     }
     return found;
 }
 
-/** Whether the host takes a token for an import path at all, as Claude Code 2.1.281 decides it. */
-const importPath = (target) => {
-    const bare = target.split("#")[0];
+/**
+ * The path the host reads from an import token, or null where it takes the token for no import, as Claude
+ * Code 2.1.281 decides it: cut at `#`, each `\ ` read as a space, and opening as a path can.
+ */
+export const importPath = (target) => {
+    const bare = target.split("#")[0].replaceAll("\\ ", " ");
     return bare !== "" && /^(?:\.\/|~\/|\/.|[A-Za-z0-9._-])/.test(bare) ? bare : null;
 };
 
@@ -2505,8 +2508,9 @@ function rebasedText(unit, root, to) {
     if (!unit.imports.length) return unit.text;
     const byLine = new Map();
     for (const { target, file } of unit.imports) {
-        const spelled = path.relative(path.join(root, path.dirname(to)), file).split(path.sep).join("/");
-        byLine.set(`@${target}`, `@${spelled}`);
+        const spelled = path.relative(path.join(root, path.dirname(to)), file).split(path.sep).join("/").replaceAll(" ", "\\ ");
+        const fragment = target.includes("#") ? target.slice(target.indexOf("#")) : "";
+        byLine.set(`@${target}`, `@${spelled}${fragment}`);
     }
     return unit.text
         .split("\n")

@@ -88,7 +88,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { BOOT_CARD_LINE, IMPORT_DEPTH, importSpans } from "./compile.mjs";
+import { BOOT_CARD_LINE, IMPORT_DEPTH, importPath, importSpans } from "./compile.mjs";
 import { AGENT_DIR, parseFrontmatter } from "./plugin-lint.mjs";
 import { HOST_SKILL_DEPTH, manifestPath } from "./skills-set.mjs";
 
@@ -107,6 +107,9 @@ export const BOOT_SKILL = { label: "boot skill", rel: "plugin/skills/portulan/SK
  * A boot whose card is loaded reads the skill alone, because the card carries the rest.
  */
 export const ENGINE = [BOOT_SKILL, { label: "boot steps", rel: "plugin/skills/portulan/steps.md" }, { label: "kernel", rel: "core/engine.md" }];
+
+/** The kernel's first line, by which the router tells whether a session's context already holds it. */
+export const KERNEL_LINE = "# Portulan engine";
 
 /**
  * The skill's step files, each read at boot only where it applies: step 2a where the manifest is a
@@ -262,6 +265,48 @@ export function declaredContext(manifest) {
 // ===========================================================================================
 
 /**
+ * The card naming THIS repository — step 3's "select it, do not read the directory". Named by `--repo`, or
+ * the only card there is. With several and none named, no card is counted and the report says so: guessing
+ * from a directory name would make one tree's figure depend on where it was checked out, which is the
+ * instability `0036`'s ruling 2 refuses for the ratio.
+ *
+ * @returns {{ selected: string|null, why: string|null, others: number, file: string|null }}
+ */
+function repoCard(workspaceDir, slots, repo) {
+    const card = { selected: null, why: null, others: 0, file: null };
+    if (slots.repos === undefined) {
+        if (repo !== null) throw new ContextError(`--repo ${repo} was given, and this workspace declares no repos slot`);
+        return card;
+    }
+    const dir = path.resolve(workspaceDir, slots.repos);
+    let cards = [];
+    try {
+        cards = fs
+            .readdirSync(dir, { withFileTypes: true })
+            .filter((e) => e.isFile() && e.name.endsWith(".md") && e.name.toLowerCase() !== "readme.md")
+            .map((e) => e.name.slice(0, -3))
+            .sort();
+    } catch (error) {
+        throw new ContextError(`slot \`repos\` (${slots.repos}) could not be listed (${error.code ?? error.message})`);
+    }
+    if (repo !== null) {
+        if (!cards.includes(repo)) {
+            throw new ContextError(`--repo ${repo} names no card in ${slots.repos} — the cards there are ${cards.join(", ") || "none"}`);
+        }
+        card.selected = repo;
+    } else if (cards.length === 1) {
+        card.selected = cards[0];
+    } else if (cards.length > 1) {
+        card.why = `${cards.length} cards and none named with --repo, so none is counted — a boot reads the one naming its repository`;
+    } else {
+        card.why = "the repos slot holds no card";
+    }
+    if (card.selected !== null) card.file = path.join(dir, `${card.selected}.md`);
+    card.others = cards.length - (card.selected === null ? 0 : 1);
+    return card;
+}
+
+/**
  * @returns {{ entries: Array<{label: string, file: string, bytes: number, bundle?: boolean, engine?: boolean, manifest?: boolean}>,
  *             engineMissing: string[], card: {selected: string|null, why: string|null, others: number},
  *             notCounted: string[] }}
@@ -314,6 +359,9 @@ export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, 
     if (always?.card) {
         fromBundle(BOOT_SKILL, true);
         for (const e of always.entries) entries.push({ ...e, always: true });
+        // Where no file in context opens with the kernel's line, the router has the boot read the plugin's
+        // kernel, as an adopter's must: its card cannot import a file outside the project.
+        if (!always.entries.some((e) => readText(e.file, e.file).split(/\r?\n/)[0] === KERNEL_LINE)) fromBundle(ENGINE[2], true);
         // What the card imports is counted above, so only what it does not import waits to be opened.
         const real = (file) => {
             try {
@@ -327,8 +375,11 @@ export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, 
         const replaced = [];
         if (waits("workspace.json")) replaced.push("the manifest");
         for (const slot of BOOT_SLOTS) if (slots[slot] !== undefined && waits(slots[slot])) replaced.push(`\`${slot}\``);
-        if (slots.repos !== undefined && ![...loaded].some((file) => path.dirname(file) === real(path.resolve(workspaceDir, slots.repos)))) {
-            replaced.push("this repository's card");
+        if (slots.repos !== undefined) {
+            const { file: cardFile } = repoCard(workspaceDir, slots, repo);
+            if (cardFile === null || !loaded.has(real(cardFile))) replaced.push("this repository's card");
+        } else if (repo !== null) {
+            throw new ContextError(`--repo ${repo} was given, and this workspace declares no repos slot`);
         }
         if (typeof manifest.memory?.index?.path === "string" && waits(manifest.memory.index.path)) replaced.push("the memory index");
         if (Array.isArray(manifest.packs) && manifest.packs.length) replaced.push("the packs step");
@@ -351,43 +402,8 @@ export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, 
         entries.push({ label: slot, file, bytes: sizeOf(file, `slot \`${slot}\` (${slots[slot]})`) });
     }
 
-    // The card naming THIS repository — step 3's "select it, do not read the directory". Named by
-    // `--repo`, or the only card there is. With several and none named, no card is counted and the
-    // report says so: guessing from a directory name would make one tree's figure depend on where it
-    // was checked out, which is the instability `0036`'s ruling 2 refuses for the ratio.
-    const card = { selected: null, why: null, others: 0 };
-    if (slots.repos !== undefined) {
-        const dir = path.resolve(workspaceDir, slots.repos);
-        let cards = [];
-        try {
-            cards = fs
-                .readdirSync(dir, { withFileTypes: true })
-                .filter((e) => e.isFile() && e.name.endsWith(".md") && e.name.toLowerCase() !== "readme.md")
-                .map((e) => e.name.slice(0, -3))
-                .sort();
-        } catch (error) {
-            throw new ContextError(`slot \`repos\` (${slots.repos}) could not be listed (${error.code ?? error.message})`);
-        }
-        if (repo !== null) {
-            if (!cards.includes(repo)) {
-                throw new ContextError(`--repo ${repo} names no card in ${slots.repos} — the cards there are ${cards.join(", ") || "none"}`);
-            }
-            card.selected = repo;
-        } else if (cards.length === 1) {
-            card.selected = cards[0];
-        } else if (cards.length > 1) {
-            card.why = `${cards.length} cards and none named with --repo, so none is counted — a boot reads the one naming its repository`;
-        } else {
-            card.why = "the repos slot holds no card";
-        }
-        if (card.selected !== null) {
-            const file = path.join(dir, `${card.selected}.md`);
-            entries.push({ label: "repo card", file, bytes: sizeOf(file, `the ${card.selected} card`) });
-        }
-        card.others = cards.length - (card.selected === null ? 0 : 1);
-    } else if (repo !== null) {
-        throw new ContextError(`--repo ${repo} was given, and this workspace declares no repos slot`);
-    }
+    const { file: cardFile, ...card } = repoCard(workspaceDir, slots, repo);
+    if (cardFile !== null) entries.push({ label: "repo card", file: cardFile, bytes: sizeOf(cardFile, `the ${card.selected} card`) });
 
     const indexPath = manifest.memory?.index?.path;
     if (indexPath !== undefined) {
@@ -423,12 +439,15 @@ export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, 
 // ===========================================================================================
 
 /**
- * The `@path` imports in an instruction file's text, in order. The host evaluates none inside a code
- * span or a fenced block, so neither does this; `importSpans` in `./compile.mjs` is the one reader, so
- * a unit `compile` checks and a rule this counts are read alike.
+ * The paths the host reads from the `@path` imports in an instruction file's text, in order. The host
+ * evaluates none inside a code span or a fenced block, so neither does this; `importSpans` and
+ * `importPath` in `./compile.mjs` are the one reader, so a unit `compile` checks and a rule this counts
+ * are read alike.
  */
 export function importsOf(text) {
-    return importSpans(text).map(({ target }) => target);
+    return importSpans(text)
+        .map(({ target }) => importPath(target))
+        .filter((bare) => bare !== null);
 }
 
 const inside = (root, file) => {
@@ -520,15 +539,17 @@ export function alwaysTier(repoRoot) {
                 const imported = `import, depth ${depth}${scoped ? ", of a path-scoped rule" : ""}`;
                 entries.push({ label: depth === 0 ? label : imported, file, bytes: sizeOf(file, file) });
             }
-            for (const target of importsOf(readText(file, file))) {
+            for (const { target } of importSpans(readText(file, file))) {
+                const bare = importPath(target);
+                if (bare === null) continue;
                 const spelled = `@${target} (in ${path.relative(repoRoot, file)})`;
-                if (target.startsWith("~")) {
+                if (bare.startsWith("~")) {
                     outside.push(spelled);
                     continue;
                 }
                 // The host takes the path as written, to the next space and a closing full stop included,
                 // and loads nothing from one that names no file (`IMPORT_DEPTH` in ./compile.mjs, same read).
-                const resolved = path.resolve(path.dirname(file), target);
+                const resolved = path.resolve(path.dirname(file), bare);
                 if (!isFile(resolved)) {
                     missing.push(spelled);
                     continue;
