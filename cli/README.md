@@ -73,6 +73,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`rule-carriers.mjs`](rule-carriers.mjs) | `rule-carriers` — the rail that keeps a reduced rule reduced. |
 | [`skill-goldens.mjs`](skill-goldens.mjs) | The core-skill golden corpus — every mandate a core skill states, bound to the live artifacts it governs, and graded. |
 | [`skills-set.mjs`](skills-set.mjs) | The registrable set — the one carrier of *what a host must declare so a composed pack's skills register*. |
+| [`symbols.mjs`](symbols.mjs) | A code file's outline, one line per symbol, printed from the code at read time. |
 | [`telemetry.mjs`](telemetry.mjs) | The OTel emitter — milestone 8's *OTel opt-in config*, and the first thing in this repository that can send anything anywhere on purpose. |
 | [`version-carriers.mjs`](version-carriers.mjs) | Portulan — every prose statement of the CURRENT version agrees with `package.json`. |
 
@@ -127,6 +128,8 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`skills-set.live.test.mjs`](skills-set.live.test.mjs) | The registrable set, against THIS repository rather than against fixtures. |
 | [`skills-set.test.mjs`](skills-set.test.mjs) | The registrable set — what a plugin manifest must declare so a composed pack's skills register. |
 | [`stop-gate.test.mjs`](stop-gate.test.mjs) | Tests for the Stop-gate runner's cap and date handling. |
+| [`symbols.live.test.mjs`](symbols.live.test.mjs) | The outline against THIS repository: every tracked code file outlines, and each span is whole. |
+| [`symbols.test.mjs`](symbols.test.mjs) | The outline's contract, on fixtures: what each construct prints, and every refusal. |
 | [`telemetry.test.mjs`](telemetry.test.mjs) | The OTel emitter's suite. Every case here exists because something in this repository has already been wrong in that exact way, or because a supervisor named the way it would be. |
 | [`test-isolation.live.test.mjs`](test-isolation.live.test.mjs) | A test that substitutes a shared object hands the restore to the runner, or says why it cannot. |
 | [`upgrade.live.test.mjs`](upgrade.live.test.mjs) | `upgrade` against real workspaces rather than against its own fixtures. |

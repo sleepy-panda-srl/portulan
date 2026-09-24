@@ -36,7 +36,7 @@ Written at the same level of detail, because a legibility report that lists only
   consecutive refusals of any one reason, or nine in all. The others are
   still condition 1 of [`../../dod.md`](../../dod.md) and a habit.
 - **Which tiers compile depends on the backend, and there are two.** For the Claude Code backend gated
-  actions prompt and the constitution is refused, while `auto` and `propose` emit nothing — the compiler
+  actions prompt and prohibited ones are refused, while `auto` and `propose` emit nothing — the compiler
   adds restriction only. For the **floor** backend the partition inverts: `propose` is exactly what a
   GitHub repository ruleset enforces. Both read [`../../gates.json`](../../gates.json); `compile --matrix`
   prints every rule against both. The refusals are printed, never silent.

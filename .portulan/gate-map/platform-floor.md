@@ -149,10 +149,11 @@ GitHub does not permit anyone to approve their own pull request, this repository
 nobody present can give, and nothing would ever merge. That is the same arithmetic behind the 0
 required-reviews decision above.
 
-So the honest position is unchanged where it counts: [`../../docs/vision.md`](../../docs/vision.md) is still
-protected by [the prohibition](../gate-map.md#prohibited--what-no-yes-makes-acceptable) and **not** by the platform. What the file adds today is that
-ownership is written down; what it adds later is a rail, on the day a second reviewer exists and the
-setting can be switched on. That switch is a repository-settings change — Gated.
+So the honest position is unchanged where it counts: the platform does **not** protect
+[`../../docs/vision.md`](../../docs/vision.md). Until 2026-09-24 [the prohibition](prohibited.md#the-constitutions-rule-prohibited-until-2026-09-24)
+did; since the maintainer lifted it, the file changes by pull request under his review, like the rest of the
+tree. What the file adds today is that ownership is written down; what it adds later is a rail, on the day
+a second reviewer exists and the setting can be switched on. That switch is a repository-settings change — Gated.
 
 **The floor now watches what the repository pins**, as of 2026-07-27, per
 [`proposals/0006-dependabot-security-updates.md`](../proposals/0006-dependabot-security-updates.md):

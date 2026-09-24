@@ -199,7 +199,7 @@ its result recorded, and where there is none it says so. Everything the compiler
 | `permissions`, `ask` and `deny` | A headless session is told to push to a scratch bare remote: the push is refused and the remote holds no refs, while an ordinary command succeeds in the same session. The same command run by hand then succeeds, which tells *blocked* from *impossible*. |
 | `permissions`, a write gate | With `Edit(./x.md)` alone denied, a `Write` and a `NotebookEdit` to that path are refused, and the same tools writing a different path succeed, which tells *refused* from *refuses everything*. This is hole 9's evidence. |
 | [`gate.mjs`](../../cli/gate.mjs), a wrapper | The push written `bash -c "git push …"`: refused, carrying the rule's own sentence. |
-| [`gate.mjs`](../../cli/gate.mjs), a write gate's shell half | Payloads on stdin, as the host sends them: `echo x >> docs/vision.md`, `bash -c "sed -i .bak s/a/b/ docs/vision.md"` and `cp /tmp/x docs/vision.md` each return `permissionDecision: "deny"` with the rule's sentence, while `cat docs/vision.md` and `git status` print nothing and exit 0. In a live session a shell write to the path is refused with text beginning ``PORTULAN GATE `edit-the-constitution` ``, which no permission rule produces: that shows the host invokes the hook for `Bash` and passes its sentence on. |
+| [`gate.mjs`](../../cli/gate.mjs), a write gate's shell half | Against a policy with a Prohibited `write:` rule, which this one has not declared since 2026-09-24, `<path>` being the path it guards. Payloads on stdin, as the host sends them: `echo x >> <path>`, `bash -c "sed -i .bak s/a/b/ <path>"` and `cp /tmp/x <path>` each return `permissionDecision: "deny"` with the rule's sentence, while `cat <path>` and `git status` print nothing and exit 0. In a live session a shell write to the path is refused with text beginning ``PORTULAN GATE `<id>` ``, which no permission rule produces: that shows the host invokes the hook for `Bash` and passes its sentence on. |
 | [`stop-gate.mjs`](../../cli/stop-gate.mjs), the recipe | One dead link planted, and a session told to reply `done` is refused with the recipe's output naming the file and line, until it is released at its reason's cap, naming the reason. Green, it ends in one turn. |
 | [`stop-gate.mjs`](../../cli/stop-gate.mjs), the handoff | The recipe left green, so a block can only come from this half; no handoff dated today, and a scratch file so the tree holds work. Refused naming the date until released at the handoff's own cap, not the ceiling. Run it in a clone where no session has written today's handoff. |
 | [`github-ruleset.json`](../compile/github-ruleset.json) | Compared field by field with the live protection: `strict`, the required contexts and their app pin, the review count, conversation resolution, and the force-push and deletion blocks. It is never imported, which is Gated, so GitHub's acceptance of the file is inferred. The envelope and the fields to omit were read from live rulesets; the `pull_request` and `required_status_checks` parameter blocks come from GitHub's documented schema, not from any ruleset read here. |
@@ -280,13 +280,14 @@ being true. How each hole was found, and the dated corrections to this list, are
    The permission rule reaches none of this — `Bash(git push --force:*)` is a prefix pattern, and nothing in
    that DSL reaches a command in second position — so a gate's reach beyond the first word is the hook's alone.
 3. **A gate whose only layer is the hook — and the hook is the one that fails open.** Everywhere else the
-   permission rule is the gate and the hook adds reach. For [the shell half of `edit-the-constitution`](prohibited.md#the-shell-half-and-why-the-strongest-rule-here-had-the-weakest-layer)
-   the hook *is* the reach, because no `Bash(prefix:*)` pattern can name a path sitting anywhere in a command.
-   An error in [`../../cli/gate.mjs`](../../cli/gate.mjs) removes tool-level coverage of shell writes to the
-   constitution and leaves the `Edit` denial standing — which the host matches for every file-editing tool —
-   so a partial gate looks from outside exactly like a whole one. `compile` and `compile --check` name the
-   affected rules in a note for that reason, so every CI run through
-   [`../verify/compile.sh`](../verify/compile.sh) prints it.
+   permission rule is the gate and the hook adds reach. For the shell half of a Gated or Prohibited `write:`
+   rule, [the constitution's](prohibited.md#the-shell-half-and-why-the-strongest-rule-here-had-the-weakest-layer)
+   until 2026-09-24, the hook *is* the reach, because no `Bash(prefix:*)` pattern can name a path sitting
+   anywhere in a command. An error in [`../../cli/gate.mjs`](../../cli/gate.mjs) removes tool-level coverage
+   of shell writes to the path such a rule guards and leaves its `Edit` rule standing — which the host matches
+   for every file-editing tool — so a partial gate looks from outside exactly like a whole one. `compile` and
+   `compile --check` name the affected rules in a note for that reason, so every CI run through
+   [`../verify/compile.sh`](../verify/compile.sh) prints it; this policy has none since 2026-09-24.
 4. **A local `allow` rule beside the compiled gates is unmeasured.** `.claude/settings.local.json` is
    git-ignored, so an adopter's own allow rules sit invisibly beside these. A compiled `deny` or `ask` beats
    an `allow` on the same pattern; what a broad local `Bash` allow does to the wrapper spelling has not been

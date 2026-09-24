@@ -79,6 +79,19 @@ after. **A demotion states both figures.**
 switching model or effort mid-session, output-shortening tricks, or any change to a host. Portulan
 compiles to what hosts load and does not change how they load it.
 
+## Code is read by symbol
+
+A session outlines a code file of 300 lines or more before it opens it, then reads the spans it needs: in
+Claude Code, the Read tool with `offset` at a span's first line and `limit` its length. **A file under 300
+lines that the task changes is read whole**, since most of it is context for the change and the saving is
+smallest there, and so is any file whose outline cannot say where a change goes. A span read the host does
+not cut is a full read of those lines, so an Edit may follow it: in Claude Code 2.1.281 a Read is marked
+partial, and an Edit or a Write after it refused, only when the Read's token cap, 25,000 by default, cut it
+(read in its program text on 2026-09-24). In this repository [`cli/symbols.mjs`](../../cli/symbols.mjs)
+prints the outline, one line per symbol, and `--find <name>` locates a definition. It prints from the code
+as it is, so no map is committed to go stale. Nothing checks that a session outlined first; what the rule
+saves is measured by rerunning a task, never by a recipe, which may not read the host's usage records.
+
 ## What is machinery today, and what is not
 
 As of Workspace Definition 2.9 a workspace can declare the budget and the ratio, and both are checked

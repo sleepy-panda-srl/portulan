@@ -236,8 +236,8 @@ held then.
 
 `auto` · `propose` · `gated` · **`prohibited`**. The fourth is not a stronger `gated` — it is a different
 answer. Gated means *approvable per action* and compiles to a prompt; prohibited means *no approval
-exists* and compiles to a refusal. A three-class policy would file "no agent edits the constitution" under
-Gated, and the compiler would then emit a prompt — turning *never* into *unless someone clicks yes*.
+exists* and compiles to a refusal. A three-class policy would file "no session certifies its own checkpoint"
+under Gated, and the compiler would then emit a prompt — turning *never* into *unless someone clicks yes*.
 
 ### What a compiler must do with it
 

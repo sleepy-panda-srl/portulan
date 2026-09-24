@@ -11,7 +11,7 @@
 - **Source workspace:** `.portulan`
 - **Moves:** 26 — 6 keep · 6 emptying · 3 substitution · 11 deletion
 - **Arm A files:** 22 · **arm B files:** 0
-- **Hooks pinned to this machine:** 6
+- **Hooks pinned to this machine:** 3
 
 **The source path count is deliberately not here.** It moves whenever a session writes a record,
 and a byte-compared register carrying it would red this rail on work that never touched the arms.

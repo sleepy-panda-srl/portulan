@@ -29,8 +29,8 @@
 //
 // `prohibited` => `deny`, `gated` => `ask`. The hook returns the SAME decision the permission rule
 // carries. A hook returning `deny` for a Gated action would convert a per-action prompt into a hard
-// block — that is the tier above it, and collapsing the two would make the constitution's
-// protection indistinguishable from an ordinary push.
+// block — that is the tier above it, and collapsing the two would make a prohibition
+// indistinguishable from an ordinary push.
 //
 // ## What this layer is FOR, which is not what its author first assumed
 //
@@ -49,17 +49,18 @@
 //      `bash -c "git push …"` is invisible to it — measured, and the reason
 //      `../core/operating/autonomy.md` calls the platform floor the gate that holds when this
 //      layer fails. This runner unwraps one level of `sh -c` / `bash -c` / `zsh -c` before matching.
-//   2. A SHELL WRITE to a path a `write:` rule protects. `Edit(./docs/vision.md)` denies all three
+//   2. A SHELL WRITE to a path a `write:` rule protects. `Edit(./<path>)` denies all three
 //      file-editing tools — ONE emitted pattern, which the host matches for every one of them — and
-//      `echo x >> docs/vision.md` is a fourth way to the same bytes. `matchesRule` now
+//      `echo x >> <path>` is a fourth way to the same bytes. `matchesRule` now
 //      answers for `Bash` on a write rule, by a table of redirections and file-writing commands
 //      that `./compile.mjs` states in full.
 //
 // Two layers, two jobs: the permission rule cannot fail open, and this one covers more ground.
 // **The second case above is the uncomfortable one**, and it is named in `../gate-map.md`'s
 // honest-holes list rather than left here: it is the only gate whose sole layer is this file, so
-// every "fails open" sentence above is, for shell writes to the constitution, the whole story
-// rather than a footnote about a lost message.
+// every "fails open" sentence above is, for shell writes to a path a Gated or Prohibited `write:` rule
+// guards, the whole story rather than a footnote about a lost message. This repository's own policy
+// has no such rule since 2026-09-24, when the constitution's rule moved to Propose.
 //
 // **One level of unwrapping, and no more.** Deeper nesting, a heredoc, an interpolated variable, a
 // command assembled at runtime — all still escape, and no amount of parsing here would close that.
@@ -222,9 +223,11 @@ function yielded(declared) {
  * what the loop below is. Output is byte-identical wherever no two matching rules sit at different tiers,
  * and `ask` becomes `deny` where they do. **Not** "byte-identical for any workspace that composes
  * nothing" — that is the claim the counterexample above kills, and this repository is not evidence for it
- * either: its own policy is unchanged only because `edit-the-constitution`, the one `prohibited` rule it
- * declares, is listed FIRST, so first-match already returned it. Measured, on a command matching both it
- * and a gated shell rule: `deny` from either runner. Move that rule down the file and the two disagree.
+ * either: its own policy is unchanged because the one `prohibited` rule it yields, the composed
+ * `self-certify-a-checkpoint`, has no matcher. Until 2026-09-24 it was unchanged only because the
+ * constitution's rule, then Prohibited, was listed FIRST, so first-match already returned it. Measured,
+ * on a command matching both it and a gated shell rule: `deny` from either runner; moved down the file,
+ * the two disagreed.
  * The early return on `prohibited` also keeps the denied path's short-circuit: nothing later can outrank
  * the top of the order.
  */
