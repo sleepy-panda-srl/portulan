@@ -82,7 +82,14 @@ printf 'tests: %s test file(s) found\n' "$count"
 out=$(mktemp) || exit 2
 trap 'rm -f -- "$tmp" "$out"' EXIT
 node --test "cli/**/*.test.mjs" 2>&1 | tee -- "$out"
-status=${PIPESTATUS[0]}
+codes=("${PIPESTATUS[@]}")
+status=${codes[0]}
+# A `tee` that failed kept and showed only part of what the runner wrote, and a runner writing into a pipe
+# it had closed may have died of it: no verdict either way, so could-not-run.
+if [ "${codes[1]}" -ne 0 ]; then
+    printf 'verify: tee exited %s, so the runner'"'"'s output was not all kept or shown — could not run rather than a verdict\n' "${codes[1]}" >&2
+    exit 2
+fi
 if [ "$status" -ne 0 ]; then
     failed=$(awk -v root="$(pwd -P)/" '
         /^[ \t]*not ok [0-9]+ - / { if (pending != "") print "  " pending; line = $0; sub(/^[ \t]*not ok [0-9]+ - /, "", line); pending = line; next }

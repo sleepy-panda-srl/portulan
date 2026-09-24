@@ -101,20 +101,21 @@ function change(work, { fragment = true } = {}) {
     }
 }
 
-/** A pack `tools/thing` whose one recipe passes, as its `pack.json` and README spell it under `dir`. */
-function packAt(dir) {
-    write(dir, "tools/thing/pack.json", JSON.stringify({
-        portulan: { pack: "1.0", version: "0.1.0" }, name: "thing", category: "tools", summary: "x", doc: "README.md",
+/** A pack, `tools/thing` unless named, whose one recipe passes, as its `pack.json` and README spell it under `dir`. */
+function packAt(dir, ref = "tools/thing") {
+    const [category, name] = ref.split("/");
+    write(dir, `${ref}/pack.json`, JSON.stringify({
+        portulan: { pack: "1.0", version: "0.1.0" }, name, category, summary: "x", doc: "README.md",
         contributes: { verify: [{ id: "check", run: "true", requires: ["bash"] }] },
     }));
-    write(dir, "tools/thing/README.md", "# thing\n");
+    write(dir, `${ref}/README.md`, `# ${name}\n`);
 }
 
-/** A host whose plugin record installs one plugin carrying `tools/thing`, as an installed Portulan carries its packs. */
-function hostWithThing() {
+/** A host whose plugin record installs one plugin carrying these packs, as an installed Portulan carries its own. */
+function hostWith(refs = ["tools/thing"]) {
     const host = scratch();
     const installPath = path.join(host, "plugins", "cache", "feed", "portulan", "0.1.0");
-    packAt(path.join(installPath, "packs"));
+    for (const ref of refs) packAt(path.join(installPath, "packs"), ref);
     write(host, "plugins/installed_plugins.json", JSON.stringify({
         version: 2,
         plugins: { "portulan@feed": [{ scope: "user", installPath, version: "0.1.0", installedAt: "2026-09-24T00:00:00.000Z", gitCommitSha: "0".repeat(40) }] },
@@ -272,7 +273,7 @@ describe("the packs it composes", () => {
         for (const rel of ["tools/thing/pack.json", "tools/thing/README.md"]) files[`packs/${rel}`] = fs.readFileSync(path.join(tree, rel), "utf8");
         const { work, origin } = clone({ manifest: { tree: "../", packs: ["tools/thing"] }, files });
         change(work);
-        const env = { ...ENV, CLAUDE_CONFIG_DIR: hostWithThing() };
+        const env = { ...ENV, CLAUDE_CONFIG_DIR: hostWith() };
         const bare = spawnSync("node", [path.join(REPO, "cli", "recipe-set.mjs"), "--workspace", ".portulan", "--repo-root", "."], { cwd: work, env, encoding: "utf8" });
         assert.equal(bare.status, 2, "the bare set refuses the pack as shadowed: the case this guards");
         assert.match(bare.stderr, /SHADOWED/);
@@ -282,13 +283,28 @@ describe("the packs it composes", () => {
         assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
     });
 
-    test("the tree's root is named only where it carries every pack composed", () => {
+    test("a pack the tree lacks is refused, as CI refuses it, never found in an installed copy", () => {
+        const files = {};
+        const tree = scratch();
+        packAt(tree);
+        for (const rel of ["tools/thing/pack.json", "tools/thing/README.md"]) files[`packs/${rel}`] = fs.readFileSync(path.join(tree, rel), "utf8");
+        const { work, origin } = clone({ manifest: { tree: "../", packs: ["tools/thing", "rituals/other"] }, files });
+        change(work);
+        const before = git(work, ["rev-parse", "HEAD"]);
+        const r = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env: { ...ENV, CLAUDE_CONFIG_DIR: hostWith(["tools/thing", "rituals/other"]) }, encoding: "utf8" });
+        assert.equal(r.status, 2, r.stdout + r.stderr);
+        assert.match(r.stdout, /^finish: could not run — the recipe set: .*rituals\/other.*Nothing was committed or pushed\.$/m);
+        assert.equal(git(work, ["rev-parse", "HEAD"]), before);
+        assert.equal(onOrigin(origin, "feat"), "");
+    });
+
+    test("the tree's pack root is named wherever it exists and packs are composed", () => {
         const dir = scratch();
         const workspaceDir = path.join(dir, ".portulan");
         assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../", packs: ["tools/thing"] } }), [], "no packs/ in the tree");
         packAt(path.join(dir, "packs"));
         assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../", packs: ["tools/thing"] } }), [path.join(dir, "packs")]);
-        assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../", packs: ["tools/thing", "rituals/other"] } }), [], "one it lacks leaves resolution as it was");
+        assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../", packs: ["tools/thing", "rituals/other"] } }), [path.join(dir, "packs")], "one it lacks is then refused");
         assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../" } }), [], "no packs composed");
         assert.deepEqual(treeRoots({ workspaceDir, manifest: { packs: ["tools/thing"] } }), [], "no tree declared");
     });
@@ -329,6 +345,14 @@ describe("a red stops it, and undoes its own commit", () => {
         assert.match(r.out, /\ndocs — could not run \(exit 2\):\n {4}node not found/);
     });
 
+    test("a recipe's last lines are its last, whichever stream wrote them", () => {
+        const { work } = clone({ recipes: [{ id: "docs", run: "echo first >&2; echo second; echo third >&2; exit 1" }] });
+        change(work);
+        const r = close(work, ["-m", "One"]);
+        assert.equal(r.code, 1);
+        assert.match(r.out, /\ndocs — RED \(exit 1\):\n {4}first\n {4}second\n {4}third\n/);
+    });
+
     test("every recipe runs, so one call reports every red", () => {
         const { work } = clone({ recipes: [{ id: "docs", run: "exit 1" }, { id: "json", run: "true" }, { id: "tests", run: "exit 1" }] });
         change(work);
@@ -362,6 +386,20 @@ describe("a red stops it, and undoes its own commit", () => {
         assert.equal(onOrigin(origin, "feat"), "");
     });
 
+    test("a branch that moves while the recipes run is not pushed, since they judged the commit before it", () => {
+        const { work, origin } = clone();
+        change(work);
+        const runOne = (recipe) => {
+            git(work, ["commit", "-q", "--allow-empty", "-m", "not judged"]);
+            return { id: recipe.id, outcome: "green" };
+        };
+        const r = finish(parseArgs(["-m", "One"], work), { cwd: work, env: ENV, runOne });
+        assert.equal(r.code, 2);
+        assert.match(r.lines[0], /^finish: not pushed — feat moved while the recipes ran, from [0-9a-f]{7} to [0-9a-f]{7}, so they did not judge what it holds; both commits stay, unpushed: run this again\.$/);
+        assert.equal(onOrigin(origin, "feat"), "");
+        assert.equal(git(work, ["log", "-1", "--format=%s"]), "not judged");
+    });
+
     test("a push the remote refuses leaves the green commit and never forces", () => {
         const { work, origin } = clone();
         change(work);
@@ -392,6 +430,37 @@ describe("what it refuses to do at all", () => {
         assert.equal(r.code, 2);
         assert.match(r.first, /main would push to origin\/main, the branch changes merge into/);
         assert.equal(onOrigin(origin, "main"), before);
+    });
+
+    test("nor against a base that names no branch, since nothing then shows the push is not to it", () => {
+        const { work, origin } = clone();
+        git(work, ["checkout", "-q", "main"]);
+        change(work);
+        git(work, ["remote", "set-head", "origin", "-d"]);
+        const sha = git(work, ["rev-parse", "origin/main"]);
+        const r = close(work, ["-m", "One", "--base", sha]);
+        assert.equal(r.code, 2);
+        assert.equal(r.first, `finish: could not run — the base ${sha} names no branch, so nothing shows main is not the branch changes merge into: pass --base <remote>/<branch>`);
+        assert.equal(onOrigin(origin, "main"), sha, "main is untouched");
+    });
+
+    test("a base from the environment that begins with a dash is refused before git reads it as a flag", () => {
+        const { work } = clone();
+        change(work);
+        let out = "";
+        const code = run(["-m", "One"], { cwd: work, env: { ...ENV, PORTULAN_BASE_REF: "--all" }, stdout: { write: (x) => (out += x) }, stderr: { write: () => {} } });
+        assert.equal(code, 2);
+        assert.equal(out.trim(), 'finish: could not run — the base "--all", from PORTULAN_BASE_REF, is not a ref: a ref never begins with a dash');
+    });
+
+    test("a base on another remote names its branch, as a fork's upstream does", () => {
+        const { work, origin } = clone();
+        git(work, ["remote", "add", "upstream", origin]);
+        git(work, ["fetch", "-q", "upstream"]);
+        change(work);
+        const r = close(work, ["-m", "One", "--base", "upstream/main"]);
+        assert.equal(r.code, 0, r.out);
+        assert.match(r.first, /; pushed to origin\/feat$/);
     });
 
     test("nor on a detached HEAD", () => {

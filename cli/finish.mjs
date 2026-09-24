@@ -8,8 +8,9 @@
 // `git push`, a look at the status — and every one of them sent the whole context again. This is one call.
 // In order, it:
 //
-//   1. finds the branch, the remote it pushes to and the base it merges into, and refuses a detached HEAD
-//      and the base branch itself: a change closes on a working branch and never pushes to its base;
+//   1. finds the branch, the remote it pushes to and the base it merges into, and refuses a detached HEAD,
+//      the base branch itself, and a base that names no branch, since nothing could be compared with it: a
+//      change closes on a working branch and never pushes to its base;
 //   2. confirms the change carries a changelog fragment, `changes/<slug>.<section>.md`, added or edited
 //      since the base, where the tree keeps them; `--no-fragment <why>` closes a change that owes none;
 //   3. stages the changes to files git already tracks, beside whatever is staged, and commits them with the
@@ -17,8 +18,9 @@
 //      a file nobody named: an untracked one stops it, listed, so a new file is staged by name in the same
 //      call (`git add <paths> && node cli/finish.mjs …`), and a scan of what is staged covers what it commits;
 //   4. runs every recipe the workspace yields, as CI runs them, on that commit;
-//   5. pushes the branch, never with `--force` in any spelling — or, where a recipe is not green, pushes
-//      nothing, undoes its own commit and prints which recipe went red, with the last lines it wrote.
+//   5. pushes the commit the recipes judged, by name and only while the branch still holds it, never with
+//      `--force` in any spelling — or, where a recipe is not green, pushes nothing, undoes its own commit and
+//      prints which recipe went red, with the last lines it wrote, in the order it wrote them.
 //
 // **The recipes judge the commit, not the tree before it**, because a recipe may read the commit: `docs`
 // checks the newest commit's message for its `Seam-scan:` line. Run before committing, it would judge the
@@ -43,12 +45,13 @@
 // run, or a push the remote refused. A recipe that could not run is never read as a pass.
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
-import { packRoots, resolvePack } from "./compile.mjs";
+import { packRoots } from "./compile.mjs";
 import { CHANGES_DIR, CHANGES_README } from "./form.mjs";
 import { CHANGE_NAME } from "./index.mjs";
 import { recipeSet, resolverFor } from "./recipe-set.mjs";
@@ -157,14 +160,19 @@ const lastLine = (text) => tail(text, 1) || "no output";
  * the remote where the clone never recorded one. `{ ref, sha, name }`, where `name` is the branch the base
  * is on this remote or locally, or `{ why }`.
  */
-export function findBase(git, { remote, given, env }) {
+export function findBase(git, { remote, remotes = [remote], given, env }) {
     const asked = given ?? (env.PORTULAN_BASE_REF || null);
     let full;
     if (asked !== null) {
-        const sha = git(["rev-parse", "--verify", "-q", "--end-of-options", `${asked}^{commit}`]);
-        if (sha.status !== 0 || sha.out === "") return { why: `the base ${JSON.stringify(asked)}${given === null ? ", from PORTULAN_BASE_REF," : ""} is not a commit here` };
-        full = git(["rev-parse", "--symbolic-full-name", "--end-of-options", asked]).out;
-        return { ref: asked, sha: sha.out, name: branchOn(full, remote) };
+        const from = given === null ? ", from PORTULAN_BASE_REF," : "";
+        // A ref never begins with a dash, and refusing one here spares every git call below an option it would
+        // read as a flag: `--end-of-options` is not honoured by every git's `rev-parse --symbolic-full-name`,
+        // which echoes it back as though it were the name (git 2.43, measured).
+        if (asked.startsWith("-")) return { why: `the base ${JSON.stringify(asked)}${from} is not a ref: a ref never begins with a dash` };
+        const sha = git(["rev-parse", "--verify", "-q", `${asked}^{commit}`]);
+        if (sha.status !== 0 || sha.out === "") return { why: `the base ${JSON.stringify(asked)}${from} is not a commit here` };
+        full = git(["rev-parse", "--symbolic-full-name", asked]).out;
+        return { ref: asked, sha: sha.out, name: branchOn(full, remotes) };
     }
     full = git(["symbolic-ref", "-q", `refs/remotes/${remote}/HEAD`]).out;
     if (full === "") {
@@ -176,14 +184,14 @@ export function findBase(git, { remote, given, env }) {
     const ref = full.replace(/^refs\/remotes\//, "");
     const sha = git(["rev-parse", "--verify", "-q", `${full}^{commit}`]);
     if (sha.status !== 0) return { why: `the base ${ref} is not fetched here — fetch it, or pass --base <ref>` };
-    return { ref, sha: sha.out, name: branchOn(full, remote) };
+    return { ref, sha: sha.out, name: branchOn(full, remotes) };
 }
 
-/** The branch a full ref names on `remote` or locally, or null for anything else. */
-function branchOn(full, remote) {
-    if (full.startsWith(`refs/remotes/${remote}/`)) return full.slice(`refs/remotes/${remote}/`.length);
+/** The branch a full ref names, locally or on one of `remotes`, or null for anything else: a commit, a tag. */
+function branchOn(full, remotes) {
     if (full.startsWith("refs/heads/")) return full.slice("refs/heads/".length);
-    return null;
+    const on = [...remotes].sort((a, b) => b.length - a.length).find((r) => full.startsWith(`refs/remotes/${r}/`));
+    return on === undefined ? null : full.slice(`refs/remotes/${on}/`.length);
 }
 
 /** The paths this change touched since `mergeBase`, committed or not, with their status: `A`, `M`, `D` or `?` for untracked. */
@@ -205,16 +213,16 @@ export function fragmentIn(paths) {
 }
 
 /**
- * The pack roots to resolve with where the caller named none: the tree's own, as CI names it with
- * `--pack-root packs`, when it carries every pack the workspace composes. Otherwise none, and the set
- * resolves as `recipe-set` does bare. Without this, a host with the Portulan plugin installed carries
- * the same packs twice, and the set refuses them as shadowed before anything is committed.
+ * The pack roots to resolve with where the caller named none: the tree's own, wherever it exists and the
+ * workspace composes packs, as CI names it with `--pack-root packs`. So a pack the tree lacks is refused,
+ * as CI refuses it, rather than found in a host's installed copy CI never reads, and an installed copy of
+ * packs the tree carries cannot make the set refuse them as shadowed. Where the tree keeps no pack root,
+ * none is named, and the set resolves as `recipe-set` does bare.
  */
 export function treeRoots({ workspaceDir, manifest }) {
     const declared = Array.isArray(manifest?.packs) ? manifest.packs : [];
-    const roots = packRoots(workspaceDir, manifest).filter((dir) => fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory());
-    if (declared.length === 0 || roots.length === 0) return [];
-    return declared.every((ref) => resolvePack(String(ref), roots)?.dir) ? roots : [];
+    if (declared.length === 0) return [];
+    return packRoots(workspaceDir, manifest).filter((dir) => fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory());
 }
 
 /** The recipes the workspace yields with its packs composed, as CI reads them, or `{ why }`. */
@@ -236,11 +244,28 @@ export function recipesOf({ root, workspaceDir, named, forced }) {
     return set.ok ? { recipes: set.recipes } : { why: set.reason };
 }
 
-/** Run one recipe as CI and the Stop-gate do: its `run` through `bash -c`, from the repository root. */
+/**
+ * Run one recipe as CI and the Stop-gate do: its `run` through `bash -c`, from the repository root. Both of
+ * its streams go to one file, so its lines keep the order it wrote them in and its last lines are its last.
+ */
 export function runRecipe(recipe, { root, env }) {
-    const r = spawnSync("bash", ["-c", recipe.run], { cwd: root, env, encoding: "utf8", timeout: RECIPE_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-finish-"));
+    let r;
+    let written = "";
+    try {
+        const file = path.join(dir, "output");
+        const fd = fs.openSync(file, "w");
+        try {
+            r = spawnSync("bash", ["-c", recipe.run], { cwd: root, env, timeout: RECIPE_TIMEOUT_MS, stdio: ["ignore", fd, fd] });
+        } finally {
+            fs.closeSync(fd);
+        }
+        written = fs.readFileSync(file, "utf8");
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
     const code = r.error ? null : r.status;
-    const output = `${r.stdout ?? ""}${r.stderr ?? ""}${r.error ? `\n${r.error.message}` : ""}`;
+    const output = `${written}${r.error ? `\n${r.error.message}` : ""}`;
     if (code === 0) return { id: recipe.id, outcome: "green" };
     const cannot = code === null || CANNOT_RUN.has(code);
     return { id: recipe.id, outcome: cannot ? "could not run" : "red", code, output };
@@ -273,10 +298,14 @@ export function finish(options, { cwd = process.cwd(), env = process.env, readSt
     const merge = remote === configured ? git(["config", "--get", `branch.${branch}.merge`]).out : "";
     const target = merge.startsWith("refs/heads/") ? merge.slice("refs/heads/".length) : branch;
 
-    const base = findBase(git, { remote, given: options.base, env });
+    const base = findBase(git, { remote, remotes, given: options.base, env });
     if (base.why) return stop(2, `could not run — ${base.why}`);
+    // A base that names no branch, a commit or a tag, leaves nothing to compare the push against.
+    if (base.name === null) {
+        return stop(2, `could not run — the base ${base.ref} names no branch, so nothing shows ${branch} is not the branch changes merge into: pass --base <remote>/<branch>`);
+    }
     // The base's branch, and the remote's own default head where it is recorded: a working branch is neither.
-    const recorded = branchOn(git(["symbolic-ref", "-q", `refs/remotes/${remote}/HEAD`]).out, remote);
+    const recorded = branchOn(git(["symbolic-ref", "-q", `refs/remotes/${remote}/HEAD`]).out, [remote]);
     const guarded = [base.name, recorded].filter((name) => name !== null);
     if (guarded.includes(target) || guarded.includes(branch)) {
         return stop(2, `could not run — ${branch} would push to ${remote}/${target}, the branch changes merge into: close a change from a working branch`);
@@ -348,6 +377,8 @@ export function finish(options, { cwd = process.cwd(), env = process.env, readSt
             : ` The commit ${made.slice(0, 7)} could not be undone (${lastLine(moved.err)}) and stays, unpushed.`;
     };
 
+    // What the recipes judge, and so the one commit this call may push.
+    const judged = git(["rev-parse", "--verify", "-q", "HEAD^{commit}"]).out;
     const recipeEnv = { ...env, PORTULAN_BASE_REF: base.ref };
     const results = set.recipes.map((recipe) => runOne(recipe, { root, env: recipeEnv }));
     const failed = results.filter((r) => r.outcome !== "green");
@@ -361,7 +392,17 @@ export function finish(options, { cwd = process.cwd(), env = process.env, readSt
         );
     }
 
-    const pushed = git(["push", ...(upstream ? [] : ["-u"]), remote, `refs/heads/${branch}:refs/heads/${target}`]);
+    // The commit judged is pushed by name, and only while the branch still holds it: a branch that moved
+    // while the recipes ran holds something they did not judge.
+    const now = git(["rev-parse", "--verify", "-q", `refs/heads/${branch}^{commit}`]).out;
+    if (now !== judged) {
+        return stop(
+            2,
+            `not pushed — ${branch} moved while the recipes ran, from ${judged.slice(0, 7)} to ${now.slice(0, 7) || "nowhere"}, so they did not judge ` +
+                "what it holds; both commits stay, unpushed: run this again.",
+        );
+    }
+    const pushed = git(["push", remote, `${judged}:refs/heads/${target}`]);
     if (pushed.status !== 0) {
         return stop(
             2,
@@ -369,7 +410,11 @@ export function finish(options, { cwd = process.cwd(), env = process.env, readSt
                 "if the remote moved, merge it in, never force, and run this again.",
         );
     }
-    const head = git(["rev-parse", "--short", "HEAD"]).out;
+    if (!upstream) {
+        git(["config", `branch.${branch}.remote`, remote]);
+        git(["config", `branch.${branch}.merge`, `refs/heads/${target}`]);
+    }
+    const head = git(["rev-parse", "--short", judged]).out;
     const files = made === null ? 0 : git(["diff-tree", "--no-commit-id", "--name-only", "-r", "-z", made]).raw.split("\0").filter(Boolean).length;
     const left = git(["status", "--porcelain=v1", "-z", "--untracked-files=all"]).raw.split("\0").filter(Boolean).length;
     return stop(
