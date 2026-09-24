@@ -297,13 +297,20 @@ function statementEnd(t, i, stop, match) {
 }
 
 // A statement that ends at its `;`, or where automatic semicolon insertion would end it: a line that
-// ends a value followed by one that opens with a name, which no expression can continue.
+// ends a value followed by one that opens with a name, which no expression can continue. An import, or
+// an export that lists or re-exports names, runs on to its `from "…"` and to a `with { … }` after it,
+// wherever its lines break; a `from` after the source is a new statement, a call to a function so named.
 function simpleEnd(t, i, stop, match) {
+    const clause = t[i].type === "name" && ((t[i].value === "import" && t[i + 1]?.value !== "(" && t[i + 1]?.value !== ".") ||
+        (t[i].value === "export" && (t[i + 1]?.value === "{" || t[i + 1]?.value === "*")));
+    let source = false;
     for (let k = i; k < stop;) {
         if (t[k].type === "punct" && t[k].value === ";") return k;
+        if (t[k].type === "string") source = true;
         const last = t[k].type === "punct" && ["(", "[", "{"].includes(t[k].value) ? match.get(k) : k;
         const next = last + 1 < stop ? t[last + 1] : null;
-        if (next?.type === "name" && !["instanceof", "in", "of"].includes(next.value) && next.line > t[last].endLine && endsValue(t[last])) return last;
+        const continues = ["instanceof", "in", "of"].includes(next?.value) || (clause && next?.value === (source ? "with" : "from"));
+        if (next?.type === "name" && !continues && next.line > t[last].endLine && endsValue(t[last])) return last;
         k = last + 1;
     }
     return stop - 1;
@@ -470,13 +477,23 @@ export function outlineJs(src) {
         }
     }
 
+    // The module an import names: its first string outside braces, since `{ "a-b" as ab }` and
+    // `with { type: "json" }` hold strings too.
+    const sourceOf = (first, last) => {
+        for (let k = first; k <= last; k++) {
+            if (t[k].type === "string") return [t[k].value.slice(1, -1)];
+            if (t[k].type === "punct" && t[k].value === "{") k = match.get(k);
+        }
+        return [];
+    };
+
     // Consecutive imports are one entry naming what they import from; a lone import is its own line.
     const runs = [];
     for (const [first, last] of imports) {
         const run = runs.at(-1);
         if (run && t[first].line <= t[run.last].endLine + 1) run.last = last;
         else runs.push({ first, last, from: [] });
-        runs.at(-1).from.push(...t.slice(first, last + 1).filter((token) => token.type === "string").slice(-1).map((token) => token.value.slice(1, -1)));
+        runs.at(-1).from.push(...sourceOf(first, last));
     }
     for (const run of runs) {
         entries.push({ start: docStart(t[run.first].line), end: t[run.last].endLine, text: cut(`import ${run.from.join(", ")}`), name: null, children: [] });
@@ -602,7 +619,7 @@ function patternNames(t, open, match) {
 // ===========================================================================================
 
 const SH_FUNCTION = /^(\s*)(?:function\s+([A-Za-z_][\w:.-]*)\s*(?:\(\s*\))?|([A-Za-z_][\w:.-]*)\s*\(\s*\))\s*(\{.*)?$/;
-const HEREDOC = /<<(-?)\s*(['"]?)([A-Za-z_][\w-]*)\2/;
+const HEREDOC = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_][\w-]*)\2/g;
 
 // Words after which another command may start: a brace or a keyword standing where a command does.
 const SH_COMMAND_WORDS = new Set(["{", "}", "!", "then", "do", "else", "elif", "if", "while", "until", "time"]);
@@ -679,15 +696,18 @@ export function outlineSh(src) {
     const code = [];
     for (let i = 0; i < lines; i++) {
         code.push({ line: i + 1, text: srcLines[i] });
-        const heredoc = srcLines[i].match(HEREDOC);
-        const before = heredoc ? srcLines[i].slice(0, heredoc.index) : "";
-        const quoted = (before.split('"').length - 1) % 2 === 1 || (before.split("'").length - 1) % 2 === 1;
-        if (heredoc && !quoted && !/^\s*#/.test(srcLines[i]) && !srcLines[i].includes("<<<")) {
-            let j = i + 1;
+        if (/^\s*#/.test(srcLines[i])) continue;
+        // Every here-document the line opens, in order: each body runs to its own delimiter's line. A
+        // `<<` inside quotes opens none, and `<<<` is a here-string, whose word is on the line.
+        let j = i;
+        for (const heredoc of srcLines[i].matchAll(HEREDOC)) {
+            const before = srcLines[i].slice(0, heredoc.index);
+            if ((before.split('"').length - 1) % 2 === 1 || (before.split("'").length - 1) % 2 === 1) continue;
+            j++;
             while (j < lines && (heredoc[1] ? srcLines[j].replace(/^\t+/, "") : srcLines[j]) !== heredoc[3]) j++;
             if (j >= lines) throw new CannotOutline(`an unterminated here-document on line ${i + 1}`);
-            i = j;
         }
+        i = j;
     }
     const entries = [];
     for (let k = 0; k < code.length; k++) {

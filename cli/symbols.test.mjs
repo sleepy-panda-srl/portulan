@@ -143,6 +143,23 @@ describe("a JavaScript outline", () => {
         assert.deepEqual(names, [["one"], ["re", "other"], ["x", "z", "rest"]]);
     });
 
+    test("ends an import or a re-export at its source, wherever its lines break", () => {
+        const src = [
+            "import {",
+            "    a,",
+            '    "b-c" as b',
+            "}",
+            'from "./x.mjs"',
+            "export { a }",
+            'from "./y.mjs"',
+            'import data from "./d.json"',
+            'with { type: "json" }',
+            "from(a)",
+            "",
+        ].join("\n");
+        assert.deepEqual(render("m.mjs", outlineJs(src)).slice(1), ["1-5 import ./x.mjs", "6-7 export { a }", "8-9 import ./d.json", "10 from(a)"]);
+    });
+
     test("names no class that has no name of its own", () => {
         const src = "export default class extends Base {\n    size() {}\n}\n";
         assert.deepEqual(outlineJs(src).entries.map((e) => [e.name, e.children.map((m) => m.name)]), [[null, ["size"]]]);
@@ -212,6 +229,11 @@ describe("a shell outline", () => {
             "",
         ].join("\n");
         assert.deepEqual(render("braces.sh", outlineSh(src)).slice(1), ["1-3 f()", "4-10 g()"]);
+    });
+
+    test("hides the body of every here-document a line opens, not only the first", () => {
+        const src = ["f() {", "    cat <<A <<B", "a }", "A", "}", "B", "}", 'g() { x=$(cat <<< "$y"); }', ""].join("\n");
+        assert.deepEqual(render("two.sh", outlineSh(src)).slice(1), ["1-7 f()", "8 g()"]);
     });
 
     test("refuses a here-document that never ends and a function that never closes", () => {
