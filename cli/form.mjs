@@ -82,7 +82,8 @@ with their links moved up one directory, as the release cut pastes them under th
 
 The entries \`portulan upgrade\` moved here from the changelog's Unreleased are named
 \`<n>-<slug>.<section>.md\`, numbered in the changelog's order and padded to one width, since the cut reads
-fragments by name: they print as the changelog held them, and ahead of any fragment named by its slug.
+fragments by name: they print as the changelog held them, but for an entry that did not open \`- \`, whose
+fragment does, and ahead of any fragment named by its slug.
 `;
 }
 
@@ -351,7 +352,8 @@ function rerooted(text) {
  * whatever it holds. A section heading stays while anything is left under it. The fragments are named
  * `<nn>-<slug>.<section>.md`, numbered in the changelog's order, so the cut prints each section's entries in
  * the order they were written, and the move is proved before it is offered: the fragments, read and rendered
- * as the cut renders them, print each entry back as the changelog held it.
+ * as the cut renders them, print each entry back as the changelog held it, but for an entry that does not open
+ * `- `, which a fragment must: its first two characters, a `*` or `+` marker or a tab after one, become `- `.
  *
  * @returns {null | { refused: string } | { fragments: Array<{ name: string, text: string }>, next: string }}
  * null where there is no Unreleased heading
@@ -381,7 +383,7 @@ export function unreleasedFragments(text, taken = new Set()) {
             continue;
         }
         if (BULLET.test(line)) {
-            const body = [`- ${line.replace(/^[-*+][ \t]+/, "")}`];
+            const body = [line.replace(/^[-*+][ \t]/, "- ")];
             let j = i + 1;
             while (j < end && (/^[ \t]+\S/.test(lines[j]) || (lines[j].trim() === "" && j + 1 < end && /^[ \t]+\S/.test(lines[j + 1])))) {
                 body.push(lines[j]);
@@ -403,7 +405,7 @@ export function unreleasedFragments(text, taken = new Set()) {
     });
 
     // The proof: what the cut would print, section by section, is each entry as the changelog held it,
-    // its marker aside, which a fragment always writes `- `. In the order the cut reads them, by name.
+    // its opening aside, which a fragment always writes `- `. In the order the cut reads them, by name.
     const byName = [...fragments].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     const printed = renderChanges(byName.map((f) => ({ name: f.name, section: f.section, text: f.text.replace(/\s+$/, "") })));
     for (const section of CHANGE_SECTIONS) {
@@ -431,6 +433,20 @@ export function unreleasedFragments(text, taken = new Set()) {
     const body = ["", ...changelogPointer(), "", ...(rest.length ? [...rest, ""] : [])];
     const next = [...lines.slice(0, start + 1), ...body, ...lines.slice(end)].join("\n");
     return { fragments: fragments.map((f) => ({ name: f.name, text: f.text })), next };
+}
+
+/**
+ * The lines of the entries under Unreleased that do not open `- `, which the move rewrites: a fragment opens `- `
+ * or the release cut refuses it, so this is the one change the move makes, and the step names each.
+ *
+ * @returns {number[]} 1-based lines, in the changelog's order
+ */
+export function unreleasedRewrites(text) {
+    const lines = text.split("\n");
+    const { start, end, code } = unreleasedSpan(lines);
+    const found = [];
+    for (let i = start + 1; start !== -1 && i < end; i += 1) if (!code[i] && BULLET.test(lines[i]) && !lines[i].startsWith("- ")) found.push(i + 1);
+    return found;
 }
 
 /** How many entries a changelog holds under Unreleased, or null where it has no such heading. */
@@ -577,15 +593,32 @@ export function draftCard(manifest, read, { workspace, inTree, repoCards = [] })
 // ===========================================================================================
 
 /**
+ * Whether the handoff index at `rel` is still kept, judged as `0003` judges it: kept where git does not ignore
+ * its path, or ignores it while a copy on disk is still tracked. Null where no git work tree answers, or git
+ * cannot say, since `0003` then has nothing to decide.
+ *
+ * @returns {null | { kept: string | null }} `kept` says why the index is kept, and is null where it is not
+ */
+function indexKept(tree, rel, onDisk) {
+    const git = gitIn(tree);
+    const rule = git === null ? null : git("check-ignore", "-q", "--no-index", "--", rel);
+    if (rule === null || (rule.status !== 0 && rule.status !== 1)) return null;
+    if (rule.status === 1) return { kept: `is not git-ignored${onDisk ? ", and a copy is kept" : ""}` };
+    const tracked = onDisk && git("ls-files", "--error-unmatch", "--", rel).status === 0;
+    return { kept: tracked ? "is git-ignored and still tracked" : null };
+}
+
+/**
  * Each piece of the form, read from disk: `new`, `today`, or absent where it does not apply. A piece of a
  * repository's own, its changelog, Session log, handoff index and card, applies only where the workspace
  * declares a tree, and the card only to a `repository` workspace, as the steps in `../spec/migrations/`
  * that move them are owed only there.
  *
- * **Read without git, as `doctor` reads everything**, so a report may say less than `upgrade` knows: the
- * Session log is looked for in the tree's Markdown on disk rather than in git's tracked files, and the
- * handoff index counts as not kept where the root `.gitignore` names it, whatever a nested one or a
- * global exclude says. Where the two differ, `upgrade`, which asks git, is the one that moves anything.
+ * **Read from disk, as `doctor` reads everything**, so a report may say less than `upgrade` knows: the
+ * Session log is looked for in the tree's Markdown on disk rather than in git's tracked files. The handoff
+ * index is the exception, judged by git as `0003` judges it, since a rule other than the root `.gitignore`'s
+ * may ignore it, and absent where no git work tree answers, since `0003` then has nothing to decide. Where
+ * the two differ, `upgrade`, which asks git, is the one that moves anything.
  *
  * @returns {{ tree: string | null, pieces: Array<{ id: string, state: "new" | "today", text: string }> }}
  */
@@ -611,13 +644,9 @@ export function formOf(workspaceDir, manifest) {
         const at = path.resolve(wsDir, index);
         const rel = posix(path.relative(tree, at));
         if (rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel)) {
-            const ignore = readOrNull(path.join(tree, ".gitignore"));
-            const named = ignore !== null && ignore.split(/\r?\n/).some((line) => line.trim() === `/${rel}` || line.trim() === rel);
-            add(
-                "handoff-index",
-                named ? "new" : "today",
-                named ? "the handoff index is printed on demand, not kept" : `the handoff index at ${index} is not git-ignored${present(at) ? ", and a copy is kept" : ""}`,
-            );
+            const judged = indexKept(tree, rel, present(at));
+            if (judged?.kept) add("handoff-index", "today", `the handoff index at ${index} ${judged.kept}`);
+            else if (judged) add("handoff-index", "new", "the handoff index is printed on demand, not kept");
         }
     }
 
