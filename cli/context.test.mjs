@@ -911,10 +911,10 @@ describe("this repository", () => {
         const inFence = fenced(lines);
         lines.forEach((line, i) => {
             const code = inFence[i] ? [line] : [...line.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
-            // A command starts at `node` after the span's start, a `$ ` prompt, a separator, or the `)`
-            // that closes a `case` pattern.
+            // A command starts at `node` after the span's start and any indentation, a `$ ` prompt, a
+            // separator, or the `)` that closes a `case` pattern.
             for (const span of code) {
-                for (const [, command] of span.matchAll(/(?:^|\$\s+|[;&|()]\s*)(node\s[^;&|)]*)/g)) {
+                for (const [, command] of span.matchAll(/(?:^\s*|\$\s+|[;&|()]\s*)(node\s[^;&|)]*)/g)) {
                     for (const [word] of command.matchAll(/(?:"[^"]*"|'[^']*'|[^\s"'])+/g)) {
                         if (PATH.test(word) && !/^"[^"]*"$/.test(word)) found.push(`${i + 1} ${word}`);
                     }
@@ -949,6 +949,7 @@ describe("this repository", () => {
             "```",
             "~~~sh",
             "node ${CLAUDE_PROJECT_DIR}/z.mjs",
+            "  node <workspace-dir>",
             "~~~",
         ].join("\n");
         assert.deepEqual(unquotedPaths(fixture), [
@@ -961,6 +962,7 @@ describe("this repository", () => {
             "8 ${CLAUDE_PLUGIN_ROOT}/x.mjs",
             "11 ${CLAUDE_PLUGIN_ROOT}/cli/discover.mjs",
             "14 ${CLAUDE_PROJECT_DIR}/z.mjs",
+            "15 <workspace-dir>",
         ]);
     });
 });
