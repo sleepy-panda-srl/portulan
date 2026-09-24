@@ -3199,8 +3199,15 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
               : `this workspace declares no gate policy — \`workspace.json\` has no top-level \`gates\` key, ` +
                 `and there is no \`gates.json\` at ${policyFile}.`;
     // With guidance to compile, the run goes on without a policy, and the sentence must say so: *nothing was
-    // compiled* would be false about the files it writes next.
-    const lines = [`${opening} ${guidanceOnly ? "No enforcement is compiled; the workspace's guidance still is." : "Nothing was compiled and nothing was written."}`];
+    // compiled* would be false about the files it writes next. With only what an earlier run compiled from
+    // guidance no longer declared, it goes on to remove that, and says so as well.
+    const outcome =
+        guidanceOnly === "leftover"
+            ? "No enforcement is compiled, and no guidance is declared: what an earlier run compiled from guidance is this compiler's to remove, and is named below."
+            : guidanceOnly
+              ? "No enforcement is compiled; the workspace's guidance still is."
+              : "Nothing was compiled and nothing was written.";
+    const lines = [`${opening} ${outcome}`];
     let composed = null;
     try {
         composed = packContributions(workspaceRoot, workspaceDir, packOptions);
@@ -4025,15 +4032,20 @@ export function run(argv, options = {}) {
         // commonest: this comment read "two different answers" while the code below had four.
         if (!policyDeclared && !fs.existsSync(policyFile)) {
             const packOptions = { named: namedRoots, discovery: () => discoverPackRoots(), forced };
+            // What an earlier run compiled from guidance the manifest no longer declares is still this
+            // compiler's to remove, as it is beside a policy: stopping before the tidy left an `always` rule
+            // loading into every context until someone deleted it by hand. Only where the manifest was read
+            // and names no policy, because one that does not parse declares nothing this compiler can know.
+            const leftover = guidance === null && policyReason === "no-key" && guidancePlan !== null && guidancePlan.stray.length > 0;
             // A `gates` key this compiler refuses is not the shape below: the workspace named a policy, and
             // named one nothing here will read. The run stops, as it did before guidance existed, rather than
             // compile the guidance past it into a green `--check` that checks no enforcement at all.
-            if (guidance === null || policyReason === "refused") {
+            if ((guidance === null && !leftover) || policyReason === "refused") {
                 throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
             }
             // A workspace with no gate policy is a legitimate shape (`policyPath`), and its guidance is not
             // enforcement: it compiles alone, and the state of the policy is said rather than refused.
-            say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, true)}`);
+            say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, leftover ? "leftover" : true)}`);
             if (sessions !== null) {
                 say(
                     `note    \`sessions\` in ${sessions.manifest} compiled nothing: its host switches ride the settings a gate ` +

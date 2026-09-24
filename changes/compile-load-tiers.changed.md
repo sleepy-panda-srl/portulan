@@ -11,5 +11,6 @@
   one line each. `compile` never writes `CLAUDE.md`, never writes or removes through a link, and never
   replaces or removes a rule or a skill it cannot show it wrote. A workspace with guidance and no gate policy
   compiles its guidance alone and says no enforcement is compiled; a `gates` key `compile` will not read still
-  stops it with exit 2. An adopter moves a section of an always-loaded file into a unit and runs
-  `npx @sleepy_panda_srl/portulan compile`.
+  stops it with exit 2. What `compile` wrote from guidance a workspace stops declaring is removed by its next
+  run, with a gate policy or without one. An adopter moves a section of an always-loaded file into a unit and
+  runs `npx @sleepy_panda_srl/portulan compile`.

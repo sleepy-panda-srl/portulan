@@ -151,7 +151,8 @@ unscoped or scoped by `paths:`, a project skill in `.claude/skills/`, or a line 
 where a tier the host cannot express degrades to a pointer, late and never lost; `compile --matrix` prints
 that per unit, and `GUIDANCE_HOSTS` is the one table of which host expresses which tier. `compile` rewrites
 and removes only what it wrote — the rules its `.compiled` marker lists and the skills carrying its mark —
-writes nothing through a link, and refuses a slot inside a directory it writes. Section 3c of compile.mjs
+writes nothing through a link, and refuses a slot inside a directory it writes. What it wrote from guidance a
+workspace stops declaring goes on the next run, with a gate policy or without one. Section 3c of compile.mjs
 carries each of those rules.
 
 **This workspace declares four units** in [`../context/`](../context/): the boot card in the `always` tier,
