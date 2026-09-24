@@ -103,7 +103,8 @@ whoever carries the removal out — the write-named row alone stands for three s
 1. `fuzz-shell` — the `crlf-continuation-in-the-payload|write-named` cell's recorded divergence
    **closes**. Good news, and a red until `EXPECT` and the record it cites are updated.
 2. `goldens` — the `a-CRLF-continuation` fixture in
-   [`edit-the-constitution.json`](../../evals/goldens/gates/edit-the-constitution.json) **regresses**.
+   [`change-the-constitution.json`](../../evals/goldens/gates/change-the-constitution.json), named
+   `edit-the-constitution.json` until 2026-09-24, **regresses**.
 3. [`../../cli/compile.test.mjs`](../../cli/compile.test.mjs) — **two** direct assertions fail,
    *a CRLF continuation before the path* and *a CRLF continuation after `>`*.
 4. `mutants` — exit **2, could-not-run**: it refuses a census over the corpus **that surface 2 has

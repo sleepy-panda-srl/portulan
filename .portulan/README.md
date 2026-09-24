@@ -83,8 +83,8 @@ Honest limits, each with the milestone that closes it:
   *true* — whether the gate map's tiers are honoured, whether a mission statement has drifted, whether a
   sealed stamp describes a real incident. The machine catches absence; the human judges substance.
 - **Compiled gates, as of milestone 4 — two backends, and neither covers everything.** [`gates.json`](gates.json)
-  compiles to [`../.claude/settings.json`](../.claude/settings.json), so Gated actions prompt and the
-  constitution is refused outright; `auto` and `propose` compile to **nothing** there, deliberately, since
+  compiles to [`../.claude/settings.json`](../.claude/settings.json), so Gated actions prompt and
+  Prohibited ones are refused outright; `auto` and `propose` compile to **nothing** there, deliberately, since
   the compiler emits restriction only. It also compiles to
   [`compile/github-ruleset.json`](compile/github-ruleset.json), the platform floor as importable data,
   where the partition inverts and `propose` is exactly what is enforced. **Three gates this workspace

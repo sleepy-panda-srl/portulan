@@ -81,8 +81,9 @@ are appended, so a pack-contributed `prohibited` rule is always the later one an
 call to a broader declared `gated` rule, answering `ask` on an action the policy prohibits. **It is not
 composition's defect alone, and a draft of this paragraph implied it was:** a workspace composing nothing
 and declaring `git push` gated above `git push --mirror` prohibited diverged the same way, measured. So
-this repair reaches single-file policies too — and this repository's own is unchanged only because
-`edit-the-constitution`, the one `prohibited` rule it declares, is listed first. The change is
+this repair reaches single-file policies too — and this repository's own is unchanged because the one
+`prohibited` rule it yields, the composed `self-certify-a-checkpoint`, has no matcher (until 2026-09-24,
+because the one it declared, the constitution's, was listed first). The change is
 strengthen-only in every case: `ask` may become `deny`, never the reverse.
 And a composition that is *refused* — a pack demoting a rule, a `pack.json` that will not parse — falls
 back to the **declared** policy rather than stepping aside, so a dependency cannot switch off the gates
@@ -254,13 +255,13 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    the host, and nothing in that DSL reaches a command in second position — so this stays a gate whose
    reach beyond the first word is the hook's alone.
 3. **A gate whose only layer is the hook — and the hook is the one that fails open.** New with [the shell
-   half of `edit-the-constitution`](prohibited.md#the-shell-half-and-why-the-strongest-rule-here-had-the-weakest-layer). Everywhere else the permission rule is the gate and the hook
+   half of the constitution's rule](prohibited.md#the-shell-half-and-why-the-strongest-rule-here-had-the-weakest-layer), Prohibited until 2026-09-24. Everywhere else the permission rule is the gate and the hook
    adds reach; there, the hook *is* the reach, because no `Bash(prefix:*)` pattern can name a path sitting
    anywhere in a command. A syntax error in [`cli/gate.mjs`](../../cli/gate.mjs) removes tool-level
-   coverage of shell writes to the constitution and leaves the `Edit` denial standing — which the host
-   matches for every file-editing tool, `Write` and `NotebookEdit` included, and which is a
-   partial gate that looks from the outside exactly like a whole one. `compile` names the affected rules in
-   a note on every run for that reason.
+   coverage of shell writes to the path a Gated or Prohibited `write:` rule guards and leaves its `Edit`
+   rule standing — which the host matches for every file-editing tool, `Write` and `NotebookEdit` included,
+   and which is a partial gate that looks from the outside exactly like a whole one. `compile` names the
+   affected rules in a note on every run for that reason; this policy has none since 2026-09-24.
 4. **A local `allow` rule beside the compiled gates is unmeasured.** `.claude/settings.local.json` is
    git-ignored, so an adopter's own allow rules sit invisibly next to these. A compiled `deny`/`ask` beats
    an `allow` for the *same* pattern; what a broad local `Bash` allow does to the *wrapper* spelling has

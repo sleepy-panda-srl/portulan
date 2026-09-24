@@ -11,16 +11,21 @@ rule can observe whether the context reading a checkpoint skill has already seen
 instance in this file of a gate that is doctrine and habit and nothing else. _Listed here as of
 2026-08-13, for the same reason as `commit-without-the-hooks` and found in the same pass._
 
-## `edit-the-constitution`
+## The constitution's rule, Prohibited until 2026-09-24
 
-_Why this is a prohibition rather than simply the Gated tier: every other change in this repository is
-graded against that file. An agent that can edit the standard it is judged by can launder any other
-change past its own grader, and the gate stops meaning anything._
+_The maintainer lifted the prohibition in his message of 2026-09-24 06:16: *"I lift up any restrictions for
+not allowing you to modify it."* [`../../docs/vision.md`](../../docs/vision.md) stays human-owned. It changes by pull request as
+`change-the-constitution`, at Propose, under his review, and an agent's edit cites his word in its commit
+message. The rest of this section is why the tier was built around that file, which still teaches the tier._
 
-Since milestone 4 this is a tier of its own — `prohibited`, not `gated` — in both [`gates.json`](../gates.json)
+_Why it was a prohibition rather than simply the Gated tier: every other change in this repository is
+graded against that file. An agent that could edit the standard it is judged by could launder any other
+change past its own grader, and the gate would stop meaning anything._
+
+Since milestone 4 Prohibited is a tier of its own — `prohibited`, not `gated` — in both [`gates.json`](../gates.json)
 and, as of the same session, [`../../core/operating/autonomy.md`](../../core/operating/autonomy.md). The distinction is load-bearing rather than decorative. Gated means *approvable
 per action* and compiles to a prompt; prohibited means *no approval exists* and compiles to a flat refusal.
-A three-tier policy would have had to file this under Gated, and the compiler would then have emitted a
+A three-tier policy would have had to file the constitution under Gated, and the compiler would then have emitted a
 prompt — turning "no agent edits it, ever" into "no agent edits it unless someone clicks yes". Found at the
 session-open checkpoint, before the schema was written, by a supervisor counting the classes in this file
 against the three the implementer had planned.
@@ -30,7 +35,7 @@ against the three the implementer had planned.
 **A `write:` rule names a path, not a tool** — and for one milestone it reached only the tools that carry a
 `file_path`. `Edit`, `Write` and `NotebookEdit` were denied; `echo x >> docs/vision.md` through `Bash` was
 denied by **neither** layer, because the permission rule rejects the tool and the shared matcher fell
-through to *false*. The rule's own sentence is what that cost: an agent that can edit the constitution can
+through to *false*. The rule's own sentence was what that cost: an agent that could edit the constitution could
 launder any other change past its own grader, and within a session nothing local stopped it. The platform
 floor still refused it at the merge — but the floor is a rail for what *lands*, not for what an agent does
 to the file it is graded against while it works.
@@ -62,12 +67,13 @@ writer in this repository, so it is named here rather than left inside "any writ
 matcher that contradicts a declared tier is worse than one that admits a gap. In the other direction the
 matcher is deliberately coarse: it fires on *any* argument of a writing command, so `cp docs/vision.md
 /tmp/backup` is refused although it only reads. Argument grammars differ per command, so "the last word is
-the destination" is true of a subset only, and being wrong about it is a false green on the one file that
-must not change.
+the destination" is true of a subset only, and being wrong about it is a false green on the file a write
+rule guards.
 
 **This half is the hook's alone, and so it fails open with the hook.** No permission rule stands beside it,
 and that is not an omission: `Bash(prefix:*)` matches a literal command *prefix* while the path sits at an
 arbitrary position in the command, so that DSL cannot express *any command writing this file*. The patterns
 that would fit — `Bash(cp:*)` — gate the utility rather than the path, which is a far larger rule than this
-policy declares. So the strongest tier in this file has, in its shell half, the weaker of the two layers.
-`compile` prints that on every run rather than leaving it to be discovered.
+policy declares. So the strongest tier in this file had, in its shell half, the weaker of the two layers, as
+every Gated or Prohibited `write:` rule still does. `compile` prints that for each such rule on every run
+rather than leaving it to be discovered.

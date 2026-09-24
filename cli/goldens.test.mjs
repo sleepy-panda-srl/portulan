@@ -308,7 +308,7 @@ test("every fixture file is free of raw control characters", () => {
 test("the escaped bytes really do decode — the corpus carries a CR and a NUL", () => {
     // The control on the test above. A corpus that passed the byte scan because it contained no
     // byte-level attacks at all would prove nothing.
-    const doc = JSON.parse(readFileSync(join(REPO, CORPUS_DIR, "edit-the-constitution.json"), "utf8"));
+    const doc = JSON.parse(readFileSync(join(REPO, CORPUS_DIR, "change-the-constitution.json"), "utf8"));
     const crlf = doc.cases.find((c) => c.id === "a-CRLF-continuation");
     // **"one of the eight bypasses" is a HISTORICAL membership, and it stays worded that way on
     // purpose.** The set is the one `../docs/milestones/m08.md` fixed; what has since changed is the
@@ -538,7 +538,7 @@ test("the two segmenters disagree about one leader, and the corpus records BOTH 
     // The asymmetry the path field exists for. A `then` leader is CAUGHT on the write path, because
     // `shellSegments` knows SEGMENT_LEADERS, and ESCAPES on the shell path, because `commandSegments`
     // does not. Without the field a reader meets two cases that look like a contradiction.
-    const constitution = JSON.parse(readFileSync(join(REPO, CORPUS_DIR, "edit-the-constitution.json"), "utf8"));
+    const constitution = JSON.parse(readFileSync(join(REPO, CORPUS_DIR, "change-the-constitution.json"), "utf8"));
     const force = JSON.parse(readFileSync(join(REPO, CORPUS_DIR, "force-push-without-a-lease.json"), "utf8"));
     const caught = constitution.cases.find((c) => c.id === "a-then-branch-leader");
     const escapes = force.cases.find((c) => c.id === "a-then-branch-still-escapes");

@@ -23,7 +23,7 @@
         "file_path": "/repo/docs/vision.md"
       },
       "expect": false,
-      "why": "Reading the constitution is Auto; only writing it is Prohibited. Two rules name the same file at opposite tiers, and this pins that they are answering about different actions rather than contradicting each other. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
+      "why": "Reading the constitution is Auto; writing it is Propose, and was Prohibited until 2026-09-24. Two rules name the same file at different tiers, and this pins that they are answering about different actions rather than contradicting each other. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
       "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime (tracked as #337)"
     },
     {
