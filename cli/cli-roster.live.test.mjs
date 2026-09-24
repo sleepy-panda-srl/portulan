@@ -139,6 +139,37 @@ describe("the render refuses what it cannot quote", () => {
         }
     });
 
+    test("a tracked name git would quote is refused by name, never dropped", () => {
+        // Git tracks a name holding a newline, and a list split on newlines C-quotes it even under
+        // `core.quotePath=false`, so the file used to leave the page without a word.
+        const root = scratchRepo({ "a.mjs": "// A tool.\n", "we\nird.mjs": "// Odd.\n" });
+        try {
+            assert.throws(
+                () => trackedFiles(root),
+                (error) => error instanceof CannotRun && error.message.includes("cli/we\\nird.mjs") && !error.message.includes("\n"),
+            );
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    test("a name that would break its row is refused, and a letter outside ASCII is not", () => {
+        for (const name of ["a b.mjs", "a(1).mjs", "a|b.mjs", "a`b.mjs", "a#b.mjs", "a%20b.mjs"]) {
+            const root = scratchRepo({ "a.mjs": "// A tool.\n", [name]: "// Odd.\n" });
+            try {
+                assert.throws(() => render(root), CannotRun, `${name} was rendered`);
+            } finally {
+                fs.rmSync(root, { recursive: true, force: true });
+            }
+        }
+        const root = scratchRepo({ "a.mjs": "// A tool.\n", "café.mjs": "// A café.\n" });
+        try {
+            assert.deepEqual(rowsOf(render(root)), ["a.mjs", "café.mjs"]);
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
     test("a page --write cannot write is could-not-run, not a stack trace", () => {
         const root = scratchRepo({ "a.mjs": "// A tool.\n" });
         try {

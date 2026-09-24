@@ -6,7 +6,8 @@
 //   node cli/roster.mjs --check    exit 1 when cli/README.md is not exactly what this renders
 //
 // Exit 0 printed, written or current · 1 out of date (`--check` only) · 2 could not run: not a git
-// repository, a listed file with no header to quote, or a page `--write` could not write.
+// repository, a listed file with no header to quote or a name no row can carry, or a page `--write`
+// could not write.
 //
 // Each file's header comment is its full account, and the page quotes the first paragraph of it: the
 // leading `//` lines, or a leading `/** */` block, up to the first blank comment line. A Markdown file
@@ -39,15 +40,23 @@ export const README = path.join(HERE, "README.md");
 
 class CannotRun extends Error {}
 
+// A row puts a name in a code span, a link target and a table cell at once, and a character outside this
+// set can end one of them or change where the link goes: a line break splits the row `docs.sh` reads one
+// per line, a backtick closes the span it extracts, `|` ends the cell, and whitespace, `(`, `#` or `%`
+// ends or redirects the target.
+const ROWABLE = /^[\p{L}\p{N}._+-]+$/u;
+
 /**
  * The tracked `cli/*.mjs` and `cli/*.md` files directly in `cli/`, this page aside, and whether
- * `cli/fixtures/` holds anything tracked. `core.quotePath=false` for `docs.sh`'s reason: a C-quoted
- * name would keep its quotes and drop out of the page without a word.
+ * `cli/fixtures/` holds anything tracked. `-z`, so each name arrives exactly as git tracks it: a list
+ * split on newlines C-quotes a name holding a control character even under `core.quotePath=false`, and
+ * the quoted line would drop out of the page without a word. A name no row can carry is refused by
+ * name, escaped so the message cannot carry its bytes, and never rendered broken.
  */
 export function trackedFiles(root = ROOT) {
     let out;
     try {
-        out = execFileSync("git", ["-c", "core.quotePath=false", "ls-files", "--", "cli/*.mjs", "cli/*.md", "cli/fixtures"], {
+        out = execFileSync("git", ["ls-files", "-z", "--", "cli/*.mjs", "cli/*.md", "cli/fixtures"], {
             cwd: root,
             encoding: "utf8",
             maxBuffer: 64 * 1024 * 1024,
@@ -58,13 +67,20 @@ export function trackedFiles(root = ROOT) {
     }
     const files = [];
     let fixtures = false;
-    for (const line of out.split("\n")) {
-        if (!line.startsWith("cli/")) continue;
-        const name = line.slice("cli/".length);
+    for (const entry of out.split("\0")) {
+        if (!entry.startsWith("cli/")) continue;
+        const name = entry.slice("cli/".length);
         if (name.startsWith(FIXTURES)) fixtures = true;
         else if (!name.includes("/") && name !== "README.md") files.push(name);
     }
     if (!files.length) throw new CannotRun(`git lists no file in ${path.join(root, "cli")}; refusing to render an empty roster`);
+    const unrowable = files.find((name) => !ROWABLE.test(name));
+    if (unrowable !== undefined) {
+        throw new CannotRun(
+            `cli/${JSON.stringify(unrowable).slice(1, -1)} has a name no row can carry; ` +
+                "a row takes letters, digits, '.', '_', '+' and '-': rename it",
+        );
+    }
     return { files: files.sort(), fixtures };
 }
 
