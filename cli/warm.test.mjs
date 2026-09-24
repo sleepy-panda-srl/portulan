@@ -424,7 +424,28 @@ describe("a switch against its control", () => {
         assert.deepEqual([v.measured, v.cuts, v.pass, v.ratio], [false, false, false, null]);
         const said = [];
         assert.equal(run(["report", control, treatment], { say: (l) => said.push(l) }), 1);
-        assert.match(said.at(-1), /no figure against the control's 100.*a run has no transcript/);
+        assert.match(said.at(-1), /no figure against the control's 100.*a run was not measured/);
+    });
+
+    test("a transcript that records no request of the session's own leaves its run unmeasured, never free, exit 1", () => {
+        const [control, treatment] = pair();
+        const { runs } = JSON.parse(fs.readFileSync(path.join(treatment, "sequence.json"), "utf8"));
+        const file = path.join(treatment, runs[1].transcript);
+        const lines = fs.readFileSync(file, "utf8").trim().split("\n");
+        const subagent = lines.map((l) => JSON.stringify({ ...JSON.parse(l), isSidechain: true })).join("\n");
+        const hostWritten = JSON.stringify({ type: "assistant", message: { model: "<synthetic>", usage: { input_tokens: 0, output_tokens: 0 } } });
+        const torn = '{"type":"assistant","message":{"usage":';
+        for (const body of ["", torn, hostWritten, subagent]) {
+            fs.writeFileSync(file, body);
+            const s = readSequence(treatment);
+            assert.equal(s.runs[1].figures, null);
+            assert.equal(s.summary.measured, 1);
+            const v = verdict(readSequence(control), s);
+            assert.deepEqual([v.measured, v.cuts, v.pass, v.ratio], [false, false, false, null]);
+        }
+        const said = [];
+        assert.equal(run(["report", control, treatment], { say: (l) => said.push(l) }), 1);
+        assert.match(said.at(-1), /no figure against the control's 100.*a run was not measured/);
     });
 
     test("two sequences of different shapes are no comparison, exit 2", () => {

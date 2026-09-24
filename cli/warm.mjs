@@ -52,7 +52,7 @@
 // It starts real sessions, which spend, and reads the host's usage records, which differ per machine, so it
 // never runs inside a verify recipe (`0038`'s ruling on the ledger). Its suite stands a stub in for the agent.
 //
-// Exit 0 done · 1 `report` of two sequences only: a run of either has no transcript or changed its clone, a
+// Exit 0 done · 1 `report` of two sequences only: a run of either was not measured or changed its clone, a
 // treatment run did not answer as its task expects, or the treatment cost no less than its control · 2 could not
 // run.
 
@@ -422,7 +422,7 @@ export function summary(runs) {
 /**
  * A switch against its control: it passes when every run of both sequences was measured, every treatment run
  * answered as its task expects, no run of either changed a file, and the treatment's cost, the mean of its runs
- * with the first priced cold, is lower than the control's. A run with no transcript has no cost, so a mean
+ * with the first priced cold, is lower than the control's. A run that was not measured has no cost, so a mean
  * without it is not its sequence's; a control run that changed a file spent tokens on work its task forbids, so a
  * cut against it is not the switch's; and what the cache held before either sequence began is neither arm's. The
  * two must differ in their arm and in nothing else the runner records (the commit they started from, the task,
@@ -612,7 +612,10 @@ export function runSequence({
 
 /**
  * A recorded sequence, read into its three lines at `rates`. A is read against the run's own clone, which the
- * sequence keeps; a run whose clone is gone has no A, and says so rather than a zero.
+ * sequence keeps; a run whose clone is gone has no A, and says so rather than a zero. A run whose transcript
+ * records no request of its session's own (empty, torn before its first request, or holding only host-written
+ * or subagent records) measured nothing: it has no figures, as a run with no transcript has none, never the
+ * figures of a run that cost nothing.
  */
 export function readSequence(dir, rates = GENERAL_RATES) {
     let record;
@@ -630,6 +633,7 @@ export function readSequence(dir, rates = GENERAL_RATES) {
         if (r.transcript === null) return { ...r, figures: null, share: null };
         const transcript = path.join(dir, r.transcript);
         const { requests } = readTranscript(transcript);
+        if (!requests.some((q) => !q.sidechain)) return { ...r, figures: null, share: null };
         const found = sourcesOf(path.join(dir, record.copies === "each" ? `tree-${r.k}` : "tree"));
         return {
             ...r,
@@ -682,7 +686,7 @@ export function reportLines(sequence) {
 export function comparisonLines(control, treatment, v) {
     const [c, t] = [control.summary, treatment.summary];
     const facts = [
-        v.measured ? "every run measured" : "a run has no transcript",
+        v.measured ? "every run measured" : "a run was not measured",
         v.answered ? "every run answered" : "not every run answered",
         v.unchanged ? "no run of either changed a file" : "a run changed a file",
     ];
