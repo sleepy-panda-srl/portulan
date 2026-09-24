@@ -116,6 +116,12 @@ describe("what a row quotes", () => {
         assert.equal(titleOf("# The title\n\nBody.\n"), "The title");
         assert.equal(titleOf("## Not a title\n# Late\n"), "");
     });
+
+    test("a heading inside a code fence is code, not the title", () => {
+        assert.equal(titleOf("```sh\n# not a title\n```\n\n# The title\n"), "The title");
+        assert.equal(titleOf("~~~~\n# code\n~~~\n# still code\n~~~~\n# The title\n"), "The title");
+        assert.equal(titleOf("```\n# never closed\n"), "");
+    });
 });
 
 describe("the render refuses what it cannot quote", () => {
