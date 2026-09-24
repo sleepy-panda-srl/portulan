@@ -1307,7 +1307,8 @@ export function run(argv, say = console.log) {
     // which the workflow's `git add -A` would, and in a store it is read as a record. So a path inside
     // any named workspace, or inside the tree one declares (read from the manifest, so a workspace
     // whose pass failed still counts), is refused, links resolved first; and the write goes to the
-    // resolved path, so the file written is the file judged.
+    // resolved path, so the file written is the file judged, and is renamed into place rather than
+    // written through an existing file, which may be a hard link into the tree.
     if (reportPath !== undefined) {
         const target = realish(path.resolve(reportPath));
         const roots = dirs.flatMap((dir) => [path.resolve(dir), declaredTree(dir)]).filter(Boolean);
@@ -1318,7 +1319,18 @@ export function run(argv, say = console.log) {
         } else {
             try {
                 fs.mkdirSync(path.dirname(target), { recursive: true });
-                fs.writeFileSync(target, renderReport(results, { asOf }));
+                // Written beside the target and renamed over it, never in place: a name can be a hard
+                // link to a file in the tree, which no path resolution sees, and a rename replaces the
+                // name without touching the file behind it. Copilot, #457. `wx` refuses to open through
+                // anything already standing at the temporary name.
+                const fresh = `${target}.${process.pid}.tmp`;
+                fs.writeFileSync(fresh, renderReport(results, { asOf }), { flag: "wx" });
+                try {
+                    fs.renameSync(fresh, target);
+                } catch (cause) {
+                    fs.rmSync(fresh, { force: true });
+                    throw cause;
+                }
                 say(`  ok wrote the report to ${reportPath}`);
             } catch (cause) {
                 say(`  ✗ cannot write the report — ${cause.code ?? cause.message}`);

@@ -1360,6 +1360,22 @@ describe("a pass leaves the tree it just wrote to green", () => {
         assert.equal(fs.existsSync(path.join(dir, ".portulan/memory-index.md")), false, "and no index was regenerated");
     });
 
+    test("a report named at a hard link into the tree replaces the link, never the tree's file", () => {
+        // A hard link has no path to resolve, so containment sees only the outside name. Copilot, #457:
+        // a write in place would change the file in the tree through it; a rename replaces the name.
+        const m = MANIFEST({ tree: "../", librarian: { staleness: STALENESS } });
+        const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: m });
+        fs.writeFileSync(path.join(dir, "notes.md"), "the tree's copy\n");
+        const report = path.join(scratch(), "report.md");
+        fs.linkSync(path.join(dir, "notes.md"), report);
+        const out = say();
+        assert.equal(run(["--as-of", "2026-06-15", "--report", report, path.join(dir, ".portulan")], out), 0);
+        assert.equal(fs.readFileSync(path.join(dir, "notes.md"), "utf8"), "the tree's copy\n");
+        assert.equal(fs.statSync(path.join(dir, "notes.md")).nlink, 1, "the outside name no longer shares the file");
+        assert.match(fs.readFileSync(report, "utf8"), /^# The librarian's scheduled pass/);
+        assert.deepEqual(fs.readdirSync(path.dirname(report)), ["report.md"], "and no temporary file is left");
+    });
+
     test("a workspace whose pass failed still keeps the report out of the tree it declares", () => {
         // The tree is read from the manifest, not from the pass's result, which a pass that threw
         // never returns: a workspace this tool refuses to pass still governs its tree.
