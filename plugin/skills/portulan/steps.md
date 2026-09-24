@@ -75,7 +75,7 @@ What is available to read, in this bundle:
   end to end as the worked example.
 - `${CLAUDE_PLUGIN_ROOT}/spec/` — the Workspace Definition: the schema and a per-slot document
   explaining what each slot is for and what it was derived from.
-- `node "${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs" <workspace-dir>` — validates a workspace against that
+- `node "${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs" "<workspace-dir>"` — validates a workspace against that
   definition. Zero dependencies; it needs Node and nothing else.
 
 Authoring a workspace ends with a human: `node "${CLAUDE_PLUGIN_ROOT}/cli/init.mjs"` drafts one — see

@@ -897,16 +897,25 @@ describe("this repository", () => {
         assert.deepEqual(unknown, [], "a boot that reads a new file of the skill needs it in STEPS in context.mjs; one it reads on demand, here");
     });
 
-    test("every command the boot skill gives quotes the plugin's and the project's paths", () => {
+    test("every command the boot skill gives passes each path as one double-quoted word", () => {
         // Both directories reach the shell as text, so an unquoted one with a space in its path is two
-        // words there: `node` finds no module, or the CLI refuses the rest (Copilot, #446).
+        // words there: `node` finds no module, or the CLI refuses the rest (Copilot, #446). A path the
+        // reader fills in, such as `<workspace-dir>`, is one word only when quoted too, and a quote that
+        // does not close is as bad as none (Copilot, #461).
+        const PATH = /\$\{CLAUDE_(?:PLUGIN_ROOT|PROJECT_DIR)[^}]*\}|<[\w-]+>/;
         const dir = path.join(REPO, "plugin/skills/portulan");
         const unquoted = [];
         for (const name of fs.readdirSync(dir).filter((n) => n.endsWith(".md"))) {
+            let fenced = false;
             fs.readFileSync(path.join(dir, name), "utf8").split("\n").forEach((line, i) => {
-                for (const [, command] of line.matchAll(/(?:^|`)(node [^`]*)/g)) {
-                    for (const m of command.matchAll(/\$\{CLAUDE_(?:PLUGIN_ROOT|PROJECT_DIR)[^}]*\}/g)) {
-                        if (command[m.index - 1] !== '"') unquoted.push(`${name}:${i + 1} ${m[0]}`);
+                if (/^\s*```/.test(line)) return void (fenced = !fenced);
+                const code = fenced ? [line] : [...line.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+                // A command starts at `node` after the span's start, a `$ ` prompt or a separator.
+                for (const text of code) {
+                    for (const [, command] of text.matchAll(/(?:^|\$\s+|[;&|(]\s*)(node\s[^;&|)]*)/g)) {
+                        for (const [word] of command.matchAll(/(?:"[^"]*"|'[^']*'|[^\s"'])+/g)) {
+                            if (PATH.test(word) && !/^"[^"]*"$/.test(word)) unquoted.push(`${name}:${i + 1} ${word}`);
+                        }
                     }
                 }
             });
