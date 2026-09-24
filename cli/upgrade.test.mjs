@@ -1080,6 +1080,23 @@ describe("the apply loop refuses a plan a step did not describe", () => {
         assert.match(checked.text(), /owes 1 step\(s\), 1 of them by hand — add what each names by hand, then upgrade again/);
     });
 
+    test("a step that runs in two passes is counted once in what the run says it applied", async () => {
+        const read = (ws, file) => fs.readFileSync(path.join(ws.dir, file), "utf8");
+        const compile = { id: "9988-compile", kind: "form", from: null, to: null, title: "t", why: "w",
+            owed: (ws) => ({ owed: read(ws, "compiled.md") !== read(ws, "source.md"), because: "compiled.md is behind source.md" }),
+            plan: (ws) => ({ ok: true, edits: [{ file: "compiled.md", next: read(ws, "source.md") }] }) };
+        const section = { id: "9989-section", kind: "form", from: null, to: null, title: "t", why: "w",
+            owed: (ws) => ({ owed: !read(ws, "source.md").includes("section"), because: "source.md has no section" }),
+            plan: (ws) => ({ ok: true, edits: [{ file: "source.md", next: `${read(ws, "source.md")}section\n` }] }) };
+        const dir = green();
+        fs.writeFileSync(path.join(dir, "source.md"), "edited\n");
+        fs.writeFileSync(path.join(dir, "compiled.md"), "compiled before the edit\n");
+        const h = harness();
+        assert.equal(await run([dir, "--write"], { ...h.options, steps: [compile, section] }), 0, h.text());
+        assert.equal(fs.readFileSync(path.join(dir, "compiled.md"), "utf8"), "edited\nsection\n", "the compile ran again after the section");
+        assert.match(h.text(), /applied 2 step\(s\)/);
+    });
+
     test("a step an earlier one has made not owed is asked again, not applied on its answer from before", async () => {
         const has = (ws) => fs.existsSync(path.join(ws.dir, "shared.md"));
         const first = { id: "9990-first", kind: "repair", from: null, to: null, title: "t", why: "w",

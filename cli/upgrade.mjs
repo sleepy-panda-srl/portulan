@@ -685,7 +685,7 @@ export function usage() {
         "A pointer is resolved through the host's installed-plugin record; the installed workspace is",
         "read and reported on, and `--write` is refused there — migrate it at its own directory.",
         "",
-        "Exit codes: 0 succeeded · 1 a red verdict, or a step owed by hand · 2 could not run.",
+        "Exit codes: 0 succeeded · 1 a red verdict, or a step owed by hand under --check or --write · 2 could not run.",
     ].join("\n");
 }
 
@@ -933,10 +933,10 @@ export async function run(argv = [], options = {}) {
     // **A step owed by hand is reported, and the chain runs on** (2026-09-24). Its `because` names what a
     // person adds; the run applies every other step, lists it as owed and not placed once `doctor` is green,
     // and exits 1, as `--check` does over a step owed. A refusal would have undone every other step with it.
-    let applied = 0;
+    const applied = new Set();
     const byHand = new Map();
     const apply = async (entry) => {
-        applied += 1;
+        applied.add(entry.step.id);
         // **A step that throws mid-chain must not take the rollback with it.** `plan()` is a module's
         // code, and an exception here — after earlier steps have already written — would abort the
         // process with `undo()` never called, leaving a half-migrated workspace and no record of it.
@@ -986,7 +986,7 @@ export async function run(argv = [], options = {}) {
         let appliedNow = 0;
         for (const entry of plan.entries) {
             let asked = entry;
-            if (applied > 0 || entry.owed !== true) {
+            if (applied.size > 0 || entry.owed !== true) {
                 [asked] = (await planFor(current, ctx, [entry.step])).entries;
                 if (asked.owed === null) {
                     if (!undo()) return 2;
@@ -1046,7 +1046,7 @@ export async function run(argv = [], options = {}) {
         return s.deleted ? `${at} (deleted)` : at;
     };
     const written = [...new Set(snapshots.map(named))];
-    if (applied > 0) say(`upgrade: applied ${applied} step(s) to ${shown} — ${written.join(", ")}. doctor is green`);
+    if (applied.size > 0) say(`upgrade: applied ${applied.size} step(s) to ${shown} — ${written.join(", ")}. doctor is green`);
     const left = plan.entries.filter((entry) => byHand.has(entry.step.id));
     for (const entry of left) warn(`upgrade: ${entry.step.id} is owed and not placed — ${byHand.get(entry.step.id)}`);
     return left.length > 0 ? 1 : 0;
