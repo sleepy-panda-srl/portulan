@@ -147,7 +147,8 @@ exactly `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PROJECT_DIR}` (read in 2.1.281's p
 files a session fills them in itself, since its shell has neither variable (measured in a 2.1.281
 session). Unquoted, a directory with a space in its path reached the shell as two words, and `node` found
 no module or `context.mjs` refused the rest as an unknown argument (Copilot, #446; reproduced
-2026-09-24), so every command quotes both, and `cli/context.test.mjs` fails on one that does not. A shell
-default such as `${CLAUDE_PROJECT_DIR:-.}` would escape the host's substitution and always mean the
-shell's current directory, so step 5 says instead, as step 2 does, that the working directory stands in
-for an unset variable.
+2026-09-24), so every command quotes both, and any path a reader fills in, such as `<workspace-dir>`, as
+one word each; `cli/context.test.mjs` fails on a command that does not, or whose quote does not close
+(Copilot, #461). A shell default such as `${CLAUDE_PROJECT_DIR:-.}` would escape the host's substitution
+and always mean the shell's current directory, so step 5 says instead, as step 2 does, that the working
+directory stands in for an unset variable.

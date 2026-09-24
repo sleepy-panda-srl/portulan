@@ -219,7 +219,7 @@ export function notYetForm(ws, ctx) {
  * Which of `lines` are fenced code, each fence line included: a fence opens on three or more backticks or
  * tildes, indented three spaces at most, and closes on the same character.
  */
-function fenced(lines) {
+export function fenced(lines) {
     let fence = null;
     return lines.map((line) => {
         const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
