@@ -17,6 +17,7 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -4393,6 +4394,70 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         }
     });
 
+    test("a leads line ending `#<heading>` reads the first list under that heading, and one no heading or several answer is refused", (t) => {
+        const rules = ["# Rules", "", "- **Not these.** Above the heading.", "", "## Kept", "", "- **Ship small.** Why.", "- **Say so.** Why.", "", "## Why", "", "### Why", "", "Twice.", ""].join("\n");
+        const dir = withFiles({ "rules.md": rules, "context/boot.md": card("<!-- leads: ../rules.md#kept -->") });
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 0, out);
+        assert.match(rule(dir, "boot"), /^- \*\*Ship small\.\*\*\n- \*\*Say so\.\*\*$/m);
+        assert.doesNotMatch(rule(dir, "boot"), /Not these/);
+        for (const [fragment, pattern] of [["gone", /the leads of rules\.md#gone were asked for, and no heading answers #gone/], ["Why", /the leads of rules\.md#Why were asked for, and #Why names 2 headings/]]) {
+            fs.writeFileSync(path.join(dir, "context", "boot.md"), card(`<!-- leads: ../rules.md#${fragment} -->`));
+            const refused = said(t, ["--workspace", dir]);
+            assert.equal(refused.code, 2, refused.out);
+            assert.match(refused.out, pattern);
+        }
+    });
+
+    test("an engine line writes the leads of the engine's own file, keeps `<plugin root>/` in a tree that is not the engine, and an edit is drift", (t) => {
+        const dir = withFiles({ "context/boot.md": card("<!-- engine: operating/context.md#every-request-pays-for-what-the-session-has-read -->") });
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 0, out);
+        const written = rule(dir, "boot");
+        assert.match(written, /^- \*\*Send independent tool calls in one request\.\*\*$/m);
+        assert.match(written, /`node <plugin root>\/cli\/symbols\.mjs <file>`/, "a consumer's card names the command from where Portulan is installed");
+        fs.writeFileSync(path.join(dir, GUIDANCE_RULES_DIR, "boot.md"), written.replace("one request", "two requests"));
+        const check = said(t, ["--workspace", dir, "--check"]);
+        assert.equal(check.code, 1);
+        assert.match(check.out, /whose leads are written from the engine's core\/operating\/context\.md\./);
+        // Portulan's own card, compiled where the engine is the tree, runs the command from there.
+        const own = fs.readFileSync(path.join(REPO, GUIDANCE_RULES_DIR, "boot.md"), "utf8");
+        assert.match(own, /`node cli\/symbols\.mjs <file>`/);
+        assert.doesNotMatch(own, /<plugin root>/);
+    });
+
+    test("refused, and nothing is written: an engine line naming a file outside the engine's core/, or none", (t) => {
+        for (const target of ["../cli/compile.mjs", "operating/missing.md"]) {
+            const dir = withFiles({ "context/boot.md": card(`<!-- engine: ${target} -->`) });
+            const { code, out } = said(t, ["--workspace", dir]);
+            assert.equal(code, 2, out);
+            assert.match(out, new RegExp(`the engine's leads of ${target.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")} were asked for, and it names no file in the engine's core/`));
+            assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+        }
+    });
+
+    test("refused, and nothing is written: an engine line naming a link in core/ that leads out of it", () => {
+        const engine = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-engine-"));
+        fs.mkdirSync(path.join(engine, "cli"));
+        for (const file of ["compile.mjs", "discover.mjs", "inside.mjs", "symbols.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
+        fs.mkdirSync(path.join(engine, "core"));
+        const leads = "# Leads\n\n- **A lead.**\n";
+        fs.writeFileSync(path.join(engine, "core", "inside.md"), leads);
+        fs.writeFileSync(path.join(engine, "outside.md"), leads);
+        fs.symlinkSync(path.join(engine, "outside.md"), path.join(engine, "core", "link.md"));
+        const compile = (target) => {
+            const dir = withFiles({ "context/boot.md": card(`<!-- engine: ${target} -->`) });
+            const { status, stdout, stderr } = spawnSync(process.execPath, [path.join(engine, "cli", "compile.mjs"), "--workspace", dir], { encoding: "utf8" });
+            return { dir, status, out: stdout + stderr };
+        };
+        const inside = compile("inside.md");
+        assert.equal(inside.status, 0, inside.out);
+        const link = compile("link.md");
+        assert.equal(link.status, 2, link.out);
+        assert.match(link.out, /the engine's leads of link\.md were asked for, and it names no file in the engine's core\//);
+        assert.ok(!fs.existsSync(path.join(link.dir, ".claude")));
+    });
+
     /** A gate policy holding one rule per `[id, tier]`, in that order. */
     const policy = (...rules) => `${JSON.stringify({ portulan: { spec: "2.2" }, rules: rules.map(([id, tier]) => ({ id, tier, action: { write: `${id}.md` }, reason: `Why ${id}.` })) }, null, 2)}\n`;
 
@@ -4436,6 +4501,7 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
     const refusedUnits = [
         ["a leads line in an on-read unit", "a", unitText(["tier: on-read", "description: A."], "<!-- leads: ../rules.md -->"), /written out only in an always unit, and this one is `on-read`/],
         ["a gates line in an on-path unit", "a", unitText(["tier: on-path", "paths: [\"src/**\"]", "description: A."], "<!-- gates: ../gates.json -->"), /a `<!-- gates: … -->` line is written out only in an always unit, and this one is `on-path`/],
+        ["an engine line in an on-read unit", "a", unitText(["tier: on-read", "description: A."], "<!-- engine: operating/context.md -->"), /a `<!-- engine: … -->` line is written out only in an always unit, and this one is `on-read`/],
         ["a boot unit in another tier", BOOT_CARD_UNIT, unitText(["tier: on-read", "description: A."], `${BOOT_CARD_LINE}\n\nA.`), /is an `always` unit, and this one is `on-read`/],
         ["a boot unit that does not open with the card's line", BOOT_CARD_UNIT, unitText(["tier: always"], "# Boot\n\nA."), /a boot card opens with the line `# Portulan boot card`, which is how the boot skill knows it is loaded/],
         ["the card's line opening another unit", "welcome", unitText(["tier: always"], `${BOOT_CARD_LINE}\n\nA.`), /only the unit named `boot` is one/],

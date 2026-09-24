@@ -18,7 +18,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { CannotOutline, main, outlineJs, outlineSh, render } from "./symbols.mjs";
+import { anchorOf, CannotOutline, main, NoSection, outlineJs, outlineMd, outlineSh, render, sectionOf } from "./symbols.mjs";
 
 const JS = [
     "#!/usr/bin/env node",
@@ -100,6 +100,43 @@ const SH = [
     "",
     "# ---------------------------------------------------------------- 2. second",
     'echo "a << b"',
+    "",
+].join("\n");
+
+const MD = [
+    "---",
+    "tier: always",
+    "---",
+    "",
+    "# Guide",
+    "",
+    "Intro.",
+    "",
+    "## `slots.context` — the *load* tiers ##",
+    "",
+    "```sh",
+    "# a comment, not a heading",
+    "```",
+    "",
+    "<!--",
+    "# hidden",
+    "-->",
+    "",
+    "### Why",
+    "",
+    "Setext one",
+    "==========",
+    "",
+    "- a list item",
+    "---",
+    "",
+    "## Why",
+    "",
+    "A paragraph",
+    "that wraps",
+    "---",
+    "",
+    "## [Linked](x.md) and __init__ and my_var",
     "",
 ].join("\n");
 
@@ -262,15 +299,52 @@ describe("a shell outline", () => {
     });
 });
 
+describe("a Markdown outline", () => {
+    test("names every heading once, with its section's span, anchor and size, and nothing in fences, comments or frontmatter", () => {
+        // A paragraph under `---` is a heading, a list item over one is not, and `#` in fenced code, a
+        // comment or the frontmatter is none. The anchor names a repeated heading, `#why-1`, from the outline.
+        assert.deepEqual(render("guide.md", outlineMd(MD)), [
+            "guide.md: 33 lines, 269 B",
+            "5-20 # Guide #guide (127 B)",
+            "  9-20 ## `slots.context` — the *load* tiers #slotscontext--the-load-tiers (110 B)",
+            "    19-20 ### Why #why (9 B)",
+            "21-33 # Setext one #setext-one (120 B)",
+            "  27-28 ## Why #why-1 (8 B)",
+            "  29-32 ## A paragraph that wraps #a-paragraph-that-wraps (28 B)",
+            "  33 ## [Linked](x.md) and __init__ and my_var #linked-and-init-and-my_var (42 B)",
+        ]);
+    });
+
+    test("gives each heading the anchor GitHub gives it, a repeated one numbered", () => {
+        const anchors = [];
+        const walk = (list) => list.forEach((e) => (anchors.push(e.anchor), walk(e.children)));
+        walk(outlineMd(MD).entries);
+        assert.deepEqual(anchors, ["guide", "slotscontext--the-load-tiers", "why", "setext-one", "why-1", "a-paragraph-that-wraps", "linked-and-init-and-my_var"]);
+        assert.equal(anchorOf("Auto — the agent acts unattended"), "auto--the-agent-acts-unattended");
+        assert.equal(anchorOf("The constitution's rule, prohibited until 2026-09-24"), "the-constitutions-rule-prohibited-until-2026-09-24");
+    });
+
+    test("finds a section by its anchor, its text or its parent, and refuses a fragment naming two", () => {
+        const byAnchor = sectionOf(MD, "why-1");
+        assert.deepEqual(byAnchor, { start: 27, end: 28, level: 2, title: "Why", anchor: "why-1", bytes: 8, text: "## Why\n" });
+        assert.equal(sectionOf(MD, "Setext One").start, 21);
+        assert.equal(sectionOf(MD, "slots.context — the load tiers > why").start, 19);
+        assert.equal(sectionOf(MD, "slotscontext--the-load-tiers").end, 20);
+        assert.equal(sectionOf(MD, "why").start, 19, "an anchor is GitHub's, which names the first of two");
+        assert.throws(() => sectionOf(MD, "Why"), (e) => e instanceof CannotOutline && !(e instanceof NoSection) && /names 2 headings: #why \(line 19\), #why-1 \(line 27\)/.test(e.message));
+        assert.throws(() => sectionOf(MD, "absent"), NoSection);
+    });
+});
+
 describe("the command", () => {
     test("prints each file's outline, and exits 2 for a file it does not read", () => {
         const dir = scratch();
         fs.writeFileSync(path.join(dir, "a.mjs"), "export const A = 1;\n");
-        fs.writeFileSync(path.join(dir, "notes.md"), "# Notes\n");
-        assert.deepEqual(run(["a.mjs"], dir), { code: 0, out: "a.mjs: 1 lines\n1 export const A = 1;\n", err: "" });
-        const md = run(["notes.md"], dir);
-        assert.equal(md.code, 2);
-        assert.match(md.err, /notes\.md is not JavaScript or shell; read it whole or by section/);
+        fs.writeFileSync(path.join(dir, "notes.txt"), "# Notes\n");
+        assert.deepEqual(run(["a.mjs"], dir), { code: 0, out: "a.mjs: 1 line\n1 export const A = 1;\n", err: "" });
+        const txt = run(["notes.txt"], dir);
+        assert.equal(txt.code, 2);
+        assert.match(txt.err, /notes\.txt is not JavaScript, shell or Markdown; read it whole/);
         const missing = run(["gone.mjs"], dir);
         assert.equal(missing.code, 2);
         assert.match(missing.err, /cannot read gone\.mjs: ENOENT/);
@@ -303,6 +377,32 @@ describe("the command", () => {
         assert.deepEqual(run(["--find", "size"], dir), { code: 2, out: "", err: "symbols: could not outline — cannot read loop.mjs: ELOOP\n" });
         execFileSync("git", ["rm", "-q", "--cached", "loop.mjs"], { cwd: dir });
         assert.deepEqual(run(["--find", "size"], dir), { code: 0, out: "a.mjs:1 export function size()\n", err: "" });
+    });
+
+    test("prints a Markdown section for <file>#<heading>, exits 1 where no heading answers, and 2 where the file is not Markdown", () => {
+        const dir = scratch();
+        fs.writeFileSync(path.join(dir, "guide.md"), MD);
+        fs.writeFileSync(path.join(dir, "a.mjs"), "export const A = 1;\n");
+        assert.deepEqual(run(["guide.md#Setext one > why", "guide.md#a-paragraph-that-wraps"], dir), {
+            code: 0,
+            out: "guide.md:27-28 (8 B)\n## Why\n\nguide.md:29-32 (28 B)\nA paragraph\nthat wraps\n---\n",
+            err: "",
+        });
+        assert.deepEqual(run(["guide.md#absent"], dir), { code: 1, out: "", err: "symbols: guide.md: no heading answers #absent; outline it to see its headings\n" });
+        assert.match(run(["guide.md#Why"], dir).err, /guide\.md: #Why names 2 headings/);
+        assert.equal(run(["guide.md#Why"], dir).code, 2);
+        assert.match(run(["guide.md#why"], dir).out, /^guide\.md:19-20 \(9 B\)\n### Why$/m);
+        assert.match(run(["a.mjs#A"], dir).err, /a\.mjs is not Markdown/);
+        assert.match(run(["gone.md#x"], dir).err, /cannot read gone\.md: ENOENT/);
+        assert.match(run(["guide.md"], dir).out, /^guide\.md: 33 lines, 269 B\n5-20 # Guide #guide \(127 B\)/);
+    });
+
+    test("finds no definition in Markdown, which --find does not search", () => {
+        const dir = scratch();
+        execFileSync("git", ["init", "-q"], { cwd: dir });
+        fs.writeFileSync(path.join(dir, "notes.md"), "# size\n");
+        execFileSync("git", ["add", "notes.md"], { cwd: dir });
+        assert.equal(run(["--find", "size"], dir).code, 1);
     });
 
     test("prints its usage for --help, and exits 2 on none or an unknown option", () => {

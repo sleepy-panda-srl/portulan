@@ -9,6 +9,12 @@
 > paragraphs, and a boot needs them only when a step does not fit its case or someone asks why. They
 > moved: none was deleted, and none is kept in both files.
 
+**What a boot is.** Portulan is an operating framework: a universal **engine** plus a per-team
+**workspace**. Booting means loading the engine's kernel and then the team's own policy layer, so that
+what follows is tailored to *this* team rather than generically sensible. _(See
+[`../../../core/engine.md`](../../../core/engine.md) and [`../../../docs/vision.md`](../../../docs/vision.md).)_
+It opened `SKILL.md` until 2026-09-24, when it moved here: every boot reads the kernel, whose cascade says as much.
+
 ## 0. Where the project's boot card is loaded, it is the boot
 
 A boot with no card reads the skill, its steps, the kernel, the manifest, five slots, the repo card, the
@@ -22,10 +28,13 @@ context is not a test; `compile` reserves the name and the line, so no other uni
 _(The decisions of 2026-09-23 on the boot card.)_
 
 **The skill became a router so that a carded boot pays for the choice and not for the steps**: about
-2.4 KB of skill instead of 9.1 KB, while a boot with no card pays one more read and the router's bytes,
+2 KB of skill instead of 9.1 KB, while a boot with no card pays one more read and the router's bytes,
 which the engine and demo rails in `.portulan/verify/context.sh` state. **The kernel line is there
 because the card carries the kernel only where the workspace imports it**: this repository's card does,
-and how an adopter's card carries it is the adopter half, still to land. **A carded boot does not read
+and how an adopter's card carries it is the adopter half, still to land. **It names the `<plugin root>`
+a card's commands run from** because a card is committed and loaded on every machine, so it cannot spell
+one install's directory, and Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` in a skill's body and not in
+a rule's (2.1.281, read in its program text on 2026-09-24). **A carded boot does not read
 the packs step**, because its four limits bind where a session works on packs, the plugin's manifests or
 the modules that compose them, and a rule scoped to those paths sends it there.
 

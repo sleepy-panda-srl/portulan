@@ -687,9 +687,10 @@ export function agentsMd(manifest, host, kernel = null, guidance = null) {
             : ["the trust path. An agent on this host reads the files named below and works this team's way."]),
         "",
     ];
+    let cardText = null;
     if (card) {
-        const [body] = agentsMdGuidance({ ...guidance, units: [card] }, `.portulan/${manifest.slots.context}`).inline;
-        lines.push(body.trimEnd(), "", "## The workspace's files, opened when the card or the task sends you to one", "");
+        [cardText] = agentsMdGuidance({ ...guidance, units: [card] }, `.portulan/${manifest.slots.context}`).inline;
+        lines.push(cardText.trimEnd(), "", "## The workspace's files, opened when the card or the task sends you to one", "");
     } else {
         lines.push("## Read these, in this order", "");
     }
@@ -802,6 +803,12 @@ export function agentsMd(manifest, host, kernel = null, guidance = null) {
         "- **Compiled host enforcement.** `portulan compile` turns the gate policy into a host's own settings and",
         "  hooks; copying files produces none of it. Until it is run, every tier above is a rule nothing checks.",
         "- **A resolved pointer.** Nothing here fetches anything.",
+        // The engine's rules on the card name its commands from where the plugin is installed, which a
+        // host without the plugin has not got: said here, so the card's command is not read as one this
+        // copy can run.
+        ...(cardText?.includes("<plugin root>")
+            ? ["- **The Portulan package.** The card's `<plugin root>` is where it is installed, which this copy is not."]
+            : []),
         "",
         "Run `portulan doctor .portulan` to see where this stands.",
         "",

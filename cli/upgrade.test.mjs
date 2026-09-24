@@ -34,6 +34,7 @@ import { fileURLToPath } from "node:url";
 import { applyEdits, bundleSpec, inside, loadSteps, planFor, readWorkspace, repositoryView, resolveTarget, restore, run, UpgradeError } from "./upgrade.mjs";
 import { inspect } from "./doctor.mjs";
 import { readChanges, renderChanges } from "./index.mjs";
+import { compileGuidance } from "./compile.mjs";
 import { execFileSync } from "node:child_process";
 
 // A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
@@ -1014,8 +1015,12 @@ describe("the apply loop refuses a plan a step did not describe", () => {
         fs.writeFileSync(path.join(dir, "workspace.json"), `${JSON.stringify(manifest(`${major}.${minor}`, { tree: "../" }), null, 2)}\n`);
         return dir;
     }
-    const owed = (plan) => [{ id: "9996-badplan", kind: "repair", from: null, to: null, title: "t", why: "w",
-        owed: () => ({ owed: true, because: "forced" }), plan }];
+    // Owed until it has run, as a step whose edits are on disk owes nothing.
+    const owed = (plan) => {
+        let ran = false;
+        return [{ id: "9996-badplan", kind: "repair", from: null, to: null, title: "t", why: "w",
+            owed: () => ({ owed: !ran, because: ran ? "ran" : "forced" }), plan: (...args) => ((ran = true), plan(...args)) }];
+    };
 
     test("`{ ok: true }` with no edits array is a refusal, not a throw past the rollback", async () => {
         // Previously `applyEdits(current.dir, undefined)` threw, which bypassed `undo()` entirely —
@@ -1037,6 +1042,63 @@ describe("the apply loop refuses a plan a step did not describe", () => {
         // The guards must refuse what is malformed, not what is merely empty.
         const h = harness();
         assert.equal(await run([green(), "--write"], { ...h.options, steps: owed(() => ({ ok: true, edits: [] })) }), 0, h.text());
+    });
+
+    // A step owed once a LATER one has run: as `0007` compiles the card `0008` edits.
+    const pair = () => {
+        const has = (ws, file) => fs.existsSync(path.join(ws.dir, file));
+        const step = (id, owes, file) => ({ id, kind: "form", from: null, to: null, title: id, why: "w",
+            owed: (ws) => ({ owed: owes(ws) && !has(ws, file), because: `${file} is owed` }),
+            plan: () => ({ ok: true, edits: [{ file, next: "x\n" }] }) });
+        return [step("9994-early", (ws) => has(ws, "late.md"), "early.md"), step("9995-late", () => true, "late.md")];
+    };
+
+    test("the chain is asked again until a pass applies nothing, so a later step can make an earlier one owed", async () => {
+        const h = harness();
+        const dir = green();
+        assert.equal(await run([dir, "--write"], { ...h.options, steps: pair() }), 0, h.text());
+        assert.ok(fs.existsSync(path.join(dir, "early.md")), "the step the later one made owed never ran");
+        assert.match(h.text(), /applied 2 step\(s\)/);
+    });
+
+    test("a step owed by hand is reported and not planned, while the rest of the chain applies, and the run exits 1", async () => {
+        const byHand = { id: "9992-by-hand", kind: "form", from: null, to: null, title: "t", why: "w",
+            owed: () => ({ owed: true, hand: true, because: "add the line by hand" }),
+            plan: () => { throw new Error("a step owed by hand was planned"); } };
+        const h = harness();
+        const dir = green();
+        assert.equal(await run([dir, "--write"], { ...h.options, steps: [byHand, ...owed(() => ({ ok: true, edits: [{ file: "done.md", next: "x\n" }] }))] }), 1, h.text());
+        assert.ok(fs.existsSync(path.join(dir, "done.md")), "the rest of the chain did not run");
+        assert.match(h.text(), /9992-by-hand \(form, by hand\) — t\n/);
+        assert.match(h.text(), /applied 1 step\(s\) to [^\n]* — done\.md\. doctor is green\n[\s\S]*9992-by-hand is owed and not placed — add the line by hand\n/);
+        const alone = harness();
+        assert.equal(await run([green(), "--write"], { ...alone.options, steps: [byHand] }), 1, alone.text());
+        assert.doesNotMatch(alone.text(), /applied/, "a run that applied nothing does not say it applied");
+        assert.match(alone.text(), /9992-by-hand is owed and not placed/);
+        const checked = harness();
+        assert.equal(await run([green(), "--check"], { ...checked.options, steps: [byHand] }), 1, checked.text());
+        assert.match(checked.text(), /owes 1 step\(s\), 1 of them by hand — add what each names by hand, then upgrade again/);
+    });
+
+    test("a step an earlier one has made not owed is asked again, not applied on its answer from before", async () => {
+        const has = (ws) => fs.existsSync(path.join(ws.dir, "shared.md"));
+        const first = { id: "9990-first", kind: "repair", from: null, to: null, title: "t", why: "w",
+            owed: (ws) => ({ owed: !has(ws), because: "shared.md is missing" }),
+            plan: () => ({ ok: true, edits: [{ file: "shared.md", next: "x\n" }] }) };
+        const second = { ...first, id: "9991-second", plan: () => { throw new Error("planned on an answer from before"); } };
+        const h = harness();
+        assert.equal(await run([green(), "--write"], { ...h.options, steps: [first, second] }), 0, h.text());
+        assert.match(h.text(), /applied 1 step\(s\)/);
+    });
+
+    test("a chain that never settles is refused and rolled back, not run forever", async () => {
+        const h = harness();
+        const dir = green();
+        const forever = [{ id: "9993-forever", kind: "repair", from: null, to: null, title: "t", why: "w",
+            owed: () => ({ owed: true, because: "always" }), plan: () => ({ ok: true, edits: [{ file: "loop.md", next: "x\n" }] }) }];
+        assert.equal(await run([dir, "--write"], { ...h.options, steps: forever }), 2, h.text());
+        assert.match(h.text(), /did not settle/);
+        assert.ok(!fs.existsSync(path.join(dir, "loop.md")), "a refused chain left its edits behind");
     });
 });
 
@@ -1330,6 +1392,53 @@ describe("the steps that move a consumer to the new form, on a real repository i
         assert.throws(() => view.names("changes"), /changes is a symlink, and this refuses to list through one/);
         assert.throws(() => view.read("changes/elsewhere.added.md"), /changes is a symlink, and this refuses to read through one/);
         assert.deepEqual(view.names("absent"), [], "an absent directory holds no names");
+    });
+
+    test("a card drafted before the rules on reading and the cache gets them, compiled in the same run, and one under a rewritten head is reported with the line to add while the rest runs", async () => {
+        const repo = scratch();
+        git(repo, "init", "-q");
+        git(repo, "config", "user.email", "fixture@example.invalid");
+        git(repo, "config", "user.name", "Fixture");
+        execFileSync(process.execPath, [path.join(REPO, "cli", "init.mjs"), "--residence", "in-repo", "--no-interview", "--no-cycle", repo], { stdio: "pipe" });
+        const ws = path.join(repo, ".portulan");
+        const source = path.join(ws, "context", "boot.md");
+        const compiled = path.join(repo, ".claude", "rules", "portulan", "boot.md");
+        const drafted = fs.readFileSync(source, "utf8");
+        const before = drafted
+            .replace("Each section names its file, and an\n> import is here in full.", "Each section names its file: an\n> import is here in full; open any other file when its subject is your task.")
+            .replace(/\n\n## Reading and the cache: [^\n]*\n\n<!-- engine: [^\n]* -->/, "");
+        assert.notEqual(before, drafted);
+        fs.writeFileSync(source, before);
+        compileGuidance(ws);
+        assert.doesNotMatch(fs.readFileSync(compiled, "utf8"), /Send independent tool calls/);
+        git(repo, "add", "-A");
+        git(repo, "commit", "-qm", "a card drafted before the reading section");
+
+        const h = harness();
+        assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 0, h.text());
+        assert.match(h.text(), /0008-card-reading[\s\S]*applied 2 step\(s\)[\s\S]*doctor is green/);
+        assert.equal(fs.readFileSync(source, "utf8"), drafted, "the card is what `init` drafts now");
+        assert.match(fs.readFileSync(compiled, "utf8"), /^- \*\*Send independent tool calls in one request\.\*\*$/m, "and `0007` compiled it in the same run");
+        const again = harness();
+        assert.equal(await run([ws, "--write"], { ...again.options, today: TODAY }), 0, again.text());
+        assert.match(again.text(), /owes nothing/);
+
+        // A card lacking the section under a head its workspace rewrote is owed it by hand: the run names the
+        // head the step looks for and the line to add, rather than guess where the section goes or skip the
+        // card, and applies the rest of the chain, here `0007` compiling the card as its workspace wrote it.
+        const rewritten = before.replace("Each section names its file: an", "Our own words: an");
+        fs.writeFileSync(source, rewritten);
+        const dry = harness();
+        assert.equal(await run([ws], { ...dry.options, today: TODAY }), 0, dry.text());
+        assert.match(dry.text(), /0008-card-reading \(form, by hand\)[\s\S]*its head is not one `init` drafted before 2026-09-24, "> Compiled by `portulan compile` from <the card>\. Each section names its file: an"/);
+        assert.match(dry.text(), /2 step\(s\) owed, 1 of them by hand\. Nothing was written — run with --write to apply the rest/);
+        const reported = harness();
+        assert.equal(await run([ws, "--write"], { ...reported.options, today: TODAY }), 1, reported.text());
+        assert.match(reported.text(), /applied 1 step\(s\)[^\n]*doctor is green\n[\s\S]*0008-card-reading is owed and not placed — [^\n]*add a section holding the line `<!-- engine: operating\/context\.md#every-request-pays-for-what-the-session-has-read -->` to the card, then upgrade again/);
+        assert.equal(fs.readFileSync(source, "utf8"), rewritten, "the card is as its workspace wrote it");
+        assert.doesNotMatch(fs.readFileSync(compiled, "utf8"), /Send independent tool calls/, "and `0007` compiled it as it stands");
+        const { findings } = await inspect(ws, { env: { CLAUDE_CONFIG_DIR: scratch() } });
+        assert.match(findings.find((f) => f.check === "form").message, /a boot card without the engine's rules on reading and the cache, whose head `upgrade` does not recognise[\s\S]*moves all but what is named to add by hand/);
     });
 
     test("a workspace red afterwards is rolled back, deletions and tree edits included, and told how to fit the card", async () => {

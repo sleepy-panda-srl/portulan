@@ -1,12 +1,7 @@
 # Portulan engine
 
 > The always-loaded kernel: the invariants every agent carries, and the map to the doctrine behind
-> them. Kept small on purpose — everything here is load-bearing; everything else loads on demand. This
-> file is the core's source contribution to the always-loaded layer; `portulan vendor --host` inlines it
-> verbatim into a vendored `AGENTS.md` beside the workspace's own layer, for a host that cannot install
-> the plugin. The **pack** layer is named in that file rather than composed into it — a pack resolves
-> from a feed at a pinned version and **vendoring resolves nothing**, which is unchanged. Pack-cache
-> discovery landed at milestone 7: the CLI reads the host's record, a vendored file cannot.
+> them. Kept small on purpose — everything here is load-bearing; everything else loads on demand.
 
 ## Resolution cascade
 
@@ -43,5 +38,4 @@ scale down. → `operating/loop.md`
 - `personas/` — roles as context firewalls, each with a `tools:` allow-list.
 - `skills/` — progressive-disclosure procedures; a skill must enforce, measure, or earn its tokens.
 
-Every rule here carries its rationale and provenance in the doc it links to. Nothing in this kernel is
-prose for its own sake: when a line stops being load-bearing, it moves out of the kernel.
+Every rule here carries its rationale and provenance in the doc it links to.

@@ -476,6 +476,42 @@ function unreleasedSpan(lines) {
 // ===========================================================================================
 
 /**
+ * The card's section on reading and the cache: the engine's rules, written out by `compile` from
+ * `core/operating/context.md` in the Portulan a consumer installed, so every card carries the text
+ * Portulan's own does, and an upgrade that changes it is drift until the card is recompiled.
+ */
+export const READING_TITLE = "Reading and the cache: Portulan's `core/operating/context.md`";
+export const READING_LINE = "<!-- engine: operating/context.md#every-request-pays-for-what-the-session-has-read -->";
+
+/** A card's head as `init` and `0006` drafted it until the card carried that section (2026-09-24). */
+const HEAD_BEFORE_READING = /^(> Compiled by `portulan compile` from .+\. Each section names its file): an(\r?\n)> import is here in full; open any other file when its subject is your task\.$/m;
+
+/** That head, as a reader is told to look for it. */
+export const HEAD_BEFORE_READING_SHOWN =
+    '"> Compiled by `portulan compile` from <the card>. Each section names its file: an" over ' +
+    '"> import is here in full; open any other file when its subject is your task."';
+
+/** Whether a card carries the section: the line `draftCard` writes, which `compile` expands to the rules. */
+export function carriesReading(card) {
+    return card.split(/\r?\n/).includes(READING_LINE);
+}
+
+/**
+ * A card drafted before it carried the section on reading and the cache, in the form `draftCard` writes
+ * now: the head's last clause dropped, since the section's rule on opening a file says it in full, and the
+ * section first under the head. Null for a card that carries the section, or whose head is not the one
+ * drafted, which `0008` reports rather than guessing where the section goes.
+ */
+export function withReading(card) {
+    if (carriesReading(card)) return null;
+    const head = HEAD_BEFORE_READING.exec(card);
+    if (!head) return null;
+    const [old, opening, eol] = head;
+    const moved = [`${opening}, and an`, "> import is here in full.", "", `## ${READING_TITLE}`, "", READING_LINE].join(eol);
+    return card.slice(0, head.index) + moved + card.slice(head.index + old.length);
+}
+
+/**
  * Whether a file's lead sentences can be written onto the card: its first list, every item opening with a
  * bold lead and none carrying a link, read by the reader `compile` writes them out with.
  */
@@ -520,11 +556,13 @@ export function draftCard(manifest, read, { workspace, inTree, repoCards = [] })
         "",
         BOOT_CARD_LINE,
         "",
-        `> Compiled by \`portulan compile\` from ${shown("context/boot.md")}. Each section names its file: an`,
-        "> import is here in full; open any other file when its subject is your task.",
+        `> Compiled by \`portulan compile\` from ${shown("context/boot.md")}. Each section names its file, and an`,
+        "> import is here in full.",
     ];
     const section = (title, ...body) => out.push("", `## ${title}`, "", ...body);
     const whole = (rel, why) => (inTree(rel) ? [imported(rel)] : [`Read ${shown(rel)} in full at boot: ${why}.`]);
+
+    section(READING_TITLE, READING_LINE);
 
     if (slots.identity) section(`Identity: ${shown(slots.identity)}`, ...whole(slots.identity, "it lies outside this repository, where no import reaches"));
     if (slots.principles) {
@@ -620,7 +658,8 @@ function indexKept(tree, rel, onDisk) {
  * may ignore it, and absent where no git work tree answers, since `0003` then has nothing to decide. Where
  * the two differ, `upgrade`, which asks git, is the one that moves anything.
  *
- * @returns {{ tree: string | null, pieces: Array<{ id: string, state: "new" | "today", text: string }> }}
+ * @returns {{ tree: string | null, pieces: Array<{ id: string, state: "new" | "today", text: string, hand?: true }> }}
+ *   `hand` marks a piece `upgrade` reports and does not place, which its text says how to add by hand
  */
 export function formOf(workspaceDir, manifest) {
     const pieces = [];
@@ -657,7 +696,12 @@ export function formOf(workspaceDir, manifest) {
         } else {
             const source = readOrNull(path.resolve(wsDir, context, `${BOOT_CARD_UNIT}.md`));
             if (source === null) add("card", "new", "no boot card, by choice: `slots.context` holds no `boot` unit");
-            else if (readOrNull(path.join(tree, COMPILED_CARD)) !== null) add("card", "new", "a compiled boot card");
+            else if (withReading(source) !== null) add("card", "today", "a boot card drafted before it carried the engine's rules on reading and the cache");
+            // A card `0008` cannot place the section on is named, with what to add, rather than called new:
+            // its workspace would never learn the rules exist.
+            else if (!carriesReading(source)) {
+                pieces.push({ id: "card", state: "today", hand: true, text: `a boot card without the engine's rules on reading and the cache, whose head \`upgrade\` does not recognise: add a section holding the line \`${READING_LINE}\`` });
+            } else if (readOrNull(path.join(tree, COMPILED_CARD)) !== null) add("card", "new", "a compiled boot card");
             // A host that reads `AGENTS.md` boots from the card `vendor --host` writes at its head, and has
             // no rules for `compile` to write: there, the card is in the new form as it stands.
             else if ((readOrNull(path.join(tree, "AGENTS.md")) ?? "").split(/\r?\n/).includes(BOOT_CARD_LINE)) add("card", "new", "a boot card at the head of AGENTS.md, which this host reads");
@@ -676,8 +720,10 @@ export function formLine(workspaceDir, manifest) {
     // Relative where that is shorter to read, as `doctor` names a workspace, and absolute over a ladder of `../`.
     const rel = path.relative(process.cwd(), path.resolve(workspaceDir));
     const shown = rel === "" ? "." : rel.startsWith("..") ? path.resolve(workspaceDir) : rel;
+    // A piece `upgrade` does not place is reported by it and added by hand, and the run moves the rest.
+    const moves = today.some((p) => p.hand) ? "moves all but what is named to add by hand" : "moves it";
     return (
         `today's form in ${today.length} of ${pieces.length}: ${today.map((p) => p.text).join("; ")} — ` +
-        `\`portulan upgrade --write ${shown}\` moves it, and until then it boots as it did`
+        `\`portulan upgrade --write ${shown}\` ${moves}, and until then it boots as it did`
     );
 }

@@ -44,6 +44,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { inspect } from "./doctor.mjs";
+import { READING_LINE } from "./form.mjs";
 import { VendorError, RESIDENCES, parseArgs, residenceOf, retarget, walk, directories, escapingSlots, collisions, agentsMd, run } from "./vendor.mjs";
 
 // A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
@@ -1424,7 +1425,7 @@ describe("the new form, carried by vendor", () => {
         const manifest = readManifest(src);
         manifest.slots.context = "context/";
         write(src, "workspace.json", json(manifest));
-        write(src, "context/boot.md", "---\ntier: always\n---\n\n# Portulan boot card\n\n## Identity\n\n@../identity.md\n");
+        write(src, "context/boot.md", `---\ntier: always\n---\n\n# Portulan boot card\n\n## Reading\n\n${READING_LINE}\n\n## Identity\n\n@../identity.md\n`);
         return src;
     }
 
@@ -1448,9 +1449,22 @@ describe("the new form, carried by vendor", () => {
         assert.doesNotMatch(form.message, /upgrade --write/);
     });
 
+    test("a card carrying the engine's rules says the package their command runs from is not in this copy", async () => {
+        const root = scratch();
+        const src = carded(root);
+        const host = path.join(root, "host");
+        fs.mkdirSync(host, { recursive: true });
+        const h = harness();
+        assert.equal(await run([src, "--into", path.join(host, ".portulan"), "--residence", "in-repo", "--host", "generic"], h.options), 0, text(h));
+        const md = fs.readFileSync(path.join(host, "AGENTS.md"), "utf8");
+        assert.match(md, /`node <plugin root>\/cli\/symbols\.mjs <file>`/);
+        assert.match(md, /^- \*\*The Portulan package\.\*\* The card's `<plugin root>` is where it is installed, which this copy is not\.$/m);
+    });
+
     test("without a card, the slots are read in order, as before", () => {
         const manifest = { portulan: { spec: "2.7" }, name: "acme", kind: "repository", tree: "../", slots: { identity: "identity.md" }, verify: { default: "w", recipes: [] } };
         assert.match(agentsMd(manifest, "generic"), /## Read these, in this order/);
+        assert.doesNotMatch(agentsMd(manifest, "generic"), /The Portulan package/, "no card, no command from the package, nothing said of it");
     });
 
     test("the host's tree gets the fragments directory and the index's ignore line, and keeps its own", async () => {

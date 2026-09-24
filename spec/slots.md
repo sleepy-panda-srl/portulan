@@ -864,7 +864,16 @@ gates**, so a card carries a fact without holding a second copy of it:
   source of those sentences, so a change there is drift until the unit is recompiled. `compile` refuses
   a file with no list, an item with no bold lead, a lead carrying a link, which would not resolve from
   the compiled rule, and a line of text with no indent straight under an item, which CommonMark reads as
-  more of that item (2026-09-24).
+  more of that item (2026-09-24). **The path may end `#<heading>`**, for the first list under that
+  heading, found as `cli/symbols.mjs` finds a section: by the anchor GitHub gives it, which its outline
+  prints, or by its text or a `Parent>Child` path where either holds no space, since the line's path holds
+  none; a heading that none or several answer is refused (2026-09-24).
+- **A line `<!-- engine: <path> -->`, alone on its line, writes out the leads of a file in the engine
+  `compile` ships with**, its path relative to that engine's `core/`, and refused outside it or naming no
+  file, with a `#<heading>` read as above (2026-09-24, within 2.10). Portulan's own card and each
+  consumer's name the same file, so they carry one text, and an upgrade of Portulan that changes it is
+  drift until the card is recompiled. `<plugin root>/` in a lead is the directory the plugin is installed
+  in, and is written as nothing where that engine is the tree compiled, as in Portulan's own repository.
 - **A line `<!-- gates: <path> -->`, alone on its line, is replaced by the gate ids of the policy it
   names, one line per tier** in core's order, each id as the policy spells it and in its order there, a
   tier holding none saying so, and a line naming the packs the manifest composes, whose gates only a

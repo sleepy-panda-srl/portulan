@@ -1,4 +1,5 @@
-// The outline against THIS repository: every tracked code file outlines, and each span is whole.
+// The outline against THIS repository: every tracked code file outlines, and each span is whole; every
+// tracked Markdown file outlines, and each link to one of its headings finds it.
 //
 //   node --test cli/symbols.live.test.mjs
 //
@@ -21,7 +22,7 @@ import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
-import { languageOf, outlineFile, trackedCode } from "./symbols.mjs";
+import { languageOf, outlineFile, outlineMd, trackedCode } from "./symbols.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const FILES = trackedCode(REPO_ROOT);
@@ -79,4 +80,43 @@ test("every span compiles on its own", () => {
         walk(outlineFile(path.join(REPO_ROOT, file), file).entries, false);
     }
     assert.deepEqual(broken, []);
+});
+
+// A section is found by the anchor a link to it carries, so the anchors are GitHub's or a link a session
+// follows reads the wrong section, or none. Every link to a heading in this repository's Markdown is the
+// sample: each must name an anchor its file's outline gives.
+test("every tracked Markdown file outlines, and every link to one of its headings finds it", () => {
+    const docs = execFileSync("git", ["ls-files", "-z", "--", "*.md"], { cwd: REPO_ROOT, encoding: "utf8" }).split("\0").filter(Boolean);
+    assert.ok(docs.length > 100, `only ${docs.length} tracked Markdown files found`);
+    const anchors = new Map();
+    const anchorsOf = (file) => {
+        if (!anchors.has(file)) {
+            const all = new Set();
+            const walk = (list) => list.forEach((e) => (all.add(e.anchor), walk(e.children)));
+            walk(outlineMd(fs.readFileSync(file, "utf8")).entries);
+            anchors.set(file, all);
+        }
+        return anchors.get(file);
+    };
+    const refused = [];
+    const lost = [];
+    let links = 0;
+    for (const doc of docs) {
+        const file = path.join(REPO_ROOT, doc);
+        try {
+            anchorsOf(file);
+        } catch (error) {
+            refused.push(`${doc}: ${error.message}`);
+            continue;
+        }
+        for (const [, target, fragment] of fs.readFileSync(file, "utf8").matchAll(/\]\(([^)\s#]*\.md)#([^)\s]+)\)/g)) {
+            const to = path.resolve(path.dirname(file), target);
+            if (!to.startsWith(REPO_ROOT + path.sep) || !fs.existsSync(to)) continue;
+            links++;
+            if (!anchorsOf(to).has(decodeURIComponent(fragment))) lost.push(`${doc}: ${target}#${fragment}`);
+        }
+    }
+    assert.deepEqual(refused, []);
+    assert.ok(links > 40, `only ${links} links to a heading found`);
+    assert.deepEqual(lost, []);
 });

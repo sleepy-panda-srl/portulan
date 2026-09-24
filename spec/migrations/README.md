@@ -27,7 +27,7 @@ export const step = {
     from: null, to: null,              // version steps only; null on a repair or a form step
     title: "…",                        // one line, printed in the plan
     why: "…",                          // why it is owed at all, printed under -v
-    owed(ws, ctx),                     // → { owed: true | false | null, because }
+    owed(ws, ctx),                     // → { owed: true | false | null, because, hand? }
     plan(ws, ctx),                     // → { ok: true, edits } | { ok: false, reason }
 };
 ```
@@ -44,6 +44,12 @@ root, and the report names each file as its root names it.
 
 **After each step applied, the steps after it are asked again.** A step owed only once an earlier one
 has landed, `0007` compiling the card `0006` drafts, is applied in the same run rather than the next.
+**And after a pass that applied a step, the whole chain is asked again** until a pass applies nothing
+(2026-09-24), so a later step can make an earlier one owed, as `0008` does `0007` by editing the card;
+a chain still applying after as many passes as it has steps is refused and rolled back.
+**A step owed where it does not place its edits answers `hand: true`** (2026-09-24), its `because` naming
+what a person adds: `upgrade --write` applies the rest of the chain, reports that step as owed and not
+placed once `doctor` is green, and exits 1, as `--check` does over a step owed.
 A form step reads a workspace at this bundle's MAJOR only (`notYetForm` in
 [`../../cli/form.mjs`](../../cli/form.mjs)): one a MAJOR behind is moved by a version step first, and
 the form steps are then asked again, so a workspace no version step reaches is still refused.
@@ -96,12 +102,13 @@ is a question that could not be answered.
 | [`0005-session-log-retired.mjs`](0005-session-log-retired.mjs) | `form` | Each tracked Markdown file with a `Session log` holding entries keeps its heading and two lines naming the last commit that holds them. **Refused on a file with changes not committed**, since the pointer would name a commit that lacks them. |
 | [`0006-boot-card.mjs`](0006-boot-card.mjs) | `form` | Where `slots.context` is undeclared, a boot card is drafted from the workspace's own files, as `init` drafts one, and the slot declared at 2.10. A declared slot with no `boot` unit is a workspace that boots through its slots, and is owed nothing. |
 | [`0007-guidance-compiled.mjs`](0007-guidance-compiled.mjs) | `form` | The guidance half of `portulan compile` written where it drifted: the card and the rules the host loads, through `compile`'s own planner and refusals, and never `.claude/settings.json`, which enforces gates and is a person's to compile. |
+| [`0008-card-reading.mjs`](0008-card-reading.mjs) | `form` | A card drafted before it carried the engine's rules on reading and the cache gets that section, which `compile` writes out from the installed Portulan's `core/operating/context.md`, and `0007` compiles it. A card lacking the section under any other head is owed it by hand: the run names the head the step looks for and the line to add, applies the rest of the chain and exits 1, and `doctor` names the card until the line is there. |
 
 **`0001` has no subject in this tree** — nothing declares 1.0 — and is exercised against a fixture,
 which is said here rather than dressed up. **`0002` has no subject in this repository either**: this
 workspace's `verify/index.sh` was written by hand, not drafted by `init`, and carries no marker. It is
 exercised against workspaces the real `init` drafts. **Neither have the form steps**: this repository
-moved its own records and boot by hand on 2026-09-23 and 24, and `0003`–`0007` are exercised against a
+moved its own records and boot by hand on 2026-09-23 and 24, and `0003`–`0008` are exercised against a
 consumer the real `init` drafts, put back in the form it drafted before, and committed.
 
 ## Adding one

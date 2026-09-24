@@ -39,8 +39,9 @@
 // ## Exit codes
 //
 // `0` succeeded — nothing owed, or applied and green · `1` a verdict — steps owed under `--check`, a
-// red workspace before or after, **and a pointer that does not resolve** (`not-installed` or
-// `ambiguous`, which is `discover.mjs`'s own mapping rather than a second opinion about it) · `2`
+// step owed by hand that `--write` reports and leaves, a red workspace before or after, **and a pointer
+// that does not resolve** (`not-installed` or `ambiguous`, which is `discover.mjs`'s own mapping rather
+// than a second opinion about it) · `2`
 // could not run, including a step that **could not tell**, either direction this bundle cannot help
 // with, and a `--write` aimed at an installed workspace.
 //
@@ -358,12 +359,13 @@ export async function planFor(ws, ctx, steps) {
                 // The reason is what a reader is given when the run refuses. A missing one is not
                 // grounds to discard a good verdict, so the verdict stands and the sentence is named
                 // as absent rather than printed as `undefined`.
-                answer = { owed: answer.owed, because: `${step.id} gave no reason` };
+                answer = { owed: answer.owed, hand: answer.hand, because: `${step.id} gave no reason` };
             }
         } catch (error) {
             answer = { owed: null, because: `${step.id} threw while deciding whether it is owed — ${error.message}` };
         }
-        entries.push({ step, owed: answer.owed, because: answer.because });
+        // `hand`: owed, and placed by a person rather than by the step, so `--write` reports it and runs on.
+        entries.push({ step, owed: answer.owed, because: answer.because, hand: answer.owed === true && answer.hand === true });
         if (answer.owed === null) unknown += 1;
         else if (answer.owed === true) owed += 1;
     }
@@ -683,7 +685,7 @@ export function usage() {
         "A pointer is resolved through the host's installed-plugin record; the installed workspace is",
         "read and reported on, and `--write` is refused there — migrate it at its own directory.",
         "",
-        "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
+        "Exit codes: 0 succeeded · 1 a red verdict, or a step owed by hand · 2 could not run.",
     ].join("\n");
 }
 
@@ -876,7 +878,7 @@ export async function run(argv = [], options = {}) {
     }
 
     for (const entry of plan.entries.filter((e) => e.owed === true)) {
-        say(`upgrade: ${entry.step.id} (${entry.step.kind}) — ${entry.step.title}`);
+        say(`upgrade: ${entry.step.id} (${entry.step.kind}${entry.hand ? ", by hand" : ""}) — ${entry.step.title}`);
         say(`upgrade:   ${entry.because}`);
     }
 
@@ -884,17 +886,21 @@ export async function run(argv = [], options = {}) {
     // resolved install to "run with --write" names the one command this tool then refuses with exit
     // 2 — advice and refusal disagreeing about the same act, which is the sibling of the refusal
     // itself. Caught at the pre-commit checkpoint, reproduced end to end on a real install.
+    const byHandOwed = plan.entries.filter((entry) => entry.hand).length;
+    const byHandNote = byHandOwed > 0 ? `, ${byHandOwed} of them by hand` : "";
     const advice =
         target.state === "resolved"
             ? "run this against the workspace's own directory and republish — an installed copy is not migrated in place"
-            : "run with --write to apply them";
+            : byHandOwed === plan.owed
+              ? "add what each names by hand, then upgrade again"
+              : `run with --write to apply ${byHandOwed > 0 ? "the rest" : "them"}`;
 
     if (check) {
-        warn(`upgrade: ${shown} owes ${plan.owed} step(s) — ${advice}`);
+        warn(`upgrade: ${shown} owes ${plan.owed} step(s)${byHandNote} — ${advice}`);
         return 1;
     }
     if (!write) {
-        say(`upgrade: ${plan.owed} step(s) owed. Nothing was written — ${advice}`);
+        say(`upgrade: ${plan.owed} step(s) owed${byHandNote}. Nothing was written — ${advice}`);
         return 0;
     }
 
@@ -914,22 +920,22 @@ export async function run(argv = [], options = {}) {
     };
 
     // **A step an earlier one makes owed runs in the same run** (2026-09-24). The card's compile is owed
-    // only once the step before it has drafted the card, so each step not owed in the plan is asked
+    // only once the step before it has drafted the card, so once a step has applied, each step is asked
     // again when its turn comes, against the workspace as the steps before it left it, and runs under
     // the same rollback. One that cannot tell then is refused like one that could not tell before.
+    //
+    // **And the chain is asked again until a pass applies nothing** (2026-09-24). A step can make an
+    // EARLIER one owed: `0008` edits the card `0007` has compiled. So after a pass that applied a step,
+    // every step is asked again from the first, and a step owes nothing once its edits are on disk, so the
+    // chain settles; one still applying after as many passes as it has steps is a cycle, refused and
+    // rolled back rather than run forever.
+    //
+    // **A step owed by hand is reported, and the chain runs on** (2026-09-24). Its `because` names what a
+    // person adds; the run applies every other step, lists it as owed and not placed once `doctor` is green,
+    // and exits 1, as `--check` does over a step owed. A refusal would have undone every other step with it.
     let applied = 0;
-    for (const entry of plan.entries) {
-        if (entry.owed !== true) {
-            const [again] = (await planFor(current, ctx, [entry.step])).entries;
-            if (again.owed === null) {
-                if (!undo()) return 2;
-                warn(`upgrade: ${entry.step.id} could not tell, after the steps before it — ${again.because}. Rolled back`);
-                return 2;
-            }
-            if (again.owed !== true) continue;
-            say(`upgrade: ${entry.step.id} (${entry.step.kind}) — ${entry.step.title}`);
-            say(`upgrade:   ${again.because}`);
-        }
+    const byHand = new Map();
+    const apply = async (entry) => {
         applied += 1;
         // **A step that throws mid-chain must not take the rollback with it.** `plan()` is a module's
         // code, and an exception here — after earlier steps have already written — would abort the
@@ -974,6 +980,40 @@ export async function run(argv = [], options = {}) {
         }
         current = again.ws;
         treeDir = current.repository?.dir ?? treeDir;
+        return null;
+    };
+    for (let pass = 0; ; pass++) {
+        let appliedNow = 0;
+        for (const entry of plan.entries) {
+            let asked = entry;
+            if (applied > 0 || entry.owed !== true) {
+                [asked] = (await planFor(current, ctx, [entry.step])).entries;
+                if (asked.owed === null) {
+                    if (!undo()) return 2;
+                    warn(`upgrade: ${entry.step.id} could not tell, after the steps before it — ${asked.because}. Rolled back`);
+                    return 2;
+                }
+            }
+            byHand.delete(entry.step.id);
+            if (asked.owed !== true) continue;
+            if (asked.hand) {
+                byHand.set(entry.step.id, asked.because);
+                continue;
+            }
+            if (pass > 0 || entry.owed !== true) {
+                say(`upgrade: ${entry.step.id} (${entry.step.kind}) — ${entry.step.title}`);
+                say(`upgrade:   ${asked.because}`);
+            }
+            const refused = await apply(entry);
+            if (refused !== null) return refused;
+            appliedNow += 1;
+        }
+        if (appliedNow === 0) break;
+        if (pass === plan.entries.length) {
+            if (!undo()) return 2;
+            warn(`upgrade: the steps did not settle — pass ${pass + 1} still applied ${appliedNow}, and a chain of ${plan.entries.length} settles in fewer. Rolled back`);
+            return 2;
+        }
     }
 
     // ---- and grade what it produced, with the real validator
@@ -1006,8 +1046,10 @@ export async function run(argv = [], options = {}) {
         return s.deleted ? `${at} (deleted)` : at;
     };
     const written = [...new Set(snapshots.map(named))];
-    say(`upgrade: applied ${applied} step(s) to ${shown} — ${written.join(", ")}. doctor is green`);
-    return 0;
+    if (applied > 0) say(`upgrade: applied ${applied} step(s) to ${shown} — ${written.join(", ")}. doctor is green`);
+    const left = plan.entries.filter((entry) => byHand.has(entry.step.id));
+    for (const entry of left) warn(`upgrade: ${entry.step.id} is owed and not placed — ${byHand.get(entry.step.id)}`);
+    return left.length > 0 ? 1 : 0;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

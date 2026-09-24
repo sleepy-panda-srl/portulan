@@ -64,6 +64,14 @@ vendored `AGENTS.md` skeleton. The default is a rail in this repository, not a b
 manifest, so *never defaulted* holds. This is what lets every install benefit on upgrade without
 configuring anything.
 
+**The kernel, [`../engine.md`](../engine.md), is the core's source contribution to the always-loaded
+layer**; `portulan vendor --host` inlines it verbatim into a vendored `AGENTS.md` beside the workspace's
+own layer, for a host that cannot install the plugin. The **pack** layer is named in that file rather
+than composed into it — a pack resolves from a feed at a pinned version and **vendoring resolves
+nothing**, which is unchanged. Pack-cache discovery landed at milestone 7: the CLI reads the host's
+record, a vendored file cannot. Nothing in this kernel is prose for its own sake: when a line stops being
+load-bearing, it moves out of the kernel.
+
 ## A fresh context is priced where it is created
 
 Whatever spawns one (a checkpoint, a persona, a ritual) states what it loads, and the compiled agent
@@ -79,6 +87,42 @@ after. **A demotion states both figures.**
 switching model or effort mid-session, output-shortening tricks, or any change to a host. Portulan
 compiles to what hosts load and does not change how they load it.
 
+## Every request pays for what the session has read
+
+Each tool call ends a request, and the next request sends the whole context again: the host's own prefix,
+the always tier, and everything read and printed so far. The prompt cache makes the repeat cheaper, not
+free. In Claude Code 2.1.281 the main conversation's cache lives an hour on a subscription within its
+usage limits and five minutes on an API key or a cloud provider, a subagent's five minutes unless set
+(its settings `promptCacheTtl` and `subagentPromptCacheTtl`, read in its program text on 2026-09-24).
+So what a session adds, it pays for on every request after, and a task done in fewer requests re-sends
+less. `compile` writes the lead of each rule below onto every boot card, Portulan's and each consumer's:
+
+- **Send independent tool calls in one request.** Reads, searches and commands whose inputs do not wait
+  on each other's output cost one request together and one each apart, and each request re-sends the
+  context.
+- **Read a file once; reuse what your context holds.** A second read of an unchanged file adds a second
+  copy, paid for on every later request. After an Edit, do not read the file back to check it: the host
+  refuses an edit it cannot apply, and says so.
+- **Open a file only when the task needs it, and one of 300 lines or more only where it does:
+  `node <plugin root>/cli/symbols.mjs <file>` outlines it, and `<file>#<heading>` prints one section.**
+  The outline gives each part's lines, and a Markdown heading's anchor and size; it costs a line a part
+  where a doctrine page or an instruction file runs to thousands of tokens and a task needs one section.
+  A link to a heading names its section, so `<file>#<anchor>` reads what the link points at without an
+  outline. A shorter file the task changes is read whole, as below. Read a section you will edit with the
+  Read tool's `offset` and `limit`, which an Edit may follow. `<plugin root>` is where Portulan is
+  installed, the directory whose `core/engine.md` the boot reads; in Portulan's own repository it is the
+  repository, and `compile` writes the command as run from there.
+- **Ask for only the output you need: a range, a count, the failures.** Output enters the context as a
+  read does. A passing run needs its summary and a failing one the failing check and the fact to act on,
+  as [`loop.md`](loop.md)'s compacted error does; `git diff --stat`, `grep -c` and a line range ask for
+  less than a whole log, file or tree.
+- **The prompt cache lasts five minutes or an hour: a longer pause, or a fresh subagent where one could
+  be resumed, writes the whole context again.** A subagent's context is its own and starts with the
+  host's prefix, so start one only where the reads it keeps out of this context cost more than that
+  prefix, and resume one rather than start another; [`sessions.md`](sessions.md) holds both, and the
+  lifetime a workspace declares. The cost table in the same program text prices a cache write above
+  sending the tokens fresh and a cache read below it.
+
 ## Code is read by symbol
 
 A session outlines a code file of 300 lines or more before it opens it, then reads the spans it needs: in
@@ -87,10 +131,11 @@ lines that the task changes is read whole**, since most of it is context for the
 smallest there, and so is any file whose outline cannot say where a change goes. A span read the host does
 not cut is a full read of those lines, so an Edit may follow it: in Claude Code 2.1.281 a Read is marked
 partial, and an Edit or a Write after it refused, only when the Read's token cap, 25,000 by default, cut it
-(read in its program text on 2026-09-24). In this repository [`cli/symbols.mjs`](../../cli/symbols.mjs)
-prints the outline, one line per symbol, and `--find <name>` locates a definition. It prints from the code
-as it is, so no map is committed to go stale. Nothing checks that a session outlined first; what the rule
-saves is measured by rerunning a task, never by a recipe, which may not read the host's usage records.
+(read in its program text on 2026-09-24). [`cli/symbols.mjs`](../../cli/symbols.mjs) prints the outline,
+one line per symbol, and `--find <name>` locates a definition; it outlines Markdown by its headings, with
+each section's anchor and size, the same way. It prints from the file as it is, so no map is committed to
+go stale. Nothing checks that a session outlined first; what the rule saves is measured by rerunning a
+task, never by a recipe, which may not read the host's usage records.
 
 ## What is machinery today, and what is not
 

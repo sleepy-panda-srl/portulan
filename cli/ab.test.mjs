@@ -364,7 +364,7 @@ test("the entry guard survives a path containing a space", () => {
         fs.mkdirSync(spaced, { recursive: true });
         const copy = path.join(spaced, "ab.mjs");
         fs.copyFileSync(TOOL, copy);
-        for (const sibling of ["goldens.mjs", "inside.mjs", "recipe-set.mjs", "compile.mjs", "index.mjs", "vendor.mjs", "doctor.mjs", "discover.mjs", "plugin-lint.mjs", "skills-set.mjs", "stop-gate.mjs"]) {
+        for (const sibling of ["goldens.mjs", "inside.mjs", "recipe-set.mjs", "compile.mjs", "index.mjs", "vendor.mjs", "doctor.mjs", "discover.mjs", "plugin-lint.mjs", "skills-set.mjs", "stop-gate.mjs", "symbols.mjs"]) {
             const from = path.join(REPO, "cli", sibling);
             if (fs.existsSync(from)) fs.copyFileSync(from, path.join(spaced, sibling));
         }
