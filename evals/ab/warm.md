@@ -51,13 +51,15 @@ the stop gate asks no run for a handoff.
 | The git instructions, when a commit lands between sessions | `--between commit --local` | the same, `--git-instructions off` | where a session takes the startup snapshot: a local checkout |
 | The per-machine sections, for runs in different directories | `--copies each` | the same, `--exclude-dynamic-sections` | anywhere |
 
-**A switch passes** when every run of both sequences was measured, every treatment run answered as its
-task expects, no run of either changed a file, and the treatment's cost is under its control's 100. A
+**A switch passes** when every run of both sequences was measured, its transcript recording at least one
+request of its own, every treatment run answered as its task expects, no run of either changed a file, and the
+treatment's cost is under its control's 100. A
 sequence's cost is the mean of its runs as billed, with the first priced cold, since what the cache held before
 a sequence began is neither arm's. The two sequences must differ in their arm and in nothing else the runner
 records: the commit they start from, the task, the run count, the checkouts, what lands between runs, where they
-ran, the model asked for and the models the host recorded, and the host's version. `node cli/warm.mjs report
-<control> <treatment>` prints the three lines and PASS and exits 0, or FAIL and exits 1. A switch that passes becomes a default of
+ran, the model asked for and the models the host recorded for each run both measured, and the host's version.
+`node cli/warm.mjs report <control> <treatment>` prints the three lines and PASS and exits 0, or FAIL and
+exits 1. A switch that passes becomes a default of
 Portulan's own headless runs in `.portulan/workspace.json`, and a default an adopter receives only through
 a later change that says so. **The interactive switches are measured on a maintainer's device**, from real
 sessions, because a hosted session never takes the snapshot and a headless run is not how people work.

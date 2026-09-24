@@ -424,7 +424,42 @@ describe("a switch against its control", () => {
         assert.deepEqual([v.measured, v.cuts, v.pass, v.ratio], [false, false, false, null]);
         const said = [];
         assert.equal(run(["report", control, treatment], { say: (l) => said.push(l) }), 1);
-        assert.match(said.at(-1), /no figure against the control's 100.*a run has no transcript/);
+        assert.match(said.at(-1), /no figure against the control's 100.*a run was not measured/);
+    });
+
+    test("a transcript that records no request of the session's own leaves its run unmeasured, never free, exit 1", () => {
+        const [control, treatment] = pair();
+        const { runs } = JSON.parse(fs.readFileSync(path.join(treatment, "sequence.json"), "utf8"));
+        const file = path.join(treatment, runs[1].transcript);
+        const lines = fs.readFileSync(file, "utf8").trim().split("\n");
+        const subagent = lines.map((l) => JSON.stringify({ ...JSON.parse(l), isSidechain: true })).join("\n");
+        const hostWritten = JSON.stringify({ type: "assistant", message: { model: "<synthetic>", usage: { input_tokens: 0, output_tokens: 0 } } });
+        const torn = '{"type":"assistant","message":{"usage":';
+        for (const body of ["", torn, hostWritten, subagent]) {
+            fs.writeFileSync(file, body);
+            const s = readSequence(treatment);
+            assert.equal(s.runs[1].figures, null);
+            assert.equal(s.summary.measured, 1);
+            const v = verdict(readSequence(control), s);
+            assert.deepEqual([v.measured, v.cuts, v.pass, v.ratio], [false, false, false, null]);
+        }
+        const said = [];
+        assert.equal(run(["report", control, treatment], { say: (l) => said.push(l) }), 1);
+        assert.match(said.at(-1), /no figure against the control's 100.*a run was not measured/);
+        assert.match(reportLines(readSequence(treatment)).at(-1), /; measured 1 of 2; answered 2 of 2;/);
+        const controlRun = path.join(control, JSON.parse(fs.readFileSync(path.join(control, "sequence.json"), "utf8")).runs[1].transcript);
+        fs.writeFileSync(controlRun, fs.readFileSync(controlRun, "utf8").replaceAll('"model":"stub"', '"model":"stub-2"'));
+        const partly = verdict(readSequence(control), readSequence(treatment));
+        assert.deepEqual([partly.measured, partly.pass], [false, false], "a model only the unmeasured run's twin recorded is no other shape");
+        fs.writeFileSync(path.join(treatment, runs[0].transcript), "");
+        const none = reportLines(readSequence(treatment));
+        assert.match(none.at(-3), /A {2}Portulan's share: no figure, since no run was measured$/);
+        assert.match(none.at(-1), /; measured 0 of 2;/);
+        const v = verdict(readSequence(control), readSequence(treatment));
+        assert.deepEqual([v.measured, v.pass, v.ratio], [false, false, null]);
+        said.length = 0;
+        assert.equal(run(["report", control, treatment], { say: (l) => said.push(l) }), 1);
+        assert.match(said.at(-1), /no figure against the control's 100.*a run was not measured/);
     });
 
     test("two sequences of different shapes are no comparison, exit 2", () => {
@@ -455,6 +490,11 @@ describe("a switch against its control", () => {
         fs.writeFileSync(transcript, fs.readFileSync(transcript, "utf8").replaceAll('"model":"stub"', '"model":"stub-2"'));
         assert.throws(() => verdict(readSequence(one), readSequence(other)), /recorded stub against|differ in shape/, "the models the host recorded");
         assert.equal(run(["report", one, other], { say: () => {} }), 2);
+        for (const name of fs.readdirSync(other).filter((n) => /^run-\d+\.jsonl$/.test(n))) {
+            const t = path.join(other, name);
+            fs.writeFileSync(t, fs.readFileSync(t, "utf8").replaceAll(/"model":"stub(?:-2)?"/g, '"model":null'));
+        }
+        assert.throws(() => verdict(readSequence(one), readSequence(other)), /differ in shape.*\(recorded run 1 none, run 2 none\)/, "measured runs that recorded no model");
     });
 
     test("what the cache held before a sequence is neither arm's: the first run is priced cold", () => {

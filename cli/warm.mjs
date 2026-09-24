@@ -52,7 +52,7 @@
 // It starts real sessions, which spend, and reads the host's usage records, which differ per machine, so it
 // never runs inside a verify recipe (`0038`'s ruling on the ledger). Its suite stands a stub in for the agent.
 //
-// Exit 0 done · 1 `report` of two sequences only: a run of either has no transcript or changed its clone, a
+// Exit 0 done · 1 `report` of two sequences only: a run of either was not measured or changed its clone, a
 // treatment run did not answer as its task expects, or the treatment cost no less than its control · 2 could not
 // run.
 
@@ -414,7 +414,6 @@ export function summary(runs) {
         cold,
         billed: mean(measured.map((r) => r.figures.billed)),
         cost: mean(measured.map((r) => (r.k === 1 ? r.figures.cold : r.figures.billed))),
-        models: [...new Set(measured.flatMap((r) => r.models ?? []))].sort(),
         share: warm !== null && cold ? warm / cold : null,
     };
 }
@@ -422,18 +421,24 @@ export function summary(runs) {
 /**
  * A switch against its control: it passes when every run of both sequences was measured, every treatment run
  * answered as its task expects, no run of either changed a file, and the treatment's cost, the mean of its runs
- * with the first priced cold, is lower than the control's. A run with no transcript has no cost, so a mean
+ * with the first priced cold, is lower than the control's. A run that was not measured has no cost, so a mean
  * without it is not its sequence's; a control run that changed a file spent tokens on work its task forbids, so a
  * cut against it is not the switch's; and what the cache held before either sequence began is neither arm's. The
  * two must differ in their arm and in nothing else the runner records (the commit they started from, the task,
  * the run count, the checkouts, what lands between runs, where they ran, the model asked for and the models the
- * host recorded, and the host's version), or no difference between them is the switch's.
+ * host recorded, and the host's version), or no difference between them is the switch's. The models are compared
+ * run by run, for the runs both sequences measured: a run with no measurement recorded no model, so its sequence
+ * fails as not measured, never as another shape, while a measured run that recorded no model still differs from
+ * one that did.
  */
 export function verdict(control, treatment) {
+    const measuredRun = (s, k) => s.runs.find((r) => r.k === k && r.figures !== null);
+    const both = control.runs.map((r) => r.k).filter((k) => measuredRun(control, k) && measuredRun(treatment, k));
+    const recorded = (s) => both.map((k) => `run ${k} ${[...(measuredRun(s, k).models ?? [])].sort().join(" and ") || "none"}`).join(", ");
     const shape = (s) =>
         `${s.record.task} × ${s.record.runs.length} from ${s.record.source ?? "an unrecorded commit"}, copies ${s.record.copies}, ` +
-        `between ${s.record.between ?? "nothing"}${s.record.local ? ", local" : ""}, model ${s.record.model ?? "the host's default"} ` +
-        `(recorded ${s.summary.models.join(" and ") || "none"}), host ${s.record.agent ?? "unknown"}`;
+        `between ${s.record.between ?? "nothing"}${s.record.local ? ", local" : ""}, model ${s.record.model ?? "the host's default"}` +
+        `${both.length ? ` (recorded ${recorded(s)})` : ""}, host ${s.record.agent ?? "unknown"}`;
     if (shape(control) !== shape(treatment)) {
         throw new CouldNotRun(`the two sequences differ in shape (${shape(control)} against ${shape(treatment)}), so no difference between them is the switch's`);
     }
@@ -612,7 +617,10 @@ export function runSequence({
 
 /**
  * A recorded sequence, read into its three lines at `rates`. A is read against the run's own clone, which the
- * sequence keeps; a run whose clone is gone has no A, and says so rather than a zero.
+ * sequence keeps; a run whose clone is gone has no A, and says so rather than a zero. A run whose transcript
+ * records no request of its session's own (empty, torn before its first request, or holding only host-written
+ * or subagent records) measured nothing: it has no figures, as a run with no transcript has none, never the
+ * figures of a run that cost nothing.
  */
 export function readSequence(dir, rates = GENERAL_RATES) {
     let record;
@@ -630,6 +638,7 @@ export function readSequence(dir, rates = GENERAL_RATES) {
         if (r.transcript === null) return { ...r, figures: null, share: null };
         const transcript = path.join(dir, r.transcript);
         const { requests } = readTranscript(transcript);
+        if (!requests.some((q) => !q.sidechain)) return { ...r, figures: null, share: null };
         const found = sourcesOf(path.join(dir, record.copies === "each" ? `tree-${r.k}` : "tree"));
         return {
             ...r,
@@ -669,11 +678,11 @@ export function reportLines(sequence) {
     }
     lines.push(
         s.a === null
-            ? "  A  Portulan's share: no figure, since a run's clone is gone or a run compacted"
+            ? `  A  Portulan's share: no figure, since ${s.measured === 0 ? "no run was measured" : "a run's clone is gone or a run compacted"}`
             : `  A  Portulan's share: ${grouped(s.a)} tokens a run, ${index(s.a, s.b)}% of B; ${grouped(s.estimated)} of them estimated, what the host loaded before the first request`,
         `  B  the whole task: ${grouped(s.b)} tokens a run, cache reads included`,
         `  C  cost: warm ${index(s.warm, s.cold)} against cold 100 (${grouped(s.warm)} against ${grouped(s.cold)}, ${ratesText(rates)}); ` +
-            `started warm ${s.startedWarm} of ${s.later}; answered ${s.graded} of ${s.runs}; changed a file ${s.changed}`,
+            `started warm ${s.startedWarm} of ${s.later}; measured ${s.measured} of ${s.runs}; answered ${s.graded} of ${s.runs}; changed a file ${s.changed}`,
     );
     return lines;
 }
@@ -682,7 +691,7 @@ export function reportLines(sequence) {
 export function comparisonLines(control, treatment, v) {
     const [c, t] = [control.summary, treatment.summary];
     const facts = [
-        v.measured ? "every run measured" : "a run has no transcript",
+        v.measured ? "every run measured" : "a run was not measured",
         v.answered ? "every run answered" : "not every run answered",
         v.unchanged ? "no run of either changed a file" : "a run changed a file",
     ];
