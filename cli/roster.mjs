@@ -111,22 +111,21 @@ export function headerOf(source) {
 
 /**
  * A Markdown file's H1, without its `# `; "" when its first heading is not one. A line inside a fenced
- * code block is code, not a heading: a fence opens on three or more backticks or tildes, indented at
- * most three spaces, and closes on a line of the same character at least as long, as CommonMark reads
- * it. A fence never closed runs to the end of the file, so its file has no title.
+ * code block is code, not a heading, as CommonMark reads it: a fence opens on three or more backticks
+ * with no backtick after them, or on three or more tildes, indented at most three spaces, and closes on
+ * a line of the same character, at least as long, followed only by spaces or tabs. A fence never closed
+ * runs to the end of the file, so its file has no title.
  */
 export function titleOf(source) {
-    let fence = "";
-    for (const line of source.split("\n")) {
-        const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
-        if (fence) {
-            const closes = marker && marker[0] === fence[0] && marker.length >= fence.length && /^ {0,3}[`~]+\s*$/.test(line);
-            if (closes) fence = "";
-        } else if (marker) {
-            fence = marker;
-        } else if (/^#{1,6} /.test(line)) {
-            return line.startsWith("# ") ? line.slice(2).trim() : "";
+    let closer = null;
+    for (const line of source.split(/\r?\n/)) {
+        if (closer) {
+            if (closer.test(line)) closer = null;
+            continue;
         }
+        const fence = /^ {0,3}(`{3,}(?!.*`)|~{3,})/.exec(line)?.[1];
+        if (fence) closer = new RegExp(`^ {0,3}${fence[0]}{${fence.length},}[ \\t]*$`);
+        else if (/^#{1,6} /.test(line)) return line.startsWith("# ") ? line.slice(2).trim() : "";
     }
     return "";
 }

@@ -122,6 +122,14 @@ describe("what a row quotes", () => {
         assert.equal(titleOf("~~~~\n# code\n~~~\n# still code\n~~~~\n# The title\n"), "The title");
         assert.equal(titleOf("```\n# never closed\n"), "");
     });
+
+    test("only the fence's own character closes it, and a backtick after one opening fence opens none", () => {
+        // A closer of mixed characters, or one followed by a no-break space, is not a closer.
+        assert.equal(titleOf("```\n# code\n```~~~\n# still code\n```\n# The title\n"), "The title");
+        assert.equal(titleOf("```\n# code\n```\u00a0\n# still code\n```\n# The title\n"), "The title");
+        assert.equal(titleOf("``` a`b\n# The title\n"), "The title");
+        assert.equal(titleOf("```\r\n# code\r\n```\r\n# The title\r\n"), "The title");
+    });
 });
 
 describe("the render refuses what it cannot quote", () => {
