@@ -21,6 +21,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -151,10 +152,37 @@ test("a citation passes only when the section exists, and an unreadable one is a
     assert.deepEqual(problems(c, "20-53 // § 2. A section, then vision.md § *Gone*"), ["§ *Gone*, no such section"], "an outline's § cites nothing");
 });
 
+// A tracked link is read where it leads: at a tracked file under that file's own name, at a directory
+// through the files tracked in it. A link that dangles, loops, leaves the working tree or reaches
+// nothing tracked is read nowhere, so the scan reports it. Paths are compared as the bytes git lists,
+// held in `latin1` strings, which keep one character per byte.
+function linkReaches(root, tracked, at) {
+    let real;
+    try {
+        real = fs.realpathSync(at, { encoding: "buffer" }).toString("latin1");
+    } catch {
+        return false;
+    }
+    const rel = path.relative(root, real).split(path.sep).join("/");
+    if (rel === ".." || rel.startsWith("../") || path.isAbsolute(rel)) return false;
+    return tracked.has(rel) || [...tracked].some((name) => name.startsWith(rel ? `${rel}/` : ""));
+}
+
+test("a tracked link counts as read only when it leads to something tracked in the working tree", (t) => {
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "vision-sections-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(root, "sub"));
+    for (const file of ["real.md", "sub/inner.md", "untracked.md"]) fs.writeFileSync(path.join(root, file), "");
+    const links = { file: "real.md", folder: "sub", itself: ".", up: "..", dangling: "nowhere.md", untracked: "untracked.md", loop: "loop" };
+    for (const [link, target] of Object.entries(links)) fs.symlinkSync(target, path.join(root, link));
+    const tracked = new Set(["real.md", "sub/inner.md", ...Object.keys(links)]);
+    assert.deepEqual(Object.keys(links).filter((link) => linkReaches(root, tracked, path.join(root, link))), ["file", "folder", "itself"]);
+});
+
 // Tracked paths are listed NUL-separated and kept as bytes: without `-z` git C-quotes a name that holds
 // a control character, and a name that is not UTF-8 does not survive decoding, so either would be read
 // as a file that is not there. A citation of `vision.md` is read as the constitution, so no other
-// tracked file may carry that name.
+// tracked file may carry that name. Every tracked name is returned too, as what a link may reach.
 function scanned() {
     const exclude = JSON.parse(fs.readFileSync(path.join(REPO, ".portulan/rule-carriers.json"), "utf8")).exclude;
     assert.ok(Array.isArray(exclude) && exclude.length > 0, "rule-carriers.json carries no exclude list to read the record layer from");
@@ -166,7 +194,10 @@ function scanned() {
     }
     const visions = files.map((f) => f.name).filter((name) => /(^|\/)vision\.md$/.test(name));
     assert.deepEqual(visions, [VISION], "another tracked vision.md would make a citation of `vision.md` name either");
-    return files.filter(({ name }) => name !== VISION && name !== SELF && !exclude.some((p) => name === p || name.startsWith(p)));
+    return {
+        files: files.filter(({ name }) => name !== VISION && name !== SELF && !exclude.some((p) => name === p || name.startsWith(p))),
+        tracked: new Set(files.map(({ raw }) => raw.toString("latin1"))),
+    };
 }
 
 test("every section this repository cites is one the constitution has", () => {
@@ -177,7 +208,9 @@ test("every section this repository cites is one the constitution has", () => {
 
     const found = [];
     let sectioned = 0;
-    for (const { raw, name } of scanned()) {
+    const { files, tracked } = scanned();
+    const root = fs.realpathSync(REPO, { encoding: "buffer" }).toString("latin1");
+    for (const { raw, name } of files) {
         const at = Buffer.concat([Buffer.from(REPO + path.sep), raw]);
         let stat;
         try {
@@ -186,7 +219,9 @@ test("every section this repository cites is one the constitution has", () => {
             found.push(`${name}: tracked but not in the working tree, so nothing read it`);
             continue;
         }
-        // A link is read where its target is tracked, and a submodule is another repository's.
+        if (stat.isSymbolicLink() && !linkReaches(root, tracked, at)) found.push(`${name}: a link to nothing tracked here, so nothing read it`);
+        // A link is read where it leads, and a directory at a tracked path is a submodule, which is
+        // another repository's.
         if (!stat.isFile()) continue;
         const text = fs.readFileSync(at);
         if (text.includes(0)) continue;
