@@ -12,7 +12,7 @@
 // exactly ../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md, where three agents
 // shipped, validated green twice, and loaded nowhere. The host behaviours this compiler is built on
 // were measured against a running host and are recorded in ../.portulan/memory/ and in
-// ../.portulan/compile/README.md. This suite tests emission fidelity only. CI proves the artifact is
+// ../.portulan/gate-map/compiler.md. This suite tests emission fidelity only. CI proves the artifact is
 // what the policy says; only a running host proves it holds.
 
 import { test, describe } from "node:test";

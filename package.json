@@ -27,7 +27,8 @@
     "!cli/ab-run.mjs",
     "!cli/ab-grade.mjs",
     "!cli/warm.mjs",
-    "!cli/payload.mjs"
+    "!cli/payload.mjs",
+    "!cli/roster.mjs"
   ],
   "repository": {
     "type": "git",

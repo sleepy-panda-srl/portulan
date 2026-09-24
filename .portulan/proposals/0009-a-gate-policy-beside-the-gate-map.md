@@ -71,7 +71,7 @@ document that still says "open" about a settled question is a false claim in the
    [`0010-prohibited-as-a-fourth-universal-tier.md`](0010-prohibited-as-a-fourth-universal-tier.md).
 2. **May a pack contribute gate rules?** **Yes in principle, tighten-only, and nothing is built.** A pack
    may raise a tier or add a prohibition, never demote another layer's classification. Recorded where the
-   compiler is documented, in [`../compile/README.md`](../compile/README.md).
+   compiler is documented, in [`../compile/README.md`](../gate-map/compiler.md#pack-contributed-gate-rules).
 3. **Where does `autonomy.md`'s platform-floor promise land?** In this milestone's own row: the
    *"Copilot ruleset export"* clause was reworded to name a **GitHub repository-ruleset export**, which is
    that configuration, positioned in the backend matrix as the floor backend. The doctrine sentence was

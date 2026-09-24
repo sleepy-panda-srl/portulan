@@ -115,7 +115,7 @@ which is what the fresh-context checkpoint is for.
 Re-run live end-to-end on the real tree: one dead link planted, blocked at `recipe 1/3`, `2/3`, `3/3`,
 then released naming *"the cap of 3 consecutive refusals for `recipe`"* — the reason, not just the
 number. A green tree allowed the stop in one attempt, as the positive control. **The handoff branch was
-not re-run live**, and [`../compile/README.md`](../compile/README.md)'s observation table says so in the
+not re-run live**, and [`../compile/README.md`](../gate-map/compiler.md#how-each-watcher-is-observed)'s observation table says so in the
 row rather than in a footnote: on a day when any session has written a dated handoff the branch cannot
 fire in this tree, and the fixture that forces it must first be made green against the `record` check.
 Its arithmetic — including the two-reason interaction and the handoff capping at three with the recipe

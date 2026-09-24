@@ -127,7 +127,7 @@ commit, refusing any packed file that differs from its source.
 | [`feedback`](cli/feedback.mjs) | File a bug, improvement or feedback issue you previewed first |
 
 Beside the eight sit tools that are deliberately not subcommands, and the compiled-hook runners, which
-are not subcommands at all. [`cli/README.md`](cli/README.md) is the single carrier of that wider roster.
+are not subcommands at all. [`cli/README.md`](cli/README.md), rendered from the code, lists that wider roster.
 
 ## Repository layout
 

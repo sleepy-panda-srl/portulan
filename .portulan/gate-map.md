@@ -206,9 +206,9 @@ because the distinctive failure of a compiler that emits gate machinery is a rul
 comes out: the map reads as configured and the machine enforces nothing.
 
 **The honest holes** are the cases no layer here enforces, so the agent holds the rule itself. Each line
-below is that rule; the measurements and the argument for each are in
-[`gate-map/compiler.md`](gate-map/compiler.md#the-honest-holes), which also carries the third outcome, the two
-backends and what each refuses, the gates neither compiles, and composition.
+below is that rule; the argument for each is in
+[`gate-map/compiler.md`](gate-map/compiler.md#the-honest-holes), which also carries what the compiler emits
+and refuses, the third outcome, composition, and how each watcher is observed.
 
 1. **Spellings neither layer sees.** A gate binds the act, not its spelling: two shell wrappers, an
    interpolated heredoc target or variable, a command assembled at runtime, a quoted command

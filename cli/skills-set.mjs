@@ -29,9 +29,8 @@
  *
  * ## Why a module and not a ninth subcommand
  *
- * `docs/vision.md` names eight and is human-owned. `cli/README.md` already records the precedent in
- * `discover`'s own row — *"deliberately not a ninth `portulan` subcommand … joins that list only if
- * the maintainer says so."* And not a widening of `compile` either, whose glossary entry is *"Emits
+ * `docs/vision.md` names eight and is human-owned. `./discover.mjs` already records the precedent in
+ * its own header — *"This is not a ninth `portulan` subcommand."* And not a widening of `compile` either, whose glossary entry is *"Emits
  * restriction only — never an `allow` rule"*: a skills path is a capability **grant**, which is the
  * other direction, and its input is `workspace.json`'s `packs` rather than the gate policy.
  *

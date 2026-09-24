@@ -1,189 +1,196 @@
-// The roster beside the eight, against THIS directory rather than against fixtures.
+// `cli/README.md` is exactly what ./roster.mjs renders from this directory, and the render keeps its shape.
 //
 //   node --test "cli/**/*.test.mjs"
 //
-// `docs.sh`'s `cli table` check already holds the *table* to this directory in both directions. The
-// SENTENCE beside it — which files are subcommands, which are runnable tools on none of the lists,
-// which are modules and hook runners — was left unrailed, and it drifted by exactly the mechanism the
-// table's own rail exists to stop. `cli/README.md`'s parentheticals record the counts wrong four
-// times; when this file was written they were wrong a fifth, `version-carriers.mjs` and `inside.mjs`
-// having reached the table and neither roster sentence. That is #204, whose reporter diagnosed it
-// precisely: "The eight themselves are fine — they are derived from one list and the suite counts
-// them. It is the sentence beside the list that drifted."
+// The page is generated from each file's header and from the rosters in code, as ./roster.mjs says, so
+// the byte comparison below is the rail: a file added, removed or re-described without a new render is
+// red here, and `node cli/roster.mjs --write` is the repair. A page nobody writes by hand cannot drift
+// from the files it lists, which is what the hand-kept roster and its counts kept doing (#204).
 //
-// **So the sentence is derived from the same place the list is.** The eight come from
-// `portulan.mjs`'s exported `SUBCOMMANDS` — a real import, never a hand-copied list — and everything
-// else in the directory must be named between the roster markers in `cli/README.md`. Both
-// directions, because both have failed here: a file arrived with no classification, and prose has
-// outlived what it named.
-//
-// **Why the numerals are gone rather than corrected.** A sixth hand-correction would have been the
-// sixth. This file's own convention already rules the other way three times over — the packaged-file
-// count is "not restated here as a number", the table's arrears figure "is not stated here any more,
-// because a number maintained by hand is the thing that kept going wrong", and the root README's CLI
-// cell refuses "one more hand-maintained figure". The roster now carries membership and no count; a
-// figure nobody writes cannot go stale, and the membership is what this test holds.
-//
-// **Why the anchor is a marker and not a heading or a sentence.** The prose between the markers is
-// argued text that a documentation pass is licensed to rewrite. Anchoring on any of its words would
-// make the next rewrite look like this rail failing. The markers are HTML comments: invisible in
-// every renderer, explicit to anyone editing, and stable across a rewrite that changes every
-// sentence between them.
-//
-// **Why here and not in `docs.sh`.** `identity.md` documents `docs.sh` as the one declared recipe
-// needing only `git`, `bash` and the POSIX text utilities, and treats every movement of that line as
-// an argued event. Reaching `SUBCOMMANDS` from bash would mean either adding `node` to that recipe —
-// moving a documented line as a side effect of a roster fix — or extracting the literal by text,
-// which is a second parser of a JavaScript array. `tests.sh` already needs `node` and already imports
-// real modules, so the derivation lives where a real import is free.
+// **Why here and not in `docs.sh`.** `docs.sh` needs only `git`, `bash` and the POSIX text utilities,
+// and the render imports real modules. `docs.sh`'s `cli table` check still holds the page's rows to the
+// tracked files in both directions without node, on every Stop, and the shape cases below keep the page
+// in the one-row-per-file form that check reads.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 
+import { HOOK_RUNNERS } from "./compile.mjs";
 import { SUBCOMMANDS } from "./portulan.mjs";
+import { CannotRun, README, headerOf, render, run, titleOf, trackedFiles } from "./roster.mjs";
 
-const CLI_DIR = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(CLI_DIR, "..");
-const README = path.join(CLI_DIR, "README.md");
+// A HERMETIC HOST, the three-line block `pinned-roots.live.test.mjs` sweeps for. The render reads only
+// constants from `./compile.mjs`, but that module can reach the host's installed-plugin record, and the
+// guard belongs to every test file whose imports reach one.
+const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
+process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
+process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
-const ENTRY_POINT = "portulan.mjs";
-
-// The eight, read from the field that carries them. `module` is authoritative and is deliberately
-// nullable — an entry may be NAMED by `docs/vision.md` before the tree carries it, and while that
-// holds the entry point lists it and refuses it. Such an entry classifies no file, so it is filtered
-// rather than turned into a phantom `<name>.mjs`. Deriving `${name}.mjs` instead would agree with
-// this today and silently disagree the first time either fact moved.
-function subcommandModules() {
-    return new Set(SUBCOMMANDS.map((s) => s.module).filter(Boolean));
-}
-const BEGIN = "<!-- roster:begin -->";
-const END = "<!-- roster:end -->";
-
-// Tracked files only, and the same pathspec `docs.sh`'s cli-table check uses, so the two rails
-// answer about one directory rather than about two slightly different ones. `core.quotePath=false`
-// for that check's stated reason: a C-quoted pathname would arrive transformed and silently drop out
-// of the comparison, which is the one failure of this class that produces a false GREEN.
-function trackedNonTestModules() {
-    const out = execFileSync("git", ["-c", "core.quotePath=false", "ls-files", "cli/*.mjs"], {
-        cwd: REPO_ROOT,
-        encoding: "utf8",
-    });
-    return out
+// `docs.sh`'s extraction, one subject per row, anchored at the start of the line.
+const rowsOf = (page) =>
+    page
         .split("\n")
-        .filter(Boolean)
-        .map((p) => p.replace(/^cli\//, ""))
-        .filter((p) => !p.includes("/"))
-        .filter((p) => !p.endsWith(".test.mjs"))
-        .sort();
+        .map((line) => /^\| \[`([^`]*)`\]/.exec(line)?.[1])
+        .filter(Boolean);
+
+// Built in a temporary repository rather than in this one, so a case about a missing header does not
+// depend on some file here keeping or losing one.
+function scratchRepo(files) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "roster-"));
+    fs.mkdirSync(path.join(root, "cli"));
+    for (const [name, body] of Object.entries(files)) fs.writeFileSync(path.join(root, "cli", name), body);
+    execFileSync("git", ["init", "-q"], { cwd: root });
+    execFileSync("git", ["add", "."], { cwd: root });
+    return root;
 }
 
-// Bare backticked identifiers only. A path or a filename inside the block — `../.portulan/verify/
-// rule-carriers.sh` is one, and it sits inside these very markers — carries a `/` or a `.` and is
-// deliberately not a roster member. Matching those would let a link label classify a file.
-function rosterNames(markdown) {
-    const from = markdown.indexOf(BEGIN);
-    const to = markdown.indexOf(END);
-    assert.notEqual(from, -1, `${README} carries no ${BEGIN} marker — the roster rail has no anchor`);
-    assert.notEqual(to, -1, `${README} carries no ${END} marker — the roster rail has no anchor`);
-    assert.ok(to > from, "the roster markers are inverted");
-
-    const block = markdown.slice(from + BEGIN.length, to);
-    const names = new Set();
-    for (const [, name] of block.matchAll(/`([a-z][a-z0-9-]*)`/g)) names.add(`${name}.mjs`);
-    return names;
-}
-
-// Read LAZILY, not at `describe` evaluation. Both of these reach outside the process — one shells
-// to git, one reads a file — and at module-load time a failure in either takes the whole file down
-// before a single case runs, surfacing as an opaque load error instead of the named refusal this
-// suite is built to give. That is the same shape as a precondition that cannot report: the check
-// does not fail closed, it fails *illegibly*. Inside a case, the identical failure is attributed to
-// a test with a message that says what could not be done.
-let cached = null;
-function inputs() {
-    if (cached) return cached;
-    let onDisk, markdown;
-    try {
-        onDisk = trackedNonTestModules();
-    } catch (err) {
-        assert.fail(`could not enumerate cli/*.mjs with git — this check could not run: ${err.message}`);
-    }
-    try {
-        markdown = fs.readFileSync(README, "utf8");
-    } catch (err) {
-        assert.fail(`could not read ${README} — this check could not run: ${err.message}`);
-    }
-    cached = { onDisk, markdown };
-    return cached;
-}
-
-describe("the roster beside the eight is a partition of cli/, and nothing here is hand-counted", () => {
-
-    // The precondition, for the reason every recipe in this repository states it: an empty
-    // enumeration would make both comparisons below vacuously true, and a check that passes over
-    // nothing is worse than no check. Either side coming back empty is a broken harness, never a
-    // clean result.
-    test("the enumeration ran and the markers parse", () => {
-        const { onDisk, markdown } = inputs();
-        assert.ok(onDisk.length > 0, "git listed no cli/*.mjs modules — refusing to compare nothing");
-        // `rosterNames` asserts both markers are present and ordered; calling it is the check.
-        // Deliberately NOT asserting it found a name: a directory holding only subcommands and the
-        // entry point is a legitimate state with an empty roster, and an emptied block is caught by
-        // the partition below anyway, since its files stop being classified.
-        rosterNames(markdown);
-    });
-
-    test("every module in cli/ is classified exactly once", () => {
-        const { onDisk, markdown } = inputs();
-        const subcommands = subcommandModules();
-        const roster = rosterNames(markdown);
-
-        const classified = new Set([...subcommands, ...roster, ENTRY_POINT]);
-
-        const unclassified = onDisk.filter((f) => !classified.has(f));
-        assert.deepEqual(
-            unclassified,
-            [],
-            `cli/${unclassified.join(", cli/")} is on disk and classified by nothing — ` +
-                `name it between ${BEGIN} and ${END} in cli/README.md, or make it a subcommand`,
-        );
-    });
-
-    test("every name in the roster names a file that exists", () => {
-        const { onDisk, markdown } = inputs();
-        const roster = [...rosterNames(markdown)].sort();
-        const present = new Set(onDisk);
-
-        const phantom = roster.filter((f) => !present.has(f));
-        assert.deepEqual(
-            phantom,
-            [],
-            `the roster names ${phantom.join(", ")}, which cli/ does not carry — a row can outlive what it names`,
-        );
-    });
-
-    // The roster and the subcommand list are disjoint by construction: being off the eight is what
-    // puts a tool in the roster at all. If a tool is ever promoted to a ninth subcommand — the
-    // maintainer's call, never an implementer's — this is the assertion that requires the sentence
-    // to be updated in the same change rather than a release later.
-    test("the entry point is not also claimed by the roster", () => {
-        const { markdown } = inputs();
-        const roster = rosterNames(markdown);
+describe("cli/README.md is the render, never a hand edit", () => {
+    test("the committed page is byte for byte what the files render", () => {
+        const page = render();
+        const committed = fs.readFileSync(README, "utf8");
         assert.ok(
-            !roster.has(ENTRY_POINT),
-            `the roster names ${ENTRY_POINT}, which is the entry point and is classified as such — ` +
-                "naming it here would classify one file twice and still pass the partition",
+            committed === page,
+            "cli/README.md is not what the files in cli/ render: run `node cli/roster.mjs --write` and commit the result",
         );
     });
 
-    test("no tool is both a subcommand and a roster member", () => {
-        const { markdown } = inputs();
-        const subcommands = subcommandModules();
-        const both = [...rosterNames(markdown)].filter((f) => subcommands.has(f)).sort();
-        assert.deepEqual(both, [], `${both.join(", ")} is named as a subcommand and as beside the eight`);
+    test("--check agrees, and a bad argument could not run", () => {
+        const sink = { write() {} };
+        assert.equal(run(["--check"], sink, sink), 0);
+        assert.equal(run(["--bogus"], sink, sink), 2);
+        assert.equal(run(["--write", "--check"], sink, sink), 2);
+    });
+});
+
+describe("the render keeps the shape docs.sh reads", () => {
+    test("every tracked file has exactly one row, and fixtures/ has one", () => {
+        const { files, fixtures } = trackedFiles();
+        assert.ok(files.length > 0, "git listed nothing in cli/: refusing to compare nothing");
+        const rows = rowsOf(render());
+        const expected = [...files, ...(fixtures ? ["fixtures/"] : [])].sort();
+        assert.deepEqual([...rows].sort(), expected);
+        assert.equal(new Set(rows).size, rows.length, "a file has two rows");
+    });
+
+    test("the subcommands and the hook runners sit in their groups, in the code's order", () => {
+        const page = render();
+        const section = (heading) => {
+            const from = page.indexOf(`### ${heading}`);
+            assert.notEqual(from, -1, `the page has no "${heading}" group`);
+            const to = page.indexOf("\n### ", from + 1);
+            return rowsOf(page.slice(from, to === -1 ? undefined : to));
+        };
+        const built = SUBCOMMANDS.map((s) => s.module).filter(Boolean);
+        assert.deepEqual(section("The entry point and its subcommands"), ["portulan.mjs", ...built]);
+        assert.deepEqual(section("Hook runners"), HOOK_RUNNERS);
+    });
+});
+
+describe("what a row quotes", () => {
+    test("the first paragraph of a // header, after a shebang", () => {
+        const source = "#!/usr/bin/env node\n// One line,\n// and its second.\n//\n// Not this one.\nimport x from 'y';\n";
+        assert.equal(headerOf(source), "One line, and its second.");
+    });
+
+    test("the first paragraph of a leading /** */ block", () => {
+        assert.equal(headerOf("/**\n * The set.\n *\n * Not this.\n */\n"), "The set.");
+        assert.equal(headerOf("/** Inline opening.\n * continued.\n */\n"), "Inline opening. continued.");
+    });
+
+    test("a /** */ block closed on a line of text keeps the text and drops the delimiter", () => {
+        assert.equal(headerOf("/** One-line header. */\nexport const x = 1;\n"), "One-line header.");
+        assert.equal(headerOf("/** Code after the delimiter is not header. */ export const x = 1;\n"), "Code after the delimiter is not header.");
+        assert.equal(headerOf("/**\n * First line,\n * last sentence. */\nexport const x = 1;\n"), "First line, last sentence.");
+    });
+
+    test("nothing, when the file opens with code or a blank comment line", () => {
+        assert.equal(headerOf("import x from 'y';\n// late comment\n"), "");
+        assert.equal(headerOf("//\n// after a blank\n"), "");
+    });
+
+    test("a Markdown file's H1, and nothing when its first heading is not one", () => {
+        assert.equal(titleOf("# The title\n\nBody.\n"), "The title");
+        assert.equal(titleOf("## Not a title\n# Late\n"), "");
+    });
+});
+
+describe("the render refuses what it cannot quote", () => {
+    test("a module with no header is could-not-run, naming it", () => {
+        const root = scratchRepo({ "a.mjs": "// A tool.\n", "b.mjs": "export const b = 1;\n" });
+        try {
+            assert.throws(() => render(root), (error) => error instanceof CannotRun && /cli\/b\.mjs/.test(error.message));
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    test("a tracked module with a header gets its row, and an untracked one does not", () => {
+        const root = scratchRepo({ "a.mjs": "// A tool.\n" });
+        try {
+            fs.writeFileSync(path.join(root, "cli", "scratch.mjs"), "// Not added.\n");
+            const rows = rowsOf(render(root));
+            assert.deepEqual(rows, ["a.mjs"]);
+            assert.match(render(root), /\| \[`a\.mjs`\]\(a\.mjs\) \| A tool\. \|/);
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    test("a tracked name git would quote is refused by name, never dropped", () => {
+        // Git tracks a name holding a newline, and a list split on newlines C-quotes it even under
+        // `core.quotePath=false`, so the file used to leave the page without a word.
+        const root = scratchRepo({ "a.mjs": "// A tool.\n", "we\nird.mjs": "// Odd.\n" });
+        try {
+            assert.throws(
+                () => trackedFiles(root),
+                (error) => error instanceof CannotRun && error.message.includes("cli/we\\nird.mjs") && !error.message.includes("\n"),
+            );
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    test("a name that would break its row is refused, and a letter outside ASCII is not", () => {
+        for (const name of ["a b.mjs", "a(1).mjs", "a|b.mjs", "a`b.mjs", "a#b.mjs", "a%20b.mjs"]) {
+            const root = scratchRepo({ "a.mjs": "// A tool.\n", [name]: "// Odd.\n" });
+            try {
+                assert.throws(() => render(root), CannotRun, `${name} was rendered`);
+            } finally {
+                fs.rmSync(root, { recursive: true, force: true });
+            }
+        }
+        const root = scratchRepo({ "a.mjs": "// A tool.\n", "café.mjs": "// A café.\n" });
+        try {
+            assert.deepEqual(rowsOf(render(root)), ["a.mjs", "café.mjs"]);
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    test("a page --write cannot write is could-not-run, not a stack trace", () => {
+        const root = scratchRepo({ "a.mjs": "// A tool.\n" });
+        try {
+            // A directory where the page goes refuses the write for every user, root included.
+            fs.mkdirSync(path.join(root, "cli", "README.md"));
+            const said = [];
+            const sink = { write() {} };
+            assert.equal(run(["--write"], sink, { write: (text) => said.push(text) }, root), 2);
+            assert.match(said.join(""), /could not run: cli\/README\.md could not be written/);
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    test("an empty cli/ is could-not-run, not an empty page", () => {
+        const root = scratchRepo({});
+        try {
+            assert.throws(() => trackedFiles(root), CannotRun);
+        } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
     });
 });
