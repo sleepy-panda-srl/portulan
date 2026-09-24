@@ -972,9 +972,14 @@ export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { b
     );
 
     if (boot.carded) {
+        // The router has a boot read the plugin's kernel where nothing in context carries it, so the line
+        // says which of the two this boot is.
+        const fallback = boot.entries.some((e) => e.bundle && e.label === "kernel");
         say(
             `  boot read-set — carded: ${shown(boot.carded)} is this repository's boot card, loaded into every context with the rest of the always tier, ` +
-                "so a session that boots here reads the skill and stops: the card carries the kernel and what the slots would",
+                (fallback
+                    ? "so a session that boots here reads the skill and the plugin's kernel, which nothing in context carries, and the card stands in for the slots"
+                    : "so a session that boots here reads the skill and stops: the card carries the kernel and stands in for the slots"),
         );
     } else {
         say("  boot read-set — read in full by every session that boots Portulan here: the skill, its steps and the kernel (step 1), the manifest (step 2, to find the slots), the slots, this repository's card and the memory index (step 3), the packs step where the manifest names a pack (step 3a)");

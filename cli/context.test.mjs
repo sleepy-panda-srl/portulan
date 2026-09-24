@@ -180,7 +180,7 @@ describe("the boot read-set", () => {
         );
         const { code, out } = measured(root, [], { bundleRoot });
         assert.equal(code, 0, out);
-        assert.match(out, /boot read-set — carded: \.claude\/rules\/portulan\/boot\.md is this repository's boot card/);
+        assert.match(out, /boot read-set — carded: \.claude\/rules\/portulan\/boot\.md is this repository's boot card, .+ reads the skill and stops: the card carries the kernel and stands in for the slots$/m);
         assert.doesNotMatch(out, /without manifest/);
     });
 
@@ -191,6 +191,9 @@ describe("the boot read-set", () => {
         assert.deepEqual(result.boot.entries.map((e) => e.label), ["boot skill", "rule", "kernel"]);
         const size = (rel) => fs.statSync(path.join(bundleRoot, rel)).size;
         assert.equal(result.figures.boot, result.figures.always + size("plugin/skills/portulan/SKILL.md") + size("core/engine.md"));
+        const { code, out } = measured(root, [], { bundleRoot });
+        assert.equal(code, 0, out);
+        assert.match(out, /reads the skill and the plugin's kernel, which nothing in context carries, and the card stands in for the slots/);
     });
 
     test("this repository's card, in the list of what waits, is the one the boot selects, not a file beside it", () => {
