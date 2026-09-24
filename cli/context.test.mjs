@@ -176,12 +176,27 @@ describe("the boot read-set", () => {
         assert.equal(result.figures.records, null, "a carded boot reads no manifest, so there is no subtotal without it");
         assert.match(
             result.boot.notCounted[0],
-            /^what the card replaces, each opened when the card or an on-path rule sends a session to it: the manifest, `identity`, `principles`, `constitution`, `gates`, `dod`, this repository's card, the memory index, where the card does not import it, the packs step$/,
+            /^what the card replaces, each opened when the card or an on-path rule sends a session to it: the manifest, `identity`, `principles`, `constitution`, `gates`, `dod`, this repository's card, the memory index, the packs step$/,
         );
         const { code, out } = measured(root, [], { bundleRoot });
         assert.equal(code, 0, out);
         assert.match(out, /boot read-set — carded: \.claude\/rules\/portulan\/boot\.md is this repository's boot card/);
         assert.doesNotMatch(out, /without manifest/);
+    });
+
+    test("a file the card imports is counted where it loads, and not listed as one opened on demand", () => {
+        const root = repository({
+            files: {
+                ".claude/rules/portulan/boot.md":
+                    "# Portulan boot card\n\n@../../../.portulan/identity.md\n\n@../../../.portulan/repos/app.md\n\n@../../../.portulan/memory-index.md\n",
+            },
+        });
+        const result = measure(path.join(root, ".portulan"), { bundleRoot: bundle() });
+        assert.deepEqual(
+            result.boot.entries.filter((e) => e.label.startsWith("import")).map((e) => path.relative(root, e.file)),
+            [path.join(".portulan", "identity.md"), path.join(".portulan", "repos", "app.md"), path.join(".portulan", "memory-index.md")],
+        );
+        assert.match(result.boot.notCounted[0], /: the manifest, `principles`, `constitution`, `gates`, `dod`$/);
     });
 
     test("a rule is the card by its first line, and by nothing else", () => {
@@ -374,9 +389,12 @@ describe("the always tier", () => {
         assert.deepEqual(always.outside, ["@~/home.md. (in CLAUDE.md)"]);
     });
 
-    test("a trailing full stop is not part of the path it ends", () => {
+    // Read in Claude Code 2.1.281: the import's path runs to the next space, and nothing trims it.
+    test("a closing full stop is part of the path the host reads, so that import names no file", () => {
         const root = tree({ "CLAUDE.md": "See @docs/a.md.\n", "docs/a.md": "a\n" });
-        assert.deepEqual(alwaysTier(root).entries.map((e) => path.relative(root, e.file)), ["CLAUDE.md", "docs/a.md"]);
+        const always = alwaysTier(root);
+        assert.deepEqual(always.entries.map((e) => path.relative(root, e.file)), ["CLAUDE.md"]);
+        assert.deepEqual(always.missing, ["@docs/a.md. (in CLAUDE.md)"]);
     });
 
     // Read in Claude Code 2.1.281 and seen on a fixture: a path-scoped rule waits for its path, and what it

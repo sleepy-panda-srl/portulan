@@ -314,9 +314,23 @@ export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, 
     if (always?.card) {
         fromBundle(BOOT_SKILL, true);
         for (const e of always.entries) entries.push({ ...e, always: true });
-        const replaced = ["the manifest", ...BOOT_SLOTS.filter((slot) => slots[slot] !== undefined).map((slot) => `\`${slot}\``)];
-        if (slots.repos !== undefined) replaced.push("this repository's card");
-        if (manifest.memory?.index?.path !== undefined) replaced.push("the memory index, where the card does not import it");
+        // What the card imports is counted above, so only what it does not import waits to be opened.
+        const real = (file) => {
+            try {
+                return fs.realpathSync(file);
+            } catch {
+                return path.resolve(file);
+            }
+        };
+        const loaded = new Set(always.entries.map((e) => real(e.file)));
+        const waits = (rel) => !loaded.has(real(path.resolve(workspaceDir, rel)));
+        const replaced = [];
+        if (waits("workspace.json")) replaced.push("the manifest");
+        for (const slot of BOOT_SLOTS) if (slots[slot] !== undefined && waits(slots[slot])) replaced.push(`\`${slot}\``);
+        if (slots.repos !== undefined && ![...loaded].some((file) => path.dirname(file) === real(path.resolve(workspaceDir, slots.repos)))) {
+            replaced.push("this repository's card");
+        }
+        if (typeof manifest.memory?.index?.path === "string" && waits(manifest.memory.index.path)) replaced.push("the memory index");
         if (Array.isArray(manifest.packs) && manifest.packs.length) replaced.push("the packs step");
         const notCounted = [`what the card replaces, each opened when the card or an on-path rule sends a session to it: ${replaced.join(", ")}`];
         if (slots.memory !== undefined) notCounted.push("memory records (the index points at each)");
@@ -512,11 +526,9 @@ export function alwaysTier(repoRoot) {
                     outside.push(spelled);
                     continue;
                 }
-                let resolved = path.resolve(path.dirname(file), target);
-                if (!isFile(resolved)) {
-                    const trimmed = path.resolve(path.dirname(file), target.replace(/[.,;:!?)\]]+$/, ""));
-                    if (isFile(trimmed)) resolved = trimmed;
-                }
+                // The host takes the path as written, to the next space and a closing full stop included,
+                // and loads nothing from one that names no file (`IMPORT_DEPTH` in ./compile.mjs, same read).
+                const resolved = path.resolve(path.dirname(file), target);
                 if (!isFile(resolved)) {
                     missing.push(spelled);
                     continue;

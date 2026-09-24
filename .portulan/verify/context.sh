@@ -67,7 +67,8 @@ RAIL_DEMO_BOOT=37803      # examples' boot read-set with the combcount card, 37,
 RAIL_ENGINE=13763         # the boot skill, its steps and the kernel, 13,493 B, raised by the boot card
                           # from 12,019 B for the same reason
 RAIL_STEPS=10944          # the skill's step files, pointer-manifest.md and packs.md, 10,729 B
-RAIL_DESCRIPTIONS=3454    # the plugin's 7 skill and 3 agent descriptions, 3,386 B
+RAIL_DESCRIPTIONS=3454    # the plugin's 7 skill and 3 agent descriptions, 3,386 B; 3,405 B since the boot
+                          # card, whose skill description now names the card
 
 # The workspaces measured, audited against the tree the way ./index.sh audits its own list: a workspace
 # added and not measured would be a footprint nothing watches, reported as green.
