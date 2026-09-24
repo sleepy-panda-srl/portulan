@@ -1,29 +1,26 @@
 # Portulan — Vision (the constitution)
 
-> This file is ground truth. The build supervisor grades every session's work against it.
-> Changes to this file are **human-owned** (Marius Cetanas) — no agent edits it, ever.
-> Locked 24 July 2026. Companion: `plan.md` (the milestone map).
-
-## What Portulan is
+This file is ground truth: the build supervisor grades every session's work against it. Changes to
+it are **human-owned** (Marius Cetanas). Agents may edit it since his word of 2026-09-24 06:16 UTC,
+each edit recording that word in its commit; the edit gate's removal follows in its own pull request.
+Locked 24 July 2026. Companion: `plan.md` (the milestone map).
 
 Portulan is an **operating framework for agentic engineering** — the tailored context, standards,
 gates, and institutional memory a team needs so any coding agent works *their* way. It is an
-**open-core product by Sleepy Panda SRL** that any team, any company, any product domain (web,
-mobile, gaming, embedded) can adopt. It distills, in fresh expression, operating concepts proven
-in real production engineering practice.
+**open-core product by Sleepy Panda SRL** that any team, company or product domain (web, mobile,
+gaming, embedded) can adopt. It distills, in fresh expression, operating concepts proven in real
+production engineering practice. One sentence: **cockpit products sell the dashboard; Portulan sells
+the doctrine.**
 
-**The name.** *Portulan* is the Romanian word for a portolan chart — a mariner's map compiled
-from the accumulated observations of real voyages: hard-won local knowledge, closely guarded,
-more valuable with every trip. That is the product thesis in one object, in Sleepy Panda SRL's own
-language: **the engine is the chartmaking method; your workspace is your portulan.** (Decided
-final 24 Jul 2026; **portulan.dev registered by Sleepy Panda SRL the same day.** A knockout
-trademark sweep in classes 9/42 cleared before the repository's first public window (27 Jul–3 Aug
-2026; private 3–17 Aug 2026, public again since). The name proceeds on that sweep; no formal
-clearance opinion is sought, by the maintainer's ruling of 17 Aug 2026.)
+**The name.** *Portulan* is the Romanian word for a portolan chart — a mariner's map compiled from the
+accumulated observations of real voyages: hard-won local knowledge, closely guarded, more valuable
+with every trip. That is the product thesis in one object, in Sleepy Panda SRL's own language: **the
+engine is the chartmaking method; your workspace is your portulan.** Decided final 24 Jul 2026;
+**portulan.dev registered by Sleepy Panda SRL the same day.** A knockout trademark sweep in classes
+9/42 cleared before the repository's first public window. The name proceeds on that sweep; no formal
+clearance opinion is sought, by the maintainer's ruling of 17 Aug 2026.
 
-One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine.**
-
-## The thesis (why this wins)
+## The thesis
 
 1. **Mechanism/policy separation.** A universal engine (the loop, autonomy model, verification
    hierarchy, memory lifecycle, supervised evolution) + a per-team Workspace (identity, stack,
@@ -38,9 +35,9 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
    The why stays in Markdown; the must lives in machinery.
 4. **Every mistake compiles into a permanent rule** — with provenance, in one of exactly two forms:
    a resolvable link to the incident that created it, or — when the incident cannot leave its owner's
-   layer — a sealed stamp: owner, date, and the de-identified failure shape (Hashimoto's loop,
-   compounding engineering). The librarian retires rules whose incidents can no longer occur. It
-   cannot judge a sealed rule, so it nags the owner to re-validate instead.
+   layer — a sealed stamp: owner, date, and the de-identified failure shape. The librarian retires
+   rules whose incidents can no longer occur. It cannot judge a sealed rule, so it nags the owner to
+   re-validate instead.
 5. **Human-curated, agent-drafted.** Agents may draft the curated layer, never own it
    (ETH Zurich, arXiv:2602.11988: generated context hurts, curated helps). Supervised evolution —
    proposals reviewed by humans, eval-gated where possible — is the moat against drift.
@@ -52,13 +49,13 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
 
 ## Product identity
 
-- **Open-core.** Engine + spec + CLI + demo workspace at `github.com/sleepy-panda-srl/portulan` —
-  open-core **by design, and public** (public 27 Jul–3 Aug 2026, private while the build hardened,
-  public again since 17 Aug 2026; it doubles as the Claude Code plugin marketplace, so installing
-  needs no access grant). **Visibility is a deliberate release decision and has moved three times;
-  milestone 10's "a stranger can discover, evaluate, install" now rests on it rather than
-  presupposing it.** Commercial value in **private feeds**: customer workspaces and premium packs
-  delivered as private-marketplace plugins, plus support/onboarding.
+- **Open-core by design, and public.** Engine + spec + CLI + demo workspace at
+  `github.com/sleepy-panda-srl/portulan`, which doubles as the Claude Code plugin marketplace, so
+  installing needs no access grant. **Visibility is a deliberate release decision and has moved three
+  times (public 27 Jul–3 Aug 2026, private while the build hardened, public again since 17 Aug 2026);
+  milestone 10's "a stranger can discover, evaluate, install" now rests on it rather than presupposing
+  it.** Commercial value in **private feeds**: customer workspaces and premium packs delivered as
+  private-marketplace plugins, plus support/onboarding.
 - **Delivery tiers:** (1) Claude Code plugin — primary; (2) `npx` CLI: `init` (interview + codebase
   scan → drafted workspace, human curates) · `doctor` (schema validation + per-host capability
   report + agent-legibility score) · `compile` (gates/verify → host enforcement) · `vendor`
@@ -90,11 +87,11 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
 - **No unsupervised self-evolution.** Rule changes are proposals → human/eval-gated PRs.
 - **No ceremony that can't scale down.** The triage lane is a first-class feature
   (BMAD's failed promise is our differentiator).
-- **No client references — ever.** This repository (files, history, commit messages, branch
-  names, Session log) carries no names, identifiers, paths, or artifacts of any private client
-  engagement. Client-side context lives outside the repo and is governed there.
+- **No client references — ever.** This repository (files, history, commit messages, branch names)
+  carries no names, identifiers, paths, or artifacts of any private client engagement. Client-side
+  context lives outside the repo and is governed there.
 
-## Influence map (what we adopted from whom)
+## Influence map
 
 | School | Adopted |
 |---|---|
@@ -110,7 +107,7 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
 | BMAD | Story file as atomic context unit; scale-down lesson |
 | Agent OS v3 | Product layer; standards discovery in init; design for deletion |
 | 12-Factor Agents | Auditable checklist format ("Portulan Factors"); compact errors; stateless-reducer resumability |
-| Agentic engineering craft (Karpathy/Willison/Osmani/Hashimoto) | Red/green TDD default; "never commit what you couldn't explain" in DoD; last-mile review focus; mistake→rule with provenance; the term "agentic engineering" |
+| Agentic engineering craft (Karpathy/Willison/Osmani/Hashimoto) | Red/green TDD default; "never commit what you couldn't explain" in DoD; last-mile review focus; mistake→rule with provenance (Hashimoto's loop); the term "agentic engineering" |
 | Agent-native / AX | Agent-legibility audit (repo affordances scored by doctor) — unclaimed niche |
 | Platform engineering | Golden-path framing for packs; IDP-for-agents vocabulary; same-policy-for-agents-as-humans |
 
