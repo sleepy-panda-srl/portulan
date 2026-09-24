@@ -685,7 +685,7 @@ export function usage() {
         "A pointer is resolved through the host's installed-plugin record; the installed workspace is",
         "read and reported on, and `--write` is refused there — migrate it at its own directory.",
         "",
-        "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
+        "Exit codes: 0 succeeded · 1 a red verdict, or a step owed by hand · 2 could not run.",
     ].join("\n");
 }
 
@@ -886,17 +886,21 @@ export async function run(argv = [], options = {}) {
     // resolved install to "run with --write" names the one command this tool then refuses with exit
     // 2 — advice and refusal disagreeing about the same act, which is the sibling of the refusal
     // itself. Caught at the pre-commit checkpoint, reproduced end to end on a real install.
+    const byHandOwed = plan.entries.filter((entry) => entry.hand).length;
+    const byHandNote = byHandOwed > 0 ? `, ${byHandOwed} of them by hand` : "";
     const advice =
         target.state === "resolved"
             ? "run this against the workspace's own directory and republish — an installed copy is not migrated in place"
-            : "run with --write to apply them";
+            : byHandOwed === plan.owed
+              ? "add what each names by hand, then upgrade again"
+              : `run with --write to apply ${byHandOwed > 0 ? "the rest" : "them"}`;
 
     if (check) {
-        warn(`upgrade: ${shown} owes ${plan.owed} step(s) — ${advice}`);
+        warn(`upgrade: ${shown} owes ${plan.owed} step(s)${byHandNote} — ${advice}`);
         return 1;
     }
     if (!write) {
-        say(`upgrade: ${plan.owed} step(s) owed. Nothing was written — ${advice}`);
+        say(`upgrade: ${plan.owed} step(s) owed${byHandNote}. Nothing was written — ${advice}`);
         return 0;
     }
 
@@ -916,7 +920,7 @@ export async function run(argv = [], options = {}) {
     };
 
     // **A step an earlier one makes owed runs in the same run** (2026-09-24). The card's compile is owed
-    // only once the step before it has drafted the card, so each step not owed in the plan is asked
+    // only once the step before it has drafted the card, so once a step has applied, each step is asked
     // again when its turn comes, against the workspace as the steps before it left it, and runs under
     // the same rollback. One that cannot tell then is refused like one that could not tell before.
     //
@@ -982,7 +986,7 @@ export async function run(argv = [], options = {}) {
         let appliedNow = 0;
         for (const entry of plan.entries) {
             let asked = entry;
-            if (pass > 0 || entry.owed !== true) {
+            if (applied > 0 || entry.owed !== true) {
                 [asked] = (await planFor(current, ctx, [entry.step])).entries;
                 if (asked.owed === null) {
                     if (!undo()) return 2;
@@ -996,7 +1000,7 @@ export async function run(argv = [], options = {}) {
                 byHand.set(entry.step.id, asked.because);
                 continue;
             }
-            if (asked !== entry) {
+            if (pass > 0 || entry.owed !== true) {
                 say(`upgrade: ${entry.step.id} (${entry.step.kind}) — ${entry.step.title}`);
                 say(`upgrade:   ${asked.because}`);
             }

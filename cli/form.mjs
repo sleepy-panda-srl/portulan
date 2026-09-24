@@ -19,7 +19,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { BOOT_CARD_LINE, BOOT_CARD_UNIT, ENGINE_LINE, GUIDANCE_RULES_DIR, leadsOfText } from "./compile.mjs";
+import { BOOT_CARD_LINE, BOOT_CARD_UNIT, GUIDANCE_RULES_DIR, leadsOfText } from "./compile.mjs";
 import { CHANGE_SECTIONS, readChanges, renderChanges } from "./index.mjs";
 
 /** Anything that means the form could not be read. Carries no verdict. */
@@ -484,16 +484,16 @@ export const READING_TITLE = "Reading and the cache: Portulan's `core/operating/
 export const READING_LINE = "<!-- engine: operating/context.md#every-request-pays-for-what-the-session-has-read -->";
 
 /** A card's head as `init` and `0006` drafted it until the card carried that section (2026-09-24). */
-const HEAD_BEFORE_READING = /^(> Compiled by `portulan compile` from .+\. Each section names its file): an\n> import is here in full; open any other file when its subject is your task\.$/m;
+const HEAD_BEFORE_READING = /^(> Compiled by `portulan compile` from .+\. Each section names its file): an(\r?\n)> import is here in full; open any other file when its subject is your task\.$/m;
 
 /** That head, as a reader is told to look for it. */
 export const HEAD_BEFORE_READING_SHOWN =
     '"> Compiled by `portulan compile` from <the card>. Each section names its file: an" over ' +
     '"> import is here in full; open any other file when its subject is your task."';
 
-/** Whether a card carries the section: a line `compile` reads as an engine line naming `operating/context.md`. */
+/** Whether a card carries the section: the line `draftCard` writes, which `compile` expands to the rules. */
 export function carriesReading(card) {
-    return card.split("\n").some((line) => ENGINE_LINE.exec(line)?.[1].split("#")[0] === "operating/context.md");
+    return card.split(/\r?\n/).includes(READING_LINE);
 }
 
 /**
@@ -506,8 +506,9 @@ export function withReading(card) {
     if (carriesReading(card)) return null;
     const head = HEAD_BEFORE_READING.exec(card);
     if (!head) return null;
-    const moved = `${head[1]}, and an\n> import is here in full.\n\n## ${READING_TITLE}\n\n${READING_LINE}`;
-    return card.slice(0, head.index) + moved + card.slice(head.index + head[0].length);
+    const [old, opening, eol] = head;
+    const moved = [`${opening}, and an`, "> import is here in full.", "", `## ${READING_TITLE}`, "", READING_LINE].join(eol);
+    return card.slice(0, head.index) + moved + card.slice(head.index + old.length);
 }
 
 /**

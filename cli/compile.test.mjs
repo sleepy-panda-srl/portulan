@@ -17,6 +17,7 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -4433,6 +4434,28 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
             assert.match(out, new RegExp(`the engine's leads of ${target.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")} were asked for, and it names no file in the engine's core/`));
             assert.ok(!fs.existsSync(path.join(dir, ".claude")));
         }
+    });
+
+    test("refused, and nothing is written: an engine line naming a link in core/ that leads out of it", () => {
+        const engine = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-engine-"));
+        fs.mkdirSync(path.join(engine, "cli"));
+        for (const file of ["compile.mjs", "discover.mjs", "inside.mjs", "symbols.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
+        fs.mkdirSync(path.join(engine, "core"));
+        const leads = "# Leads\n\n- **A lead.**\n";
+        fs.writeFileSync(path.join(engine, "core", "inside.md"), leads);
+        fs.writeFileSync(path.join(engine, "outside.md"), leads);
+        fs.symlinkSync(path.join(engine, "outside.md"), path.join(engine, "core", "link.md"));
+        const compile = (target) => {
+            const dir = withFiles({ "context/boot.md": card(`<!-- engine: ${target} -->`) });
+            const { status, stdout, stderr } = spawnSync(process.execPath, [path.join(engine, "cli", "compile.mjs"), "--workspace", dir], { encoding: "utf8" });
+            return { dir, status, out: stdout + stderr };
+        };
+        const inside = compile("inside.md");
+        assert.equal(inside.status, 0, inside.out);
+        const link = compile("link.md");
+        assert.equal(link.status, 2, link.out);
+        assert.match(link.out, /the engine's leads of link\.md were asked for, and it names no file in the engine's core\//);
+        assert.ok(!fs.existsSync(path.join(link.dir, ".claude")));
     });
 
     /** A gate policy holding one rule per `[id, tier]`, in that order. */

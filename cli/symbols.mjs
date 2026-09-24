@@ -1062,7 +1062,7 @@ const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 /**
  * The lines an outline prints: the file, then one line per entry, children indented under theirs. A Markdown
- * heading's carries its anchor, which names it in `<file>#<anchor>` where its text is repeated, and its size.
+ * heading's line carries its anchor, which names it in `<file>#<anchor>` where its text is repeated, and its size.
  */
 export function render(file, { lines, bytes, entries }) {
     const out = [`${file}: ${lines} line${lines === 1 ? "" : "s"}${bytes === undefined ? "" : `, ${grouped(bytes)} B`}`];

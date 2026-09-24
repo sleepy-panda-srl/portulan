@@ -865,8 +865,9 @@ gates**, so a card carries a fact without holding a second copy of it:
   a file with no list, an item with no bold lead, a lead carrying a link, which would not resolve from
   the compiled rule, and a line of text with no indent straight under an item, which CommonMark reads as
   more of that item (2026-09-24). **The path may end `#<heading>`**, for the first list under that
-  heading, found as `cli/symbols.mjs` finds a section: by the anchor GitHub gives it, its text, or a
-  `Parent > Child` path, a heading that none or several answer being refused (2026-09-24).
+  heading, found as `cli/symbols.mjs` finds a section: by the anchor GitHub gives it, which its outline
+  prints, or by its text or a `Parent>Child` path where either holds no space, since the line's path holds
+  none; a heading that none or several answer is refused (2026-09-24).
 - **A line `<!-- engine: <path> -->`, alone on its line, writes out the leads of a file in the engine
   `compile` ships with**, its path relative to that engine's `core/`, and refused outside it or naming no
   file, with a `#<heading>` read as above (2026-09-24, within 2.10). Portulan's own card and each

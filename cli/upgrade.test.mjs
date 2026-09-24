@@ -1075,6 +1075,20 @@ describe("the apply loop refuses a plan a step did not describe", () => {
         assert.equal(await run([green(), "--write"], { ...alone.options, steps: [byHand] }), 1, alone.text());
         assert.doesNotMatch(alone.text(), /applied/, "a run that applied nothing does not say it applied");
         assert.match(alone.text(), /9992-by-hand is owed and not placed/);
+        const checked = harness();
+        assert.equal(await run([green(), "--check"], { ...checked.options, steps: [byHand] }), 1, checked.text());
+        assert.match(checked.text(), /owes 1 step\(s\), 1 of them by hand — add what each names by hand, then upgrade again/);
+    });
+
+    test("a step an earlier one has made not owed is asked again, not applied on its answer from before", async () => {
+        const has = (ws) => fs.existsSync(path.join(ws.dir, "shared.md"));
+        const first = { id: "9990-first", kind: "repair", from: null, to: null, title: "t", why: "w",
+            owed: (ws) => ({ owed: !has(ws), because: "shared.md is missing" }),
+            plan: () => ({ ok: true, edits: [{ file: "shared.md", next: "x\n" }] }) };
+        const second = { ...first, id: "9991-second", plan: () => { throw new Error("planned on an answer from before"); } };
+        const h = harness();
+        assert.equal(await run([green(), "--write"], { ...h.options, steps: [first, second] }), 0, h.text());
+        assert.match(h.text(), /applied 1 step\(s\)/);
     });
 
     test("a chain that never settles is refused and rolled back, not run forever", async () => {
@@ -1417,6 +1431,7 @@ describe("the steps that move a consumer to the new form, on a real repository i
         const dry = harness();
         assert.equal(await run([ws], { ...dry.options, today: TODAY }), 0, dry.text());
         assert.match(dry.text(), /0008-card-reading \(form, by hand\)[\s\S]*its head is not one `init` drafted before 2026-09-24, "> Compiled by `portulan compile` from <the card>\. Each section names its file: an"/);
+        assert.match(dry.text(), /2 step\(s\) owed, 1 of them by hand\. Nothing was written — run with --write to apply the rest/);
         const reported = harness();
         assert.equal(await run([ws, "--write"], { ...reported.options, today: TODAY }), 1, reported.text());
         assert.match(reported.text(), /applied 1 step\(s\)[^\n]*doctor is green\n[\s\S]*0008-card-reading is owed and not placed — [^\n]*add a section holding the line `<!-- engine: operating\/context\.md#every-request-pays-for-what-the-session-has-read -->` to the card, then upgrade again/);

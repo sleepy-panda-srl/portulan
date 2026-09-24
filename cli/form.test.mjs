@@ -18,6 +18,7 @@ import path from "node:path";
 import {
     claudeRulesUnignore,
     cardIgnored,
+    carriesReading,
     changesReadme,
     draftCard,
     formLine,
@@ -326,6 +327,17 @@ describe("the drafted card", () => {
         assert.equal(withReading(before), card, "the move writes what `init` drafts now, byte for byte");
         assert.equal(withReading(card), null, "a card carrying the section is not moved again");
         assert.equal(withReading(before.replace("Each section names its file: an", "Our own words: an")), null, "a head its workspace rewrote is its own");
+        const crlf = (text) => text.replaceAll("\n", "\r\n");
+        assert.equal(withReading(crlf(before)), crlf(card), "a card checked out with CRLF is moved in its own line ending");
+    });
+
+    test("a card carries the section by the line itself, fragment included, in either line ending", () => {
+        const card = draftCard(manifest, read, { workspace: ".portulan", inTree: inside });
+        assert.equal(carriesReading(card), true);
+        assert.equal(carriesReading(card.replaceAll("\n", "\r\n")), true);
+        for (const other of ["<!-- engine: operating/context.md -->", "<!-- engine: operating/context.md#code-is-read-by-symbol -->"]) {
+            assert.equal(carriesReading(card.replace(READING_LINE, other)), false, other);
+        }
     });
 
     test("a file outside the tree, which no import reaches, is named with when to read it", () => {

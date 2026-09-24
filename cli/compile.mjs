@@ -2419,7 +2419,13 @@ function engineLeads(unit, spelled, root) {
     const [named, fragment] = hash === -1 ? [spelled, null] : [spelled.slice(0, hash), spelled.slice(hash + 1)];
     const core = path.join(ENGINE_ROOT, "core");
     const file = path.resolve(core, named);
-    if (!isInside(core, file) || !fs.statSync(file, { throwIfNoEntry: false })?.isFile()) {
+    let real = null;
+    try {
+        if (isInside(core, file)) real = fs.realpathSync(file);
+    } catch {
+        real = null;
+    }
+    if (real === null || !isInside(fs.realpathSync(core), real) || !fs.statSync(real).isFile()) {
         throw new CompileError(`${unit.source}: the engine's leads of ${spelled} were asked for, and it names no file in the engine's core/`);
     }
     const shown = `core/${path.relative(core, file).split(path.sep).join("/")}`;
@@ -2427,7 +2433,7 @@ function engineLeads(unit, spelled, root) {
     if (!unit.leadSources.includes(source)) unit.leadSources.push(source);
     unit.written.add("leads");
     const own = fs.realpathSync(ENGINE_ROOT) === fs.realpathSync(root);
-    return leadsOf(file, unit.source, fragment, shown).map((lead) => (own ? lead.replaceAll(PLUGIN_ROOT, "") : lead));
+    return leadsOf(real, unit.source, fragment, shown).map((lead) => (own ? lead.replaceAll(PLUGIN_ROOT, "") : lead));
 }
 
 const UNIT_KEYS = new Set(["tier", "paths", "description"]);
