@@ -216,7 +216,10 @@ function headingAbove(lines, headings, at) {
     while (above >= 0 && blank(lines[above])) above -= 1;
     const h = headings.findLast((entry) => entry.start - 1 <= above);
     if (h === undefined) return null;
-    if (h.start - 1 === above) return /^ {0,3}#{1,6}(?:[ \t]|$)/.test(bare(lines[above])) ? h : null;
+    const atx = /^ {0,3}#{1,6}(?:[ \t]|$)/.test(bare(lines[h.start - 1]));
+    if (h.start - 1 === above) return atx ? h : null;
+    // An ATX heading has no underline: a `---` under one is a rule, and a mark under that is under no heading.
+    if (atx) return null;
     const underline = lines.findIndex((line, i) => i > h.start - 1 && UNDERLINE.test(bare(line)));
     return underline === above && lines.slice(h.start - 1, above).every((line) => !blank(line)) ? h : null;
 }

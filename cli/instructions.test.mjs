@@ -106,6 +106,11 @@ describe("a mark is the team's word, directly under the heading of the section i
         );
     });
 
+    test("a rule under an ATX heading is no underline, so a mark under it is under no heading", () => {
+        assert.deepEqual(marksOf(`## A\n---\n${ON_READ_MARK}\n\nText.\n`).marks.map((m) => m.heading), [null]);
+        assert.equal(marksOf(`A\n---\n${ON_READ_MARK}\n\nText.\n`).marks[0].heading.title, "A", "under a setext heading's underline, it names the section");
+    });
+
     test("a mark may be indented less than a code block is and carry space after it; indented as one, it is code", () => {
         assert.equal(marksOf(`## A\n   ${ON_READ_MARK} \t\n\nText.\n`).marks[0].heading.title, "A");
         assert.deepEqual(marksOf(`## A\n\n    ${ON_READ_MARK}\n\nText.\n`).marks, []);
