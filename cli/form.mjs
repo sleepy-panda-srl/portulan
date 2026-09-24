@@ -215,6 +215,20 @@ export function notYetForm(ws, ctx) {
 // ===========================================================================================
 
 /**
+ * Which of `lines` are fenced code, each fence line included: a fence opens on three or more backticks or
+ * tildes, indented three spaces at most, and closes on the same character.
+ */
+function fenced(lines) {
+    let fence = null;
+    return lines.map((line) => {
+        const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
+        if (!marker) return fence !== null;
+        fence = fence === null ? marker[1][0] : marker[1][0] === fence ? null : fence;
+        return true;
+    });
+}
+
+/**
  * The Session log sections in a Markdown text: each heading whose text is exactly `Session log`, the
  * section running to the next heading of its level or above, and whether it holds entries. A section
  * whose first line of text opens `Retired ` is the pointer a retirement leaves, and an empty one holds
@@ -223,23 +237,15 @@ export function notYetForm(ws, ctx) {
 export function sessionLogSections(text) {
     const lines = text.split("\n");
     const found = [];
-    let fence = null;
+    const code = fenced(lines);
     for (let i = 0; i < lines.length; i += 1) {
-        const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(lines[i]);
-        if (marker) {
-            fence = fence === null ? marker[1][0] : marker[1][0] === fence ? null : fence;
-            continue;
-        }
-        if (fence !== null) continue;
+        if (code[i]) continue;
         const heading = SESSION_LOG.exec(lines[i]);
         if (!heading) continue;
         const level = heading[1].length;
         let end = i + 1;
-        let inner = null;
         for (; end < lines.length; end += 1) {
-            const m = /^\s{0,3}(`{3,}|~{3,})/.exec(lines[end]);
-            if (m) inner = inner === null ? m[1][0] : m[1][0] === inner ? null : inner;
-            if (inner === null && /^(#{1,6})[ \t]/.exec(lines[end]) && /^(#{1,6})/.exec(lines[end])[1].length <= level) break;
+            if (!code[end] && /^(#{1,6})[ \t]/.exec(lines[end]) && /^(#{1,6})/.exec(lines[end])[1].length <= level) break;
         }
         const body = lines.slice(i + 1, end);
         const first = body.find((l) => l.trim() !== "");
@@ -340,28 +346,30 @@ function rerooted(text) {
  * The entries under a changelog's Unreleased heading, each as the fragment that carries it, and the
  * changelog as it reads once they are gone.
  *
- * A top-level bullet with its indented lines is one entry, filed under the `### Section` above it, or
- * under `changed` where there is none. Prose that is not a bullet stays where it is, and a section heading
- * stays while anything is left under it. The fragments are named `<nn>-<slug>.<section>.md`, numbered in
- * the changelog's order, so the cut prints each section's entries in the order they were written, and
- * the move is proved before it is offered: the fragments, read and rendered as the cut renders them,
- * print each entry back as the changelog held it.
+ * A top-level bullet with its indented lines is one entry, filed under the `### Section` above it, or under
+ * `changed` where there is none. Prose that is not a bullet stays where it is, and so does fenced code,
+ * whatever it holds. A section heading stays while anything is left under it. The fragments are named
+ * `<nn>-<slug>.<section>.md`, numbered in the changelog's order, so the cut prints each section's entries in
+ * the order they were written, and the move is proved before it is offered: the fragments, read and rendered
+ * as the cut renders them, print each entry back as the changelog held it.
  *
  * @returns {null | { refused: string } | { fragments: Array<{ name: string, text: string }>, next: string }}
  * null where there is no Unreleased heading
  */
 export function unreleasedFragments(text, taken = new Set()) {
     const lines = text.split("\n");
-    const start = lines.findIndex((l) => UNRELEASED.test(l));
+    const { start, end, code } = unreleasedSpan(lines);
     if (start === -1) return null;
-    let end = start + 1;
-    while (end < lines.length && !/^##[ \t]/.test(lines[end])) end += 1;
 
     const entries = [];
     const kept = [];
     let section = "changed";
     for (let i = start + 1; i < end; i += 1) {
         const line = lines[i];
+        if (code[i]) {
+            kept.push({ line, heading: false });
+            continue;
+        }
         const sub = /^###[ \t]+(.+?)[ \t]*$/.exec(line);
         if (sub) {
             const named = sub[1].toLowerCase();
@@ -428,11 +436,23 @@ export function unreleasedFragments(text, taken = new Set()) {
 /** How many entries a changelog holds under Unreleased, or null where it has no such heading. */
 export function unreleasedCount(text) {
     const lines = text.split("\n");
-    const start = lines.findIndex((l) => UNRELEASED.test(l));
+    const { start, end, code } = unreleasedSpan(lines);
     if (start === -1) return null;
     let n = 0;
-    for (let i = start + 1; i < lines.length && !/^##[ \t]/.test(lines[i]); i += 1) if (BULLET.test(lines[i])) n += 1;
+    for (let i = start + 1; i < end; i += 1) if (!code[i] && BULLET.test(lines[i])) n += 1;
     return n;
+}
+
+/**
+ * Where a changelog's Unreleased section runs, heading to the next `## ` heading, neither read inside
+ * fenced code; `start` is -1 where there is none.
+ */
+function unreleasedSpan(lines) {
+    const code = fenced(lines);
+    const start = lines.findIndex((l, i) => !code[i] && UNRELEASED.test(l));
+    let end = start + 1;
+    while (start !== -1 && end < lines.length && (code[end] || !/^##[ \t]/.test(lines[end]))) end += 1;
+    return { start, end, code };
 }
 
 // ===========================================================================================
@@ -533,7 +553,7 @@ export function draftCard(manifest, read, { workspace, inTree, repoCards = [] })
     section(
         "Records",
         "A change's why is its commit message, and its changelog entry a one-bullet file `changes/<slug>.<section>.md`.",
-        `A session ending with work not committed and pushed leaves a dated handoff in ${shown(slots.handoffs ?? "handoffs/")}.`,
+        ...(slots.handoffs ? [`A session ending with work not committed and pushed leaves a dated handoff in ${shown(slots.handoffs)}.`] : []),
     );
     section(
         "What is enforced here, and what is not",

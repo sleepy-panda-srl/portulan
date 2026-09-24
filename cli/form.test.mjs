@@ -147,6 +147,14 @@ describe("the changelog's Unreleased entries, as fragments", () => {
         assert.equal(moved.fragments[1].text, "- Starred.\n", "a fragment writes its bullet `- `, whichever marker the changelog used");
     });
 
+    test("fenced code under Unreleased is prose: a bullet in it is no entry, and a heading in it ends nothing", () => {
+        const text = changelog("### Added", "", "- A thing.", "", "```md", "- not an entry", "## not a release", "```");
+        assert.equal(unreleasedCount(text), 1);
+        const moved = unreleasedFragments(text);
+        assert.deepEqual(moved.fragments, [{ name: "1-a-thing.added.md", text: "- A thing.\n" }]);
+        assert.match(moved.next, /### Added\n\n+```md\n- not an entry\n## not a release\n```\n\n## \[0\.1\.0\] - 2026-09-01\n/, "the fence stays where it was, under its heading");
+    });
+
     test("the changelog keeps the pointer, the prose that was no entry, and every released section as it was", () => {
         const text = changelog("Prose that is no entry.", "", "### Added", "", "- One.");
         const { next } = unreleasedFragments(text);
@@ -284,6 +292,9 @@ describe("the drafted card", () => {
         assert.match(card, /## This repository: `\.portulan\/repos\/app\.md`\n\n@\.\.\/repos\/app\.md\n/);
         assert.match(card, /## Memory: [^\n]*\n\nEach record carries its provenance[^\n]*\n\n@\.\.\/memory-index\.md\n$/);
         assert.doesNotMatch(card, /Packs are named/, "no packs, no packs line");
+        assert.match(card, /leaves a dated handoff in `\.portulan\/handoffs\/`\./);
+        const { handoffs, ...rest } = manifest.slots;
+        assert.doesNotMatch(draftCard({ ...manifest, slots: rest }, read, { workspace: ".portulan", inTree: inside, repoCards: ["app"] }), /handoff/, "no handoff series declared, none named");
     });
 
     test("a file outside the tree, which no import reaches, is named with when to read it", () => {
