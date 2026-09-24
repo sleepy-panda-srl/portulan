@@ -370,24 +370,28 @@ describe("a red stops it, and undoes its own commit", () => {
         assert.match(r.out, /\ndocs — could not run \(exit 2\):\n {4}node not found/);
     });
 
-    test("a runner that fails could not run, whatever it throws, and the commit is undone rather than left standing", async () => {
-        const thrown = [
-            [new Error("ENOSPC: no space left on device, write"), "ENOSPC: no space left on device, write"],
-            [null, "null"],
-            ["a string", "a string"],
-            [Object.create(null), "the runner threw a value with no text"],
+    test("whatever a runner throws or returns, the commit is undone rather than left standing", async () => {
+        const threw = (value) => () => {
+            throw value;
+        };
+        const runners = [
+            [threw(new Error("ENOSPC: no space left on device, write")), 2, "could not run", "ENOSPC: no space left on device, write"],
+            [threw(null), 2, "could not run", "null"],
+            [threw("a string"), 2, "could not run", "a string"],
+            [threw(Object.create(null)), 2, "could not run", "the runner threw a value with no text"],
+            [() => undefined, 2, "could not run", "the runner returned no result"],
+            [() => null, 2, "could not run", "the runner returned no result"],
+            [() => ({}), 2, "could not run", "the runner returned no result"],
+            [() => ({ outcome: "red" }), 1, "RED", ""],
         ];
-        for (const [value, text] of thrown) {
+        for (const [runOne, code, said, text] of runners) {
             const { work, origin } = clone();
             change(work);
             const before = git(work, ["rev-parse", "HEAD"]);
-            const runOne = () => {
-                throw value;
-            };
             const r = await finish(parseArgs(["-m", "One"], work), { cwd: work, env: ENV, runOne });
-            assert.equal(r.code, 2);
+            assert.equal(r.code, code);
             assert.equal(r.lines[0], "finish: stopped — 1 of 1 recipe(s) not green: docs. The commit is undone and its changes are staged. Nothing was pushed.");
-            assert.ok(r.lines.join("\n").includes(`\ndocs — could not run (exit none):\n    ${text}`), r.lines.join("\n"));
+            assert.ok(r.lines.join("\n").includes(`\ndocs — ${said} (exit none):\n    ${text}`), r.lines.join("\n"));
             assert.equal(git(work, ["rev-parse", "HEAD"]), before);
             assert.equal(onOrigin(origin, "feat"), "");
         }

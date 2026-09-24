@@ -168,6 +168,15 @@ const textOf = (thrown) => {
     }
 };
 
+/** What a runner returned, as a result: anything but a green, red or could-not-run one could not run. */
+const resultOf = (id, r) => {
+    if (r?.outcome === "green") return { id, outcome: "green" };
+    if (r?.outcome === "red" || r?.outcome === "could not run") {
+        return { id, outcome: r.outcome, code: Number.isInteger(r.code) ? r.code : null, output: typeof r.output === "string" ? r.output : "" };
+    }
+    return { id, outcome: "could not run", code: null, output: "the runner returned no result" };
+};
+
 /**
  * The branch this change merges into: `--base`, else `PORTULAN_BASE_REF` as the recipes read it, else the
  * remote's own recorded default head — never a branch picked by name, `./stop-gate.mjs`'s rule — asked of
@@ -426,12 +435,13 @@ export async function finish(options, { cwd = process.cwd(), env = process.env, 
     // What the recipes judge, and so the one commit this call may push.
     const judged = git(["rev-parse", "--verify", "-q", "HEAD^{commit}"]).out;
     const recipeEnv = { ...env, PORTULAN_BASE_REF: base.ref };
-    // A runner that throws judged nothing, whatever it throws: the recipe could not run, and the commit is
-    // undone as for any recipe that could not run, never left standing by an error nothing caught.
+    // A runner that throws judged nothing, whatever it throws, and so does one that returns no result: the
+    // recipe could not run, and the commit is undone as for any recipe that could not run, never left
+    // standing by an error nothing caught.
     const results = [];
     for (const recipe of set.recipes) {
         try {
-            results.push(await runOne(recipe, { root, env: recipeEnv }));
+            results.push(resultOf(recipe.id, await runOne(recipe, { root, env: recipeEnv })));
         } catch (error) {
             results.push({ id: recipe.id, outcome: "could not run", code: null, output: textOf(error) });
         }
