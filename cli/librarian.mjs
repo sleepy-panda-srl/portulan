@@ -4,8 +4,9 @@
 //   node cli/librarian.mjs [--as-of YYYY-MM-DD] [--since YYYY-MM-DD] [--write] [--report <path>] [--reviews <path>] <workspace-dir> [...]
 //
 // `--write` regenerates an index that has drifted, which is the pass's only write to the tree. `--report`
-// writes what the pass found, as Markdown, to a path its scheduler names outside the tree, and the
-// scheduler files it: with the pull request when the tree changed. The pass writes no handoff, since
+// writes what the pass found, as Markdown, to a path its scheduler names outside the tree (one inside a
+// named workspace, or inside the tree one declares, is refused), and the scheduler files it: with the
+// pull request when the tree changed. The pass writes no handoff, since
 // a handoff carries a session's open work and a scheduled pass leaves none (the coordinator session's
 // delegated call of 2026-09-24), and no Session log entry, since the log retired on 2026-09-23.
 //
@@ -380,7 +381,9 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
     }
 
     const name = workspace.name ?? dir;
-    if (!workspace.librarian) return { dir, name, declared: false };
+    // The tree the workspace governs, which the report must stay out of (`run`), declared or not.
+    const tree = workspace.tree ? path.resolve(dir, workspace.tree) : null;
+    if (!workspace.librarian) return { dir, name, tree, declared: false };
 
     const staleness = workspace.librarian.staleness ?? {};
     const thresholds = {
@@ -588,7 +591,7 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
 
     const mining = {
         incidents: mineIncidents(series, curated, { since }),
-        reviews: mineReviews(reviews, { treeRoot: workspace.tree ? path.resolve(dir, workspace.tree) : null }),
+        reviews: mineReviews(reviews, { treeRoot: tree }),
     };
 
     const consolidation = {
@@ -620,6 +623,7 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
     return {
         dir,
         name,
+        tree,
         declared: true,
         thresholds,
         index,
@@ -1189,6 +1193,26 @@ export function parseArgs(argv) {
     return opts;
 }
 
+/**
+ * A path with its links resolved as far as it exists: the nearest existing ancestor through
+ * `realpathSync`, the rest appended. A report path need not exist yet, and a link from outside into a
+ * tree must not carry a write past the containment check `run` makes.
+ */
+function realish(p) {
+    const rest = [];
+    let at = p;
+    for (;;) {
+        try {
+            return path.join(fs.realpathSync(at), ...rest);
+        } catch {
+            const up = path.dirname(at);
+            if (up === at) return p;
+            rest.unshift(path.basename(at));
+            at = up;
+        }
+    }
+}
+
 export function run(argv, say = console.log) {
     let asOfArg, since, reportPath, reviewsPath, write, dirs;
     try {
@@ -1255,15 +1279,26 @@ export function run(argv, say = console.log) {
     }
 
     // The report is composed before any index is regenerated, so it says what the pass found rather
-    // than what it repaired (`indexState`). It goes where the scheduler names, never into a series.
+    // than what it repaired (`indexState`). It goes where the scheduler names, never into a series,
+    // and never into a tree it reported on: a report written there is a file the next commit carries,
+    // which the workflow's `git add -A` would, and in a store it is read as a record. So a path inside
+    // any named workspace, or inside the tree one declares, is refused, links resolved first.
     if (reportPath !== undefined) {
-        try {
-            fs.mkdirSync(path.dirname(path.resolve(reportPath)), { recursive: true });
-            fs.writeFileSync(reportPath, renderReport(results, { asOf }));
-            say(`  ok wrote the report to ${reportPath}`);
-        } catch (cause) {
-            say(`  ✗ cannot write the report — ${cause.code ?? cause.message}`);
+        const target = realish(path.resolve(reportPath));
+        const roots = [...dirs.map((dir) => path.resolve(dir)), ...results.map((r) => r.tree).filter(Boolean)];
+        const inside = roots.find((root) => isInside(realish(root), target));
+        if (inside !== undefined) {
+            say(`  ✗ refusing to write the report inside ${inside}: a report goes outside the tree, where no commit carries it`);
             worst = 2;
+        } else {
+            try {
+                fs.mkdirSync(path.dirname(path.resolve(reportPath)), { recursive: true });
+                fs.writeFileSync(reportPath, renderReport(results, { asOf }));
+                say(`  ok wrote the report to ${reportPath}`);
+            } catch (cause) {
+                say(`  ✗ cannot write the report — ${cause.code ?? cause.message}`);
+                worst = 2;
+            }
         }
     }
 

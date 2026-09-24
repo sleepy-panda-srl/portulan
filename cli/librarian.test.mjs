@@ -1328,6 +1328,23 @@ describe("a pass leaves the tree it just wrote to green", () => {
         assert.match(out.lines.join("\n"), /cannot write the report/);
         assert.equal(fs.existsSync(path.join(dir, ".portulan/memory-index.md")), false);
     });
+
+    test("a report named inside the tree is refused, and nothing is written or regenerated", () => {
+        // A report in the tree is a file the next commit carries, as the workflow stages with `git add
+        // -A`, and in the store it would be read as a record. Refused inside the workspace, inside the
+        // tree it declares, and through a link from outside into either.
+        const m = MANIFEST({ tree: "../", librarian: { staleness: STALENESS }, memory: { index: { path: "memory-index.md" } } });
+        const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: m });
+        const link = path.join(scratch(), "into-tree");
+        fs.symlinkSync(dir, link);
+        for (const report of [path.join(dir, ".portulan/memory/zz.md"), path.join(dir, "report.md"), path.join(link, "report.md")]) {
+            const out = say();
+            assert.equal(run(["--as-of", "2026-06-15", "--write", "--report", report, path.join(dir, ".portulan")], out), 2, report);
+            assert.match(out.lines.join("\n"), /refusing to write the report inside/);
+            assert.equal(fs.existsSync(report), false, report);
+        }
+        assert.equal(fs.existsSync(path.join(dir, ".portulan/memory-index.md")), false, "and no index was regenerated");
+    });
 });
 
 describe("the report never claims an index is current when none is declared", () => {

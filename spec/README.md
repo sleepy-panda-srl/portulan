@@ -221,7 +221,7 @@ Workspace Definition version is **2.11**. It did **not** move when the Pack Defi
 strings and was deliberately left that way, since tightening its items to the canonical `category/name`
 form would be a constraint an existing manifest could newly fail, which is a MAJOR.
 
-**2.11 is a MINOR on 2.8's terms: one optional key and nothing else.** `memory.store.budget.cutoff`
+**2.11 is a MINOR on 2.8's terms: optional keys only.** `memory.store.budget.cutoff`
 makes the per-record cap forward-only, in proposal `0037`'s shape for a handoff, and [`slots.md`](slots.md)
 argues it. Nothing is removed, renamed, tightened or defaulted: without the key, `record_kilobytes` binds
 every record as it did, so every 2.10 manifest is a valid 2.11 manifest unchanged. This repository's own
