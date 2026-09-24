@@ -2074,6 +2074,22 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
         assert.doesNotMatch(said, /leave it undeclared deliberately/, "wrong advice for a declared-but-bad value");
     });
 
+    // Before this case a refused value fell back to a `gates.json` at the conventional path whenever one was
+    // there, and compiled it: the settings enforced a policy the manifest does not name, and `--check` was green.
+    test("a REFUSED value stops the run even where a `gates.json` sits at the conventional path", (t) => {
+        for (const gates of [42, "", "../outside.json"]) {
+            const dir = bare({ gates });
+            fs.writeFileSync(path.join(dir, ".portulan", "gates.json"), JSON.stringify(policy()));
+            for (const argv of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+                const { code, said } = stderrOf(t, argv);
+                assert.equal(code, 2, `${JSON.stringify(gates)}, ${argv.join(" ")}: ${said}`);
+                assert.match(said, /will not read.*is not the policy it names.*Nothing was compiled and nothing was written/s);
+                assert.doesNotMatch(said, /there is no `gates.json`/, "there is one; it is not the one named");
+            }
+            assert.ok(!fs.existsSync(path.join(dir, ".claude")), `${JSON.stringify(gates)}: nothing written`);
+        }
+    });
+
     test("an unauthored workspace is not reported as a manifest with no `gates` key", (t) => {
         const dir = scratch();
         fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
@@ -3614,20 +3630,25 @@ describe("guidance: written, then byte-compared", () => {
     });
 
     // Before this case, guidance compiled past a `gates` key the compiler refuses, and `--check` went green:
-    // the exit 2 such a key had always meant was gone wherever the workspace declared guidance.
+    // the exit 2 such a key had always meant was gone wherever the workspace declared guidance. A `gates.json`
+    // at the conventional path is not the policy such a key names either, so it is no reason to go on.
     test("a `gates` key the compiler refuses stops the run beside guidance too: exit 2, nothing written", (t) => {
         for (const gates of [42, "", "../outside.json"]) {
-            const dir = guidanceCopy();
-            const manifestPath = path.join(dir, "workspace.json");
-            const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-            m.gates = gates;
-            fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
-            for (const args of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
-                const { code, out } = said(t, args);
-                assert.equal(code, 2, `${JSON.stringify(gates)}, ${args.join(" ")}: ${out}`);
-                assert.match(out, /names a gate policy this compiler will not read.*Nothing was compiled and nothing was written/s);
+            for (const conventional of [false, true]) {
+                const dir = guidanceCopy();
+                const manifestPath = path.join(dir, "workspace.json");
+                const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+                m.gates = gates;
+                fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+                if (conventional) fs.writeFileSync(path.join(dir, "gates.json"), JSON.stringify(policy()));
+                const label = `${JSON.stringify(gates)}${conventional ? " beside gates.json" : ""}`;
+                for (const args of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+                    const { code, out } = said(t, args);
+                    assert.equal(code, 2, `${label}, ${args.join(" ")}: ${out}`);
+                    assert.match(out, /names a gate policy this compiler will not read.*Nothing was compiled and nothing was written/s);
+                }
+                assert.ok(!fs.existsSync(path.join(dir, ".claude")), `${label}: nothing written`);
             }
-            assert.ok(!fs.existsSync(path.join(dir, ".claude")), `${JSON.stringify(gates)}: nothing written`);
         }
     });
 

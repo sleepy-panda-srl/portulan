@@ -1,11 +1,12 @@
 # Handoff — compile follow-ups to the compile targets and the boot card
 
-**State.** Five commits, each carrying its why: a `gates` key `compile` refuses stops it beside guidance
+**State.** Six commits, each carrying its why: a `gates` key `compile` refuses stops it beside guidance
 too; guidance a workspace with no gate policy stops declaring is tidied; the doctrine rule names the steps
-the engine rail counts; `leadsOf` refuses a line with no indent straight under an item; and a code span or
-a comment in a list item's text hides no import, as the host reads it. Pre-commit checkpoint: skipped by
-his instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator session
-reviewed the diff before the commit; his review is on the PR.
+the engine rail counts; `leadsOf` refuses a line with no indent straight under an item; a code span or a
+comment in a list item's text hides no import, as the host reads it; and the refused key stops `compile`
+and `goldens` beside a `gates.json` found by convention as well. Pre-commit checkpoint: skipped by his
+instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator session reviewed
+the first five before the push and reviews the sixth, a Copilot fix, after it; his review is on the PR.
 
 **Open questions.**
 - A `workspace.json` that does not parse, compiled from the repository root beside a `gates.json` found

@@ -3148,9 +3148,10 @@ export function policyDeclaration(workspaceRoot, workspaceDir = ".portulan") {
         if (resolved !== base && isInside(base, resolved)) return { file: resolved, declared: true, reason: "declared" };
     }
     // The manifest named something, and nothing it named is usable — a wrong type, an empty string, a
-    // shape the schema refuses, or a path that escapes the workspace. The compiler is on the
-    // conventional path, so the fallback owns the diagnostic; but this is NOT the state of a manifest
-    // that named nothing, and a message conflating the two is the defect this change is about.
+    // shape the schema refuses, or a path that escapes the workspace. The path returned is the
+    // conventional one, which the hook's reader falls back to; `compile` and `goldens` stop on this
+    // reason whatever sits there (2026-09-24). But this is NOT the state of a manifest that named
+    // nothing, and a message conflating the two is the defect this change is about.
     return fallback("refused");
 }
 
@@ -3244,11 +3245,15 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
     // this whole change defends as legitimate; `no-manifest` is a workspace that has not been
     // authored yet; `refused` is a manifest that DID name a policy and named one this compiler will
     // not read, which is neither of the other two and must not be told it has no `gates` key.
+    // A refused key stops the run whatever sits at the conventional path, so the sentence says which it is.
+    const conventional = reason === "refused" && fs.existsSync(policyFile);
     const opening =
         reason === "refused"
             ? `\`workspace.json\` names a gate policy this compiler will not read — its top-level ` +
-              `\`gates\` key is not a relative path to a file inside the workspace — and there is no ` +
-              `\`gates.json\` at ${policyFile} either.`
+              `\`gates\` key is not a relative path to a file inside the workspace — and ` +
+              (conventional
+                  ? `the \`gates.json\` at ${policyFile} is not the policy it names, so it is not compiled in its place.`
+                  : `there is no \`gates.json\` at ${policyFile} either.`)
             : reason === "no-manifest"
               ? `this workspace declares no gate policy — there is no readable \`workspace.json\` at ` +
                 `${manifest}, and there is no \`gates.json\` at ${policyFile}.`
@@ -3282,7 +3287,7 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
             .join(", ");
         lines.push(
             `${rules} pack-contributed gate rule(s) from ${packs} are therefore NOT compiled: ` +
-                `a fragment tightens a policy, and there is none here to tighten.`,
+                `a fragment tightens a policy, and ${conventional ? "this run reads none" : "there is none here"} to tighten.`,
         );
     }
     lines.push(
@@ -4079,6 +4084,16 @@ export function run(argv, options = {}) {
         // compile honestly whichever half it reaches first.
         const sessions = sessionsDeclaration(workspaceRoot, workspaceDir);
         const { file: policyFile, declared: policyDeclared, reason: policyReason } = policyDeclaration(workspaceRoot, workspaceDir);
+        const packOptions = { named: namedRoots, discovery: () => discoverPackRoots(), forced };
+        // A `gates` key this compiler refuses stops the run, beside guidance or a `gates.json` at the
+        // conventional path alike: the workspace named a policy, and named one nothing here will read.
+        // Guidance compiled past it is a green `--check` that checks no enforcement at all, and the
+        // conventional file compiled in its place is settings enforcing a policy the manifest does not name,
+        // which this run did until 2026-09-24. The hook's reader still falls back (`policyPath`), because it
+        // runs on every tool call and must not stop a session over a manifest; this run can stop.
+        if (policyReason === "refused") {
+            throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
+        }
         // **Declared-and-missing and never-declared are different answers.** Only the first is a
         // failure to read something this workspace claimed to have; the second is a shape `policyPath`
         // documents as legitimate, and reporting it as `ENOENT` sent readers hunting for a deleted
@@ -4087,16 +4102,12 @@ export function run(argv, options = {}) {
         // and `policyReason` is what lets the message name the one it is in rather than assert the
         // commonest: this comment read "two different answers" while the code below had four.
         if (!policyDeclared && !fs.existsSync(policyFile)) {
-            const packOptions = { named: namedRoots, discovery: () => discoverPackRoots(), forced };
             // What an earlier run compiled from guidance the manifest no longer declares is still this
             // compiler's to remove, as it is beside a policy: stopping before the tidy left an `always` rule
             // loading into every context until someone deleted it by hand. Only where the manifest was read
             // and names no policy, because one that does not parse declares nothing this compiler can know.
             const leftover = guidance === null && policyReason === "no-key" && guidancePlan !== null && guidancePlan.stray.length > 0;
-            // A `gates` key this compiler refuses is not the shape below: the workspace named a policy, and
-            // named one nothing here will read. The run stops, as it did before guidance existed, rather than
-            // compile the guidance past it into a green `--check` that checks no enforcement at all.
-            if ((guidance === null && !leftover) || policyReason === "refused") {
+            if (guidance === null && !leftover) {
                 throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
             }
             // A workspace with no gate policy is a legitimate shape (`policyPath`), and its guidance is not

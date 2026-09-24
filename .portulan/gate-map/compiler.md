@@ -64,10 +64,11 @@ upgrade.
 Every rule ends **compiled**, or **refused** with a stated reason — a rule a backend legitimately declines,
 left out of an artifact that is still written, exit 0. The third outcome is not per rule: a policy that
 cannot be enforced as written is **could-not-run**, exit 2, and no artifact is written. Besides a malformed
-policy, the refusals that stop a whole compile include a pack that resolved from a discovered root while the
-tree also carries it, a pack composition that would loosen a gate, and a `gated` or `prohibited` rule whose
-path target can never match (hole 8). Filing the last as `refused` would let `doctor` count a gate the policy
-declares and nothing enforces as ordinary non-coverage.
+policy, the refusals that stop a whole compile include a `gates` key it will not read (whatever sits at the
+conventional path), a pack that resolved from a discovered root while the tree also carries it, a pack
+composition that would loosen a gate, and a `gated` or `prohibited` rule whose path target can never match
+(hole 8). Filing the last as `refused` would let `doctor` count a gate the policy declares and nothing
+enforces as ordinary non-coverage.
 
 **Two backends read this policy, and their partitions are close to inverse.** The Claude Code backend
 refuses three kinds of rule, all printed on every run:
