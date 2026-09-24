@@ -43,6 +43,8 @@ import {
     matchesPath,
     policyPath,
     policyDeclaration,
+    sessionsDeclaration,
+    CACHE_LIFETIMES,
     resolveWorkspace,
     FILE_WRITERS,
     IN_PLACE_EDITORS,
@@ -629,6 +631,109 @@ describe("the Claude Code backend", () => {
         const settings = claudeCode(parse(policy()), { source: ".portulan/policy/rules.json" }).artifact.value;
         assert.equal(settings.$portulan.source, ".portulan/policy/rules.json");
         assert.match(settings.$portulan.warning, /policy\/rules\.json/, "the warning must point at the same file");
+    });
+});
+
+// ===========================================================================================
+// The session switches — Workspace Definition 2.11's `sessions`, compiled only where declared
+// ===========================================================================================
+//
+// `../core/operating/sessions.md`. Two switches are project settings on Claude Code and ride the settings
+// this backend already writes; the third, the dynamic-sections exclusion, is no setting, so `headless` is
+// never compiled. What these cases cannot establish is the host honouring the emitted keys, which is the
+// A/B run's to show (`../evals/ab/warm.md`), not a test's.
+
+/** A scratch workspace whose manifest declares `sessions`, on the policy `workspace()` writes. */
+function workspaceWithSessions(sessions, p = policy()) {
+    const dir = workspace(p);
+    const file = path.join(dir, ".portulan", "workspace.json");
+    const m = JSON.parse(fs.readFileSync(file, "utf8"));
+    m.portulan.spec = "2.11";
+    m.sessions = sessions;
+    fs.writeFileSync(file, JSON.stringify(m, null, 2));
+    return dir;
+}
+
+describe("the session switches", () => {
+    test("undeclared, the settings carry no switch and read exactly as they did", () => {
+        const plain = claudeCode(parse(policy()));
+        const none = claudeCode(parse(policy()), { sessions: null });
+        assert.equal(none.artifact.text, plain.artifact.text);
+        assert.equal(plain.artifact.value.includeGitInstructions, undefined);
+        assert.equal(plain.artifact.value.promptCacheTtl, undefined);
+        assert.equal(plain.artifact.value.$portulan.sessions, undefined);
+    });
+
+    test("declared, each switch becomes its Claude Code setting, and the header names where it came from", () => {
+        const sessions = { manifest: ".portulan/workspace.json", git_instructions: false, cache_lifetime: "5m" };
+        const out = claudeCode(parse(policy()), { sessions });
+        assert.equal(out.artifact.value.includeGitInstructions, false);
+        assert.equal(out.artifact.value.promptCacheTtl, "5m");
+        assert.equal(out.artifact.value.$portulan.sessions, ".portulan/workspace.json");
+        assert.match(out.artifact.value.$portulan.warning, /`sessions` in \.portulan\/workspace\.json/);
+        // Said on every run, with the way back for one session.
+        assert.ok(out.notes.some((n) => /CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=0/.test(n)), out.notes.join("\n"));
+        assert.ok(out.notes.some((n) => /compiled as 5m/.test(n) && /CLAUDE_CODE_PROMPT_CACHE_TTL/.test(n)), out.notes.join("\n"));
+    });
+
+    test("declared on, the git instructions are said too, with the way to go without them for one session", () => {
+        const out = claudeCode(parse(policy()), { sessions: { manifest: ".portulan/workspace.json", git_instructions: true } });
+        assert.equal(out.artifact.value.includeGitInstructions, true);
+        assert.ok(out.notes.some((n) => /compiled on/.test(n) && /CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1/.test(n)), out.notes.join("\n"));
+        assert.ok(!out.notes.some((n) => /compiled off/.test(n)), out.notes.join("\n"));
+    });
+
+    test("`headless` alone compiles nothing into the settings, and says it is not compiled", () => {
+        const sessions = { manifest: ".portulan/workspace.json", headless: { cache_lifetime: "5m", exclude_dynamic_sections: true } };
+        const plain = claudeCode(parse(policy()));
+        const out = claudeCode(parse(policy()), { sessions });
+        assert.equal(out.artifact.text, plain.artifact.text);
+        assert.ok(out.notes.some((n) => /`sessions\.headless` is not compiled/.test(n)), out.notes.join("\n"));
+    });
+
+    test("the lifetimes are the two the host takes", () => {
+        assert.deepEqual(CACHE_LIFETIMES, ["5m", "1h"]);
+    });
+
+    test("the declaration is read from the manifest, and a manifest without it reads as none", () => {
+        assert.equal(sessionsDeclaration(workspace()), null);
+        const dir = workspaceWithSessions({ cache_lifetime: "1h", headless: { git_instructions: false } });
+        assert.deepEqual(sessionsDeclaration(dir), {
+            manifest: ".portulan/workspace.json",
+            cache_lifetime: "1h",
+            headless: { git_instructions: false },
+        });
+    });
+
+    for (const [what, sessions] of [
+        ["an unknown switch", { model: "any" }],
+        ["a switch spelled as a string", { git_instructions: "false" }],
+        ["a lifetime the host does not take", { cache_lifetime: "30m" }],
+        ["an unknown headless switch", { headless: { effort: "low" } }],
+        ["the exclusion outside `headless`, where no setting carries it", { exclude_dynamic_sections: true }],
+        ["a list in place of the object", ["git_instructions"]],
+    ]) {
+        test(`${what} stops compile with exit 2 and writes nothing`, () => {
+            const dir = workspaceWithSessions(sessions);
+            assert.throws(() => sessionsDeclaration(dir), CompileError);
+            assert.equal(run(["--workspace", dir], { quiet: true }), 2);
+            assert.equal(fs.existsSync(path.join(dir, ".claude", "settings.json")), false);
+        });
+    }
+
+    test("compiled end to end, the settings carry the switches and --check holds them", () => {
+        const dir = workspaceWithSessions({ git_instructions: false, cache_lifetime: "1h" });
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+        const settings = JSON.parse(fs.readFileSync(path.join(dir, ".claude", "settings.json"), "utf8"));
+        assert.equal(settings.includeGitInstructions, false);
+        assert.equal(settings.promptCacheTtl, "1h");
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 0);
+        // Dropping the declaration is drift until recompiled, like any other source change.
+        const file = path.join(dir, ".portulan", "workspace.json");
+        const m = JSON.parse(fs.readFileSync(file, "utf8"));
+        delete m.sessions;
+        fs.writeFileSync(file, JSON.stringify(m, null, 2));
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1);
     });
 });
 

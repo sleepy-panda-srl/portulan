@@ -62,6 +62,7 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `memory` | structured | no | criterion — milestone 5, *generated size-budgeted index whose budget is a rail*; [`memory.md`](../core/operating/memory.md) — the Index and Consolidate states of the lifecycle |
 | `handoffs` | structured | no | criterion — milestone 5 as amended, *a generated index over the handoff series*; [`loop.md`](../core/operating/loop.md) — the librarian that mines the series |
 | `context` | structured | no | criterion — milestone 12, *what a host loads into every context is measured, budgeted and demoted*; [`context.md`](../core/operating/context.md) — the always tier, budgeted in tokens |
+| `sessions` | structured | no | criterion — milestone 13, *the prefix stays stable* and *earned by an A/B run*; [`sessions.md`](../core/operating/sessions.md) — which sessions start warm, and the switches that change the prefix |
 | `provenance` | record field | **on every rule** | criterion — *provenance slot*; [proposal 0002](../.portulan/proposals/0002-sealed-provenance.md), adopted |
 
 ## `kind` — which of the four workspace kinds this is, and which of them govern
@@ -746,6 +747,42 @@ is why no workspace here declared the key before something checked it.)_ No work
 declares it now either: Portulan's own contribution is railed by this repository's recipes, not by a
 budget in its manifest. And, as with memory, no checker establishes that a budget was not raised in the
 change that breached it.
+
+## `sessions` — the host switches that change what a fresh session writes
+
+Added at **2.11**, from `0038`'s rules 3 and 4 and row 12's cache-lifetime compile target.
+[`sessions.md`](../core/operating/sessions.md) is the doctrine; this object is its machine half.
+
+| Field | What it is |
+|---|---|
+| `git_instructions` | `false` drops the host's git instructions from every session in the repository: on Claude Code, the startup git snapshot and the commit and pull-request instructions, compiled as `includeGitInstructions`. |
+| `cache_lifetime` | `"5m"` or `"1h"`: the main conversation's cache lifetime, compiled as Claude Code's `promptCacheTtl`. |
+| `headless.git_instructions` | The same switch, for the sessions Portulan's own runners start. |
+| `headless.cache_lifetime` | The same lifetime, for those sessions. |
+| `headless.exclude_dynamic_sections` | `true` starts those sessions with the per-machine sections moved from the system prompt into the first message, so runs in different directories or on different machines share the system prompt. |
+
+```json
+"sessions": {
+  "headless": { "cache_lifetime": "5m", "exclude_dynamic_sections": true }
+}
+```
+
+**Nothing is defaulted.** An undeclared switch is the host's own default and `compile` emits nothing for
+it, so a manifest without the key compiles byte for byte as before. A switch is declared once an A/B run
+has shown that it cuts spend with no loss, and [`sessions.md`](../core/operating/sessions.md) says which
+sessions keep what a switch removes.
+
+**Two scopes, because the host has two.** `git_instructions` and `cache_lifetime` are project settings on
+Claude Code, so `compile` writes them into the settings it already generates from `gates`, and they reach
+every session there, interactive or not. The exclusion is no setting at all: Claude Code 2.1.281 takes it
+only as a command-line flag or an SDK option, so only whatever starts a session can ask for it. `headless`
+is therefore read by Portulan's own runners that start sessions, today [`../cli/warm.mjs`](../cli/warm.mjs),
+which the package does not ship, and never compiled. A workspace with no gate policy has no settings
+for the first two to ride, and `compile` says that it compiled neither.
+
+**Checked by the schema, and gated by `doctor`.** Every field is a boolean or one of two strings, which the
+subset types in full, so nothing joins `doctor`'s hand-check. `doctor` refuses the key in a manifest
+declaring a version before 2.11, gated from birth as `context` was.
 
 ## `slots.context` — the guidance a host loads, each unit in its tier
 

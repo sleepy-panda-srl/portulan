@@ -73,6 +73,9 @@ export const EXCLUDED = {
         "the rig has one subject and it is not the reader's repository (#382)",
     "ab-run.mjs": "the A/B runner; its `SNAPSHOT` is one baseline, of one arm, on one date (#382)",
     "ab-grade.mjs": "the A/B graders, and a register of this repository's own stimuli (#382)",
+    "warm.mjs":
+        "the warm-start A/B runner: it starts real sessions on this repository's own tasks, and whether an " +
+        "adopter's A/B ships with the adopter path is that change's to rule, not this one's",
     "payload.mjs":
         "this rail. Its subject is this repository's own publish surface, which is the argument that " +
         "excluded the A/B rig — self-exclusion on `./eval-bundle.mjs`'s precedent, decided when it was " +
