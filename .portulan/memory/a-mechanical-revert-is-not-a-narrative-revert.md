@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-07-27
 **scope:** workspace — anywhere an automated rewrite touches a value that prose nearby describes
 **provenance:** `form=link` `href=../handoffs/2026-07-27-dependabot-security-and-the-watchers.md`
 — 2026-07-27, where a deliberate experiment was reverted by the mechanism it was testing, and `main`

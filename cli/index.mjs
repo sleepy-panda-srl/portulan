@@ -100,7 +100,7 @@ export class IndexError extends Error {
 // KNOWN_GATE_POLICY_SPECS — which tracks the GATE-POLICY train, not this one — and the same refusal
 // for anything outside the set: a tool that reads a manifest it
 // does not understand reports about a workspace it may have misread.
-const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9", "2.10"]);
+const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9", "2.10", "2.11"]);
 
 // The store's own signpost, not a record. `doctor` excludes exactly this name from its walk, so the
 // two tools agree on what the store contains; disagreeing would put a record in the index that the
@@ -192,12 +192,31 @@ export function headingOf(source) {
  */
 export function dateOf(filename) {
     const m = filename.match(/^(\d{4})-(\d{2})-(\d{2})-/);
-    if (!m) return null;
-    const [, y, mo, d] = m;
+    return m ? realDay(m[1], m[2], m[3]) : null;
+}
+
+/** `YYYY-MM-DD` when the three fields name a real day, else `null` — `dateOf`'s round-trip, shared. */
+function realDay(y, mo, d) {
     const at = new Date(0);
     at.setUTCFullYear(Number(y), Number(mo) - 1, Number(d));
     const iso = `${y}-${mo}-${d}`;
     return at.toISOString().slice(0, 10) === iso ? iso : null;
+}
+
+/**
+ * A record's `**dated:**` day — the day its text last changed — or `null` when the line is absent or
+ * names no real day (Workspace Definition 2.11).
+ *
+ * The carrier a forward-only per-record cap binds by, because a verify rail may not read git: a check
+ * that reads history is a false-red generator in a shallow checkout (../core/operating/memory.md). It
+ * is to a record what the filename's leading date is to a handoff, in the header rather than the name
+ * because a record's filename is its title. An edit re-dates the record, so the cap reaches a record
+ * in the change that next rewrites it; a re-dating skipped is a hand edit no checker establishes, as
+ * proposal `0037` says of a handoff dated back, and the diff shows it.
+ */
+export function recordDate(source) {
+    const m = source.match(/^\s*\*\*dated:\*\*[ \t]*(\d{4})-(\d{2})-(\d{2})[ \t]*$/im);
+    return m ? realDay(m[1], m[2], m[3]) : null;
 }
 
 // Compared with punctuation and case removed, because a filename cannot carry either. "Who may
@@ -235,7 +254,7 @@ function listSeries(seriesDir, slot, what) {
 /**
  * Read a workspace's memory store.
  *
- * Returns `{ records: [{ file, title, type, heading, bytes }], bytes }`. Throws `IndexError` rather than
+ * Returns `{ records: [{ file, title, type, heading, bytes, dated }], bytes }`. Throws `IndexError` rather than
  * returning an empty store for anything it cannot read: an empty list renders an empty index, and an
  * empty index compares equal to an empty committed one and passes — the enumeration fail-open this
  * repository has now fixed four times (../.portulan/memory/verify-preconditions-fail-closed.md).
@@ -277,6 +296,9 @@ export function readStore(dir, workspace) {
             // start disagreeing about one store.
             type: recordType(source) || "untyped",
             heading: headingOf(source),
+            // `null` is a refusal only where a cutoff is declared; with none, the cap binds every
+            // record and no date is asked of one (`budgetFindings`).
+            dated: recordDate(source),
         });
     }
 
@@ -783,16 +805,18 @@ const lineCount = (text) => text.split("\n").length - (text.endsWith("\n") ? 1 :
 /**
  * Judge one workspace's index.
  *
- * Returns `{ dir, declared, path, expected, findings }`. A finding is `{ severity, check, message }`
- * with severity `fail` (exit 1); `check` is one of `title`, `index`, `budget`. Throws `IndexError`
- * (exit 2) for anything that is not a verdict about a store.
+ * Returns `{ dir, declared, path, expected, findings, notes }`. A finding is `{ severity, check, message }`
+ * with severity `fail` (exit 1); `check` is one of `title`, `index`, `budget`, `date`. A note is
+ * `{ series, message }`, reported and never red: what a forward-only cap leaves unbound. Throws
+ * `IndexError` (exit 2) for anything that is not a verdict about a store. `today` is the UTC date the
+ * date refusal measures against, injectable so a test is not a function of the day it runs.
  *
  * The three checks are kept apart on purpose. *The index is stale* is repaired by running the
  * generator; *the index is over budget* is repaired by consolidating the store; *a record's H1
  * disagrees with its filename* is repaired by editing the record. A single "index check failed"
  * would send an author to regenerate a file that is already correct and still too big.
  */
-export function inspect(dir, { write = false, packRoots: extraRoots, discoverPacks = false } = {}) {
+export function inspect(dir, { write = false, packRoots: extraRoots, discoverPacks = false, today = new Date().toISOString().slice(0, 10) } = {}) {
     const manifestPath = path.join(dir, "workspace.json");
     let workspace;
     try {
@@ -811,6 +835,8 @@ export function inspect(dir, { write = false, packRoots: extraRoots, discoverPac
 
     const findings = [];
     const fail = (series, check, message) => findings.push({ severity: "fail", series, check, message });
+    const notes = [];
+    const note = (series, message) => notes.push({ series, message });
 
     // **The remedy a finding prints must be runnable on the machine that printed it** (#318). These
     // findings surface through the PINNED `verify/index.sh` run — so on a pack developer’s host, where
@@ -827,7 +853,7 @@ export function inspect(dir, { write = false, packRoots: extraRoots, discoverPac
         ...(discoverPacks ? [" --pack-root auto"] : []),
     ].join("");
 
-    const memory = judgeMemory(dir, workspace, { write, fail, remedyFlags });
+    const memory = judgeMemory(dir, workspace, { write, fail, note, today, remedyFlags });
     const handoffs = judgeHandoffs(dir, workspace, { write, fail, remedyFlags });
     const scopes = judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots, discoverPacks, remedyFlags });
 
@@ -836,6 +862,7 @@ export function inspect(dir, { write = false, packRoots: extraRoots, discoverPac
         declared: memory.declared || handoffs.declared || scopes.declared,
         series: { memory, handoffs, scopes },
         findings,
+        notes,
     };
 }
 
@@ -967,7 +994,7 @@ function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series,
 }
 
 /** The memory store's index and its budgets. */
-function judgeMemory(dir, workspace, { write, fail, remedyFlags = "" }) {
+function judgeMemory(dir, workspace, { write, fail, note, today, remedyFlags = "" }) {
     const memory = workspace.memory;
     if (!memory) return { declared: false, path: null, expected: null, budgets: 0 };
 
@@ -976,7 +1003,7 @@ function judgeMemory(dir, workspace, { write, fail, remedyFlags = "" }) {
         // A budget with no index is coherent — a workspace may rail its store's size and generate
         // nothing — so this is not an error. There is simply no file to render.
         const store = readStore(dir, workspace);
-        return { declared: true, path: null, expected: null, budgets: budgetFindings(memory, store, null, fail) };
+        return { declared: true, path: null, expected: null, budgets: budgetFindings(memory, store, null, { fail, note, today }) };
     }
 
     const indexPath = siteOutside(dir, declaredPath, workspace.slots?.memory, "store");
@@ -1005,7 +1032,7 @@ function judgeMemory(dir, workspace, { write, fail, remedyFlags = "" }) {
 
     const expected = render(workspace, store);
     compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "memory", source: "store", fail, remedyFlags });
-    const budgets = budgetFindings(memory, store, expected, fail);
+    const budgets = budgetFindings(memory, store, expected, { fail, note, today });
 
     return { declared: true, path: indexPath, expected, budgets };
 }
@@ -1247,11 +1274,22 @@ function budgetNumber(value, where) {
  * path). Counting the declaration instead would have put the false green back in the one shape a
  * caller reaches without `doctor`, which is the class `0020` names: a fix arriving without its sibling.
  */
-function budgetFindings(memory, store, expected, fail) {
+function budgetFindings(memory, store, expected, { fail, note, today }) {
     const lines = budgetNumber(memory.index?.budget?.lines, "memory.index.budget.lines");
     const columns = budgetNumber(memory.index?.budget?.columns, "memory.index.budget.columns");
     const kilobytes = budgetNumber(memory.store?.budget?.kilobytes, "memory.store.budget.kilobytes");
     const recordKilobytes = budgetNumber(memory.store?.budget?.record_kilobytes, "memory.store.budget.record_kilobytes");
+    // Only the cutoff's value is judged here. Whether a change moved it, earlier or without a tighter
+    // cap, is history's, which no rail reads; the review holds it (spec/slots.md, "What no checker
+    // establishes").
+    const cutoff = budgetDay(memory.store?.budget?.cutoff, "memory.store.budget.cutoff");
+    if (cutoff !== undefined && recordKilobytes === undefined) {
+        // `doctor` refuses the same shape; the subset has no `dependentRequired` (spec/README.md).
+        throw new IndexError(
+            "memory.store.budget.cutoff is declared with no `record_kilobytes` beside it. A cutoff says which " +
+                "records the per-record cap binds, so alone it configures nothing while reading as configured",
+        );
+    }
 
     let judged = 0;
 
@@ -1316,10 +1354,45 @@ function budgetFindings(memory, store, expected, fail) {
     // the other's narrative — so stopping at the first would send the author round the loop once per
     // record, each time believing they were done. The count of budgets JUDGED is still one: `judged`
     // counts checks this function ran, never findings it raised (see the doc comment).
+    //
+    // **Forward-only where a cutoff is declared** (Workspace Definition 2.11), in proposal `0037`'s shape
+    // for a handoff: the cap binds only records dated after the cutoff, and one dated on or before it is
+    // reported, never railed. A record's date is the day its text last changed, so an old record meets
+    // the cap in the change that next rewrites it, while compression is still that change's to do. The
+    // cutoff day's own records stay unbound, the rule's known gap, as it is 0037's. A record whose date
+    // cannot be read is refused rather than guessed old or new, and so is one dated more than a day after
+    // the UTC date the check runs on, the day time zones need; otherwise a date could carry a record past
+    // the cutoff it was written under.
     if (recordKilobytes) {
         judged += 1;
         const cap = recordKilobytes * KB;
+        const latest = cutoff === undefined ? undefined : nextDay(today);
+        const unbound = [];
         for (const record of store.records) {
+            if (cutoff !== undefined) {
+                if (record.dated === null) {
+                    fail(
+                        "memory",
+                        "date",
+                        `the record ${record.file} carries no \`**dated:** YYYY-MM-DD\` line naming a real day, so the per-record cap ` +
+                            `cannot tell whether its cutoff (${cutoff}) binds it. Add one: the day the record's text last changed`,
+                    );
+                    continue;
+                }
+                if (record.dated > latest) {
+                    fail(
+                        "memory",
+                        "date",
+                        `the record ${record.file} is dated ${record.dated}, more than a day after ${today} (UTC). A record is dated ` +
+                            "the day its text last changed, and a later date would carry it past a cutoff that binds it. Correct the date",
+                    );
+                    continue;
+                }
+                if (record.dated <= cutoff) {
+                    if (record.bytes > cap) unbound.push(record);
+                    continue;
+                }
+            }
             if (record.bytes > cap) {
                 fail(
                     "memory",
@@ -1327,14 +1400,44 @@ function budgetFindings(memory, store, expected, fail) {
                     `the record ${record.file} is ${(record.bytes / KB).toFixed(1)} KB (${record.bytes} bytes) against a per-record cap of ` +
                         `${recordKilobytes} KB (${cap} bytes) — over by ${record.bytes - cap}. ` +
                         "Repair it where it is: SPLIT it if it holds more than one fact (which spends `memory.index.budget.lines`, " +
-                        "the axis with the headroom), COMPRESS it, or DEMOTE its narrative to the provenance layer. " +
-                        "Raising the cap in the change that broke it is the one repair core/operating/memory.md rules out",
+                        "the axis with the headroom), COMPRESS it, or DEMOTE its narrative to the provenance layer; never cut a why. " +
+                        (cutoff === undefined
+                            ? "Raising the cap in the change that broke it is the one repair core/operating/memory.md rules out"
+                            : "Raising the cap, or moving the cutoff, in the change that broke it is the repair core/operating/memory.md rules out"),
                 );
             }
+        }
+        if (unbound.length) {
+            note(
+                "memory",
+                `${unbound.length} record(s) dated on or before the cutoff (${cutoff}) are over the per-record cap of ${recordKilobytes} KB: ` +
+                    "reported, never railed. Each meets the cap in the change that next rewrites it",
+            );
         }
     }
 
     return judged;
+}
+
+/** The day after a `YYYY-MM-DD`, as `YYYY-MM-DD`: the latest a record may be dated on the day a check runs. */
+function nextDay(iso) {
+    const at = new Date(`${iso}T00:00:00Z`);
+    at.setUTCDate(at.getUTCDate() + 1);
+    return at.toISOString().slice(0, 10);
+}
+
+/** A declared cutoff: `undefined` when absent, the day when it names a real one, else an `IndexError`. */
+function budgetDay(value, where) {
+    if (value === undefined) return undefined;
+    const m = typeof value === "string" ? value.match(/^(\d{4})-(\d{2})-(\d{2})$/) : null;
+    const day = m ? realDay(m[1], m[2], m[3]) : null;
+    if (!day) {
+        throw new IndexError(
+            `${where} is ${JSON.stringify(value)}, which is not a real day written YYYY-MM-DD. A cutoff that cannot be read ` +
+                "would bind every record or none, and either would be a verdict the manifest never declared",
+        );
+    }
+    return day;
 }
 
 // ===========================================================================================
@@ -1618,6 +1721,7 @@ export function run(argv, say = console.log) {
             continue;
         }
         for (const f of result.findings) say(`  ✗ ${dir}: ${f.message}`);
+        for (const n of result.notes) say(`  · ${dir}: ${n.message}`);
         if (result.findings.length && worst < 1) worst = 1;
         if (!result.findings.length) {
             // Each series is named separately, and a series that generates nothing says so. A

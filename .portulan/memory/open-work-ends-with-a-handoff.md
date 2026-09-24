@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-09-23
 **scope:** workspace — every session working in this repository
 **provenance:** `form=link` `href=../handoffs/2026-09-23-x-records-in-commits.md`
 — the maintainer's direction of 2026-09-23, *"let the code do the actual talking and handoff - not the

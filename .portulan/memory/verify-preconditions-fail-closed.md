@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-08-18
 **scope:** workspace — anyone writing or changing a verify recipe here
 **provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/8#discussion_r3649661115`
 — a Copilot review comment on the milestone-2 pull request, which flagged the pattern in the newly added

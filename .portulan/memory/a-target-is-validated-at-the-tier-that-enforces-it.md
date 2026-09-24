@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-09-09
 **scope:** workspace — anyone writing a gate policy, or a compiler that turns one into enforcement
 **provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/336`
 — milestone 8, clause (a): the gate corpus's **first run**, which found the divergence by attacking the

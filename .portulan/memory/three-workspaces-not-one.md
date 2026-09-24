@@ -1,4 +1,5 @@
 **type:** reference
+**dated:** 2026-08-18
 **scope:** workspace — anyone adding workspace content to this repository
 **provenance:** `form=link` `href=../proposals/0003-demote-three-workspaces-entry.md`
 — demoted from `decision` and trimmed on 2026-07-25, when this entry's own retirement condition fired. It

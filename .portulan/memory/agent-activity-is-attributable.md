@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-08-18
 **scope:** workspace — every agent acting on this repository's GitHub surface
 **provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/8#issuecomment-5077446174`
 — the milestone-2 pull request, where four review replies written by an implementer agent were posted

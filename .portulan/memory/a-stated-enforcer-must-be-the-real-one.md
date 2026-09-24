@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-07-28
 **scope:** workspace — anyone writing down that something is required, forbidden, guaranteed, or impossible
 **provenance:** `form=link` `href=../handoffs/2026-07-27-dependabot-security-and-the-watchers.md`
 — 2026-07-27, the session that turned on Dependabot security updates and audited the platform floor, which

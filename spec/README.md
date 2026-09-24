@@ -114,7 +114,9 @@ carries, applied to the handoff series — `slots.handoffs` when `handoffs` is d
 either counted as a handoff by the `record` check's correspondence or failed by it for carrying no
 date; and, as of 2.6, that same pair a third time over the per-persona scope layer — `slots.personas`
 when `personas` is declared, and `personas.index.path` resolving **outside** `slots.personas`, since
-`index`'s orphan sweep would examine a file sited there as an undeclared persona location.
+`index`'s orphan sweep would examine a file sited there as an undeclared persona location; and, as of
+2.11, `memory.store.budget.record_kilobytes` when `memory.store.budget.cutoff` is declared, since a
+cutoff says which records that cap binds and alone configures nothing.
 Everything else is optional.
 
 _The 2.6 pair was enforced in `doctor` from the day the keys landed and was missing from this list until
@@ -139,7 +141,7 @@ a manifest in *another repository*, and no contract over a single document can s
 join the list, and the reason is what keeps that list meaningful: every entry there is a dependency
 between two keys **of one manifest**, which is the thing a reader of the schema alone would expect to find
 and does not. A check that needs a second repository is not in that category, and folding it in would make
-the count measure two different things at once. **The count stays at nine**, and it counts what it always
+the count measure two different things at once. **The count stays at ten**, and it counts what it always
 counted.
 
 [`slots.md`](slots.md) argues each one.
@@ -150,8 +152,8 @@ defect [#77](https://github.com/sleepy-panda-srl/portulan/issues/77) is filed ab
 and adding to the list at 2.5 is exactly the edit that would have left it stale again — which is how
 this one was noticed._
 
-That the count went from one to three in a single MINOR, then to five, then to seven, and now stands at
-**nine**, is worth noticing rather than absorbing. Each is a genuine dependency between two keys and none
+That the count went from one to three in a single MINOR, then to five, then to seven, then to nine, and
+now stands at **ten**, is worth noticing rather than absorbing. Each is a genuine dependency between two keys and none
 can be written in the declared subset, so the gap between *what the schema says* and *what a conforming
 manifest must satisfy* is widening — and a constraint invisible to someone reading the schema alone is a
 real cost, stated here rather than discovered. The subset earns its narrowness by being implementable
@@ -191,6 +193,10 @@ would close the gap.
 and what a unit's frontmatter may say is `compile`'s to refuse, because the subset cannot see inside a
 file. `doctor` checks the slot as it checks every directory slot, and gates it to 2.10.
 
+**2.11 adds one to each list.** `memory.store.budget.cutoff` needs `record_kilobytes` beside it, the
+tenth conditional requirement; and its `pattern` admits a day that does not exist, such as `2026-02-30`,
+so `doctor` and `cli/index.mjs` refuse one by hand, and the hand-check covers **ten**.
+
 _These figures are history rather than state: what 2.3 and 2.4 added cannot change, so they do not go
 stale the way the removed count did. The one forward-looking sentence is the growth rate, and it is
 dated by the version it names._
@@ -206,14 +212,23 @@ number governing both would make a bump in either mean a change in the other:
 
 | Schema | Manifest key | Current | What it governs |
 |---|---|---|---|
-| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.10** | the Workspace Definition — the manifest at a workspace root |
+| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.11** | the Workspace Definition — the manifest at a workspace root |
 | [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.0** | the Pack Definition — the manifest at a pack root. |
 
 The rules below apply to each train independently. `portulan.spec` is `MAJOR.MINOR`, and the current
-Workspace Definition version is **2.10**. It did **not** move when the Pack Definition arrived, because
+Workspace Definition version is **2.11**. It did **not** move when the Pack Definition arrived, because
 `workspace.schema.json` was byte-identical across that change: `packs` already existed as an array of
 strings and was deliberately left that way, since tightening its items to the canonical `category/name`
 form would be a constraint an existing manifest could newly fail, which is a MAJOR.
+
+**2.11 is a MINOR on 2.8's terms: optional keys only.** `memory.store.budget.cutoff`
+makes the per-record cap forward-only, in proposal `0037`'s shape for a handoff, and [`slots.md`](slots.md)
+argues it. Nothing is removed, renamed, tightened or defaulted: without the key, `record_kilobytes` binds
+every record as it did, so every 2.10 manifest is a valid 2.11 manifest unchanged. This repository's own
+workspace moves from 2.10 to 2.11 to declare it, with the cap lowered from 8 KB to 2 and the cutoff
+2026-09-24; `examples/` stays on 2.4. `KNOWN_SPECS` in [`../cli/index.mjs`](../cli/index.mjs) and
+[`../cli/librarian.mjs`](../cli/librarian.mjs) gains `"2.11"` by addition, `doctor` gates the key to 2.11,
+and the four writers stay at `2.7`, since nothing they scaffold declares it.
 
 **2.10 is a MINOR on 2.9's terms: one optional slot and nothing else.** `slots.context` is the content
 half of [`../core/operating/context.md`](../core/operating/context.md), from proposal `0036`'s compile

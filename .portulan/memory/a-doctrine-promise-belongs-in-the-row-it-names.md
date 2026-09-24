@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-07-27
 **scope:** workspace — anyone writing a milestone row, or grading a build against one
 **provenance:** `form=link` `href=../handoffs/2026-07-27-the-enforcement-compiler.md`
 — milestone 4, session 0. `core/operating/loop.md` had promised a session-end gate *to milestone 4*

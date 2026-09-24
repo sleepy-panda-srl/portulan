@@ -244,8 +244,8 @@ test("fieldBlock stops at the next bolded field, not at the end of the file", ()
 
 // --------------------------------------------------------- the budget containment, derived both ways
 
-test("the budget ids come from the schema, so a fifth budget reddens the containment case", () => {
-    assert.deepEqual(budgetIds(REPO), ["columns", "kilobytes", "lines", "record_kilobytes"]);
+test("the budget ids come from the schema, so a new budget key reddens the containment case", () => {
+    assert.deepEqual(budgetIds(REPO), ["columns", "cutoff", "kilobytes", "lines", "record_kilobytes"]);
 });
 
 // ------------------------------------------------------------------- accepted drift, both directions
