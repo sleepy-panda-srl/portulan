@@ -369,20 +369,22 @@ jobs:
           # its body replaced: a new issue each week would pile up, and a comment each week would notify
           # on every pass, nags or none. The search index can lag a just-opened issue by minutes, so a
           # second dispatch inside that window could open a second one; the weekly cadence never meets
-          # it. No `--jq` and no `awk`, as in the first step: `gh issue list` prints number, state and
-          # title as its first three tab-separated columns when it is not writing to a terminal, and an
+          # it. No `--jq` and no `awk`, as in the first step, and no reading of the plain table either,
+          # whose columns gh does not promise (raised by Copilot on #467): `--json` names the two fields
+          # and gh's own `--template` prints them as number, a tab, then title, one issue a line, so an
           # exact match on the title is the whole question, which a shell `read` answers. The condition
           # above replaces the implicit `success()`: a pass that ran files its report even when
           # committing its branch or opening its pull request failed, since that report then reaches
           # no one else, while a pass that did not run has no report to file, and a cancelled run stops
           # where it was cancelled.
           title="The librarian's standing report"
-          if ! rows=$(gh issue list --state open --search "\"$title\" in:title author:app/github-actions" --limit 20); then
+          if ! rows=$(gh issue list --state open --search "\"$title\" in:title author:app/github-actions" --limit 20 \
+              --json number,title --template '{{range .}}{{.number}}{{"\t"}}{{.title}}{{"\n"}}{{end}}'); then
             printf '::error::could not look for the standing issue. This is a failure to look, not a finding: opening a new one over a failed search is how a second one would be born\n'
             exit 2
           fi
           number=
-          while IFS=$'\t' read -r num _state name _rest; do
+          while IFS=$'\t' read -r num name; do
             if [ "$name" = "$title" ]; then number=$num; break; fi
           done <<<"$rows"
 
