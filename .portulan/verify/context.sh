@@ -23,17 +23,18 @@
 #
 # Each is the figure measured on the tree this recipe landed in, main at a534f15 with this change's own
 # recipe entry in the manifest, plus 2%, rounded up (railFor in ../../cli/context.mjs), unless its line
-# names the handoff of the demotion that lowered it since, on that change's own figure.
+# names the change that moved it since, on that change's own figure.
 # At exactly today's figure every added byte in a file a boot reads would be red, and the memory index
 # alone is 37 of its 40 lines. The report says when a rail's headroom passes 5%, and gives the figure
 # to lower it to. **A change that demotes lowers its line here, in the same pull request**, or the gain
-# is not locked in. A rail is raised only with the reason written in the handoff of the change that
-# raises it, and never in a change the rail refused — the repair for a breach is demotion, merge or
+# is not locked in. A rail is raised only with the reason written on its line and in the commit of the
+# change that raises it, and never in a change the rail refused — the repair for a breach is demotion, merge or
 # retirement, as it is for memory's budgets (../../core/operating/memory.md).
 #
-# The boot figures include the manifest, which the boot reads whole at step 2. The records of
-# 2026-09-23 left it out, so theirs for the tree these rails were set on, 92,998 and 33,591, are the
-# "without manifest" subtotals printed above these totals.
+# A boot with no card loaded reads the manifest whole at step 2, and its figure includes it; a carded
+# boot, this repository's since the card, reads no manifest. The records of 2026-09-23 left it out, so
+# theirs for the tree these rails were set on, 92,998 and 33,591, are the "without manifest" subtotals
+# an uncarded boot prints above its total.
 #
 # Exit 0 green · 1 red · 2 could not run.
 
@@ -58,11 +59,16 @@ cd -- "$root" || exit 2
 }
 
 # The rails, one line each, in bytes.
-RAIL_OWN_BOOT=90726       # .portulan's boot read-set, 88,947 B (81,892 without), lowered in 2026-09-23-m
-RAIL_DEMO_BOOT=36101      # examples' boot read-set with the combcount card, 35,393 B (33,591 without)
-RAIL_ENGINE=12062         # the boot skill and the kernel, 11,825 B
+RAIL_OWN_BOOT=15836       # .portulan's boot read-set, 15,525 B: the skill, and the boot card with its two
+                          # imports, lowered from 89,057 B by the boot card
+RAIL_DEMO_BOOT=37803      # examples' boot read-set with the combcount card, 37,061 B, raised by the boot
+                          # card from 35,587 B: with no card loaded, a boot reads the skill, which routes,
+                          # and then its steps
+RAIL_ENGINE=13763         # the boot skill, its steps and the kernel, 13,493 B, raised by the boot card
+                          # from 12,019 B for the same reason
 RAIL_STEPS=10944          # the skill's step files, pointer-manifest.md and packs.md, 10,729 B
-RAIL_DESCRIPTIONS=3454    # the plugin's 7 skill and 3 agent descriptions, 3,386 B
+RAIL_DESCRIPTIONS=3454    # the plugin's 7 skill and 3 agent descriptions, 3,386 B; 3,405 B since the boot
+                          # card, whose skill description now names the card
 
 # The workspaces measured, audited against the tree the way ./index.sh audits its own list: a workspace
 # added and not measured would be a footprint nothing watches, reported as green.

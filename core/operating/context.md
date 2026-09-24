@@ -86,8 +86,13 @@ for shape, by the schema and by `doctor`; the manifest key refuses a budget with
 **The always tier is measured and reported.** [`cli/context.mjs`](../../cli/context.mjs) measures what
 Claude Code loads into every context from a workspace's `tree`; `doctor` reports that for every workspace
 and fails it only over a declared budget or where a declared budget cannot be judged; the boot closes
-with the same line; and this repository's `context` recipe rails Portulan's own footprint. A pointer's
-repository is not measured, because a pointer declares no tree. **Still to land**: the exact mode that
+with the same line; and this repository's `context` recipe rails Portulan's own footprint. **A boot can
+read a card instead of the slots**: the `boot` unit of `slots.context` (Workspace Definition 2.10) is
+compiled into every context, imports whole the files it needs, writes out the lead sentences of others,
+and names the file behind each line, so the rest loads when a rule's path or the card sends a session to
+it. This repository's own card holds its boot under the 7,500-token line of 2026-09-23, railed at
+today's figure plus 2% by the same recipe. A pointer's repository is not measured, because a pointer
+declares no tree. **Still to land**: the exact mode that
 calibrates a ratio, the degradation report that says which tiers a host can express, the Stop-gate's
 named demotion, persona frontmatter and the librarian pass, one change at a time, in `0036`'s order of work
 and under row 12 of [`../../docs/plan.md`](../../docs/plan.md).

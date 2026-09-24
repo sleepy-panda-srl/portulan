@@ -784,6 +784,33 @@ hand or compiled from another unit stops `compile` with exit 2, *could not compi
 checks of every directory slot, that the path resolves, and refuses the slot in a manifest declaring a version
 before 2.10, gated from birth as `context` was.
 
+**A unit named `boot` is the workspace's boot card**, reserved within 2.10, with no key and no version
+bump (decided 2026-09-23). It is an `always` unit whose first line
+under the frontmatter is `# Portulan boot card`, and the boot skill reads it in place of the slots when
+that line is in its context. `compile` refuses a `boot` unit in another tier or opening with another line,
+and a unit of another name opening with that one, which the skill would take for the card.
+
+**An `always` unit may import whole files and write out another file's lead sentences**, so a card
+carries a fact without holding a second copy of it:
+
+- **An import is `@` and a path, alone on its line, relative to the unit's own file.** Claude Code 2.1.281
+  loads a rule as it loads `CLAUDE.md`: it resolves an import against the file making it, follows it only
+  inside the project, skips code and HTML comments, and loads nothing five imports below the rule. A rule
+  scoped by `paths:` loads on its path, and the files it imports load into every context, since an
+  imported file carries no `paths:` of its own (read in the program text, and seen on a fixture). So
+  `compile` spells each import again from the rule it compiles to, and refuses one that is a home or an
+  absolute path, leaves or links out of the tree it compiles, names no file, shares its line, or sits five
+  imports down; in a unit of any other tier it refuses an import naming a file, which would not load as
+  its unit does. `context.mjs` counts an imported file in the always tier at the depth the host loads it,
+  a path-scoped rule's included. The vendored `AGENTS.md` carries each import as a pointer line to the
+  file in the vendored tree, and `vendor` refuses an import leaving the workspace, which is all that
+  tree holds.
+- **A line `<!-- leads: <path> -->`, alone on its line, is replaced by the first sentence of each item in
+  the first list of the file it names**, each item opening with a bold lead. The file stays the one
+  source of those sentences, so a change there is drift until the unit is recompiled. `compile` refuses
+  a file with no list, an item with no bold lead, and a lead carrying a link, which would not resolve
+  from the compiled rule.
+
 **Nothing is defaulted.** A workspace that declares no slot compiles no guidance, and no directory in an
 adopter's workspace is chosen by a key nobody typed.
 

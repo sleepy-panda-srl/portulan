@@ -1999,6 +1999,232 @@ export const GUIDANCE_HOSTS = {
     },
 };
 
+/**
+ * A workspace's **boot card**: the always unit a boot reads in place of the slots, cut to what every context
+ * needs, naming the file behind each of its lines. Its name is reserved, and so is its first line, which is
+ * how the boot skill knows the card is in its context: a line of text it can test, never a guess. (Decided
+ * 2026-09-23; `../plugin/skills/portulan/SKILL.md` names the line.)
+ */
+export const BOOT_CARD_UNIT = "boot";
+export const BOOT_CARD_LINE = "# Portulan boot card";
+
+/**
+ * A file this many imports below the rule or instruction file that loads it is not loaded. Read in the
+ * program text of Claude Code 2.1.281 and seen on a fixture: a rule goes through the loader `CLAUDE.md`
+ * does, which resolves an `@` import against the importing file's directory, follows it only inside the
+ * project, and returns nothing at depth 5. **A rule scoped by `paths:` loads on its path, and the files it
+ * imports load into every context**: the host keeps each loaded file that carries no globs in its always
+ * pass, and an imported file carries none. `./context.mjs` counts by the same figures.
+ */
+export const IMPORT_DEPTH = 5;
+
+/** A line asking `compile` for the lead sentences of another file's first list, alone on its line. */
+const LEADS_LINE = /^<!-- leads: (\S+) -->$/;
+
+/** Why an import in a unit of each other tier would not load as its unit does, for the refusal. */
+const STRAY_IMPORT = {
+    "on-path": "the host loads a path-scoped rule's imports into every context, so the file would not wait for the path",
+    "on-invoke": "the unit compiles to a skill in another directory, from which the import names another file",
+    "on-read": "an on-read file is opened as it stands, so the import would load nothing",
+};
+
+/**
+ * The `@` imports in a text, as the host finds them: a token after the start of a line or a space, running
+ * to the next space that no `\` escapes, outside code spans, fenced blocks and HTML comments, each with the
+ * offset where its path starts. Claude Code 2.1.281 lexes the file, skips code, and strips `<!-- … -->`
+ * before it reads a token, so a path in a comment is no import. `./context.mjs` counts what they load and
+ * `compile` checks them where a unit is compiled, so both find the same ones.
+ */
+export function importSpans(text) {
+    const found = [];
+    let fence = null;
+    let comment = false;
+    let offset = 0;
+    for (const line of text.split("\n")) {
+        const start = offset;
+        offset += line.length + 1;
+        if (!comment) {
+            const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
+            if (marker) {
+                if (fence === null) fence = marker[1];
+                else if (marker[1][0] === fence[0] && marker[1].length >= fence.length && /^\s{0,3}[`~]+\s*$/.test(line)) fence = null;
+                continue;
+            }
+            if (fence !== null) continue;
+        }
+        // The line as the host reads it for imports: each code span and comment blanked where it stands, so
+        // every offset stays put, and a comment still open at the line's end running on to the one that closes it.
+        let seen = "";
+        let at = 0;
+        while (at < line.length) {
+            if (comment) {
+                const end = line.indexOf("-->", at);
+                const to = end === -1 ? line.length : end + 3;
+                seen += " ".repeat(to - at);
+                at = to;
+                comment = end === -1;
+                continue;
+            }
+            const next = /`+|<!--/g;
+            next.lastIndex = at;
+            const hit = next.exec(line);
+            if (hit === null) {
+                seen += line.slice(at);
+                break;
+            }
+            seen += line.slice(at, hit.index);
+            if (hit[0] === "<!--") {
+                comment = true;
+                at = hit.index;
+                continue;
+            }
+            const close = line.indexOf(hit[0], hit.index + hit[0].length);
+            const to = close === -1 ? hit.index + hit[0].length : close + hit[0].length;
+            seen += close === -1 ? hit[0] : " ".repeat(to - hit.index);
+            at = to;
+        }
+        for (const match of seen.matchAll(/(?:^|\s)@((?:[^\s\\]|\\ )+)/g)) {
+            found.push({ target: match[1], index: start + match.index + match[0].length - match[1].length, line });
+        }
+    }
+    return found;
+}
+
+/**
+ * The path the host reads from an import token, or null where it takes the token for no import, as Claude
+ * Code 2.1.281 decides it: cut at `#`, each `\ ` read as a space, and opening as a path can.
+ */
+export const importPath = (target) => {
+    const bare = target.split("#")[0].replaceAll("\\ ", " ");
+    return bare !== "" && /^(?:\.\/|~\/|\/.|[A-Za-z0-9._-])/.test(bare) ? bare : null;
+};
+
+/**
+ * Every import a text makes, resolved from `dir` and followed through the files it names, each checked the
+ * way the host would load it: a path it takes for an import must name a file inside `root`, and no file may
+ * sit `IMPORT_DEPTH` imports down. An import the host would drop is refused rather than left to load nothing
+ * while its author believes it loads.
+ *
+ * @returns {Array<{ target: string, file: string }>} the text's own imports, in order, each with its file
+ */
+function checkedImports(text, dir, root, where) {
+    const own = [];
+    const shown = path.relative(process.cwd(), root) || ".";
+    const queue = [{ text, dir, depth: 0, from: where }];
+    const seen = new Set();
+    while (queue.length) {
+        const { text: body, dir: base, depth, from } = queue.shift();
+        for (const { target, line } of importSpans(body)) {
+            const bare = importPath(target);
+            if (bare === null) continue;
+            const spelled = `\`@${target}\` (in ${from})`;
+            if (depth === 0 && line.trim() !== `@${target}`) {
+                throw new CompileError(`${spelled} shares its line with other text — an import stands alone on its line, so compile can spell it again from the file it compiles to; text that is not an import goes in a code span`);
+            }
+            if (bare.startsWith("~") || path.isAbsolute(bare)) {
+                throw new CompileError(`${spelled} is a home or an absolute path — an import here is relative to the file that makes it, and stays inside ${shown}`);
+            }
+            const file = path.resolve(base, bare);
+            if (!isInside(root, file)) throw new CompileError(`${spelled} leaves ${shown}, the tree compiled here — the host follows no import out of the project, and a vendored copy carries only its workspace`);
+            let real;
+            try {
+                real = fs.realpathSync(file);
+            } catch {
+                throw new CompileError(`${spelled} names no file, so the host would load nothing — put text that is not an import in a code span`);
+            }
+            if (!isInside(fs.realpathSync(root), real)) throw new CompileError(`${spelled} is a link out of ${shown}, the tree compiled here`);
+            if (!fs.statSync(real).isFile()) throw new CompileError(`${spelled} names no file, so the host would load nothing`);
+            if (depth + 1 >= IMPORT_DEPTH) {
+                throw new CompileError(`${spelled} sits ${depth + 1} imports below the rule, and the host loads nothing ${IMPORT_DEPTH} deep — import the file from nearer the rule`);
+            }
+            if (depth === 0) own.push({ target, file });
+            if (seen.has(real)) continue;
+            seen.add(real);
+            queue.push({ text: fs.readFileSync(real, "utf8"), dir: path.dirname(file), depth: depth + 1, from: path.relative(root, file).split(path.sep).join("/") });
+        }
+    }
+    return own;
+}
+
+/**
+ * The lead sentences of the first list in the file at `file`, as that list numbers them: each item's first
+ * sentence, byte for byte, so the file stays the one place the text lives. An item must open with a bold
+ * lead, and its first sentence ends at the first `.`, `!` or `?` outside a code span that is followed, past
+ * any closing emphasis, by a space or the item's end. A lead carrying a link is refused: the link was written
+ * for the file's own directory and would not resolve from where the unit compiles to.
+ */
+function leadsOf(file, where) {
+    const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+    const items = [];
+    let kind = null;
+    let fence = null;
+    for (const line of lines) {
+        const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
+        if (marker) {
+            if (kind !== null) break;
+            fence = fence === null ? marker[1] : null;
+            continue;
+        }
+        if (fence !== null) continue;
+        const item = /^(\d+)\. (.*)$/.exec(line) ?? /^(-) (.*)$/.exec(line);
+        if (item && (kind === null || (item[1] === "-") === (kind === "-"))) {
+            kind = item[1] === "-" ? "-" : "1";
+            items.push({ marker: item[1] === "-" ? "-" : `${item[1]}.`, text: item[2].trim() });
+        } else if (kind !== null && /^\s+\S/.test(line)) {
+            items.at(-1).text += ` ${line.trim()}`;
+        } else if (kind !== null && line.trim() !== "") {
+            break;
+        }
+    }
+    if (items.length === 0) throw new CompileError(`${where}: the leads of ${path.basename(file)} were asked for, and it holds no list`);
+    return items.map(({ marker, text }) => {
+        if (!text.startsWith("**")) throw new CompileError(`${where}: an item of ${path.basename(file)}'s first list opens without a bold lead — ${JSON.stringify(text.slice(0, 60))}`);
+        const code = [...text.matchAll(/(`+)[\s\S]*?\1/g)].map((m) => [m.index, m.index + m[0].length]);
+        let end = text.length;
+        for (const stop of text.matchAll(/[.!?]/g)) {
+            if (code.some(([from, to]) => stop.index >= from && stop.index < to)) continue;
+            const after = text.slice(stop.index + 1).replace(/^[*_)"'”]+/, "");
+            if (after === "" || /^\s/.test(after)) {
+                end = text.length - after.length;
+                break;
+            }
+        }
+        const lead = text.slice(0, end);
+        if (/\]\(/.test(lead)) throw new CompileError(`${where}: the lead ${JSON.stringify(lead.slice(0, 60))} of ${path.basename(file)} carries a link, which would not resolve from the compiled file`);
+        return `${marker} ${lead}`;
+    });
+}
+
+/**
+ * An always unit's text as a host loads it: each `<!-- leads: … -->` line replaced by the lead sentences
+ * it names. Paths resolve against the unit's own directory and stay inside `root`; each file read is
+ * recorded on the unit, so a drifted rule names it beside the unit.
+ */
+function expandedBody(unit, dir, root) {
+    unit.leadSources = [];
+    return unit.body
+        .split("\n")
+        .flatMap((line) => {
+            const asked = LEADS_LINE.exec(line);
+            if (!asked) return [line];
+            const file = path.resolve(dir, asked[1]);
+            if (!isInside(root, file)) throw new CompileError(`${unit.source}: the leads of ${asked[1]} were asked for, and it lies outside the tree compiled here`);
+            let real;
+            try {
+                real = fs.realpathSync(file);
+            } catch {
+                throw new CompileError(`${unit.source}: the leads of ${asked[1]} were asked for, and it names no file`);
+            }
+            if (!isInside(fs.realpathSync(root), real) || !fs.statSync(real).isFile()) {
+                throw new CompileError(`${unit.source}: the leads of ${asked[1]} were asked for, and it is not a file inside the tree compiled here`);
+            }
+            const rel = path.relative(root, file).split(path.sep).join("/");
+            if (!unit.leadSources.includes(rel)) unit.leadSources.push(rel);
+            return leadsOf(real, unit.source);
+        })
+        .join("\n");
+}
+
 const UNIT_KEYS = new Set(["tier", "paths", "description"]);
 
 /** A line break, by any spelling a host might honour, or another control character. */
@@ -2133,6 +2359,22 @@ export function parseUnit(name, text, source = `${name}.md`) {
     while (rest.length && rest[0].trim() === "") rest.shift();
     while (rest.length && rest[rest.length - 1].trim() === "") rest.pop();
     if (rest.length === 0) throw new CompileError(`${where}: the unit carries no guidance below its frontmatter`);
+    // The boot card is known by its name and by its first line, and each vouches for the other.
+    if (name === BOOT_CARD_UNIT) {
+        if (tier !== "always") {
+            throw new CompileError(`${where}: \`${BOOT_CARD_UNIT}\` is the name of a workspace's boot card, which every context loads — it is an \`always\` unit, and this one is \`${tier}\``);
+        }
+        if (rest[0] !== BOOT_CARD_LINE) {
+            throw new CompileError(`${where}: a boot card opens with the line \`${BOOT_CARD_LINE}\`, which is how the boot skill knows it is loaded, and this one opens ${JSON.stringify(rest[0])}`);
+        }
+    } else if (rest[0] === BOOT_CARD_LINE) {
+        throw new CompileError(`${where}: \`${BOOT_CARD_LINE}\` opens the boot card, and only the unit named \`${BOOT_CARD_UNIT}\` is one — the boot skill would take this unit for the card`);
+    }
+    // Only an always unit's leads are written out: any other unit compiles to a scoped rule, a skill or a
+    // pointer, and would carry the line as it stands.
+    if (tier !== "always" && rest.some((line) => LEADS_LINE.test(line))) {
+        throw new CompileError(`${where}: a \`<!-- leads: … -->\` line is written out only in an always unit, and this one is \`${tier}\``);
+    }
     return { name, tier, paths, description, body: `${rest.join("\n")}\n`, source };
 }
 
@@ -2232,9 +2474,48 @@ export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
         } catch (cause) {
             throw new CompileError(`${source} could not be read — ${cause.code ?? cause.message}`);
         }
-        units.push(parseUnit(path.basename(file, ".md"), text, source));
+        const unit = parseUnit(path.basename(file, ".md"), text, source);
+        // An always unit is loaded as its compiled text: its leads written out, and its imports checked
+        // here, before anything is written, against what the host would follow. In any other unit an import
+        // naming a file is refused, because it would not load as its unit does; `@` text naming none is text.
+        if (unit.tier === "always") {
+            unit.dir = path.dirname(full);
+            unit.text = expandedBody(unit, unit.dir, path.resolve(workspaceRoot));
+            unit.imports = checkedImports(unit.text, unit.dir, path.resolve(workspaceRoot), source);
+        } else {
+            for (const { target } of importSpans(unit.body)) {
+                const bare = importPath(target);
+                if (bare === null || bare.startsWith("~") || path.isAbsolute(bare)) continue;
+                if (fs.statSync(path.resolve(path.dirname(full), bare), { throwIfNoEntry: false })?.isFile()) {
+                    throw new CompileError(
+                        `${source}: \`@${target}\` names a file, and only an always unit may import one — ${STRAY_IMPORT[unit.tier]}. ` +
+                            `Name the file to open instead, in a code span`,
+                    );
+                }
+            }
+        }
+        units.push(unit);
     }
-    return { source: declared.rel, units };
+    return { source: declared.rel, units, root: path.resolve(workspaceRoot) };
+}
+
+/**
+ * An always unit's compiled text for a file at `to`, a path relative to the root: each import the unit makes
+ * spelled again from there, since the host resolves an import against the file that makes it. An import
+ * stands alone on its line, so what it names is never in doubt.
+ */
+function rebasedText(unit, root, to) {
+    if (!unit.imports.length) return unit.text;
+    const byLine = new Map();
+    for (const { target, file } of unit.imports) {
+        const spelled = path.relative(path.join(root, path.dirname(to)), file).split(path.sep).join("/").replaceAll(" ", "\\ ");
+        const fragment = target.includes("#") ? target.slice(target.indexOf("#")) : "";
+        byLine.set(`@${target}`, `@${spelled}${fragment}`);
+    }
+    return unit.text
+        .split("\n")
+        .map((line) => byLine.get(line.trim()) ?? line)
+        .join("\n");
 }
 
 /** A string as YAML reads it, double-quoted. JSON's escapes are a subset of YAML's double-quoted ones. */
@@ -2250,7 +2531,8 @@ export function claudeCodeGuidance(guidance) {
     const pointers = [];
     for (const unit of guidance.units) {
         if (unit.tier === "always") {
-            files.push({ unit, path: `${GUIDANCE_RULES_DIR}/${unit.name}.md`, text: unit.body });
+            const at = `${GUIDANCE_RULES_DIR}/${unit.name}.md`;
+            files.push({ unit, path: at, text: unit.text === undefined ? unit.body : rebasedText(unit, guidance.root, at) });
         } else if (unit.tier === "on-path") {
             const header = ["---", "paths:", ...unit.paths.map((glob) => `  - ${quoted(glob)}`), "---", ""].join("\n");
             files.push({ unit, path: `${GUIDANCE_RULES_DIR}/${unit.name}.md`, text: `${header}\n${unit.body}` });
@@ -2282,12 +2564,27 @@ export function claudeCodeGuidance(guidance) {
 export function agentsMdGuidance(guidance, dir) {
     const always = guidance.units.filter((u) => u.tier === "always");
     const pointed = guidance.units.filter((u) => u.tier !== "always");
+    // An import is a load this file's hosts do not make, so it degrades as a tier does: to a pointer line
+    // naming the file where it sits in the vendored tree, one level deep.
+    const inline = (u) => {
+        if (u.text === undefined) return u.body;
+        const byLine = new Map(
+            u.imports.map(({ target, file }) => {
+                const vendored = path.posix.normalize(path.posix.join(dir, path.relative(u.dir, file).split(path.sep).join("/")));
+                return [`@${target}`, `- \`${vendored}\`: read it in full — a host that follows imports loads it here.`];
+            }),
+        );
+        return u.text
+            .split("\n")
+            .map((line) => byLine.get(line.trim()) ?? line)
+            .join("\n");
+    };
     const pointer = (u) => {
         const where = `\`${dir}${u.name}.md\``;
         if (u.tier === "on-path") return `- ${where}: when you work on ${u.paths.map((g) => `\`${g}\``).join(", ")}. ${u.description}`;
         return `- ${where}: ${u.description}`;
     };
-    return { inline: always.map((u) => u.body), pointers: pointed.map(pointer) };
+    return { inline: always.map(inline), pointers: pointed.map(pointer) };
 }
 
 /**
@@ -2503,7 +2800,9 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
             if (current !== file.text) {
                 say(file.marker
                     ? `RED — ${target} does not list the rules the units compile to now. Recompile to rewrite it.`
-                    : `RED — ${target} has drifted from ${file.unit ? file.unit.source : `the on-read units in ${guidance.source}`}. Edit the unit, then recompile.`);
+                    : file.unit?.leadSources?.length
+                      ? `RED — ${target} has drifted from ${file.unit.source}, whose leads are written from ${file.unit.leadSources.join(" and ")}. Edit the unit or those files, then recompile.`
+                      : `RED — ${target} has drifted from ${file.unit ? file.unit.source : `the on-read units in ${guidance.source}`}. Edit the unit, then recompile.`);
                 drifted += 1;
             }
         }

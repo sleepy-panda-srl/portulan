@@ -1,12 +1,33 @@
 # Boot Portulan — the reasons behind each step
 
-> **Read on demand, never at boot.** [`SKILL.md`](SKILL.md) is the procedure, and every instruction a
-> boot follows is there or, for steps 2a and 3a, in [`pointer-manifest.md`](pointer-manifest.md) and
-> [`packs.md`](packs.md), which it opens where they apply. This file holds the reasons, measurements and
+> **Read on demand, never at boot.** [`SKILL.md`](SKILL.md) and [`steps.md`](steps.md) are the
+> procedure: the first chooses between the boot card and the steps, and every instruction a boot follows
+> is in one of them or, for steps 2a and 3a, in [`pointer-manifest.md`](pointer-manifest.md) and
+> [`packs.md`](packs.md), which the steps open where they apply. This file holds the reasons, measurements and
 > incidents behind those instructions, under the same step numbers; step 4 gives none, so it has no
 > section. It was split out of `SKILL.md` on 2026-09-23, under proposal 0036: every boot paid for these
 > paragraphs, and a boot needs them only when a step does not fit its case or someone asks why. They
 > moved: none was deleted, and none is kept in both files.
+
+## 0. Where the project's boot card is loaded, it is the boot
+
+A boot with no card reads the skill, its steps, the kernel, the manifest, five slots, the repo card, the
+memory index and the packs step: 89,057 bytes for this repository's own workspace on 2026-09-23, about
+29,800 tokens at `0036`'s estimate, paid again by every fresh context told to boot. The card moves what a
+boot needs into the always tier through `0036`'s compile targets: a workspace keeps it as the `always`
+unit named `boot` in `slots.context`, `compile` writes it where the host loads it into every context, and
+the rest of what the slots say loads on a path or when the card sends a session to it. **The test is the
+card's first line**, because it is text the session can see in its own context, where a guess from
+context is not a test; `compile` reserves the name and the line, so no other unit can pass for the card.
+_(The decisions of 2026-09-23 on the boot card.)_
+
+**The skill became a router so that a carded boot pays for the choice and not for the steps**: about
+2.4 KB of skill instead of 9.1 KB, while a boot with no card pays one more read and the router's bytes,
+which the engine and demo rails in `.portulan/verify/context.sh` state. **The kernel line is there
+because the card carries the kernel only where the workspace imports it**: this repository's card does,
+and how an adopter's card carries it is the adopter half, still to land. **A carded boot does not read
+the packs step**, because its four limits bind where a session works on packs, the plugin's manifests or
+the modules that compose them, and a rule scoped to those paths sends it there.
 
 ## 1. Load the kernel
 

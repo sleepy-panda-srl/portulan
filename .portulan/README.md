@@ -32,11 +32,12 @@ are the point:
 | Path | What lives here |
 |---|---|
 | [`workspace.json`](workspace.json) | The **manifest**: which slots this workspace fills and where each one lives |
-| [`identity.md`](identity.md) | Who this team is, the stack, the glossary — the file a boot reads |
+| [`context/`](context/) | The guidance a host loads: [`context/boot.md`](context/boot.md), this repository's boot card, and the rules scoped to paths beside it, each compiled into [`../.claude/rules/portulan/`](../.claude/rules/portulan/) by [`../cli/compile.mjs`](../cli/compile.mjs) |
+| [`identity.md`](identity.md) | Who this team is, the stack, the glossary; the boot card carries who and what, and points here for the rest |
 | [`identity/`](identity/) | The rest of the identity file: the stack's lines argued and measured, opened before a release, a checkpoint, or a change to what a recipe needs |
 | [`principles.md`](principles.md) | The constitution slot: the principles this team's work is graded against |
 | [`products/`](products/) | The product layer, one directory per product — mission/what/why, and agent affordances |
-| [`gate-map.md`](gate-map.md) | The policy half of autonomy: concrete actions bound to the engine's tiers — the index a boot reads |
+| [`gate-map.md`](gate-map.md) | The policy half of autonomy: concrete actions bound to the engine's tiers — the index a session opens before a gated act, whose tiers the boot card lists |
 | [`gate-map/`](gate-map/) | The rest of the gate map, one file per tier and topic: conditions, measurements, amendments and reasons, opened when an action is on that path |
 | [`dod.md`](dod.md) | Definition of done here — this workspace's extension of core's floor |
 | [`dod/`](dod/) | The reasons behind conditions 5, 6 and 7 of the definition of done, each linked from its condition |

@@ -24,6 +24,10 @@
 // adopter can slim, so it is printed apart, and so are the skill's step files, which a boot reads only
 // where each applies.
 //
+// **A boot whose card is loaded reads the skill and stops there**: the host loaded the card, with what
+// it imports and the rest of the always tier, before the boot began. Its read-set is the skill and that
+// tier, and it prints no subtotal, because it read no manifest to leave out.
+//
 // **A pointer is not measured here.** Its workspace resides elsewhere, and only the host's install
 // records say where (step 2a): a measure that read them would give one tree a different figure on each
 // machine. Run this on the workspace `cli/discover.mjs` resolves the pointer to. A manifest of no
@@ -31,12 +35,12 @@
 // workspace.
 //
 // **The always tier** is what the host loads into every context in the repository, booted or not
-// (`0036`, rule 1): for Claude Code, the project instruction files with the files they import, the
-// rules no `paths:` scopes, and the descriptions of project skills, commands and agents. It is the
-// tier a declared budget rails. The Portulan plugin's own descriptions load there too, wherever the
-// plugin is enabled, and are printed beside the repository's own rather than inside it: an adopter
-// cannot slim them, so a budget that counted them would be one the team could breach and not repair.
-// Portulan rails them in its own repository instead (rule 3).
+// (`0036`, rule 1): for Claude Code, the project instruction files and the rules no `paths:` scopes,
+// the files any rule imports, a scoped rule's included, and the descriptions of project skills,
+// commands and agents. It is the tier a declared budget rails. The Portulan plugin's own descriptions
+// load there too, wherever the plugin is enabled, and are printed beside the repository's own rather
+// than inside it: an adopter cannot slim them, so a budget that counted them would be one the team
+// could breach and not repair. Portulan rails them in its own repository instead (rule 3).
 //
 // ## A report by default, a rail by declaration
 //
@@ -68,10 +72,11 @@
 // ## Rails
 //
 // `--rail <name>=<bytes>` fails the run when a measured group exceeds it: `boot` (the boot read-set,
-// manifest included), `engine` (its engine half), `steps` (the skill's step files, every one, so a step
-// that does not apply in the workspace measured is railed all the same) or `descriptions` (the
-// plugin's). They are in bytes because bytes are exact and ratio-free. This repository's own rails are
-// declared in `../.portulan/verify/context.sh`, one line each, which is where a demotion lowers them.
+// an uncarded boot's manifest included), `engine` (its engine half), `steps` (the skill's step files,
+// every one, so a step that does not apply in the workspace measured is railed all the same) or
+// `descriptions` (the plugin's). They are in bytes because bytes are exact and ratio-free. This
+// repository's own rails are declared in `../.portulan/verify/context.sh`, one line each, which is where
+// a demotion lowers them.
 //
 // Exit 0 within every rail and declared budget, or nothing declared · 1 a rail or a declared budget
 // exceeded · 2 could not run: a manifest, slot, card or engine file missing, a key malformed, a pointer
@@ -83,19 +88,28 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { BOOT_CARD_LINE, IMPORT_DEPTH, importPath, importSpans } from "./compile.mjs";
 import { AGENT_DIR, parseFrontmatter } from "./plugin-lint.mjs";
 import { HOST_SKILL_DEPTH, manifestPath } from "./skills-set.mjs";
+
+export { IMPORT_DEPTH };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /** The bundle this module runs from: this repository, or the installed plugin. */
 export const BUNDLE_ROOT = path.resolve(HERE, "..");
 
-/** What the boot reads from the bundle: the skill, invoked, and the kernel its step 1 reads in full. */
-export const ENGINE = [
-    { label: "boot skill", rel: "plugin/skills/portulan/SKILL.md" },
-    { label: "kernel", rel: "core/engine.md" },
-];
+/** The boot skill itself, which every boot reads when it is invoked: a router to the card or to the steps. */
+export const BOOT_SKILL = { label: "boot skill", rel: "plugin/skills/portulan/SKILL.md" };
+
+/**
+ * What a boot with no card reads from the bundle: the skill, its steps in full, and the kernel step 1 reads.
+ * A boot whose card is loaded reads the skill alone, because the card carries the rest.
+ */
+export const ENGINE = [BOOT_SKILL, { label: "boot steps", rel: "plugin/skills/portulan/steps.md" }, { label: "kernel", rel: "core/engine.md" }];
+
+/** The kernel's first line, by which the router tells whether a session's context already holds it. */
+export const KERNEL_LINE = "# Portulan engine";
 
 /**
  * The skill's step files, each read at boot only where it applies: step 2a where the manifest is a
@@ -128,9 +142,6 @@ export const HEADROOM_PERCENT = 2;
 
 /** Past this share of headroom, the report says the rail can come down. */
 export const NOTE_PERCENT = 5;
-
-/** The host follows imports this many hops from an instruction file, and no further. */
-export const IMPORT_DEPTH = 5;
 
 /** The host whose loading `alwaysTier` models, named in the line because another host loads other files. */
 export const MEASURED_HOST = "Claude Code";
@@ -254,11 +265,53 @@ export function declaredContext(manifest) {
 // ===========================================================================================
 
 /**
+ * The card naming THIS repository — step 3's "select it, do not read the directory". Named by `--repo`, or
+ * the only card there is. With several and none named, no card is counted and the report says so: guessing
+ * from a directory name would make one tree's figure depend on where it was checked out, which is the
+ * instability `0036`'s ruling 2 refuses for the ratio.
+ *
+ * @returns {{ selected: string|null, why: string|null, others: number, file: string|null }}
+ */
+function repoCard(workspaceDir, slots, repo) {
+    const card = { selected: null, why: null, others: 0, file: null };
+    if (slots.repos === undefined) {
+        if (repo !== null) throw new ContextError(`--repo ${repo} was given, and this workspace declares no repos slot`);
+        return card;
+    }
+    const dir = path.resolve(workspaceDir, slots.repos);
+    let cards = [];
+    try {
+        cards = fs
+            .readdirSync(dir, { withFileTypes: true })
+            .filter((e) => e.isFile() && e.name.endsWith(".md") && e.name.toLowerCase() !== "readme.md")
+            .map((e) => e.name.slice(0, -3))
+            .sort();
+    } catch (error) {
+        throw new ContextError(`slot \`repos\` (${slots.repos}) could not be listed (${error.code ?? error.message})`);
+    }
+    if (repo !== null) {
+        if (!cards.includes(repo)) {
+            throw new ContextError(`--repo ${repo} names no card in ${slots.repos} — the cards there are ${cards.join(", ") || "none"}`);
+        }
+        card.selected = repo;
+    } else if (cards.length === 1) {
+        card.selected = cards[0];
+    } else if (cards.length > 1) {
+        card.why = `${cards.length} cards and none named with --repo, so none is counted — a boot reads the one naming its repository`;
+    } else {
+        card.why = "the repos slot holds no card";
+    }
+    if (card.selected !== null) card.file = path.join(dir, `${card.selected}.md`);
+    card.others = cards.length - (card.selected === null ? 0 : 1);
+    return card;
+}
+
+/**
  * @returns {{ entries: Array<{label: string, file: string, bytes: number, bundle?: boolean, engine?: boolean, manifest?: boolean}>,
  *             engineMissing: string[], card: {selected: string|null, why: string|null, others: number},
  *             notCounted: string[] }}
  */
-export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, repo = null } = {}) {
+export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, repo = null, always = null } = {}) {
     if (manifest.kind === "pointer") {
         throw new ContextError(
             "the manifest is a pointer, and a pointer's workspace is resolved from the host's install records, which a recipe must not read — " +
@@ -283,11 +336,6 @@ export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, 
         }
         entries.push({ label, file, bytes: sizeOf(file, label), bundle: true, ...(engine ? { engine: true } : {}) });
     };
-    for (const e of ENGINE) fromBundle(e, true);
-
-    const manifestFile = path.join(workspaceDir, "workspace.json");
-    entries.push({ label: "manifest", file: manifestFile, bytes: sizeOf(manifestFile, "the manifest"), manifest: true });
-
     // A governing workspace must declare its slots, and three of them: read as absent, a missing or
     // malformed set would be a boot read-set of the engine alone, and a green over it.
     const slots = manifest.slots;
@@ -303,49 +351,59 @@ export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, 
     for (const [name, value] of Object.entries(slots)) {
         if (typeof value !== "string") throw new ContextError(`slot \`${name}\` is ${JSON.stringify(value)}, not a path`);
     }
+
+    // **A boot whose card is loaded reads the skill and stops there.** The host loaded the card, with the
+    // kernel it imports and the rest of the always tier, before the boot began, so that tier is what the
+    // boot has; the slots, the manifest and the packs step are opened when the card or an on-path rule
+    // sends a session to them, which is the on-read tier.
+    if (always?.card) {
+        fromBundle(BOOT_SKILL, true);
+        for (const e of always.entries) entries.push({ ...e, always: true });
+        // Where no file in context opens with the kernel's line, the router has the boot read the plugin's
+        // kernel, as an adopter's must: its card cannot import a file outside the project.
+        if (!always.entries.some((e) => readText(e.file, e.file).split(/\r?\n/)[0] === KERNEL_LINE)) fromBundle(ENGINE[2], true);
+        // What the card imports is counted above, so only what it does not import waits to be opened.
+        const real = (file) => {
+            try {
+                return fs.realpathSync(file);
+            } catch {
+                return path.resolve(file);
+            }
+        };
+        const loaded = new Set(always.entries.map((e) => real(e.file)));
+        const waits = (rel) => !loaded.has(real(path.resolve(workspaceDir, rel)));
+        const replaced = [];
+        if (waits("workspace.json")) replaced.push("the manifest");
+        for (const slot of BOOT_SLOTS) if (slots[slot] !== undefined && waits(slots[slot])) replaced.push(`\`${slot}\``);
+        if (slots.repos !== undefined) {
+            const { file: cardFile } = repoCard(workspaceDir, slots, repo);
+            if (cardFile === null || !loaded.has(real(cardFile))) replaced.push("this repository's card");
+        } else if (repo !== null) {
+            throw new ContextError(`--repo ${repo} was given, and this workspace declares no repos slot`);
+        }
+        if (typeof manifest.memory?.index?.path === "string" && waits(manifest.memory.index.path)) replaced.push("the memory index");
+        if (Array.isArray(manifest.packs) && manifest.packs.length) replaced.push("the packs step");
+        const notCounted = [`what the card replaces, each opened when the card or an on-path rule sends a session to it: ${replaced.join(", ")}`];
+        if (slots.memory !== undefined) notCounted.push("memory records (the index points at each)");
+        for (const [name, value] of Object.entries(slots)) {
+            if (BOOT_SLOTS.includes(name) || name === "memory" || name === "repos") continue;
+            notCounted.push(`${name} (${value})`);
+        }
+        notCounted.push("the on-read files anything above links to");
+        return { entries, engineMissing, card: { selected: null, why: null, others: 0 }, notCounted, carded: always.card };
+    }
+
+    for (const e of ENGINE) fromBundle(e, true);
+    const manifestFile = path.join(workspaceDir, "workspace.json");
+    entries.push({ label: "manifest", file: manifestFile, bytes: sizeOf(manifestFile, "the manifest"), manifest: true });
     for (const slot of BOOT_SLOTS) {
         if (slots[slot] === undefined) continue;
         const file = path.resolve(workspaceDir, slots[slot]);
         entries.push({ label: slot, file, bytes: sizeOf(file, `slot \`${slot}\` (${slots[slot]})`) });
     }
 
-    // The card naming THIS repository — step 3's "select it, do not read the directory". Named by
-    // `--repo`, or the only card there is. With several and none named, no card is counted and the
-    // report says so: guessing from a directory name would make one tree's figure depend on where it
-    // was checked out, which is the instability `0036`'s ruling 2 refuses for the ratio.
-    const card = { selected: null, why: null, others: 0 };
-    if (slots.repos !== undefined) {
-        const dir = path.resolve(workspaceDir, slots.repos);
-        let cards = [];
-        try {
-            cards = fs
-                .readdirSync(dir, { withFileTypes: true })
-                .filter((e) => e.isFile() && e.name.endsWith(".md") && e.name.toLowerCase() !== "readme.md")
-                .map((e) => e.name.slice(0, -3))
-                .sort();
-        } catch (error) {
-            throw new ContextError(`slot \`repos\` (${slots.repos}) could not be listed (${error.code ?? error.message})`);
-        }
-        if (repo !== null) {
-            if (!cards.includes(repo)) {
-                throw new ContextError(`--repo ${repo} names no card in ${slots.repos} — the cards there are ${cards.join(", ") || "none"}`);
-            }
-            card.selected = repo;
-        } else if (cards.length === 1) {
-            card.selected = cards[0];
-        } else if (cards.length > 1) {
-            card.why = `${cards.length} cards and none named with --repo, so none is counted — a boot reads the one naming its repository`;
-        } else {
-            card.why = "the repos slot holds no card";
-        }
-        if (card.selected !== null) {
-            const file = path.join(dir, `${card.selected}.md`);
-            entries.push({ label: "repo card", file, bytes: sizeOf(file, `the ${card.selected} card`) });
-        }
-        card.others = cards.length - (card.selected === null ? 0 : 1);
-    } else if (repo !== null) {
-        throw new ContextError(`--repo ${repo} was given, and this workspace declares no repos slot`);
-    }
+    const { file: cardFile, ...card } = repoCard(workspaceDir, slots, repo);
+    if (cardFile !== null) entries.push({ label: "repo card", file: cardFile, bytes: sizeOf(cardFile, `the ${card.selected} card`) });
 
     const indexPath = manifest.memory?.index?.path;
     if (indexPath !== undefined) {
@@ -373,7 +431,7 @@ export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, 
     if (packs > 0) notCounted.push(`${packs === 1 ? "1 pack's" : `${packs} packs'`} files (the boot reads the key)`);
     notCounted.push("the on-read files anything above links to");
 
-    return { entries, engineMissing, card, notCounted };
+    return { entries, engineMissing, card, notCounted, carded: null };
 }
 
 // ===========================================================================================
@@ -381,24 +439,15 @@ export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, 
 // ===========================================================================================
 
 /**
- * The `@path` imports in an instruction file's text, in order. The host evaluates none inside a code
- * span or a fenced block, so neither does this.
+ * The paths the host reads from the `@path` imports in an instruction file's text, in order. The host
+ * evaluates none inside a code span or a fenced block, so neither does this; `importSpans` and
+ * `importPath` in `./compile.mjs` are the one reader, so a unit `compile` checks and a rule this counts
+ * are read alike.
  */
 export function importsOf(text) {
-    const found = [];
-    let fence = null;
-    for (const line of text.split(/\r?\n/)) {
-        const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
-        if (marker) {
-            if (fence === null) fence = marker[1];
-            else if (marker[1][0] === fence[0] && marker[1].length >= fence.length && /^\s{0,3}[`~]+\s*$/.test(line)) fence = null;
-            continue;
-        }
-        if (fence !== null) continue;
-        const bare = line.replace(/(`+)[\s\S]*?\1/g, " ");
-        for (const match of bare.matchAll(/(?:^|\s)@([^\s`]+)/g)) found.push(match[1]);
-    }
-    return found;
+    return importSpans(text)
+        .map(({ target }) => importPath(target))
+        .filter((bare) => bare !== null);
 }
 
 const inside = (root, file) => {
@@ -454,7 +503,7 @@ function walkMarkdown(dir, kept) {
 
 /**
  * @returns {{ entries: Array<{label: string, file: string, bytes: number}>, scoped: number,
- *             unlisted: number, missing: string[], outside: string[], tooDeep: string[] }}
+ *             unlisted: number, missing: string[], outside: string[], tooDeep: string[], card: string|null }}
  */
 export function alwaysTier(repoRoot) {
     const entries = [];
@@ -474,57 +523,76 @@ export function alwaysTier(repoRoot) {
         return false;
     };
 
-    // Breadth-first from each instruction file, so a file reached at two depths counts once, at the
-    // shallower, and one past the host's limit is named rather than silently dropped.
-    const queue = [];
-    for (const rel of ["CLAUDE.md", path.join(".claude", "CLAUDE.md")]) {
-        const file = path.join(repoRoot, rel);
-        if (isFile(file) && kept(file)) queue.push({ file, depth: 0 });
-    }
-    while (queue.length) {
-        const { file, depth } = queue.shift();
-        const real = realOf(file);
-        if (seen.has(real)) continue;
-        seen.add(real);
-        entries.push({ label: depth === 0 ? "instructions" : `import, depth ${depth}`, file, bytes: sizeOf(file, file) });
-        for (const target of importsOf(readText(file, file))) {
-            const spelled = `@${target} (in ${path.relative(repoRoot, file)})`;
-            if (target.startsWith("~")) {
-                outside.push(spelled);
-                continue;
+    // Breadth-first from the files the host loads, so a file reached at two depths counts once, at the
+    // shallower, and one past the host's limit is named rather than silently dropped. A rule goes through the
+    // loader an instruction file does, imports included. A rule a `paths:` key scopes is the on-path tier and
+    // is not counted here, but the files it imports are: the host loads them into every context, since an
+    // imported file carries no `paths:` of its own (`IMPORT_DEPTH` in ./compile.mjs says where both were read).
+    const follow = (seeds) => {
+        const queue = seeds.map(({ file, label, scoped = false }) => ({ file, label, depth: 0, scoped }));
+        while (queue.length) {
+            const { file, label, depth, scoped } = queue.shift();
+            const real = realOf(file);
+            if (!(scoped && depth === 0)) {
+                if (seen.has(real)) continue;
+                seen.add(real);
+                const imported = `import, depth ${depth}${scoped ? ", of a path-scoped rule" : ""}`;
+                entries.push({ label: depth === 0 ? label : imported, file, bytes: sizeOf(file, file) });
             }
-            let resolved = path.resolve(path.dirname(file), target);
-            if (!isFile(resolved)) {
-                const trimmed = path.resolve(path.dirname(file), target.replace(/[.,;:!?)\]]+$/, ""));
-                if (isFile(trimmed)) resolved = trimmed;
+            for (const { target } of importSpans(readText(file, file))) {
+                const bare = importPath(target);
+                if (bare === null) continue;
+                const spelled = `@${target} (in ${path.relative(repoRoot, file)})`;
+                if (bare.startsWith("~")) {
+                    outside.push(spelled);
+                    continue;
+                }
+                // The host takes the path as written, to the next space and a closing full stop included,
+                // and loads nothing from one that names no file (`IMPORT_DEPTH` in ./compile.mjs, same read).
+                const resolved = path.resolve(path.dirname(file), bare);
+                if (!isFile(resolved)) {
+                    missing.push(spelled);
+                    continue;
+                }
+                const real = realOf(resolved);
+                if (real !== realRoot && !inside(realRoot, real)) {
+                    outside.push(spelled);
+                    continue;
+                }
+                if (depth + 1 >= IMPORT_DEPTH) {
+                    tooDeep.push(spelled);
+                    continue;
+                }
+                queue.push({ file: resolved, depth: depth + 1, scoped });
             }
-            if (!isFile(resolved)) {
-                missing.push(spelled);
-                continue;
-            }
-            const real = realOf(resolved);
-            if (real !== realRoot && !inside(realRoot, real)) {
-                outside.push(spelled);
-                continue;
-            }
-            if (depth + 1 > IMPORT_DEPTH) {
-                tooDeep.push(spelled);
-                continue;
-            }
-            queue.push({ file: resolved, depth: depth + 1 });
         }
-    }
+    };
+    follow(
+        ["CLAUDE.md", path.join(".claude", "CLAUDE.md")]
+            .map((rel) => path.join(repoRoot, rel))
+            .filter((file) => isFile(file) && kept(file))
+            .map((file) => ({ file, label: "instructions" })),
+    );
 
-    // Rules: a `paths:` key scopes one to the files it names, which is the on-path tier.
+    // Rules: a `paths:` key scopes one to the files it names, which is the on-path tier, while what it imports
+    // loads everywhere. The one whose first line is the boot card's is the card, which a boot reads in place
+    // of the slots.
     let scoped = 0;
+    let card = null;
+    const unscoped = [];
+    const pathScoped = [];
     for (const file of walkMarkdown(path.join(repoRoot, ".claude", "rules"), kept)) {
-        const { fields } = parseFrontmatter(readText(file, file));
+        const text = readText(file, file);
+        const { fields } = parseFrontmatter(text);
         if (fields && Object.hasOwn(fields, "paths")) {
             scoped += 1;
+            pathScoped.push({ file, label: "path-scoped rule", scoped: true });
             continue;
         }
-        entries.push({ label: "rule", file, bytes: sizeOf(file, file) });
+        if (card === null && text.split(/\r?\n/)[0] === BOOT_CARD_LINE) card = file;
+        unscoped.push({ file, label: "rule" });
     }
+    follow([...unscoped, ...pathScoped]);
 
     // Descriptions: the part of a skill, command or agent the host lists in every context. The body
     // loads when it is invoked. `disable-model-invocation` keeps a description out of the listing.
@@ -553,7 +621,7 @@ export function alwaysTier(repoRoot) {
         }
     }
 
-    return { entries, scoped, unlisted, missing, outside, tooDeep };
+    return { entries, scoped, unlisted, missing, outside, tooDeep, card };
 }
 
 /**
@@ -693,11 +761,14 @@ export function judgeBudget(declared, bytes) {
 export function measure(workspaceDir, { bundleRoot = BUNDLE_ROOT, repo = null } = {}) {
     const manifest = readManifest(workspaceDir);
     const declared = declaredContext(manifest);
-    const boot = bootReadSet(workspaceDir, manifest, { bundleRoot, repo });
     const repoRoot = treeOf(workspaceDir, manifest);
     const always = repoRoot === null ? null : alwaysTier(repoRoot);
+    const boot = bootReadSet(workspaceDir, manifest, { bundleRoot, repo, always });
     const plugin = pluginDescriptions(bundleRoot);
     const steps = STEPS.map(({ rel }) => path.join(bundleRoot, rel));
+    // The engine half is what a boot with no card reads from the bundle, whichever way this workspace boots:
+    // it is what every adopter without a card pays.
+    const engine = ENGINE.map(({ rel }) => path.join(bundleRoot, rel));
     return {
         declared,
         boot,
@@ -705,8 +776,8 @@ export function measure(workspaceDir, { bundleRoot = BUNDLE_ROOT, repo = null } 
         plugin,
         figures: {
             boot: boot.engineMissing.length ? null : sum(boot.entries),
-            records: boot.engineMissing.length ? null : sum(boot.entries.filter((e) => !e.manifest)),
-            engine: boot.engineMissing.length ? null : sum(boot.entries.filter((e) => e.engine)),
+            records: boot.engineMissing.length || boot.carded ? null : sum(boot.entries.filter((e) => !e.manifest)),
+            engine: engine.every(isFile) ? engine.reduce((total, file, i) => total + sizeOf(file, ENGINE[i].label), 0) : null,
             // Every step file, applying here or not: each is some adopter's boot read-set.
             steps: steps.every(isFile) ? steps.reduce((total, file, i) => total + sizeOf(file, STEPS[i].label), 0) : null,
             workspace: sum(boot.entries.filter((e) => !e.bundle)),
@@ -900,12 +971,32 @@ export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { b
             : `  ratio: ${declared.ratio} bytes per token, declared${declared.calibratedBy === null ? "" : `, calibrated by ${declared.calibratedBy}`}`,
     );
 
-    say("  boot read-set — read in full by every session that boots Portulan here: the skill and the kernel (step 1), the manifest (step 2, to find the slots), the slots, this repository's card and the memory index (step 3), the packs step where the manifest names a pack (step 3a)");
+    if (boot.carded) {
+        // The router has a boot read the plugin's kernel where nothing in context carries it, so the line
+        // says which of the two this boot is.
+        const fallback = boot.entries.some((e) => e.bundle && e.label === "kernel");
+        say(
+            `  boot read-set — carded: ${shown(boot.carded)} is this repository's boot card, loaded into every context with the rest of the always tier, ` +
+                (fallback
+                    ? "so a session that boots here reads the skill and the plugin's kernel, which nothing in context carries, and the card stands in for the slots"
+                    : "so a session that boots here reads the skill and stops: the card carries the kernel and stands in for the slots"),
+        );
+    } else {
+        say("  boot read-set — read in full by every session that boots Portulan here: the skill, its steps and the kernel (step 1), the manifest (step 2, to find the slots), the slots, this repository's card and the memory index (step 3), the packs step where the manifest names a pack (step 3a)");
+    }
     for (const e of boot.entries) line(e.bytes, e.label, shown(e.file));
     for (const rel of boot.engineMissing) say(`  ${"—".padStart(9)}   ${"".padStart(8)}      ${"engine".padEnd(18)} ${rel} is not in this bundle, so the engine half is not measured`);
     if (boot.card.why !== null) say(`  ${"—".padStart(9)}   ${"".padStart(8)}      ${"repo card".padEnd(18)} ${boot.card.why}`);
     if (figures.records !== null) line(figures.records, "without manifest", "the figure the 2026-09-23 records measured, which left the manifest out");
-    if (figures.boot !== null) line(figures.boot, "total", `the boot read-set; its engine half, which every adopter's boot reads, is ${grouped(figures.engine)} B`);
+    if (figures.boot !== null) {
+        line(
+            figures.boot,
+            "total",
+            boot.carded
+                ? `the boot read-set; the engine half a boot with no card reads is ${grouped(figures.engine)} B`
+                : `the boot read-set; its engine half, which every adopter's boot reads, is ${grouped(figures.engine)} B`,
+        );
+    }
     else line(figures.workspace, "workspace half", "the boot read-set less the bundle's files, which this bundle does not carry in full");
     if (figures.steps !== null) {
         line(figures.steps, "step files", `the skill's, each read only where it applies: ${STEPS.map((s) => `${shown(path.join(bundleRoot, s.rel))} where ${s.where}`).join(", ")}`);
@@ -922,7 +1013,7 @@ export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { b
         if (always.scoped) aside.push(`${always.scoped} path-scoped rule(s), on-path`);
         if (always.unlisted) aside.push(`${always.unlisted} description(s) the host does not list (disable-model-invocation)`);
         if (always.missing.length) aside.push(`imports naming no file, which load nothing: ${always.missing.join(", ")}`);
-        if (always.tooDeep.length) aside.push(`imports past the host's ${IMPORT_DEPTH} hops, which load nothing: ${always.tooDeep.join(", ")}`);
+        if (always.tooDeep.length) aside.push(`imports ${IMPORT_DEPTH} deep or more, which the host does not load: ${always.tooDeep.join(", ")}`);
         if (always.outside.length) aside.push(`imports and links outside the repository, loaded and not measured: ${always.outside.join(", ")}`);
         for (const a of aside) say(`  also: ${a}`);
     }
