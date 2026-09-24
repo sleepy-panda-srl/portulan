@@ -536,7 +536,8 @@ changed, because a verify rail may not read git; an edit re-dates a record, so a
 in the change that next rewrites it, and a cap lowered today does not turn a whole store red with no
 change to the records. A missing or unreal date is refused, and so is one more than a day after the UTC
 date the check runs on. The cutoff is the declaring change's date or the newest record's, whichever is
-later; it moves only in a change that tightens the cap, and never earlier. The cutoff requires
+later; it moves only in a change that tightens the cap, and never earlier, which no checker
+establishes (below). The cutoff requires
 `record_kilobytes` beside it, one more conditional requirement the subset cannot write.
 
 **Nothing is defaulted**, on the `floor` object's rule from 2.2: a default here would be this
@@ -561,7 +562,9 @@ not in the design; it was in the containment test.
 That rule is [`memory.md`](../core/operating/memory.md)'s and the human gate's — refusing a raise needs
 a check that reads git history, which produces false reds in a shallow CI checkout. The limit is
 recorded in [`../.portulan/verify/README.md`](../.portulan/verify/README.md) with the measurement
-behind it, rather than left for a reader to assume the rail covers both halves.
+behind it, rather than left for a reader to assume the rail covers both halves. A `cutoff` moved
+earlier, or later without a tighter cap, is the same hand edit, since it unbinds what the cap bound,
+and the same gate holds it for the same reason.
 
 ## `handoffs` — an index over a series nobody can consolidate
 

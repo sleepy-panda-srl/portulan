@@ -1279,6 +1279,9 @@ function budgetFindings(memory, store, expected, { fail, note, today }) {
     const columns = budgetNumber(memory.index?.budget?.columns, "memory.index.budget.columns");
     const kilobytes = budgetNumber(memory.store?.budget?.kilobytes, "memory.store.budget.kilobytes");
     const recordKilobytes = budgetNumber(memory.store?.budget?.record_kilobytes, "memory.store.budget.record_kilobytes");
+    // Only the cutoff's value is judged here. Whether a change moved it, earlier or without a tighter
+    // cap, is history's, which no rail reads; the review holds it (spec/slots.md, "What no checker
+    // establishes").
     const cutoff = budgetDay(memory.store?.budget?.cutoff, "memory.store.budget.cutoff");
     if (cutoff !== undefined && recordKilobytes === undefined) {
         // `doctor` refuses the same shape; the subset has no `dependentRequired` (spec/README.md).

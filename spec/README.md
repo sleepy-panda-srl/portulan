@@ -225,7 +225,7 @@ form would be a constraint an existing manifest could newly fail, which is a MAJ
 makes the per-record cap forward-only, in proposal `0037`'s shape for a handoff, and [`slots.md`](slots.md)
 argues it. Nothing is removed, renamed, tightened or defaulted: without the key, `record_kilobytes` binds
 every record as it did, so every 2.10 manifest is a valid 2.11 manifest unchanged. This repository's own
-workspace moves from 2.8 to 2.11 to declare it, with the cap lowered from 8 KB to 2 and the cutoff
+workspace moves from 2.10 to 2.11 to declare it, with the cap lowered from 8 KB to 2 and the cutoff
 2026-09-24; `examples/` stays on 2.4. `KNOWN_SPECS` in [`../cli/index.mjs`](../cli/index.mjs) and
 [`../cli/librarian.mjs`](../cli/librarian.mjs) gains `"2.11"` by addition, `doctor` gates the key to 2.11,
 and the four writers stay at `2.7`, since nothing they scaffold declares it.
