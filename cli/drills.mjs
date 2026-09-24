@@ -389,6 +389,17 @@ export const DRILLS = [
         why: "A raw NUL shipped here once inside a template literal, and the tool most likely to have shown it — `grep` — is the tool the byte silences. Only a byte reader can fire on this, so only a byte reader's silence would hide it.",
     },
     {
+        rail: "comments",
+        perturb: {
+            file: "cli/comments.mjs",
+            find: 'const figure = (n) => n.toLocaleString("en-US");',
+            replace: 'const figure = (n) => n.toLocaleString("en-US"); // Added 2026-09-24.',
+        },
+        exit: 1,
+        tell: "is over the limit of",
+        why: "A comment carrying a change's history is read again by every session that opens its file, and a model matching the surrounding code copies it. Only a reader of the comments themselves can tell one from the code around it.",
+    },
+    {
         rail: "rule-carriers",
         perturb: {
             file: ".portulan/README.md",

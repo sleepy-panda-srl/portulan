@@ -87,9 +87,10 @@ import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 // `context` measures the always tier the offer of a budget is made on. None of them imports from here.
 // _(The handoff index's generator was imported here until 2026-09-24, when a drafted workspace stopped
 // keeping a copy of the index: `index` renders it, and nothing here writes one.)_
+import { historyCount } from "./comments.mjs";
 import { CACHE_LIFETIMES, compileGuidance } from "./compile.mjs";
 import { alwaysTier, ESTIMATED_BYTES_PER_TOKEN, OFFER_FLOOR_TOKENS, tokensOf } from "./context.mjs";
-import { cardIgnored, changesReadme, claudeRulesUnignore, COMPILED_CARD, draftCard, handoffIndexIgnore, handoffsReadme, withIgnoreLines } from "./form.mjs";
+import { cardIgnored, changesReadme, claudeRulesUnignore, commentsRecipe, commentsRecipeEntry, COMPILED_CARD, draftCard, handoffIndexIgnore, handoffsReadme, withIgnoreLines } from "./form.mjs";
 import { offerText, splitOffers } from "./instructions.mjs";
 // The cache lifetime's offer, from the one module `upgrade` prints the same offer from, so the two cannot
 // word it differently (proposal `0038`, item 4, 2026-09-24).
@@ -463,7 +464,7 @@ export function validateAnswers(answers) {
  * exists or left `null`, and `null` is written into the draft as *not determined* rather than dropped.
  */
 export function scan(dir) {
-    const observed = { stack: [], build: null, test: null, run: null, name: null, vcs: null, evidence: [] };
+    const observed = { stack: [], build: null, test: null, run: null, name: null, vcs: null, evidence: [], commentHistory: null, uncounted: null };
     const has = (rel) => fs.existsSync(path.join(dir, rel));
     const read = (rel) => {
         try {
@@ -514,6 +515,12 @@ export function scan(dir) {
             observed.stack.push(stack);
             observed.evidence.push(file);
         }
+    }
+
+    try {
+        observed.commentHistory = historyCount(dir);
+    } catch (error) {
+        observed.uncounted = error.message;
     }
 
     return observed;
@@ -646,6 +653,7 @@ function draftWorkspace(answers, observed) {
                     requires: ["bash", "node"],
                     doc: "verify/README.md",
                 },
+                ...(observed.commentHistory === null ? [] : [{ ...commentsRecipeEntry(".portulan"), doc: "verify/README.md" }]),
             ],
         },
         // Sited OUTSIDE the series it indexes: an index living in `handoffs/` would be counted as a
@@ -658,17 +666,22 @@ function draftWorkspace(answers, observed) {
     // written and the settings are not, since `compile` is their one writer and the closing report says to
     // run it. Unchosen, the manifest is the one drafted before the offer existed.
     if (lifetime !== null) manifest.sessions = { cache_lifetime: lifetime };
+    const commented = observed.commentHistory !== null;
 
     files.set(".portulan/workspace.json", { contents: json(manifest) });
     files.set(".portulan/gates.json", { contents: json(draftPolicy()) });
-    files.set(".portulan/README.md", { contents: draftReadme(answers, observed, name) });
+    files.set(".portulan/README.md", { contents: draftReadme(answers, observed, name, commented) });
     files.set(".portulan/identity.md", { contents: draftIdentity(observed, name) });
     files.set(".portulan/principles.md", { contents: draftPrinciples(name) });
     files.set(".portulan/gate-map.md", { contents: draftGateMap() });
     files.set(".portulan/dod.md", { contents: draftDod() });
-    files.set(".portulan/verify/README.md", { contents: draftVerifyReadme() });
+    files.set(".portulan/verify/README.md", { contents: draftVerifyReadme(commented) });
     files.set(".portulan/verify/workspace.sh", { contents: draftRecipe(), mode: 0o755 });
     files.set(".portulan/verify/index.sh", { contents: draftIndexRecipe(), mode: 0o755 });
+    if (commented) {
+        const bundle = path.resolve(HERE, "..");
+        files.set(".portulan/verify/comments.sh", { contents: commentsRecipe({ bundle, limit: observed.commentHistory, toTree: "../.." }), mode: 0o755 });
+    }
     // **The index is not kept** (2026-09-23): a committed copy conflicted on every merge that added a
     // handoff and carried nothing the series does not, so none is written, and its path is git-ignored
     // so none is committed by accident. `index --check` renders the series with no copy on disk, which
@@ -747,7 +760,7 @@ function draftPolicy() {
     };
 }
 
-function draftReadme(answers, observed, name) {
+function draftReadme(answers, observed, name, commented) {
     const bound = answers.cycle
         ? `This workspace composes the \`${answers.checkpoints}\` pack, which carries the three checkpoint
 skills — session-open, pre-commit, milestone-close — and the supervisor persona that staffs them.`
@@ -805,7 +818,11 @@ is worse than one with fewer of them.
   \`portulan\` on your \`PATH\`, then the bundle this workspace was drafted from — an absolute path on
   the machine that ran \`init\`, which git cannot carry to anybody else. Where none answers it exits
   **2 — could not run**, never 0. On CI that is the state to expect until the CLI is installed there,
-  and it is said here rather than left to be met as an amber pipeline.
+  and it is said here rather than left to be met as an amber pipeline.${commented ? `
+- **A change's history goes in its commit message, not in a comment**, which is paid for on every read
+  of its file. \`verify/comments.sh\` counts the comment lines that record one, by a date, a proposal or
+  milestone number, a review round, or a pull request or issue number, and holds them at the
+  ${observed.commentHistory} \`init\` found: lower its \`LIMIT\` as they leave. It finds the CLI as the records rail does.` : ""}
 - **The session-end gate is wired by \`compile\`, and this draft has run only its guidance half.** The
   runner that asks for a dated handoff when a session ends with work not committed and pushed **does**
   ship in the package you have — it is \`cli/stop-gate.mjs\` — and \`portulan compile\` emits a
@@ -971,7 +988,7 @@ skimmed. Each condition should be checkable by someone who was not in the room._
 `;
 }
 
-function draftVerifyReadme() {
+function draftVerifyReadme(commented) {
     return `# verify/
 
 The executable half of *done*. \`workspace.json\` declares the recipes and names the default.
@@ -985,7 +1002,8 @@ is a command in a file.
 | Recipe | What it checks |
 |---|---|
 | \`workspace\` | **Nothing yet — it exits 2.** Replace it with the command that tells you this repository is healthy. This one is the **default**: it is what runs at a session end. |
-| \`index\` | The handoff series renders an index line for every handoff, and a copy of the index kept on disk matches it byte for byte; none is kept as drafted. Finished as drafted — it checks a real thing today. |
+| \`index\` | The handoff series renders an index line for every handoff, and a copy of the index kept on disk matches it byte for byte; none is kept as drafted. Finished as drafted — it checks a real thing today. |${commented ? `
+| \`comments\` | No more comment lines record a change's history than its \`LIMIT\`, the count \`init\` found. Lower it as they leave. It needs git, and finds the CLI as \`index\` does. |` : ""}
 
 ## The three exit codes, and why the middle one is not enough
 
@@ -1133,9 +1151,6 @@ code=\$?
 # codes exist. Left unmapped, either reads downstream as this recipe having RUN and rendered a
 # verdict about the index, which is the laundering \`need_node\` prevents on the branches it guards.
 # The index tool itself only ever exits 0, 1 or 2, so neither code is ambiguous here.
-#
-# Raised by Copilot, round 1 on #227, naming 127 alone; measured while pinning it, a bad interpreter
-# is **126** on this platform and the fix would have missed the case that prompted it.
 if [ "\$code" -eq 126 ] || [ "\$code" -eq 127 ]; then
     printf 'verify: the index tool could not be executed (%s) — the index was NOT checked.\\n' "\$code" >&2
     exit 2
@@ -1772,7 +1787,8 @@ export async function run(argv, options = {}) {
             packAdvice = { resolved, why: expanded.why, inTree: resolvedAt !== null && resolvedAt === path.join(target, "packs") };
         }
 
-        const files = draft(answers, scan(target));
+        const observed = scan(target);
+        const files = draft(answers, observed);
 
         // Where the repository's `.gitignore` hides `.claude/`, the compiled card would never reach a
         // review or a fresh checkout: the exceptions that let git see it join the lines drafted for the
@@ -1853,6 +1869,7 @@ export async function run(argv, options = {}) {
         } else {
             say("init: every file is a DRAFT. Read .portulan/README.md before trusting any of it.");
             say("init: the verify recipe exits 2 until you say what green means here — that is deliberate.");
+            if (observed.commentHistory === null) say(`init: drafted no \`comments\` recipe, since its count could not be taken: ${observed.uncounted}; \`portulan upgrade\` offers one once it can be.`);
             if (answers.cycle) {
                 // Said at the surface rather than only in a file, because the alternative is that the
                 // adopter's very next command is `doctor`, it is RED on a pack nothing can find, and

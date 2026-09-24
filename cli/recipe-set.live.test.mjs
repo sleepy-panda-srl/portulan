@@ -104,7 +104,7 @@ describe("the roster pin's other half — the reader that is not JavaScript", ()
     });
 
     test("every JavaScript reader on the roster imports the carrier", () => {
-        for (const rel of ["cli/doctor.mjs", "cli/vendor.mjs", "cli/stop-gate.mjs", "cli/finish.mjs"]) {
+        for (const rel of ["cli/doctor.mjs", "cli/vendor.mjs", "cli/stop-gate.mjs", "cli/finish.mjs", "cli/form.mjs"]) {
             const src = fs.readFileSync(path.join(REPO, rel), "utf8");
             assert.match(src, /from "\.\/recipe-set\.mjs"/, `${rel} must reach the carrier`);
         }

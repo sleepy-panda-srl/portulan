@@ -122,6 +122,17 @@ less. `compile` writes the lead of each rule below onto every boot card, Portula
   prefix, and resume one rather than start another; [`sessions.md`](sessions.md) holds both, and the
   lifetime a workspace declares. The cost table in the same program text prices a cache write above
   sending the tokens fresh and a cache read below it.
+- **Code should speak for itself: a comment is paid for on every read of its file, so add one only when
+  truly needed, concise, meaningful and valuable (less is more), and keep a change's history in its
+  commit message.** Claude Code 2.1.281's system prompt tells a model to match the surrounding code's
+  comment density, so what a file carries, the next change copies. Truly needed is what no name or
+  structure can show, in a line: a host's behaviour at its version, an ordering or a safety constraint the
+  code does not make obvious, a limit of the algorithm. A comment never carries a date, a proposal or
+  milestone number, a review round or a reviewer's credit, a pull request or issue number, or a narration
+  of what the code does; where the code needs one to be understood, rename or extract instead.
+  `node <plugin root>/cli/comments.mjs` counts the comment lines that record a change's history, in code
+  and in a Markdown file's HTML comments other than the lines a tool reads, and a workspace's `comments`
+  recipe holds that count at a limit that only falls.
 
 ## Code is read by symbol
 

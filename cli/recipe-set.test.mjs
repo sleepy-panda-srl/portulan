@@ -364,6 +364,7 @@ describe("the roster — every reader of the recipe set reaches this carrier", (
             "cli/doctor.mjs",
             "cli/drills.mjs",
             "cli/finish.mjs",
+            "cli/form.mjs",
             "cli/stop-gate.mjs",
             "cli/vendor.mjs",
         ]);

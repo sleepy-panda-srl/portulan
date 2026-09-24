@@ -15,6 +15,7 @@
 - **Open a file only when the task needs it, and one of 300 lines or more only where it does: `node cli/symbols.mjs <file>` outlines it, and `<file>#<heading>` prints one section.**
 - **Ask for only the output you need: a range, a count, the failures.**
 - **The prompt cache lasts five minutes or an hour: a longer pause, or a fresh subagent where one could be resumed, writes the whole context again.**
+- **Code should speak for itself: a comment is paid for on every read of its file, so add one only when truly needed, concise, meaningful and valuable (less is more), and keep a change's history in its commit message.**
 
 ## Who we are, and what we build: `.portulan/identity.md`
 

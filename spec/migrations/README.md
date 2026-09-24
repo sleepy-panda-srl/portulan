@@ -39,7 +39,8 @@ there. `ctx` carries `{ bundle, spec, tree, today }`: the CLI root this run is e
 Workspace Definition version **this bundle implements**, the `--tree` a step may need and must never
 invent, and the date a record written today carries. An `edit` is `{ file, next }` — a relative path
 and its whole next contents — relative to the workspace, or to the tree where it says `root: "tree"`;
-a `next` of `null` deletes the file. Rollback puts back what each edit replaced or deleted, in either
+a `next` of `null` deletes the file, and a `mode` is the mode of a file the edit creates, as a recipe
+must be executable. Rollback puts back what each edit replaced or deleted, in either
 root, and the report names each file as its root names it.
 
 **After each step applied, the steps after it are asked again.** A step owed only once an earlier one
@@ -105,6 +106,7 @@ is a question that could not be answered.
 | [`0007-guidance-compiled.mjs`](0007-guidance-compiled.mjs) | `form` | The guidance half of `portulan compile` written where it drifted: the card and the rules the host loads, through `compile`'s own planner and refusals, and never `.claude/settings.json`, which enforces gates and is a person's to compile. |
 | [`0008-card-reading.mjs`](0008-card-reading.mjs) | `form` | A card drafted before it carried the engine's rules on reading and the cache gets that section, which `compile` writes out from the installed Portulan's `core/operating/context.md`, and `0007` compiles it. A card lacking the section under any other head is owed it by hand: the run names the head the step looks for and the line to add, applies the rest of the chain and exits 1, and `doctor` names the card until the line is there. |
 | [`0009-instruction-sections-on-read.mjs`](0009-instruction-sections-on-read.mjs) | `form` | Each section a team marks with a line `<!-- portulan: on-read -->` under its heading, in `CLAUDE.md` or `.claude/CLAUDE.md`, moves byte for byte into an on-read unit of `slots.context`, and a comment is left where it was. **Proved before it is offered**: the file must reassemble from its units byte for byte and each clause land once, or the step refuses; a section importing a file, a mark inside a marked section and a mark under no heading are refused too, and a mark in an instruction file that is a link is owed by hand while the rest of the chain runs. Owed only where a team marked a section, and put back by [`../../cli/instructions.mjs`](../../cli/instructions.mjs) `--join`. |
+| [`0010-comment-rail.mjs`](0010-comment-rail.mjs) | `form` | Where a `repository` workspace's tree is one git lists and no `comments` recipe is declared, `verify/comments.sh` is drafted as `init` drafts it, holding the comment lines that record a change's history at the count the tree has, and declared. **Refused where `verify/comments.sh` is already there undeclared**, rather than written over. |
 
 **`0001` has no subject in this tree** — nothing declares 1.0 — and is exercised against a fixture,
 which is said here rather than dressed up. **`0002` has no subject in this repository either**: this
@@ -113,7 +115,8 @@ exercised against workspaces the real `init` drafts. **Neither have the form ste
 moved its own records and boot by hand on 2026-09-23 and 24, and `0003`–`0008` are exercised against a
 consumer the real `init` drafts, put back in the form it drafted before, and committed. `0009` has none
 either, since this repository keeps no `CLAUDE.md`, and is exercised against such a consumer whose
-instruction file the suite marks.
+instruction file the suite marks; `0010` against one `init` drafted where git listed no files, then
+committed.
 
 ## Adding one
 

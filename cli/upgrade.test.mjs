@@ -1674,6 +1674,57 @@ describe("0009 — a section a team marks in its instruction file moves to an on
     });
 });
 
+describe("0010 — a `comments` recipe, offered where `init` drafted none", () => {
+    /** A consumer `init` drafted where git listed no files, then committed once git did. */
+    function draftedBeforeGit() {
+        const repo = scratch();
+        fs.writeFileSync(path.join(repo, "a.js"), "// Added 2026-09-01: the first thing.\nexport const a = 1;\n");
+        execFileSync(process.execPath, [path.join(REPO, "cli", "init.mjs"), "--residence", "in-repo", "--no-interview", "--no-cycle", repo], { stdio: "pipe" });
+        git(repo, "init", "-q");
+        git(repo, "config", "user.email", "fixture@example.invalid");
+        git(repo, "config", "user.name", "Fixture");
+        git(repo, "add", "-A");
+        git(repo, "commit", "-qm", "drafted before git listed the tree");
+        return { repo, ws: path.join(repo, ".portulan") };
+    }
+    const form = async (ws) => (await inspect(ws, { env: { CLAUDE_CONFIG_DIR: scratch() } })).findings.find((f) => f.check === "form").message;
+
+    test("--write drafts it at the tree's count, executable and green, doctor names the form, and a second run owes nothing", async () => {
+        const { repo, ws } = draftedBeforeGit();
+        assert.match(await form(ws), /no `comments` recipe: nothing counts the comments that record a change's history/);
+        const dry = harness();
+        assert.equal(await run([ws], { ...dry.options, today: TODAY }), 0, dry.text());
+        assert.match(dry.text(), /0010-comment-rail \(form\)/);
+        assert.equal(git(repo, "status", "--porcelain"), "", "a bare run wrote");
+
+        const h = harness();
+        assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 0, h.text());
+        assert.match(h.text(), /applied 1 step\(s\) to [^\n]*verify\/comments\.sh, workspace\.json\. doctor is green/);
+        const manifest = JSON.parse(fs.readFileSync(path.join(ws, "workspace.json"), "utf8"));
+        assert.deepEqual(manifest.verify.recipes.at(-1), { id: "comments", run: "./.portulan/verify/comments.sh", requires: ["bash", "git", "node"] });
+        const rail = path.join(ws, "verify", "comments.sh");
+        assert.match(fs.readFileSync(rail, "utf8"), /^LIMIT=1$/m);
+        const out = execFileSync(rail, { cwd: repo, encoding: "utf8", env: { ...process.env, PORTULAN_CLI: path.join(REPO, "cli") } });
+        assert.match(out, /green: 1 is within the limit of 1/);
+        assert.match(await form(ws), /a `comments` recipe holding the comments that record a change's history/);
+
+        const again = harness();
+        assert.equal(await run([ws, "--write"], { ...again.options, today: TODAY }), 0, again.text());
+        assert.match(again.text(), /owes nothing/);
+    });
+
+    test("a `verify/comments.sh` no recipe declares is refused, and nothing is written", async () => {
+        const { repo, ws } = draftedBeforeGit();
+        fs.writeFileSync(path.join(ws, "verify", "comments.sh"), "#!/usr/bin/env bash\nexit 0\n");
+        git(repo, "add", "-A");
+        git(repo, "commit", "-qm", "a recipe of our own");
+        const h = harness();
+        assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 2, h.text());
+        assert.match(h.text(), /`verify\/comments\.sh` is in the workspace and no recipe declares it: declare it as `comments`, or rename it, then upgrade/);
+        assert.equal(git(repo, "status", "--porcelain"), "");
+    });
+});
+
 describe("applyEdits and restore reach the tree, and delete", () => {
     test("an edit naming the tree lands there, a null `next` deletes, and restore puts both back", () => {
         const tree = scratch();
