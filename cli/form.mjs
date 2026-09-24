@@ -79,6 +79,10 @@ One file per entry for the next release, so two open changes never edit the same
 bullet, with any link relative to this directory. \`portulan index --changes changes\` prints them grouped,
 with their links moved up one directory, as the release cut pastes them under the new version in
 \`../${CHANGELOG}\`. The cut then deletes them and keeps this file, so the directory stays tracked.
+
+The entries \`portulan upgrade\` moved here from the changelog's Unreleased are named
+\`<n>-<slug>.<section>.md\`, numbered in the changelog's order and padded to one width, since the cut reads
+fragments by name: they print as the changelog held them, and ahead of any fragment named by its slug.
 `;
 }
 
@@ -599,8 +603,11 @@ export function formOf(workspaceDir, manifest) {
         } else {
             const source = readOrNull(path.resolve(wsDir, context, `${BOOT_CARD_UNIT}.md`));
             if (source === null) add("card", "new", "no boot card, by choice: `slots.context` holds no `boot` unit");
-            else if (readOrNull(path.join(tree, COMPILED_CARD)) === null) add("card", "today", `a boot card not yet compiled to ${COMPILED_CARD}: run \`portulan compile\``);
-            else add("card", "new", "a compiled boot card");
+            else if (readOrNull(path.join(tree, COMPILED_CARD)) !== null) add("card", "new", "a compiled boot card");
+            // A host that reads `AGENTS.md` boots from the card `vendor --host` writes at its head, and has
+            // no rules for `compile` to write: there, the card is in the new form as it stands.
+            else if ((readOrNull(path.join(tree, "AGENTS.md")) ?? "").split(/\r?\n/).includes(BOOT_CARD_LINE)) add("card", "new", "a boot card at the head of AGENTS.md, which this host reads");
+            else add("card", "today", `a boot card not yet compiled to ${COMPILED_CARD}: run \`portulan compile\``);
         }
     }
     return { tree, pieces };

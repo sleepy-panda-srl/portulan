@@ -1549,6 +1549,11 @@ export async function run(argv, options = {}) {
         } else {
             say(`vendor: nothing compiled — run \`portulan compile\` against the new residence.`);
         }
+        // The repository's own records, its changelog, its Session logs, its `.gitignore`, are not the
+        // workspace's, so a switch moves none of them (2026-09-24); `upgrade` moves them where it is asked.
+        if (parsed.residence === "in-repo") {
+            say(`vendor: the repository's own records are not moved by a switch — \`portulan upgrade --write ${display(dest)}\` moves them to the new form, which doctor's \`form\` line reports.`);
+        }
         return 0;
     } catch (error) {
         if (!pastTheFlip) await unwind(undo);

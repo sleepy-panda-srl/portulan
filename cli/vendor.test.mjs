@@ -1442,6 +1442,10 @@ describe("the new form, carried by vendor", () => {
         assert.doesNotMatch(md, /## Guidance/, "the card is not carried twice");
         assert.match(md, /^- \*\*`\.portulan\/context\/`\*\* — this team's guidance: the card above is its boot\.$/m);
         assert.deepEqual(await green(path.join(host, ".portulan")), []);
+        const { findings } = await inspect(path.join(host, ".portulan"), { env: { CLAUDE_CONFIG_DIR: scratch() } });
+        const form = findings.find((f) => f.check === "form");
+        assert.match(form.message, /a boot card at the head of AGENTS\.md, which this host reads/, "a host that reads AGENTS.md boots from the card there, with no rules to compile");
+        assert.doesNotMatch(form.message, /upgrade --write/);
     });
 
     test("without a card, the slots are read in order, as before", () => {
@@ -1489,5 +1493,6 @@ describe("the new form, carried by vendor", () => {
         assert.match(fs.readFileSync(rule, "utf8"), /^@\.\.\/\.\.\/\.\.\/\.portulan\/identity\.md$/m, "the import is rebased to the compiled rule");
         assert.equal(exists(path.join(repo, ".claude", "settings.json")), false);
         assert.match(text(h), /compiled the guidance into .+, which Claude Code loads there; host settings are not/);
+        assert.match(text(h), /the repository's own records are not moved by a switch — `portulan upgrade --write .+` moves them to the new form/);
     });
 });

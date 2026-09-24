@@ -201,6 +201,7 @@ describe("the changelog's Unreleased entries, as fragments", () => {
     test("changes/README.md names the six sections and the command that prints them", () => {
         assert.match(changesReadme(), /the section one of added, changed, deprecated, removed, fixed or security/);
         assert.match(changesReadme(), /`portulan index --changes changes`/);
+        assert.match(changesReadme(), /named\n`<n>-<slug>\.<section>\.md`, numbered in the changelog's order and padded to one width/, "the moved entries' numbering is stated where a fragment's name is ruled");
     });
 });
 
@@ -318,6 +319,14 @@ describe("which form a consumer is in, read from disk", () => {
         fs.mkdirSync(path.join(root, ".claude", "rules", "portulan"), { recursive: true });
         fs.writeFileSync(path.join(root, ".claude", "rules", "portulan", "boot.md"), "# Portulan boot card\n");
         assert.equal(formLine(ws, m), "the new form: no Session log with entries; a compiled boot card");
+    });
+
+    test("a card at the head of AGENTS.md is the new form on a host that reads it, and one mentioning the line is not", () => {
+        const root = tree({ ".portulan/context/boot.md": "---\ntier: always\n---\n\n# Portulan boot card\n", "AGENTS.md": "# AGENTS.md — acme\n\n# Portulan boot card\n\nThe card.\n" });
+        const m = manifest({ slots: { context: "context/" } });
+        assert.deepEqual(formOf(path.join(root, ".portulan"), m).pieces.find((p) => p.id === "card"), { id: "card", state: "new", text: "a boot card at the head of AGENTS.md, which this host reads" });
+        fs.writeFileSync(path.join(root, "AGENTS.md"), "# AGENTS.md — acme\n\nNo `# Portulan boot card` here.\n");
+        assert.equal(formOf(path.join(root, ".portulan"), m).pieces.find((p) => p.id === "card").state, "today");
     });
 
     test("only a repository workspace has a card piece, and a changelog piece needs a changelog or fragments", () => {
