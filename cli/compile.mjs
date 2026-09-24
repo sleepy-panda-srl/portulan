@@ -3090,6 +3090,39 @@ export function guidanceEdits(named) {
 // ===========================================================================================
 
 /**
+ * A manifest that is there and cannot be read as one, or null when it reads or is absent.
+ *
+ * `compile` and `goldens` stop on it before they ask the manifest anything, because every reader below
+ * takes one it cannot parse for one declaring nothing: no guidance, so a write removed every rule and skill
+ * an earlier run compiled and the marker with them, and no gate policy, so a `gates.json` found by
+ * convention compiled in the manifest's place. `resolveWorkspace` refuses such a manifest only where
+ * `--workspace` names the workspace directory; named as a repository root, as the `compile` recipe runs
+ * it, nothing did. An absent manifest is still a legitimate shape (`policyPath`), and the hook's reader
+ * still falls back, because it runs on every tool call. Found 2026-09-24 in the follow-ups to #447, whose
+ * tidy made the loss possible.
+ *
+ * @returns {{ file: string, why: string } | null}
+ */
+export function unreadableManifest(workspaceRoot, workspaceDir = ".portulan") {
+    const file = path.join(workspaceRoot, workspaceDir, "workspace.json");
+    let raw;
+    try {
+        raw = fs.readFileSync(file, "utf8");
+    } catch (cause) {
+        if (cause.code === "ENOENT") return null;
+        return { file, why: `it could not be read — ${cause.code ?? cause.message}` };
+    }
+    let manifest;
+    try {
+        manifest = JSON.parse(raw);
+    } catch (cause) {
+        return { file, why: `it is not valid JSON — ${cause.message}` };
+    }
+    if (manifest === null || typeof manifest !== "object" || Array.isArray(manifest)) return { file, why: "it is not a JSON object" };
+    return null;
+}
+
+/**
  * The same answer as `policyPath`, plus WHICH ARM produced it — and, where the manifest named
  * something unusable, WHY.
  *
@@ -3121,6 +3154,8 @@ export function policyDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     } catch {
         // No manifest, or unreadable. `doctor` is the tool that judges a manifest; this one only needs
         // to know where the policy is, and the default is where it is when nothing says otherwise.
+        // `compile` and `goldens` stop on an unreadable one before they ask (`unreadableManifest`), so
+        // here it reaches only the hook's reader, which must not stop.
         return fallback("no-manifest");
     }
     if (declared === undefined) return fallback("no-key");
@@ -4075,6 +4110,17 @@ export function run(argv, options = {}) {
         // The workspace may be named as a repository root or as the workspace directory itself, and the
         // second is how a feed-side workspace is reachable at all — see `resolveWorkspace`.
         const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
+        // Before anything asks the manifest a question, because every reader below takes one that does not
+        // parse for one declaring nothing, and this run would act on that: see `unreadableManifest`.
+        const unreadable = unreadableManifest(workspaceRoot, workspaceDir);
+        if (unreadable !== null) {
+            throw new CompileError(
+                `${unreadable.file} is not a manifest this compiler can read: ${unreadable.why}. Read as one declaring ` +
+                    `nothing, it would remove every rule and skill an earlier run compiled from its guidance and compile a ` +
+                    `\`gates.json\` found by convention in its place, so nothing was compiled, written or removed. Fix the ` +
+                    `manifest, then compile again`,
+            );
+        }
         // The guidance is read before the policy, because a malformed unit is a reason this run cannot
         // compile honestly whichever half it reaches first, and because a workspace with guidance and no
         // policy still has something to compile.
@@ -4105,7 +4151,8 @@ export function run(argv, options = {}) {
             // What an earlier run compiled from guidance the manifest no longer declares is still this
             // compiler's to remove, as it is beside a policy: stopping before the tidy left an `always` rule
             // loading into every context until someone deleted it by hand. Only where the manifest was read
-            // and names no policy, because one that does not parse declares nothing this compiler can know.
+            // and names no policy: one that does not parse stopped the run above, and a workspace with no
+            // manifest has not been authored, so nothing it lacks is a reason to remove anything.
             const leftover = guidance === null && policyReason === "no-key" && guidancePlan !== null && guidancePlan.stray.length > 0;
             if (guidance === null && !leftover) {
                 throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));

@@ -4062,17 +4062,66 @@ describe("guidance: written, then byte-compared", () => {
         assert.equal(said(t, ["--workspace", dir, "--check"]).code, 2);
     });
 
-    // From the repository root, as `.portulan/verify/compile.sh` runs it, a manifest that does not parse is
-    // not refused before this point, so the tidy itself must not take it for one declaring no guidance.
-    test("a manifest that does not parse, with no gate policy, is no reason to remove anything", (t) => {
+    // Every file under `.claude/`, by its path there, so a run can be shown to have written and removed nothing.
+    const claudeTree = (dir) => {
+        const files = {};
+        const walk = (at) => {
+            for (const entry of fs.readdirSync(at, { withFileTypes: true })) {
+                const file = path.join(at, entry.name);
+                if (entry.isDirectory()) walk(file);
+                else files[path.relative(dir, file).split(path.sep).join("/")] = fs.readFileSync(file, "utf8");
+            }
+        };
+        walk(path.join(dir, ".claude"));
+        return files;
+    };
+
+    // Before this case, from the repository root, as `.portulan/verify/compile.sh` runs it, a manifest that did
+    // not parse was read as one declaring nothing: beside a `gates.json` found by convention, a write compiled
+    // that file and removed every rule and skill compiled from guidance, and the marker with them.
+    test("a manifest that does not parse stops the run, with a gate policy or without one: nothing written or removed", (t) => {
+        for (const policyBeside of [true, false]) {
+            for (const [label, broken] of [
+                ["cut short", (text) => text.slice(0, -2)],
+                ["null", () => "null"],
+                ["an array", () => "[]"],
+            ]) {
+                const dir = scratch();
+                fs.cpSync(GUIDANCE_FIXTURE, path.join(dir, ".portulan"), { recursive: true });
+                if (policyBeside) fs.writeFileSync(path.join(dir, ".portulan", "gates.json"), JSON.stringify(policy()));
+                assert.equal(said(t, ["--workspace", dir]).code, 0);
+                const before = claudeTree(dir);
+                assert.ok(`${GUIDANCE_RULES_DIR}/${RULES_MARKER}` in before, "the marker is among what must survive");
+                assert.equal(`.claude/settings.json` in before, policyBeside);
+                const manifestPath = path.join(dir, ".portulan", "workspace.json");
+                fs.writeFileSync(manifestPath, broken(fs.readFileSync(manifestPath, "utf8")));
+                const why = label === "cut short" ? /it is not valid JSON — \S/ : /it is not a JSON object/;
+                for (const args of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+                    const { code, out } = said(t, args);
+                    const where = `${label}${policyBeside ? " beside gates.json" : ""}, ${args.join(" ")}`;
+                    assert.equal(code, 2, `${where}: ${out}`);
+                    assert.match(out, /workspace\.json is not a manifest this compiler can read/, where);
+                    assert.match(out, why, where);
+                    assert.deepEqual(claudeTree(dir), before, `${where}: nothing written or removed`);
+                }
+            }
+        }
+    });
+
+    // The tidy's own scope: a workspace whose manifest is gone has not been authored, so what it lacks is no
+    // reason to remove what an earlier run compiled. Red when the tidy's `no-key` condition is removed.
+    test("a workspace whose manifest is gone, with no gate policy, is no reason to remove anything", (t) => {
         const dir = scratch();
         fs.cpSync(GUIDANCE_FIXTURE, path.join(dir, ".portulan"), { recursive: true });
         assert.equal(said(t, ["--workspace", dir]).code, 0);
-        const manifestPath = path.join(dir, ".portulan", "workspace.json");
-        fs.writeFileSync(manifestPath, fs.readFileSync(manifestPath, "utf8").slice(0, -2));
-        for (const args of [["--workspace", dir], ["--workspace", dir, "--check"]]) assert.equal(said(t, args).code, 2, args.join(" "));
-        for (const rel of ["conventions.md", "api.md", ON_READ_INDEX, RULES_MARKER]) assert.ok(fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR, rel)), rel);
-        assert.ok(fs.existsSync(path.join(dir, SKILLS_DIR, "release", "SKILL.md")));
+        const before = claudeTree(dir);
+        fs.rmSync(path.join(dir, ".portulan", "workspace.json"));
+        for (const args of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+            const { code, out } = said(t, args);
+            assert.equal(code, 2, `${args.join(" ")}: ${out}`);
+            assert.match(out, /no readable `workspace.json`/);
+            assert.deepEqual(claudeTree(dir), before, `${args.join(" ")}: nothing removed`);
+        }
     });
 
     test("a rules directory without the marker is not this compiler's where it owes no rule: left, and green", (t) => {

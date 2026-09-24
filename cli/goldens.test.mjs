@@ -448,6 +448,20 @@ test("a refused `gates` value is could-not-run even beside a `gates.json` at the
     } finally { cleanup(root); }
 });
 
+// As `compile` stops on a manifest that does not parse: read as one declaring nothing, it would have fixtures
+// graded against a `gates.json` found by convention, which it may not name.
+test("a manifest that does not parse is could-not-run, naming it, even beside a `gates.json` at the default path", () => {
+    const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
+    try {
+        mkdirSync(join(root, ".portulan"), { recursive: true });
+        writeFileSync(join(root, ".portulan/workspace.json"), "{ not json");
+        cpSync(join(REPO, ".portulan/gates.json"), join(root, ".portulan/gates.json"));
+        const r = cli(["--workspace", root]);
+        assert.equal(r.status, 2, r.stderr);
+        assert.match(r.stderr, /workspace\.json is not a manifest this tool can read: it is not valid JSON — \S/);
+    } finally { cleanup(root); }
+});
+
 test("a red exits 1 and prints every finding on stderr", () => {
     const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
     try {

@@ -76,6 +76,7 @@ import {
     parse,
     policyDeclaration,
     resolveWorkspace,
+    unreadableManifest,
 } from "./compile.mjs";
 
 /** Where the corpus lives, relative to the repository root. */
@@ -162,6 +163,16 @@ function readJson(file, what) {
  */
 export function yieldedRules(named, { packRoots = null } = {}) {
     const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
+    // As `compile` stops on it, and before the same question: a manifest that does not parse would be read
+    // as naming no policy, and fixtures graded against a `gates.json` found by convention in its place.
+    const unreadable = unreadableManifest(workspaceRoot, workspaceDir);
+    if (unreadable !== null) {
+        throw new CouldNotRun(
+            `${unreadable.file} is not a manifest this tool can read: ${unreadable.why}. Read as one declaring nothing, ` +
+                `it would have fixtures graded against a \`gates.json\` found by convention, which it may not name. ` +
+                `There is nothing to grade fixtures against`,
+        );
+    }
     const { file: policyFile, declared, reason } = policyDeclaration(workspaceRoot, workspaceDir);
     // A refused value stops here even beside a `gates.json` at the default path, as it stops `compile`:
     // that file is not the policy the manifest names, and fixtures graded against it grade a policy
