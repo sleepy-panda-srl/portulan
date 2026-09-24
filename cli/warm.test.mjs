@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 
 import {
-    EXCLUDE_FLAG, HOSTED_VAR, PARENT_VARS, SWITCH_VARS, TASKS,
+    EXCLUDE_FLAG, HOSTED_VAR, PARENT_VARS, SWITCH_VARS, TASKS, isCode,
     childArgs, childEnv, portulanBytes, portulanSources, priced, readSequence, reportLines, run, runSequence, shareOf, summary, verdict,
 } from "./warm.mjs";
 import { readTranscript } from "./ledger.mjs";
@@ -60,8 +60,9 @@ fs.writeFileSync(path.join(dir, sid + ".jsonl"), [
     rec(sid + "-1", { input_tokens: 10, ...w(warm ? 0 : 20000), cache_read_input_tokens: warm ? 20000 : 0, output_tokens: 150 }),
     rec(sid + "-2", { input_tokens: 5, ...w(1000), cache_read_input_tokens: 20000, output_tokens: 50 }),
 ].join("\\n") + "\\n");
-// Asked to, it changes its checkout: a file of its own, or that file committed.
-if (e.WARM_STUB_TOUCH) fs.writeFileSync("touched.txt", "a run's own file\\n");
+// Asked to, it changes its checkout: a file of its own, that file committed, or a file the tree ignores.
+if (e.WARM_STUB_TOUCH === "ignored") fs.writeFileSync("local.log", "a run's own ignored file\\n");
+else if (e.WARM_STUB_TOUCH) fs.writeFileSync("touched.txt", "a run's own file\\n");
 if (e.WARM_STUB_TOUCH === "commit") {
     execFileSync("git", ["add", "touched.txt"]);
     execFileSync("git", ["-c", "user.name=s", "-c", "user.email=s@example.invalid", "commit", "-q", "-m", "a run's own commit"]);
@@ -76,6 +77,7 @@ function rig({ answer, touch } = {}) {
     const tree = path.join(root, "tree");
     fs.mkdirSync(tree);
     fs.writeFileSync(path.join(tree, "README.md"), "A tree.\n");
+    fs.writeFileSync(path.join(tree, ".gitignore"), "*.log\n");
     const git = (args) => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.invalid", ...args], { cwd: tree, stdio: "ignore" });
     git(["init", "-q"]);
     git(["add", "."]);
@@ -163,6 +165,21 @@ describe("A: Portulan's share of what entered the context", () => {
         git(["commit", "-q", "-m", "a tree"]);
         return dir;
     };
+
+    test("code is the five-run set's, but the compiled rule files under .claude/rules/ are Portulan's", () => {
+        assert.deepEqual(
+            [".claude/rules/portulan/boot.md", ".claude/settings.json", "cli/warm.mjs", "package.json", "core/engine.md", ".portulan/notes.md"].map(isCode),
+            [false, true, true, true, false, false],
+        );
+        const dir = tree();
+        fs.mkdirSync(path.join(dir, ".claude", "rules", "portulan"), { recursive: true });
+        const card = "The boot card a session reads before its first request, compiled by Portulan.";
+        fs.writeFileSync(path.join(dir, ".claude", "rules", "portulan", "boot.md"), `${card}\n`);
+        execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "add", "-f", "."], { cwd: dir, stdio: "ignore" });
+        execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-m", "a card"], { cwd: dir, stdio: "ignore" });
+        const sources = portulanSources(dir);
+        assert.ok(sources.lines.has(card) && !sources.code.has(card));
+    });
 
     test("a line is Portulan's when a file of Portulan's holds it, printed with a line number or not; a short line follows the one before", () => {
         const sources = portulanSources(tree());
@@ -323,7 +340,7 @@ describe("a sequence, end to end on a stub", () => {
         assert.match(said.join("\n"), /needs --local/);
     });
 
-    for (const touch of ["file", "commit"]) {
+    for (const touch of ["file", "commit", "ignored"]) {
         test(`a run that changed its clone (${touch}) fails its task, and the clone goes back to where the run started`, () => {
             const r = rig({ touch });
             const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: r.tree, encoding: "utf8" });
@@ -333,7 +350,7 @@ describe("a sequence, end to end on a stub", () => {
             assert.deepEqual([s.summary.graded, s.summary.changed], [0, 2]);
             const clone = path.join(r.into, "touched", "tree");
             assert.equal(execFileSync("git", ["rev-parse", "HEAD"], { cwd: clone, encoding: "utf8" }), head);
-            assert.equal(execFileSync("git", ["status", "--porcelain"], { cwd: clone, encoding: "utf8" }), "");
+            assert.equal(execFileSync("git", ["status", "--porcelain", "--ignored"], { cwd: clone, encoding: "utf8" }), "");
             assert.match(reportLines(s).at(-1), /answered 0 of 2; changed a file 2$/);
         });
     }

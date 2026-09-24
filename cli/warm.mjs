@@ -82,9 +82,12 @@ export const GENERAL_RATES = { read: GENERAL_READ, output: OUTPUT };
 /**
  * Code, which A never counts: the five-run set's rule. The tree a run starts is the plugin itself, so every other
  * tracked file is Portulan's: its boot set, doctrine and skills, the workspace's context, records and memory.
+ * `.claude/rules/` is the one exception to that rule's `.claude/`: the set's tree held only the settings there, and
+ * since #452 the folder holds the compiled boot card and rule files, which are Portulan's guidance and so A.
  */
 export const isCode = (rel) =>
-    /^(?:cli|\.github|\.claude)\//.test(rel) || /\.(?:mjs|js|cjs|sh|yml|yaml)$/.test(rel) || rel === "package.json" || rel === "package-lock.json";
+    !rel.startsWith(".claude/rules/") &&
+    (/^(?:cli|\.github|\.claude)\//.test(rel) || /\.(?:mjs|js|cjs|sh|yml|yaml)$/.test(rel) || rel === "package.json" || rel === "package-lock.json");
 
 /** A line shorter than this matches too many files to say whose it is, so it takes the verdict of the line before. */
 export const MIN_LINE = 16;
@@ -569,8 +572,10 @@ export function runSequence({
         }
         // A run leaves its clone as it found it: the boot task says to change no file, and the probe's one reply
         // needs none. A run that changed its clone, a file or a commit, fails its task, and once it is recorded the
-        // clone goes back to the commit the run started from, so the next run starts where the others did.
-        const changed = git(copy, ["rev-parse", "HEAD"]).trim() !== start || git(copy, ["status", "--porcelain"]).trim() !== "";
+        // clone goes back to the commit the run started from, so the next run starts where the others did. Ignored
+        // files count: a clone starts with none, and one a run leaves (a local settings file) is input to the next.
+        const touched = git(copy, ["status", "--porcelain", "--ignored", "--untracked-files=all"]).split("\n").filter(Boolean);
+        const changed = git(copy, ["rev-parse", "HEAD"]).trim() !== start || touched.length > 0;
         record.runs.push({
             k,
             exit: r.status,
@@ -582,12 +587,13 @@ export function runSequence({
             graded: answered && !changed && TASKS[task].expect(answer),
             answer,
             changed,
+            ...(touched.length ? { touched: touched.slice(0, 20).map((l) => l.slice(3)) } : {}),
             transcript,
         });
         journal();
         if (changed) {
             git(copy, ["reset", "--quiet", "--hard", start]);
-            git(copy, ["clean", "--quiet", "-d", "--force"]);
+            git(copy, ["clean", "--quiet", "-d", "-x", "--force"]);
         }
         say(`${label} run ${k}/${runs}: exit ${r.status}${changed ? ", changed its clone, put back" : ""}${transcript ? "" : ", no transcript found"}`);
         if (between === "commit" && k < runs) {

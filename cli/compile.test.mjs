@@ -676,6 +676,13 @@ describe("the session switches", () => {
         assert.ok(out.notes.some((n) => /compiled as 5m/.test(n) && /CLAUDE_CODE_PROMPT_CACHE_TTL/.test(n)), out.notes.join("\n"));
     });
 
+    test("declared on, the git instructions are said too, with the way to go without them for one session", () => {
+        const out = claudeCode(parse(policy()), { sessions: { manifest: ".portulan/workspace.json", git_instructions: true } });
+        assert.equal(out.artifact.value.includeGitInstructions, true);
+        assert.ok(out.notes.some((n) => /compiled on/.test(n) && /CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1/.test(n)), out.notes.join("\n"));
+        assert.ok(!out.notes.some((n) => /compiled off/.test(n)), out.notes.join("\n"));
+    });
+
     test("`headless` alone compiles nothing into the settings, and says it is not compiled", () => {
         const sessions = { manifest: ".portulan/workspace.json", headless: { cache_lifetime: "5m", exclude_dynamic_sections: true } };
         const plain = claudeCode(parse(policy()));

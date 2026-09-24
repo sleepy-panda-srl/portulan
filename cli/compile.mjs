@@ -1575,6 +1575,13 @@ export function claudeCode(parsed, options = {}) {
                 `\`CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=0\`, which outranks this file (read in Claude Code 2.1.281's program text)`,
         );
     }
+    if (switches.includeGitInstructions === true) {
+        notes.push(
+            `the git instructions are compiled on (\`sessions.git_instructions\`): every session here starts with the host's ` +
+                `startup git snapshot and its commit and pull-request instructions, whatever a user's own settings say. A session ` +
+                `that must go without them starts with \`CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1\`, which outranks this file`,
+        );
+    }
     if (switches.promptCacheTtl !== undefined) {
         notes.push(
             `the main conversation's cache lifetime is compiled as ${switches.promptCacheTtl} (\`sessions.cache_lifetime\`); ` +
