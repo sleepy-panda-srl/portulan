@@ -13,7 +13,7 @@ pointer is the whole answer about residence, not a hint to be supplemented.
 **Ask the CLI where that workspace is. Do not go looking yourself.**
 
 ```
-node ${CLAUDE_PLUGIN_ROOT}/cli/discover.mjs --json ${CLAUDE_PROJECT_DIR}/.portulan
+node "${CLAUDE_PLUGIN_ROOT}/cli/discover.mjs" --json "${CLAUDE_PROJECT_DIR}/.portulan"
 ```
 
 **Substitute the project root yourself if `${CLAUDE_PROJECT_DIR}` is not set** — step 2's rule, that
@@ -31,9 +31,9 @@ most likely to be reworded.
 | `could-not-look` | The record exists and would not parse. This is *could not look*, which is not *not installed* — say which one you are reporting. |
 | **no object at all** | Exit 2 with **nothing on stdout** and a diagnostic on stderr: the command could not run — a bad argument, an unreadable manifest, no Node. Read the diagnostic, say the resolution did not happen and why, and take step 4's position **without** claiming the workspace is not installed. Silence is not an answer, and it is never *no*. |
 
-_(`node ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs ${CLAUDE_PROJECT_DIR}/.portulan` prints the same answer as a
-`residence` note, and is the spelling to use when a human is reading. It grades the **pointer** and never
-the workspace it names: run `doctor` against `root` if you want a verdict on the workspace itself.)_
+_(`node "${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs" "${CLAUDE_PROJECT_DIR}/.portulan"` prints the same answer
+as a `residence` note, and is the spelling to use when a human is reading. It grades the **pointer** and
+never the workspace it names: run `doctor` against `root` if you want a verdict on the workspace itself.)_
 
 **This is the one licensed exception to step 2's "search the project only", and it is licensed by the
 project itself.** It licenses no search of your own — if the CLI cannot run, you have no resolution, and

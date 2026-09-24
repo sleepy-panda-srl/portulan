@@ -75,10 +75,10 @@ What is available to read, in this bundle:
   end to end as the worked example.
 - `${CLAUDE_PLUGIN_ROOT}/spec/` — the Workspace Definition: the schema and a per-slot document
   explaining what each slot is for and what it was derived from.
-- `node ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs <workspace-dir>` — validates a workspace against that
+- `node "${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs" <workspace-dir>` — validates a workspace against that
   definition. Zero dependencies; it needs Node and nothing else.
 
-Authoring a workspace ends with a human: `node ${CLAUDE_PLUGIN_ROOT}/cli/init.mjs` drafts one — see
+Authoring a workspace ends with a human: `node "${CLAUDE_PLUGIN_ROOT}/cli/init.mjs"` drafts one — see
 step 5 — and what it emits is a **draft**, so read the demo, compare, and curate before trusting a line
 of it.
 
@@ -119,8 +119,9 @@ Close the boot by stating the honest position:
 - **Where the workspace came from is part of the report.** In the repository, or resolved from a
   pointer — and where it was resolved, name the plugin and the **version**.
 - **So is what every context here loads.** Give the line
-  `node ${CLAUDE_PLUGIN_ROOT}/cli/context.mjs --workspace ${CLAUDE_PROJECT_DIR}/.portulan --brief`
-  prints; run it with step 3's reads.
+  `node "${CLAUDE_PLUGIN_ROOT}/cli/context.mjs" --workspace "${CLAUDE_PROJECT_DIR}/.portulan" --brief`
+  prints; run it with step 3's reads. Where `${CLAUDE_PROJECT_DIR}` is not set, the working directory
+  stands in for it, as in step 2.
 
 State which of these apply to the workspace you just loaded, using its own documents. If a document
 claims an enforcement that does not exist, that is a defect worth reporting, not a detail to smooth

@@ -869,4 +869,21 @@ describe("this repository", () => {
         const unknown = fs.readdirSync(path.join(REPO, "plugin/skills/portulan")).filter((name) => !known.has(name));
         assert.deepEqual(unknown, [], "a boot that reads a new file of the skill needs it in STEPS in context.mjs; one it reads on demand, here");
     });
+
+    test("every command the boot skill gives quotes the plugin's and the project's paths", () => {
+        // Both directories reach the shell as text, so an unquoted one with a space in its path is two
+        // words there: `node` finds no module, or the CLI refuses the rest (Copilot, #446).
+        const dir = path.join(REPO, "plugin/skills/portulan");
+        const unquoted = [];
+        for (const name of fs.readdirSync(dir).filter((n) => n.endsWith(".md"))) {
+            fs.readFileSync(path.join(dir, name), "utf8").split("\n").forEach((line, i) => {
+                for (const [, command] of line.matchAll(/(?:^|`)(node [^`]*)/g)) {
+                    for (const m of command.matchAll(/\$\{CLAUDE_(?:PLUGIN_ROOT|PROJECT_DIR)[^}]*\}/g)) {
+                        if (command[m.index - 1] !== '"') unquoted.push(`${name}:${i + 1} ${m[0]}`);
+                    }
+                }
+            });
+        }
+        assert.deepEqual(unquoted, []);
+    });
 });
