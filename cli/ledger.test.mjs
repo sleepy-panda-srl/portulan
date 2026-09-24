@@ -572,6 +572,24 @@ describe("the command", () => {
         });
     });
 
+    test("a report with no threshold to judge still says the horizon and multipliers one would take, declared or not", () => {
+        withTemp((dir) => {
+            const host = { cwd: dir, env: { CLAUDE_CONFIG_DIR: dir }, home: dir };
+            const ws = path.join(dir, "ws");
+            fs.mkdirSync(ws);
+            const restart = (argv) => {
+                const out = say();
+                assert.equal(run(["--branch", "b", ...argv], out.fn, host), 0, out.lines.join("\n"));
+                assert.ok(out.lines.includes("  no request on b is recorded here"), out.lines.join("\n"));
+                return out.lines.find((l) => l.startsWith("  restart: "));
+            };
+            const unjudged = "  restart: no session on this branch has a request with a time to judge; a threshold would take a horizon of ";
+            assert.equal(restart([]), `${unjudged}20 requests and the general multipliers, undeclared: read 0.1×, writes 1.25× for five minutes and 2× for an hour`);
+            fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify({ portulan: { spec: "2.12" }, spend: { multipliers: { read: 0.05, write: { "5m": 1.25, "1h": 2 } }, horizon: { requests: 30 } } }));
+            assert.equal(restart(["--workspace", ws]), `${unjudged}30 requests and the declared multipliers: read 0.05×, writes 1.25× for five minutes and 2× for an hour`);
+        });
+    });
+
     test("--workspace naming a manifest that cannot be read, or a `spend` it refuses, is could-not-run, never a report", () => {
         withTemp((dir) => {
             const host = { cwd: dir, env: { CLAUDE_CONFIG_DIR: dir }, home: dir };

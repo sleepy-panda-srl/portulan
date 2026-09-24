@@ -83,17 +83,18 @@ per-machine sections on its row 4.
 ## What is machinery today, and what is not
 
 `compile` emits the two interactive keys and says so on every run, and writes `spend`'s figures onto the
-restart advisory's commands; `doctor` checks both keys' shape and version, and reports every switch's state in
-one line; `init` offers an adopter's repository the five-minute lifetime with its reason and its trade-off,
-and writes the key on a yes for `compile` to carry, and `upgrade` prints the same offer and writes nothing.
-[`../../cli/warm.mjs`](../../cli/warm.mjs) runs fresh headless sessions in sequence and prices each from the
-host's own usage records, warm against cold, and [`../../evals/ab/warm.md`](../../evals/ab/warm.md) is its
-specification and its record. **Still to land**: the interactive A/B, which needs real local sessions and so
-runs on a maintainer's device; a report of how often sessions start warm, from the ledger's first request per
-context; an offer of the other switches, once their rows have run; and carrying the key through `vendor`.
-Until each lands, the rule it would enforce is held by the human gate.
+restart advisory's commands; `doctor` checks the shape and version of `sessions` and `spend`, and reports
+every switch's state in one line; `init` offers an adopter's repository the five-minute lifetime with its
+reason and its trade-off, and writes the key on a yes for `compile` to carry, and `upgrade` prints the same
+offer and writes nothing. [`../../cli/warm.mjs`](../../cli/warm.mjs) runs fresh headless sessions in sequence
+and prices each from the host's own usage records, warm against cold, and
+[`../../evals/ab/warm.md`](../../evals/ab/warm.md) is its specification and its record. **Still to land**: the
+interactive A/B, which needs real local sessions and so runs on a maintainer's device; a report of how often
+sessions start warm, from the ledger's first request per context; an offer of the other switches, once their
+rows have run; and carrying the key through `vendor`. Until each lands, the rule it would enforce is held by
+the human gate.
 
 _(Provenance: the maintainer's five-run measurement of 2026-09-24, whose figures the record in
 [`../../evals/ab/warm.md`](../../evals/ab/warm.md) carries as its before, and the cache test of the same day,
-its rows 1 and 2; the techniques survey before it, from Claude Code's documentation on prompt caching,
-settings and the CLI; and each switch read in Claude Code 2.1.281's program text on 2026-09-24.)_
+which ran its rows 1 and 2; the techniques survey before it, from Claude Code's documentation on prompt
+caching, settings and the CLI; and each switch read in Claude Code 2.1.281's program text on 2026-09-24.)_

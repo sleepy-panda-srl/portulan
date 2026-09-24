@@ -823,8 +823,8 @@ run with `--workspace <dir>`, and computes every threshold its report states at 
 so `compile` writes the figures onto all three of its commands, the `PostToolUse` and `UserPromptSubmit` hooks
 and the status line, as `--read`, `--write-5m`, `--write-1h` and `--horizon`, and its drift check holds them
 to the manifest: an edit to `spend` is drift until recompiled. A workspace with no gate policy has no settings
-for them to ride, and `compile` says that it compiled nothing. Every threshold either prints says whether its
-multipliers are declared or undeclared.
+for them to ride, and `compile` says that it compiled nothing. Every threshold the ledger or the advisory prints
+says whether its multipliers are declared, and so does a ledger report with no threshold to judge.
 
 **Declared, not defaulted.** Undeclared, both price at the general multipliers, a read at a tenth and writes
 at 1.25× and 2×, over a horizon of 20 requests, and say `undeclared`. That is ruling 2's answer to a spread no

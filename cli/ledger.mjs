@@ -706,15 +706,28 @@ export function ledger({ projects, config, roots, branch, lines = null, spend = 
     const latest = latestSession(collected.contexts, branch);
     const priced = { declared: spend.multipliers, horizon: spend.horizon ?? HORIZON };
     const restart = latest === null ? null : { session: latest.session, ...thresholdFor(latest.transcript, priced) };
-    return { projects, roots, branch, collected, figures, host, restart, lines };
+    return { projects, roots, branch, collected, figures, host, restart, lines, priced };
 }
 
 const signed = (n) => (n > 0 ? `+${grouped(n)}` : n < 0 ? `−${grouped(-n)}` : "0");
 
 const short = (id) => id.slice(0, 8);
 
+/**
+ * The restart line of a report with no threshold to judge. It still says the horizon and the multipliers a
+ * threshold would take, so a declaration `--workspace` read is said where no request is recorded.
+ */
+function unjudged({ declared, horizon } = { declared: null, horizon: HORIZON }) {
+    const m = declared ?? { read: GENERAL_READ, write: WRITE_BY_LIFETIME };
+    return (
+        "  restart: no session on this branch has a request with a time to judge; a threshold would take a horizon of " +
+        `${horizon} requests and ${declared === null ? "the general multipliers, undeclared" : "the declared multipliers"}: ` +
+        `read ${m.read}×, writes ${m.write["5m"]}× for five minutes and ${m.write["1h"]}× for an hour`
+    );
+}
+
 export function print(report, say) {
-    const { collected, figures: f, host, restart, lines } = report;
+    const { collected, figures: f, host, restart, lines, priced } = report;
     say(`ledger: branch ${report.branch} — what this change spent, from Claude Code's own usage records (numbers only: nothing a context said is read)`);
     say(`  worktrees: ${report.roots.join(", ")}`);
     say(
@@ -724,6 +737,7 @@ export function print(report, say) {
     );
     if (f.main.requests + f.subagents.requests === 0) {
         say(`  no request on ${report.branch} is recorded here`);
+        say(unjudged(priced));
         return;
     }
     const row = (label, k) => say(`  ${label.padEnd(18)}${grouped(f.main[k]).padStart(14)}${grouped(f.subagents[k]).padStart(14)}${grouped(f.total[k]).padStart(14)}`);
@@ -752,7 +766,7 @@ export function print(report, say) {
         say(`  host totals, session ${short(h.session)} (the last the host saved for ${h.cwd}, every branch): ${parts.join(", ")}`);
     }
     if (restart === null || restart.threshold === undefined) {
-        say("  restart: no session on this branch has a request with a time to judge");
+        say(unjudged(priced));
         return;
     }
     const m = restart.multipliers;
