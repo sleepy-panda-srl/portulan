@@ -364,17 +364,20 @@ export function unitName(title, taken) {
     return name;
 }
 
-/** A drafted unit: frontmatter naming the tier and the heading, a blank line, the section as it stood. */
-function draftUnit(description, body, eol) {
+/**
+ * A drafted unit: frontmatter naming the tier and the heading, a blank line, the section as it stood, ending as
+ * it did: with a line end, or with none where it ended a file that had none.
+ */
+function draftUnit(description, body, eol, ended) {
     const head = ["---", "tier: on-read", `description: ${JSON.stringify(description)}`, "---", ""].map((l) => (eol === "\r\n" ? `${l}\r` : l));
-    return `${[...head, ...body].join("\n")}\n`;
+    return `${[...head, ...body].join("\n")}${ended ? "\n" : ""}`;
 }
 
 /** The section a drafted unit holds, exactly as `draftUnit` was given it. */
 function draftedBody(text) {
     const lines = text.split("\n");
     const close = lines.findIndex((line, at) => at > 0 && bare(line) === "---");
-    return lines.slice(close + 2, -1);
+    return lines.slice(close + 2, text.endsWith("\n") ? -1 : undefined);
 }
 
 /**
@@ -462,7 +465,7 @@ export function planSplit({ tree, context, taken, read }) {
             }
             const name = unitName(h.title, names);
             const source = `${context}${name}.md`;
-            const unitText = draftUnit(title, body, eol);
+            const unitText = draftUnit(title, body, eol, last < lines.length - 1);
             try {
                 const unit = parseUnit(name, unitText, source);
                 const stray = strayImports(unit.body, path.join(tree, ...source.split("/")));
@@ -627,7 +630,7 @@ export function planJoin({ tree, context, read }) {
                 refusals.push(`${source} imports ${loads.join(", ")}, which would load into every context from ${rel}: move the import out of the unit first`);
                 continue;
             }
-            const bytes = Buffer.byteLength(`${body.join("\n")}\n`, "utf8");
+            const bytes = Buffer.byteLength(body.join("\n"), "utf8") + (line < lines.length - 1 ? 1 : 0);
             back.set(source, { source, body, edited: unitDigest(unitText) !== digest, description: unit.description, bytes });
         }
         if (refusals.length > refused) continue;

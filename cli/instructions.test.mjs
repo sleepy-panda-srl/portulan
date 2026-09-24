@@ -303,6 +303,11 @@ describe("the join puts each moved section back where its marker is", () => {
         const crlf = FILE.replaceAll("\n", "\r\n").replace(/\r\n$/, "");
         const unended = joinAfter(undefined, crlf);
         assert.match(unended.planned.files[0].after, / -->$/, "the marker takes no line end the section's last line did not have");
+        const unendedLine = crlf.slice(crlf.lastIndexOf("\n") + 1);
+        const last = unended.planned.units.find((u) => u.text.endsWith(`\r\n${unendedLine}`));
+        assert.ok(last, "and neither does the unit that holds the section");
+        const held = Buffer.byteLength(last.text.slice(last.text.indexOf("---\r\n\r\n", 3) + 7));
+        assert.match(joinLine(unended.joined.units.find((u) => u.source === last.source), "CLAUDE.md"), new RegExp(`^\\S+: ${held} B go back`), "whose bytes the join counts as they are");
         assert.equal(unended.joined.files[0].after, crlf.replace(`${ON_READ_MARK}\r\n\r\n`, "").replace(`${ON_READ_MARK}\r\n`, ""));
         // A CRLF file whose Build section alone is LF: that section goes back LF, as the move took it.
         const lines = FILE.split("\n");
