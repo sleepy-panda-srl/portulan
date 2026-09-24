@@ -270,7 +270,7 @@ describe("the join puts each moved section back where its marker is", () => {
         );
     });
 
-    test("a section goes back in the file's own line ends, whatever its unit's are now, and the last in its marker's", () => {
+    test("a section goes back in the line ends it had: as its unit holds them, or its marker's where a checkout turned them all", () => {
         const lf = joinAfter((u) => u.text.replaceAll("\n", "\r\n"));
         assert.equal(lf.joined.files[0].after, FILE.replace(`${ON_READ_MARK}\n\n`, "").replace(`${ON_READ_MARK}\n`, ""), "a unit a checkout made CRLF goes back into an LF file as LF lines");
         assert.match(joinLine(lf.joined.units[0], "CLAUDE.md"), /, as the move left it$/, "and is no edit");
@@ -280,6 +280,12 @@ describe("the join puts each moved section back where its marker is", () => {
         const unended = joinAfter(undefined, crlf);
         assert.match(unended.planned.files[0].after, / -->$/, "the marker takes no line end the section's last line did not have");
         assert.equal(unended.joined.files[0].after, crlf.replace(`${ON_READ_MARK}\r\n\r\n`, "").replace(`${ON_READ_MARK}\r\n`, ""));
+        // A CRLF file whose Build section alone is LF: that section goes back LF, as the move took it.
+        const lines = FILE.split("\n");
+        const [build, style] = [lines.indexOf("## Build"), lines.indexOf("## Style")];
+        const mixed = lines.map((l, i) => (i === lines.length - 1 || (i >= build && i < style) ? l : `${l}\r`)).join("\n");
+        const both = joinAfter(undefined, mixed);
+        assert.equal(both.joined.files[0].after, mixed.replace(`${ON_READ_MARK}\n\n`, "").replace(`${ON_READ_MARK}\r\n`, ""));
     });
 
     test("a unit a byte-order mark opens goes back with none of its frontmatter, and is no edit", () => {

@@ -554,7 +554,7 @@ function unitBody(text) {
 }
 
 /**
- * Every moved section put back where its marker is, in the file's own line ends, and its unit removed, with
+ * Every moved section put back where its marker is, in the line ends it had, and its unit removed, with
  * nothing written. A unit goes back as it stands now, and each says whether it was edited since the move, by
  * its marker's digest, and where its description is no longer its heading's, since the file names a section by
  * its heading alone. A unit that is gone, one not at the top of `slots.context` (`context`, as `planSplit`
@@ -575,7 +575,6 @@ export function planJoin({ tree, context, read }) {
         const refused = refusals.length;
         const from = path.join(tree, ...rel.split("/"));
         const lines = text.split("\n");
-        const cr = text.includes("\r\n") ? "\r" : "";
         const back = new Map();
         for (const { line, source, digest } of moved) {
             if (units.some((u) => u.source === source) || back.has(source)) {
@@ -613,9 +612,14 @@ export function planJoin({ tree, context, read }) {
                 );
                 continue;
             }
-            // Each line goes back in the file's own line end, the last in its marker's, whatever the unit's are now.
+            // Each line goes back with the line end its unit holds it with, as the move wrote it, and the
+            // last with its marker's, which the split gave the section's last line. Where every other line of
+            // the unit ends the other way from that marker, a checkout or an editor turned them all, and each
+            // takes the marker's.
             const ends = lines[line].endsWith("\r") ? "\r" : "";
-            const body = unitBody(unitText).map((l, i, all) => `${bare(l)}${i === all.length - 1 ? ends : cr}`);
+            const held = unitBody(unitText);
+            const turned = line < lines.length - 1 && held.length > 1 && held.slice(0, -1).every((l) => l.endsWith("\r") !== (ends === "\r"));
+            const body = held.map((l, i, all) => (i === all.length - 1 || turned ? `${bare(l)}${ends}` : l));
             const loads = [...importLines(body.join("\n"), from).values()].flat();
             if (loads.length) {
                 refusals.push(`${source} imports ${loads.join(", ")}, which would load into every context from ${rel}: move the import out of the unit first`);
