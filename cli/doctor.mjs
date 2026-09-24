@@ -86,6 +86,9 @@ import { alwaysLine } from "./context.mjs";
 // Which form a consumer's records and boot are in, read from the one definition `init`, `vendor` and
 // `upgrade` share, so the report cannot disagree with what they write.
 import { formLine } from "./form.mjs";
+// Where every session switch stands, in the words of the module `init` and `upgrade` offer the cache
+// lifetime from, so the report and the offer cannot name the key two ways.
+import { sessionsLine } from "./sessions.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -2799,6 +2802,18 @@ export async function inspect(workspaceDir, options = {}) {
         form = `not read — ${error.message}`;
     }
     report("form", form);
+
+    // Always emitted, and never a verdict (2026-09-24): where every session switch stands, each one left to
+    // the host's default included, which no other line names. One line, because a session that runs `doctor`
+    // reads this output, and every line of it is read again on every later request. Where a repository leaves
+    // the cache lifetime to the host, it names what prints the offer (proposal `0038`, item 4).
+    let sessions;
+    try {
+        sessions = sessionsLine(workspace);
+    } catch (error) {
+        sessions = `not read — ${error.message}`;
+    }
+    report("sessions", sessions);
 
     return { dir, workspace, findings, stats };
 }

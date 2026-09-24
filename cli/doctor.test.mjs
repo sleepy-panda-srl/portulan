@@ -738,6 +738,67 @@ describe("the declared multipliers and horizon, which compile and the ledger rea
     }
 });
 
+describe("where every session switch stands is one line, reported and never failed", () => {
+    // 2026-09-24, proposal 0038's item 4: the line is ./sessions.mjs's, the module `init` and `upgrade` print
+    // the cache lifetime's offer from; sessions.test.mjs pins each clause of it. These pin that `doctor`
+    // prints it once, as a report, on a real inspection.
+    const DEFAULTS = "cache lifetime the host's default, an hour on a subscription and five minutes on an API key; git instructions the host's default; multipliers the general ones";
+    const line = async (manifest) => {
+        const { findings } = await inspect(tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(manifest) }), { schema: SCHEMA });
+        const hits = checks(findings, "sessions");
+        assert.equal(hits.length, 1, `expected one sessions finding, got ${JSON.stringify(hits)}`);
+        assert.equal(hits[0].severity, "report");
+        assert.deepEqual(severities(findings, "fail"), []);
+        return hits[0].message;
+    };
+
+    test("a manifest declaring nothing: the host's defaults, and a repository is told what prints the offer", async () => {
+        assert.equal(await line(wellFormed()), `${DEFAULTS}; \`portulan upgrade\` prints the five-minute lifetime's offer and its trade-off`);
+    });
+
+    test("a declared lifetime is named with the setting it compiles to, and nothing is offered", async () => {
+        assert.equal(
+            await line({ ...wellFormed(), portulan: { spec: "2.11" }, sessions: { cache_lifetime: "5m" } }),
+            "cache lifetime 5m, compiled as `promptCacheTtl`; git instructions the host's default; multipliers the general ones",
+        );
+    });
+
+    test("the git switch, declared off, says so and leaves the lifetime the host's", async () => {
+        assert.equal(
+            await line({ ...wellFormed(), portulan: { spec: "2.11" }, sessions: { git_instructions: false } }),
+            "cache lifetime the host's default, an hour on a subscription and five minutes on an API key; git instructions off; multipliers the general ones; `portulan upgrade` prints the five-minute lifetime's offer and its trade-off",
+        );
+    });
+
+    test("headless is said where declared, and only what it declares", async () => {
+        const sessions = { git_instructions: true, cache_lifetime: "1h", headless: { cache_lifetime: "5m", exclude_dynamic_sections: true } };
+        assert.equal(
+            await line({ ...wellFormed(), portulan: { spec: "2.11" }, sessions }),
+            "cache lifetime 1h, compiled as `promptCacheTtl`; git instructions on; headless runs 5m, with the per-machine sections in the first message; multipliers the general ones",
+        );
+    });
+
+    test("a workspace that is no repository is not sent to `upgrade`", async () => {
+        const demo = { ...wellFormed(), kind: "demo" };
+        delete demo.tree;
+        assert.equal(await line(demo), DEFAULTS);
+    });
+
+    test("declared multipliers and a horizon, Workspace Definition 2.12's `spend`, are said with their figures", async () => {
+        const spend = { multipliers: { read: 0.05, write: { "5m": 1.25, "1h": 2 } }, horizon: { requests: 30 } };
+        assert.equal(
+            await line({ ...wellFormed(), portulan: { spec: "2.12" }, sessions: { cache_lifetime: "5m" }, spend }),
+            "cache lifetime 5m, compiled as `promptCacheTtl`; git instructions the host's default; multipliers declared, read 0.05× and writes 1.25×/2×; a horizon of 30 requests",
+        );
+    });
+
+    test("a pointer is given no line: it declares no switch, and the governing workspace's checks do not run here", async () => {
+        const dir = tree(scratch(), { "workspace.json": JSON.stringify({ portulan: { spec: "2.7" }, name: "fixture", kind: "pointer", governed_by: { workspace: "elsewhere" } }) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.deepEqual(checks(findings, "sessions"), []);
+    });
+});
+
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
         assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 12 });

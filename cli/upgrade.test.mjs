@@ -35,6 +35,8 @@ import { applyEdits, bundleSpec, inside, loadSteps, planFor, readWorkspace, repo
 import { inspect } from "./doctor.mjs";
 import { readChanges, renderChanges } from "./index.mjs";
 import { compileGuidance } from "./compile.mjs";
+import { offerLines } from "./sessions.mjs";
+import { run as init } from "./init.mjs";
 import { execFileSync } from "node:child_process";
 
 // A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
@@ -728,6 +730,131 @@ describe("either residence", () => {
         assert.equal(code, 2);
         assert.match(h.text(), /install|cache|pinned/i);
         assert.equal(fs.readFileSync(path.join(gov, "workspace.json"), "utf8"), before);
+    });
+
+    test("an installed copy is never offered the cache lifetime: nothing is declared there", async () => {
+        // The governing workspace is a `repository` that declares no lifetime, so only the guard on a resolved
+        // install keeps the offer out: the copy read here is not the manifest a person edits, and a run in
+        // the workspace's own directory prints the offer.
+        const gov = governing();
+        const { name } = JSON.parse(fs.readFileSync(path.join(gov, "workspace.json"), "utf8"));
+        const config = host(name, path.dirname(gov));
+        const h = harness();
+        assert.notEqual(await run([pointerAt(name)], { ...h.options, env: { CLAUDE_CONFIG_DIR: config } }), 2, h.text());
+        assert.match(h.text(), /is installed here/);
+        assert.doesNotMatch(h.text(), /five-minute cache writes/);
+    });
+});
+
+describe("the cache lifetime's offer, printed after each closing line and never written", () => {
+    // Proposal 0038, item 4 of its order of work (2026-09-24): `init` offers five-minute cache writes to a
+    // repository it drafts, and `upgrade` prints the same offer to one drafted before, until its manifest
+    // declares a lifetime.
+    const OFFER = offerLines().map((l) => `upgrade: ${l}\n`);
+    const quiet = { say: () => {}, warn: () => {} };
+
+    /**
+     * A repository workspace that owes nothing, drafted by the real `init`: its form is the new one, card
+     * included, which a manifest written here would owe `0006` for. `edit` changes the manifest afterwards.
+     */
+    async function drafted(flags = [], edit = null) {
+        const root = scratch();
+        fs.mkdirSync(path.join(root, ".git"));
+        assert.equal(await init(["--residence", "in-repo", "--no-interview", "--no-cycle", ...flags, root], quiet), 0);
+        const dir = path.join(root, ".portulan");
+        if (edit) {
+            const file = path.join(dir, "workspace.json");
+            fs.writeFileSync(file, `${JSON.stringify(edit(JSON.parse(fs.readFileSync(file, "utf8"))), null, 2)}\n`);
+        }
+        return dir;
+    }
+
+    /** A green workspace of another kind at the bundle's own version, which owes no step of the form. */
+    function current(extra = {}) {
+        const { major, minor } = bundleSpec();
+        const root = scratch();
+        fs.mkdirSync(path.join(root, ".git"));
+        const dir = path.join(root, ".portulan");
+        fs.mkdirSync(path.join(dir, "verify"), { recursive: true });
+        for (const f of ["identity.md", "principles.md", "gate-map.md"]) fs.writeFileSync(path.join(dir, f), `# ${f}\n`);
+        fs.writeFileSync(path.join(dir, "verify", "workspace.sh"), "#!/usr/bin/env bash\nexit 2\n", { mode: 0o755 });
+        fs.writeFileSync(path.join(dir, "workspace.json"), `${JSON.stringify(manifest(`${major}.${minor}`, { tree: "../", ...extra }), null, 2)}\n`);
+        return dir;
+    }
+
+    /** A 1.0 workspace, which owes `0001` and the steps after it. */
+    function behind() {
+        const root = scratch();
+        fs.mkdirSync(path.join(root, ".git"));
+        const dir = path.join(root, ".portulan");
+        fs.mkdirSync(path.join(dir, "verify"), { recursive: true });
+        for (const f of ["identity.md", "principles.md", "gate-map.md"]) fs.writeFileSync(path.join(dir, f), `# ${f}\n`);
+        fs.writeFileSync(path.join(dir, "verify", "workspace.sh"), "#!/usr/bin/env bash\nexit 2\n", { mode: 0o755 });
+        fs.writeFileSync(path.join(dir, "workspace.json"), `${JSON.stringify(manifest("1.0"), null, 2)}\n`);
+        return dir;
+    }
+
+    /** The lines printed after `closing`, which must be the offer and nothing else. */
+    const after = (h, closing) => {
+        const at = h.out.findIndex((l) => closing.test(l));
+        assert.ok(at >= 0, `no closing line matching ${closing}:\n${h.text()}`);
+        return h.out.slice(at + 1);
+    };
+
+    test("after `owes nothing`, a repository declaring no lifetime is offered five minutes, and nothing is written", async () => {
+        const dir = await drafted();
+        const before = fs.readFileSync(path.join(dir, "workspace.json"), "utf8");
+        const h = harness();
+        assert.equal(await run([dir], h.options), 0, h.text());
+        assert.deepEqual(after(h, /owes nothing/), OFFER);
+        assert.equal(fs.readFileSync(path.join(dir, "workspace.json"), "utf8"), before, "an offer is printed, never written");
+    });
+
+    test("after `step(s) owed. Nothing was written`, the offer follows the plan", async () => {
+        const h = harness();
+        assert.equal(await run([behind()], h.options), 0, h.text());
+        assert.deepEqual(after(h, /step\(s\) owed\. Nothing was written/), OFFER);
+    });
+
+    test("after `applied … doctor is green`, read from the manifest the steps left", async () => {
+        const dir = behind();
+        const h = harness();
+        assert.equal(await run([dir, "--write"], h.options), 0, h.text());
+        assert.deepEqual(after(h, /^upgrade: applied \d+ step\(s\) .*doctor is green\n$/), OFFER);
+        assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8")).sessions, undefined, "the migration declared no lifetime for anyone");
+    });
+
+    test("`--check` never prints it: its output is a pipeline's verdict", async () => {
+        const h = harness();
+        assert.equal(await run([await drafted(), "--check"], h.options), 0, h.text());
+        assert.match(h.text(), /owes nothing/);
+        assert.doesNotMatch(h.text(), /five-minute cache writes/);
+        const owed = harness();
+        assert.equal(await run([behind(), "--check"], owed.options), 1);
+        assert.doesNotMatch(owed.text(), /five-minute cache writes/);
+    });
+
+    test("a declared lifetime, either one, is the offer answered", async () => {
+        for (const lifetime of ["5m", "1h"]) {
+            const h = harness();
+            assert.equal(await run([await drafted(["--cache-lifetime", lifetime])], h.options), 0, h.text());
+            assert.match(h.text(), /owes nothing/);
+            assert.doesNotMatch(h.text(), /five-minute cache writes/, `${lifetime} is declared, so there is nothing to offer`);
+        }
+        // A git switch alone declares no lifetime, so the offer stands.
+        const git = (m) => ({ ...m, portulan: { spec: "2.11" }, sessions: { git_instructions: false } });
+        const h = harness();
+        assert.equal(await run([await drafted([], git)], h.options), 0, h.text());
+        assert.deepEqual(after(h, /owes nothing/), OFFER);
+    });
+
+    test("a workspace that is no repository is not offered: it has no settings of its own for `compile` to write", async () => {
+        for (const kind of ["demo", "portfolio"]) {
+            const h = harness();
+            assert.equal(await run([current({ kind })], h.options), 0, h.text());
+            assert.match(h.text(), /owes nothing/);
+            assert.doesNotMatch(h.text(), /five-minute cache writes/, kind);
+        }
     });
 });
 

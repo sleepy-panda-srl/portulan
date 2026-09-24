@@ -783,6 +783,13 @@ is therefore read by Portulan's own runners that start sessions, today [`../cli/
 which the package does not ship, and never compiled. A workspace with no gate policy has no settings
 for the first two to ride, and `compile` says that it compiled neither.
 
+**Offered to an adopter, and still never defaulted** (2026-09-24). `init` offers `cache_lifetime` `"5m"`
+with what it saves and what a pause costs, asking once at a terminal or taking `--cache-lifetime`, and on
+a yes drafts the key at 2.11 for `compile` to write; `upgrade` prints the same offer to a `repository`
+workspace that declares no lifetime, and writes nothing; `doctor` reports where every switch stands in one
+line. Only the lifetime is offered: the git instructions and the exclusion wait on their rows of
+[`../evals/ab/warm.md`](../evals/ab/warm.md).
+
 **Checked by the schema, and gated by `doctor`.** Every field is a boolean or one of two strings, which the
 subset types in full, so nothing joins `doctor`'s hand-check. `doctor` refuses the key in a manifest
 declaring a version before 2.11, gated from birth as `context` was.

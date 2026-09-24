@@ -87,9 +87,12 @@ import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 // `context` measures the always tier the offer of a budget is made on. None of them imports from here.
 // _(The handoff index's generator was imported here until 2026-09-24, when a drafted workspace stopped
 // keeping a copy of the index: `index` renders it, and nothing here writes one.)_
-import { compileGuidance } from "./compile.mjs";
+import { CACHE_LIFETIMES, compileGuidance } from "./compile.mjs";
 import { alwaysTier, ESTIMATED_BYTES_PER_TOKEN, OFFER_FLOOR_TOKENS, tokensOf } from "./context.mjs";
 import { cardIgnored, changesReadme, claudeRulesUnignore, COMPILED_CARD, draftCard, handoffIndexIgnore, handoffsReadme, withIgnoreLines } from "./form.mjs";
+// The cache lifetime's offer and the multipliers' note, from the one module `upgrade` prints the same offer
+// from, so the two cannot word it differently (proposal `0038`, item 4, 2026-09-24).
+import { MULTIPLIERS_NOTE, offerLines } from "./sessions.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -123,6 +126,13 @@ const SPEC = "2.7";
 /** A drafted workspace carries its boot card in `slots.context`, which 2.10 added, so it declares 2.10. */
 const WORKSPACE_SPEC = "2.10";
 
+/**
+ * A drafted workspace that declares a cache lifetime carries `sessions`, which 2.11 added, so it declares
+ * 2.11: a manifest declares the version its content needs, and `doctor` refuses the key under an earlier one.
+ * One that declares none stays at 2.10, byte for byte what it was.
+ */
+const SESSIONS_SPEC = "2.11";
+
 /** The gate-policy spec `cli/compile.mjs` reads. Checked by its own suite, not guessed at here. */
 // Exported so `cli/new.test.mjs` can assert that the OTHER policy-generating carrier —
 // `core/templates/gate-policy.md`, which `new gate-policy` emits — declares the same version.
@@ -137,7 +147,7 @@ const DEFAULT_CHECKPOINTS = "rituals/checkpoints";
 // Every key an answers file may carry, and the flag each corresponds to. Declared as data because the
 // file reader and the flag parser must agree about what an answer IS — two lists is how a `residnce`
 // gets silently dropped and the tool then asks for something the adopter believes they supplied.
-const ANSWER_KEYS = new Set(["residence", "name", "summary", "governed-by", "feed", "checkpoints", "cycle", "pack-root"]);
+const ANSWER_KEYS = new Set(["residence", "name", "summary", "governed-by", "feed", "checkpoints", "cycle", "pack-root", "cache-lifetime"]);
 
 /**
  * A directory name, or any string, reduced to the schema's slug shape.
@@ -167,7 +177,7 @@ export function parseArgs(argv) {
     const targets = [];
     let help = false;
 
-    const VALUED = new Set(["--residence", "--name", "--summary", "--governed-by", "--feed", "--checkpoints", "--answers", "--pack-root"]);
+    const VALUED = new Set(["--residence", "--name", "--summary", "--governed-by", "--feed", "--checkpoints", "--answers", "--pack-root", "--cache-lifetime"]);
 
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
@@ -325,6 +335,9 @@ export function resolveAnswers(flags) {
         // a real answer, refused with a message about somebody else's bug. Found by review on the
         // pull request. Normalising here rather than at each use keeps one shape after this line.
         packRoots: [merged["pack-root"] ?? []].flat(),
+        // Null where nobody chose one, which is the host's own default: `init` never picks a lifetime, it
+        // offers one (proposal `0038`, item 4).
+        cacheLifetime: merged["cache-lifetime"] ?? null,
     };
 }
 
@@ -370,19 +383,36 @@ export function validateAnswers(answers) {
     // believe an option had an effect it never had, which is the same defect as `--summary ""`
     // reaching a manifest: an answer accepted and then not honoured. Found by review on the pull
     // request. Keyed on what was GIVEN, never on the resolved value, so a default never trips it.
+    //
+    // `--cache-lifetime` joined the pointer's list on 2026-09-24, with its own reason: a pointer drafts no
+    // repository whose settings `compile` writes, so a lifetime given to one would reach no session.
     const misplaced = {
         "in-repo": ["feed", "governed-by"],
-        pointer: ["pack-root", "checkpoints", "cycle"],
+        pointer: ["pack-root", "checkpoints", "cycle", "cache-lifetime"],
     }[answers.residence].filter((key) => answers.given.has(key));
     if (misplaced.length) {
         const spelling = (key) => (key === "cycle" ? "`--no-cycle`" : `\`--${key}\``);
+        const why =
+            answers.residence === "pointer"
+                ? [
+                      misplaced.some((key) => key !== "cache-lifetime") && "a pointer holds no policy of its own, so it composes no packs",
+                      misplaced.includes("cache-lifetime") && "a pointer drafts no repository whose settings `compile` writes, so a cache lifetime would reach no session",
+                  ].filter(Boolean)
+                : ["a workspace that lives here has no governor and no feed to be delivered from"];
         throw new InitError(
             `${misplaced.map(spelling).join(" and ")} ${misplaced.length > 1 ? "do" : "does"} nothing with ` +
-                `\`--residence ${answers.residence}\` — ${
-                    answers.residence === "pointer"
-                        ? "a pointer holds no policy of its own, so it composes no packs"
-                        : "a workspace that lives here has no governor and no feed to be delivered from"
-                }. Refused rather than ignored: an option accepted and then dropped is one you will believe had an effect.`,
+                `\`--residence ${answers.residence}\` — ${why.join(", and ")}. ` +
+                "Refused rather than ignored: an option accepted and then dropped is one you will believe had an effect.",
+        );
+    }
+    // A lifetime the host does not take is refused rather than written, because `compile` refuses the
+    // manifest that carries it and the adopter's first compile would stop on a value this tool accepted.
+    // The two it takes are `compile`'s own list, read rather than written out again.
+    const lifetime = answers.cacheLifetime ?? null;
+    if (lifetime !== null && !CACHE_LIFETIMES.includes(lifetime)) {
+        throw new InitError(
+            `\`${lifetime}\` is not a cache lifetime — Claude Code takes ${CACHE_LIFETIMES.map((v) => `\`${v}\``).join(" and ")}, ` +
+                "which `compile` writes into .claude/settings.json as `promptCacheTtl`. Leave it out to keep the host's default.",
         );
     }
 
@@ -572,9 +602,10 @@ this repository is, in the one line an agent reads before loading anything else.
 function draftWorkspace(answers, observed) {
     const files = new Map();
     const name = answers.name ?? "workspace";
+    const lifetime = answers.cacheLifetime ?? null;
 
     const manifest = {
-        portulan: { spec: WORKSPACE_SPEC },
+        portulan: { spec: lifetime === null ? WORKSPACE_SPEC : SESSIONS_SPEC },
         name,
         summary: answers.summary ?? `The ${name} workspace — drafted by \`init\`, and not yet curated.`,
         kind: "repository",
@@ -622,6 +653,10 @@ function draftWorkspace(answers, observed) {
         handoffs: { index: { path: "handoffs-index.md" } },
     };
     if (answers.cycle) manifest.packs = [answers.checkpoints];
+    // Only where a person chose a lifetime, by a flag, an answers file or a yes at the question: the key is
+    // written and the settings are not, since `compile` is their one writer and the closing report says to
+    // run it. Unchosen, the manifest is the one drafted before the offer existed.
+    if (lifetime !== null) manifest.sessions = { cache_lifetime: lifetime };
 
     files.set(".portulan/workspace.json", { contents: json(manifest) });
     files.set(".portulan/gates.json", { contents: json(draftPolicy()) });
@@ -1147,6 +1182,34 @@ function reportCard(target, say, warn) {
     );
 }
 
+/**
+ * Say what the draft declares of the cache lifetime, beside `0036`'s offer of a budget: the offer of
+ * five-minute writes where nobody chose, one line where a person declined it at the question, and where a
+ * lifetime was chosen, that `portulan compile` is what writes it into the settings the host reads.
+ *
+ * **Printed and not written, like the budget.** The offer carries its trade-off, because five minutes is the
+ * dearer lifetime for a session that pauses, and it names the key and the version it needs, since the drafted
+ * manifest stays at 2.10 unless a lifetime was chosen. The multipliers' note follows it once and asks nothing:
+ * the key that declares them is Workspace Definition 2.12's (proposal `0038`, item 4, 2026-09-24).
+ */
+function reportLifetime(answers, say) {
+    const lifetime = answers.cacheLifetime ?? null;
+    if (lifetime !== null) {
+        say(
+            `init: the manifest declares a ${lifetime} cache lifetime, \`sessions.cache_lifetime\` at Workspace Definition ${SESSIONS_SPEC} — ` +
+                "run `portulan compile`, which writes it into .claude/settings.json as `promptCacheTtl`",
+        );
+    } else if (answers.lifetimeDeclined) {
+        say(
+            `init: no cache lifetime declared, as you answered; \`sessions.cache_lifetime\` declares one, ${CACHE_LIFETIMES.map((v) => `"${v}"`).join(" or ")} ` +
+                `at Workspace Definition ${SESSIONS_SPEC}, and \`--cache-lifetime\` drafts it`,
+        );
+    } else {
+        for (const line of offerLines()) say(`init: ${line}`);
+    }
+    say(`init:   ${MULTIPLIERS_NOTE}`);
+}
+
 // ------------------------------------------------------------------------- writing
 
 /**
@@ -1519,6 +1582,24 @@ export async function interview(answers, { io, target, derivedName }) {
         }
     }
 
+    // **The cache lifetime, after every other question and only of a workspace that lives here**: a pointer
+    // drafts no repository whose settings `compile` writes. The offer's three texts come first, the trade-off
+    // among them, so a yes is given knowing what a pause costs; yes is five minutes, and anything else leaves
+    // the host's default, the answer `init` gave before it asked (proposal `0038`, item 4, 2026-09-24). An
+    // end of input is no answer, as at every other prompt, and stops the run with nothing written.
+    if (answers.residence === "in-repo" && !answers.given.has("cache-lifetime")) {
+        io.say("");
+        for (const line of offerLines({ asking: true })) io.say(line);
+        const lifetime = await io.ask("Five-minute cache writes? [y/N]: ");
+        if (lifetime === null) throw new InitError("no answer — the interview ended before it finished, and nothing was written");
+        if (/^y(es)?$/i.test(lifetime.trim())) {
+            answers.cacheLifetime = "5m";
+            answers.given.add("cache-lifetime");
+        } else {
+            answers.lifetimeDeclined = true;
+        }
+    }
+
     // The last question, and the one that makes every answer above reversible: everything is echoed
     // and nothing has been written. A confirmation printed AFTER the write would be a receipt.
     io.say("");
@@ -1531,6 +1612,11 @@ export async function interview(answers, { io, target, derivedName }) {
         io.say(`  feed        ${answers.feed ?? "(none)"}`);
     } else {
         io.say(`  cycle       ${answers.cycle ? answers.checkpoints : "(none — composing no packs)"}`);
+        io.say(
+            `  cache       ${
+                answers.cacheLifetime ? `${answers.cacheLifetime}, as \`sessions.cache_lifetime\` at Workspace Definition ${SESSIONS_SPEC}` : "(none — the host's default lifetime)"
+            }`,
+        );
     }
     io.say("");
     const confirm = await io.ask("Write these files? [y/N]: ");
@@ -1564,6 +1650,9 @@ export function usage() {
         "  --pack-root <dir>              Where packs are looked up, so the composed one can be",
         "                                 confirmed to exist. Repeatable. `auto` discovers it from",
         "                                 the host's plugin cache; `./auto` names a directory.",
+        "  --cache-lifetime <5m|1h>       In-repo only: declare `sessions.cache_lifetime`, which",
+        "                                 `compile` writes as Claude Code's `promptCacheTtl`. Unset,",
+        "                                 the host's default stands and five minutes is offered.",
         "  --answers <file>               A JSON object of answers. Flags override its keys.",
         "  --no-interview                 Never ask, even at a terminal: refuse instead, naming the flag.",
         "",
@@ -1752,7 +1841,10 @@ export async function run(argv, options = {}) {
                 (beside.length ? `, and ${beside.map((r) => `\`${r}\``).join(", ")} beside it` : ""),
         );
         for (const rel of left) say(`init: left the repository's own \`${rel}\` as it is`);
-        if (answers.residence !== "pointer") reportCard(target, say, warn);
+        if (answers.residence !== "pointer") {
+            reportCard(target, say, warn);
+            reportLifetime(answers, say);
+        }
         if (answers.residence === "pointer") {
             say(`init: this repository is recorded as governed by \`${answers.governedBy}\`. Nothing was fetched.`);
         } else {

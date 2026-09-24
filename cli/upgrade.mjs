@@ -19,6 +19,10 @@
 // `form` step moves a consumer's records and boot to the form Portulan moved its own to, and may
 // edit or delete a file in the tree beside the workspace, which the rollback puts back as well.
 //
+// **And one offer, printed and never written** (2026-09-24): after its closing line, a `repository`
+// workspace whose manifest declares no cache lifetime is shown `init`'s offer of five-minute cache writes
+// with its trade-off, from `./sessions.mjs`. It is no step: nothing is owed, and `--check` never prints it.
+//
 // ## The three states a workspace can be in relative to this bundle, and why two of them are refusals
 //
 // `doctor` refuses a manifest whose MAJOR differs from the schema's — in **either direction** — and
@@ -54,6 +58,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { inspect, schemaVersion } from "./doctor.mjs";
 import { resolveGovernor } from "./discover.mjs";
 import { gitIn } from "./form.mjs";
+import { offerLines } from "./sessions.mjs";
 // The guarded walk, not a fourth implementation of one. `vendor`'s `walk` already refuses a symlink
 // anywhere under a workspace — rule 2 of the three a tool writing into somebody's tree owes — and
 // three `collisions()` implementing one rule is already an open complaint against this repository
@@ -810,6 +815,18 @@ export async function run(argv = [], options = {}) {
     const relative = path.relative(process.cwd(), ws.dir);
     const shown = relative && relative.length < ws.dir.length ? relative : ws.dir;
 
+    // **The cache lifetime's offer, printed after each closing line and never written** (proposal `0038`,
+    // item 4, 2026-09-24). `init` offers it to a repository it drafts, and this is how a repository drafted
+    // before the offer existed hears of it: on every run until its manifest declares a lifetime, since
+    // declaring either one is the answer. Only to a `repository` workspace, whose tree holds the settings
+    // `compile` writes; never under `--check`, whose output is a pipeline's verdict; and never to an
+    // installed copy, which is not where anything is declared.
+    const offer = (manifest) => {
+        if (check || target.state === "resolved") return;
+        if (manifest?.kind !== "repository" || manifest?.sessions?.cache_lifetime !== undefined) return;
+        for (const line of offerLines()) say(`upgrade: ${line}`);
+    };
+
     // ---- which direction is this workspace off in
     const declared = /^([0-9]+)\.([0-9]+)$/.exec(ws.manifest?.portulan?.spec ?? "");
     if (!declared) {
@@ -874,6 +891,7 @@ export async function run(argv = [], options = {}) {
 
     if (plan.owed === 0) {
         say(`upgrade: ${shown} owes nothing — it is current at ${major}.${minor}`);
+        offer(ws.manifest);
         return 0;
     }
 
@@ -901,6 +919,7 @@ export async function run(argv = [], options = {}) {
     }
     if (!write) {
         say(`upgrade: ${plan.owed} step(s) owed${byHandNote}. Nothing was written — ${advice}`);
+        offer(ws.manifest);
         return 0;
     }
 
@@ -1049,6 +1068,8 @@ export async function run(argv = [], options = {}) {
     if (applied.size > 0) say(`upgrade: applied ${applied.size} step(s) to ${shown} — ${written.join(", ")}. doctor is green`);
     const left = plan.entries.filter((entry) => byHand.has(entry.step.id));
     for (const entry of left) warn(`upgrade: ${entry.step.id} is owed and not placed — ${byHand.get(entry.step.id)}`);
+    // The manifest as the steps left it, since one of them may have written it.
+    offer(current.manifest);
     return left.length > 0 ? 1 : 0;
 }
 
