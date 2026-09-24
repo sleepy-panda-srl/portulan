@@ -848,8 +848,9 @@ gates**, so a card carries a fact without holding a second copy of it:
 
 - **An import is `@` and a path, alone on its line, relative to the unit's own file.** Claude Code 2.1.281
   loads a rule as it loads `CLAUDE.md`: it resolves an import against the file making it, follows it only
-  inside the project, skips code and HTML comments, and loads nothing five imports below the rule. A rule
-  scoped by `paths:` loads on its path, and the files it imports load into every context, since an
+  inside the project, skips code blocks, skips code spans and HTML comments except in a list item's text,
+  which it reads whole (2026-09-24), and loads nothing five imports below the rule. A rule scoped by
+  `paths:` loads on its path, and the files it imports load into every context, since an
   imported file carries no `paths:` of its own (read in the program text, and seen on a fixture). So
   `compile` spells each import again from the rule it compiles to, and refuses one that is a home or an
   absolute path, leaves or links out of the tree it compiles, names no file, shares its line, or sits five
@@ -861,8 +862,9 @@ gates**, so a card carries a fact without holding a second copy of it:
 - **A line `<!-- leads: <path> -->`, alone on its line, is replaced by the first sentence of each item in
   the first list of the file it names**, each item opening with a bold lead. The file stays the one
   source of those sentences, so a change there is drift until the unit is recompiled. `compile` refuses
-  a file with no list, an item with no bold lead, and a lead carrying a link, which would not resolve
-  from the compiled rule.
+  a file with no list, an item with no bold lead, a lead carrying a link, which would not resolve from
+  the compiled rule, and a line of text with no indent straight under an item, which CommonMark reads as
+  more of that item (2026-09-24).
 - **A line `<!-- gates: <path> -->`, alone on its line, is replaced by the gate ids of the policy it
   names, one line per tier** in core's order, each id as the policy spells it and in its order there, a
   tier holding none saying so, and a line naming the packs the manifest composes, whose gates only a

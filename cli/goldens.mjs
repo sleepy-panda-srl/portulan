@@ -76,6 +76,7 @@ import {
     parse,
     policyDeclaration,
     resolveWorkspace,
+    unreadableManifest,
 } from "./compile.mjs";
 
 /** Where the corpus lives, relative to the repository root. */
@@ -162,8 +163,21 @@ function readJson(file, what) {
  */
 export function yieldedRules(named, { packRoots = null } = {}) {
     const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
+    // As `compile` stops on it, and before the same question: a manifest that does not parse would be read
+    // as naming no policy, and fixtures graded against a `gates.json` found by convention in its place.
+    const unreadable = unreadableManifest(workspaceRoot, workspaceDir);
+    if (unreadable !== null) {
+        throw new CouldNotRun(
+            `${unreadable.file} is not a manifest this tool can read: ${unreadable.why}. Read as one declaring nothing, ` +
+                `it would have fixtures graded against a \`gates.json\` found by convention, which it may not name. ` +
+                `There is nothing to grade fixtures against`,
+        );
+    }
     const { file: policyFile, declared, reason } = policyDeclaration(workspaceRoot, workspaceDir);
-    if (!declared && !fs.existsSync(policyFile)) {
+    // A refused value stops here even beside a `gates.json` at the default path, as it stops `compile`:
+    // that file is not the policy the manifest names, and fixtures graded against it grade a policy
+    // nothing compiles.
+    if (reason === "refused" || (!declared && !fs.existsSync(policyFile))) {
         // **The fallback is THREE states and the message names which one.** This said
         // `${workspaceDir}/workspace.json declares none` for all of them, which is a sentence that is
         // false twice over: when the manifest does not exist there is nothing to have declared
@@ -179,7 +193,11 @@ export function yieldedRules(named, { packRoots = null } = {}) {
                 : reason === "refused"
                   ? `${workspaceDir}/workspace.json DOES name a gate policy, and it was refused — the manifest is not at fault, the path it names is`
                   : `${workspaceDir}/workspace.json declares no \`gates\` key, which is a legitimate shape and means the policy is expected at the default path`;
-        throw new CouldNotRun(`no gate policy at ${policyFile}: ${why}. There is nothing to grade fixtures against`);
+        const head =
+            reason === "refused" && fs.existsSync(policyFile)
+                ? `the \`gates.json\` at ${policyFile} is not the gate policy the manifest names`
+                : `no gate policy at ${policyFile}`;
+        throw new CouldNotRun(`${head}: ${why}. There is nothing to grade fixtures against`);
     }
     const policy = readJson(policyFile, "the gate policy");
     // `discovery: null` and `forced: false`, always. See the header: a rail that consults the host

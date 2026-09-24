@@ -2082,32 +2082,64 @@ const STRAY_IMPORT = {
 
 /**
  * The `@` imports in a text, as the host finds them: a token after the start of a line or a space, running
- * to the next space that no `\` escapes, outside code spans, fenced blocks and HTML comments, each with the
- * offset where its path starts. Claude Code 2.1.281 lexes the file, skips code, and strips `<!-- … -->`
- * before it reads a token, so a path in a comment is no import. `./context.mjs` counts what they load and
- * `compile` checks them where a unit is compiled, so both find the same ones.
+ * to the next space that no `\` escapes, outside fenced blocks, and outside code spans and HTML comments
+ * except in a list item's text, each with the offset where its path starts. Claude Code 2.1.281 lexes the
+ * file, skips code, and strips `<!-- … -->` before it reads a token, so a path in a comment is no import. A
+ * list item's text is the exception: the lexer hands it over as one raw block, which the host reads for
+ * tokens before it skips the code spans inside, so there a code span or a comment hides nothing. In a list
+ * item, a code span holding `cat @a.md now` imports `a.md`, and one holding just `@a.md` does not, its `@`
+ * following the backtick with no space. Tight or loose makes no difference to this host: the lexer it
+ * bundles keeps a loose item's text raw too, where marked 18.0.14 would make it a paragraph. `./context.mjs`
+ * counts what they load and `compile` checks them where a unit is compiled, so both find the same ones.
+ *
+ * A line is an item's text when it opens an item, is indented under one, or runs on from one with no indent
+ * and opens no block (`OPENS_BLOCK`), and does not itself open a heading, a block quote or a comment. The
+ * limits, all rare in an instruction file: a list inside a block quote is read as the quote's text, so an
+ * import in a code span there is missed; and a line the host's lexer keeps out of an item's text (a tag or a
+ * `#` straight under one, a numbered line inside a paragraph, a paragraph after a list nested in the item,
+ * an indented code block or an HTML block) is read as more of it, so there this can find an import the host
+ * does not. Found in the coordinator session's review of #452 after its push, and read in the host's own
+ * lexer.
  */
 export function importSpans(text) {
     const found = [];
     let fence = null;
     let comment = false;
+    let listed = false; // the line is in a list, which a blank line alone does not end
+    let flowing = false; // the line above is a line of that list, which a line with no indent may run on from
+    const opensInItem = /^(?:#{1,6}(?:[ \t]|$)|>|<!--)/; // a heading, a block quote or a comment, read as elsewhere
     let offset = 0;
     for (const line of text.split("\n")) {
         const start = offset;
         offset += line.length + 1;
+        let raw = false;
         if (!comment) {
             const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
             if (marker) {
                 if (fence === null) fence = marker[1];
                 else if (marker[1][0] === fence[0] && marker[1].length >= fence.length && /^\s{0,3}[`~]+\s*$/.test(line)) fence = null;
+                flowing = false;
                 continue;
             }
             if (fence !== null) continue;
+            const item = /^\s*(?:[-+*]|\d{1,9}[.)])(?:[ \t]+|$)/.exec(line);
+            if (line.trim() === "") {
+                flowing = false;
+            } else if (item && (listed || /^ {0,3}\S/.test(line))) {
+                listed = flowing = true;
+                raw = !opensInItem.test(line.slice(item[0].length));
+            } else if (listed && (/^\s/.test(line) || (flowing && !OPENS_BLOCK.test(line)))) {
+                flowing = true;
+                raw = !opensInItem.test(line.trimStart());
+            } else {
+                listed = flowing = false;
+            }
         }
-        // The line as the host reads it for imports: each code span and comment blanked where it stands, so
-        // every offset stays put, and a comment still open at the line's end running on to the one that closes it.
-        let seen = "";
-        let at = 0;
+        // The line as the host reads it for imports: in an item's text, whole; elsewhere with each code span and
+        // comment blanked where it stands, so every offset stays put, and a comment still open at the line's end
+        // running on to the one that closes it.
+        let seen = raw ? line : "";
+        let at = raw ? line.length : 0;
         while (at < line.length) {
             if (comment) {
                 const end = line.indexOf("-->", at);
@@ -2173,7 +2205,7 @@ function checkedImports(text, dir, root, where) {
             if (bare === null) continue;
             const spelled = `\`@${target}\` (in ${from})`;
             if (depth === 0 && line.trim() !== `@${target}`) {
-                throw new CompileError(`${spelled} shares its line with other text — an import stands alone on its line, so compile can spell it again from the file it compiles to; text that is not an import goes in a code span`);
+                throw new CompileError(`${spelled} shares its line with other text — an import stands alone on its line, so compile can spell it again from the file it compiles to; text that is not an import goes in a fenced block, or in a code span outside a list, since the host reads a list item's code spans for imports too`);
             }
             if (bare.startsWith("~") || path.isAbsolute(bare)) {
                 throw new CompileError(`${spelled} is a home or an absolute path — an import here is relative to the file that makes it, and stays inside ${shown}`);
@@ -2184,7 +2216,7 @@ function checkedImports(text, dir, root, where) {
             try {
                 real = fs.realpathSync(file);
             } catch {
-                throw new CompileError(`${spelled} names no file, so the host would load nothing — put text that is not an import in a code span`);
+                throw new CompileError(`${spelled} names no file, so the host would load nothing — put text that is not an import in a fenced block, or in a code span outside a list`);
             }
             if (!isInside(fs.realpathSync(root), real)) throw new CompileError(`${spelled} is a link out of ${shown}, the tree compiled here`);
             if (!fs.statSync(real).isFile()) throw new CompileError(`${spelled} names no file, so the host would load nothing`);
@@ -2211,11 +2243,27 @@ function checkedImports(text, dir, root, where) {
 }
 
 /**
+ * A line with no indent that opens a block of its own, and so ends a list even straight under an item's text,
+ * as CommonMark reads it: an ATX heading, a block quote, a thematic break, a list item, or an HTML block that
+ * opens with `<!` or `<?`. A fence is met before this is asked. Any other line there is more of the item above
+ * it, CommonMark's lazy line. An HTML tag is refused with the lazy lines, though CommonMark ends the list at a
+ * tag it counts as a block, such as `<div>`: telling the two apart takes its list of sixty-odd tag names, and
+ * a blank line above the tag settles it either way.
+ */
+const OPENS_BLOCK = /^(?:#{1,6}(?:[ \t]|$)|>|([-*_])(?:[ \t]*\1){2,}[ \t]*$|(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)|<(?:!--|\?|![A-Za-z]|!\[CDATA\[))/;
+
+/**
  * The lead sentences of the first list in the file at `file`, as that list numbers them: each item's first
  * sentence, byte for byte, so the file stays the one place the text lives. An item must open with a bold
  * lead, and its first sentence ends at the first `.`, `!` or `?` outside a code span that is followed, past
  * any closing emphasis, by a space or the item's end. A lead carrying a link is refused: the link was written
  * for the file's own directory and would not resolve from where the unit compiles to.
+ *
+ * The list ends at a line with no indent after a blank one, or at one that opens a block (`OPENS_BLOCK`). A
+ * line of text with no indent straight under an item is refused: CommonMark reads it as more of that item,
+ * and this reader took it for the list's end and dropped every lead below it without a word. Un-indenting
+ * one wrapped line of `../.portulan/principles.md` wrote a card with one of its four leads, and `--check`
+ * stayed green. Found in the coordinator session's review of #452 after its push.
  */
 function leadsOf(file, where) {
     return leadsOfText(fs.readFileSync(file, "utf8"), path.basename(file), where);
@@ -2227,7 +2275,8 @@ export function leadsOfText(source, name, where) {
     const items = [];
     let kind = null;
     let fence = null;
-    for (const line of lines) {
+    let under = false; // the line above is an item's text, which a line with no indent would carry on
+    for (const [at, line] of lines.entries()) {
         const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
         if (marker) {
             if (kind !== null) break;
@@ -2242,8 +2291,15 @@ export function leadsOfText(source, name, where) {
         } else if (kind !== null && /^\s+\S/.test(line)) {
             items.at(-1).text += ` ${line.trim()}`;
         } else if (kind !== null && line.trim() !== "") {
+            if (under && !OPENS_BLOCK.test(line)) {
+                throw new CompileError(
+                    `${where}: line ${at + 1} of ${name} follows an item of its first list with no blank line and no indent, ` +
+                        `where CommonMark reads a line of text as more of that item — indent it under the item, or end the list with a blank line`,
+                );
+            }
             break;
         }
+        under = kind !== null && line.trim() !== "";
     }
     if (items.length === 0) throw new CompileError(`${where}: the leads of ${name} were asked for, and it holds no list`);
     return items.map(({ marker, text }) => {
@@ -2489,11 +2545,23 @@ export function parseUnit(name, text, source = `${name}.md`) {
  * passes a `../` chain. `doctor` refuses such a manifest, but this reader must not depend on `doctor`
  * having run.
  *
+ * A manifest that is there and cannot be read as one is refused here rather than read as declaring none,
+ * so every tool that compiles or plans guidance through this reader stops on it: `compile`, `init`,
+ * `vendor` and `upgrade`'s planner. Read as none, every rule and skill an earlier run compiled would be
+ * planned for removal (`unreadableManifest`).
+ *
  * @returns {{ dir: string, rel: string } | null} null when the manifest declares no `slots.context`, or
- *   there is no readable manifest to declare one.
+ *   there is no manifest to declare one.
  */
 export function guidanceDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const base = path.join(workspaceRoot, workspaceDir);
+    const unreadable = unreadableManifest(workspaceRoot, workspaceDir);
+    if (unreadable !== null) {
+        throw new CompileError(
+            `${unreadable.file} is not a manifest this compiler can read: ${unreadable.why}. Read as one declaring no ` +
+                `guidance, it would have every rule and skill an earlier run compiled removed, so nothing was written or removed`,
+        );
+    }
     let manifest;
     try {
         manifest = JSON.parse(fs.readFileSync(path.join(base, "workspace.json"), "utf8"));
@@ -3034,6 +3102,40 @@ export function guidanceEdits(named) {
 // ===========================================================================================
 
 /**
+ * A manifest that is there and cannot be read as one, or null when it reads or is absent.
+ *
+ * `compile` and `goldens` stop on it before they ask the manifest anything, because every reader below
+ * takes one it cannot parse for one declaring nothing: no guidance, so a write removed every rule and skill
+ * an earlier run compiled and the marker with them, and no gate policy, so a `gates.json` found by
+ * convention compiled in the manifest's place. `guidanceDeclaration` refuses it as well, for the tools
+ * that compile or plan guidance without passing through `compile`'s command line. `resolveWorkspace` refuses such a manifest only where
+ * `--workspace` names the workspace directory; named as a repository root, as the `compile` recipe runs
+ * it, nothing did. An absent manifest is still a legitimate shape (`policyPath`), and the hook's reader
+ * still falls back, because it runs on every tool call. Found 2026-09-24 in the follow-ups to #447, whose
+ * tidy made the loss possible.
+ *
+ * @returns {{ file: string, why: string } | null}
+ */
+export function unreadableManifest(workspaceRoot, workspaceDir = ".portulan") {
+    const file = path.join(workspaceRoot, workspaceDir, "workspace.json");
+    let raw;
+    try {
+        raw = fs.readFileSync(file, "utf8");
+    } catch (cause) {
+        if (cause.code === "ENOENT") return null;
+        return { file, why: `it could not be read — ${cause.code ?? cause.message}` };
+    }
+    let manifest;
+    try {
+        manifest = JSON.parse(raw);
+    } catch (cause) {
+        return { file, why: `it is not valid JSON — ${cause.message}` };
+    }
+    if (manifest === null || typeof manifest !== "object" || Array.isArray(manifest)) return { file, why: "it is not a JSON object" };
+    return null;
+}
+
+/**
  * The same answer as `policyPath`, plus WHICH ARM produced it — and, where the manifest named
  * something unusable, WHY.
  *
@@ -3065,6 +3167,8 @@ export function policyDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     } catch {
         // No manifest, or unreadable. `doctor` is the tool that judges a manifest; this one only needs
         // to know where the policy is, and the default is where it is when nothing says otherwise.
+        // `compile` and `goldens` stop on an unreadable one before they ask (`unreadableManifest`), so
+        // here it reaches only the hook's reader, which must not stop.
         return fallback("no-manifest");
     }
     if (declared === undefined) return fallback("no-key");
@@ -3092,9 +3196,10 @@ export function policyDeclaration(workspaceRoot, workspaceDir = ".portulan") {
         if (resolved !== base && isInside(base, resolved)) return { file: resolved, declared: true, reason: "declared" };
     }
     // The manifest named something, and nothing it named is usable — a wrong type, an empty string, a
-    // shape the schema refuses, or a path that escapes the workspace. The compiler is on the
-    // conventional path, so the fallback owns the diagnostic; but this is NOT the state of a manifest
-    // that named nothing, and a message conflating the two is the defect this change is about.
+    // shape the schema refuses, or a path that escapes the workspace. The path returned is the
+    // conventional one, which the hook's reader falls back to; `compile` and `goldens` stop on this
+    // reason whatever sits there (2026-09-24). But this is NOT the state of a manifest that named
+    // nothing, and a message conflating the two is the defect this change is about.
     return fallback("refused");
 }
 
@@ -3188,19 +3293,30 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
     // this whole change defends as legitimate; `no-manifest` is a workspace that has not been
     // authored yet; `refused` is a manifest that DID name a policy and named one this compiler will
     // not read, which is neither of the other two and must not be told it has no `gates` key.
+    // A refused key stops the run whatever sits at the conventional path, so the sentence says which it is.
+    const conventional = reason === "refused" && fs.existsSync(policyFile);
     const opening =
         reason === "refused"
             ? `\`workspace.json\` names a gate policy this compiler will not read — its top-level ` +
-              `\`gates\` key is not a relative path to a file inside the workspace — and there is no ` +
-              `\`gates.json\` at ${policyFile} either.`
+              `\`gates\` key is not a relative path to a file inside the workspace — and ` +
+              (conventional
+                  ? `the \`gates.json\` at ${policyFile} is not the policy it names, so it is not compiled in its place.`
+                  : `there is no \`gates.json\` at ${policyFile} either.`)
             : reason === "no-manifest"
               ? `this workspace declares no gate policy — there is no readable \`workspace.json\` at ` +
                 `${manifest}, and there is no \`gates.json\` at ${policyFile}.`
               : `this workspace declares no gate policy — \`workspace.json\` has no top-level \`gates\` key, ` +
                 `and there is no \`gates.json\` at ${policyFile}.`;
     // With guidance to compile, the run goes on without a policy, and the sentence must say so: *nothing was
-    // compiled* would be false about the files it writes next.
-    const lines = [`${opening} ${guidanceOnly ? "No enforcement is compiled; the workspace's guidance still is." : "Nothing was compiled and nothing was written."}`];
+    // compiled* would be false about the files it writes next. With only what an earlier run compiled from
+    // guidance no longer declared, it goes on to remove that, and says so as well.
+    const outcome =
+        guidanceOnly === "leftover"
+            ? "No enforcement is compiled, and no guidance is declared: what an earlier run compiled from guidance is this compiler's to remove, and is named below."
+            : guidanceOnly
+              ? "No enforcement is compiled; the workspace's guidance still is."
+              : "Nothing was compiled and nothing was written.";
+    const lines = [`${opening} ${outcome}`];
     let composed = null;
     try {
         composed = packContributions(workspaceRoot, workspaceDir, packOptions);
@@ -3219,7 +3335,7 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
             .join(", ");
         lines.push(
             `${rules} pack-contributed gate rule(s) from ${packs} are therefore NOT compiled: ` +
-                `a fragment tightens a policy, and there is none here to tighten.`,
+                `a fragment tightens a policy, and ${conventional ? "this run reads none" : "there is none here"} to tighten.`,
         );
     }
     lines.push(
@@ -4007,6 +4123,17 @@ export function run(argv, options = {}) {
         // The workspace may be named as a repository root or as the workspace directory itself, and the
         // second is how a feed-side workspace is reachable at all — see `resolveWorkspace`.
         const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
+        // Before anything asks the manifest a question, because every reader below takes one that does not
+        // parse for one declaring nothing, and this run would act on that: see `unreadableManifest`.
+        const unreadable = unreadableManifest(workspaceRoot, workspaceDir);
+        if (unreadable !== null) {
+            throw new CompileError(
+                `${unreadable.file} is not a manifest this compiler can read: ${unreadable.why}. Read as one declaring ` +
+                    `nothing, it would remove every rule and skill an earlier run compiled from its guidance and compile a ` +
+                    `\`gates.json\` found by convention in its place, so nothing was compiled, written or removed. Fix the ` +
+                    `manifest, then compile again`,
+            );
+        }
         // The guidance is read before the policy, because a malformed unit is a reason this run cannot
         // compile honestly whichever half it reaches first, and because a workspace with guidance and no
         // policy still has something to compile.
@@ -4016,6 +4143,16 @@ export function run(argv, options = {}) {
         // compile honestly whichever half it reaches first.
         const sessions = sessionsDeclaration(workspaceRoot, workspaceDir);
         const { file: policyFile, declared: policyDeclared, reason: policyReason } = policyDeclaration(workspaceRoot, workspaceDir);
+        const packOptions = { named: namedRoots, discovery: () => discoverPackRoots(), forced };
+        // A `gates` key this compiler refuses stops the run, beside guidance or a `gates.json` at the
+        // conventional path alike: the workspace named a policy, and named one nothing here will read.
+        // Guidance compiled past it is a green `--check` that checks no enforcement at all, and the
+        // conventional file compiled in its place is settings enforcing a policy the manifest does not name,
+        // which this run did until 2026-09-24. The hook's reader still falls back (`policyPath`), because it
+        // runs on every tool call and must not stop a session over a manifest; this run can stop.
+        if (policyReason === "refused") {
+            throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
+        }
         // **Declared-and-missing and never-declared are different answers.** Only the first is a
         // failure to read something this workspace claimed to have; the second is a shape `policyPath`
         // documents as legitimate, and reporting it as `ENOENT` sent readers hunting for a deleted
@@ -4024,13 +4161,18 @@ export function run(argv, options = {}) {
         // and `policyReason` is what lets the message name the one it is in rather than assert the
         // commonest: this comment read "two different answers" while the code below had four.
         if (!policyDeclared && !fs.existsSync(policyFile)) {
-            const packOptions = { named: namedRoots, discovery: () => discoverPackRoots(), forced };
-            if (guidance === null) {
+            // What an earlier run compiled from guidance the manifest no longer declares is still this
+            // compiler's to remove, as it is beside a policy: stopping before the tidy left an `always` rule
+            // loading into every context until someone deleted it by hand. Only where the manifest was read
+            // and names no policy: one that does not parse stopped the run above, and a workspace with no
+            // manifest has not been authored, so nothing it lacks is a reason to remove anything.
+            const leftover = guidance === null && policyReason === "no-key" && guidancePlan !== null && guidancePlan.stray.length > 0;
+            if (guidance === null && !leftover) {
                 throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
             }
             // A workspace with no gate policy is a legitimate shape (`policyPath`), and its guidance is not
             // enforcement: it compiles alone, and the state of the policy is said rather than refused.
-            say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, true)}`);
+            say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, leftover ? "leftover" : true)}`);
             if (sessions !== null) {
                 say(
                     `note    \`sessions\` in ${sessions.manifest} compiled nothing: its host switches ride the settings a gate ` +

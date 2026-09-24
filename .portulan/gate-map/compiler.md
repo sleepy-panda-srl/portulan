@@ -64,10 +64,12 @@ upgrade.
 Every rule ends **compiled**, or **refused** with a stated reason — a rule a backend legitimately declines,
 left out of an artifact that is still written, exit 0. The third outcome is not per rule: a policy that
 cannot be enforced as written is **could-not-run**, exit 2, and no artifact is written. Besides a malformed
-policy, the refusals that stop a whole compile include a pack that resolved from a discovered root while the
-tree also carries it, a pack composition that would loosen a gate, and a `gated` or `prohibited` rule whose
-path target can never match (hole 8). Filing the last as `refused` would let `doctor` count a gate the policy
-declares and nothing enforces as ordinary non-coverage.
+policy, the refusals that stop a whole compile include a `gates` key it will not read (whatever sits at the
+conventional path), a `workspace.json` that does not parse into an object, which it would otherwise read
+as declaring nothing, a pack that resolved from a discovered root while the tree also carries it, a pack
+composition that would loosen a gate, and a `gated` or `prohibited` rule whose path target can never match
+(hole 8). Filing the last as `refused` would let `doctor` count a gate the policy declares and nothing
+enforces as ordinary non-coverage.
 
 **Two backends read this policy, and their partitions are close to inverse.** The Claude Code backend
 refuses three kinds of rule, all printed on every run:
@@ -151,7 +153,8 @@ unscoped or scoped by `paths:`, a project skill in `.claude/skills/`, or a line 
 where a tier the host cannot express degrades to a pointer, late and never lost; `compile --matrix` prints
 that per unit, and `GUIDANCE_HOSTS` is the one table of which host expresses which tier. `compile` rewrites
 and removes only what it wrote — the rules its `.compiled` marker lists and the skills carrying its mark —
-writes nothing through a link, and refuses a slot inside a directory it writes. Section 3c of compile.mjs
+writes nothing through a link, and refuses a slot inside a directory it writes. What it wrote from guidance a
+workspace stops declaring goes on the next run, with a gate policy or without one. Section 3c of compile.mjs
 carries each of those rules.
 
 **This workspace declares four units** in [`../context/`](../context/): the boot card in the `always` tier,

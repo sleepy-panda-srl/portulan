@@ -22,7 +22,7 @@ rationale and its provenance, condition 3 of `.portulan/dod.md`.
 - **The boot skill routes** a boot to the project's card or to `plugin/skills/portulan/steps.md`, and
   `rationale.md` beside them holds each step's reasons under its number: change an instruction and its
   reason together. Every skill and agent description is in every context where the plugin is enabled,
-  and `.portulan/verify/context.sh` rails their bytes, the skill's and the kernel's.
+  and `.portulan/verify/context.sh` rails their bytes, the skill's, its steps' and the kernel's.
 - **A declared pack is not an invocable one.** Read `plugin/skills/portulan/packs.md` before changing how
   a pack composes or registers: registration is a property of `.claude-plugin/plugin.json` alone. A pack
   whose `contributes` block changes moves its `portulan.version` too, which the `pack-version` recipe

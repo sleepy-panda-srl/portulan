@@ -433,6 +433,35 @@ for (const [label, build, expected] of [
     });
 }
 
+// As `compile` stops at a refused value beside a `gates.json` at the default path: that file is not the
+// policy the manifest names, so fixtures graded against it would grade a policy nothing compiles.
+test("a refused `gates` value is could-not-run even beside a `gates.json` at the default path", () => {
+    const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
+    try {
+        mkdirSync(join(root, ".portulan"), { recursive: true });
+        writeFileSync(join(root, ".portulan/workspace.json"), JSON.stringify({ name: "x", gates: "../outside.json" }, null, 2));
+        cpSync(join(REPO, ".portulan/gates.json"), join(root, ".portulan/gates.json"));
+        const r = cli(["--workspace", root]);
+        assert.equal(r.status, 2, r.stderr);
+        assert.match(r.stderr, /the `gates\.json` at \S+ is not the gate policy the manifest names/);
+        assert.match(r.stderr, /DOES name a gate policy, and it was refused/);
+    } finally { cleanup(root); }
+});
+
+// As `compile` stops on a manifest that does not parse: read as one declaring nothing, it would have fixtures
+// graded against a `gates.json` found by convention, which it may not name.
+test("a manifest that does not parse is could-not-run, naming it, even beside a `gates.json` at the default path", () => {
+    const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
+    try {
+        mkdirSync(join(root, ".portulan"), { recursive: true });
+        writeFileSync(join(root, ".portulan/workspace.json"), "{ not json");
+        cpSync(join(REPO, ".portulan/gates.json"), join(root, ".portulan/gates.json"));
+        const r = cli(["--workspace", root]);
+        assert.equal(r.status, 2, r.stderr);
+        assert.match(r.stderr, /workspace\.json is not a manifest this tool can read: it is not valid JSON — \S/);
+    } finally { cleanup(root); }
+});
+
 test("a red exits 1 and prints every finding on stderr", () => {
     const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
     try {

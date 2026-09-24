@@ -64,6 +64,8 @@ import {
     SKILLS_DIR,
     parseUnit,
     guidanceUnits,
+    compileGuidance,
+    guidanceEdits,
     claudeCodeGuidance,
     agentsMdGuidance,
     HOOK_RUNNERS,
@@ -2074,6 +2076,22 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
         assert.doesNotMatch(said, /leave it undeclared deliberately/, "wrong advice for a declared-but-bad value");
     });
 
+    // Before this case a refused value fell back to a `gates.json` at the conventional path whenever one was
+    // there, and compiled it: the settings enforced a policy the manifest does not name, and `--check` was green.
+    test("a REFUSED value stops the run even where a `gates.json` sits at the conventional path", (t) => {
+        for (const gates of [42, "", "../outside.json"]) {
+            const dir = bare({ gates });
+            fs.writeFileSync(path.join(dir, ".portulan", "gates.json"), JSON.stringify(policy()));
+            for (const argv of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+                const { code, said } = stderrOf(t, argv);
+                assert.equal(code, 2, `${JSON.stringify(gates)}, ${argv.join(" ")}: ${said}`);
+                assert.match(said, /will not read.*is not the policy it names.*Nothing was compiled and nothing was written/s);
+                assert.doesNotMatch(said, /there is no `gates.json`/, "there is one; it is not the one named");
+            }
+            assert.ok(!fs.existsSync(path.join(dir, ".claude")), `${JSON.stringify(gates)}: nothing written`);
+        }
+    });
+
     test("an unauthored workspace is not reported as a manifest with no `gates` key", (t) => {
         const dir = scratch();
         fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
@@ -3613,6 +3631,29 @@ describe("guidance: written, then byte-compared", () => {
         assert.match(check.out, /GREEN — every compiled guidance file matches its unit/);
     });
 
+    // Before this case, guidance compiled past a `gates` key the compiler refuses, and `--check` went green:
+    // the exit 2 such a key had always meant was gone wherever the workspace declared guidance. A `gates.json`
+    // at the conventional path is not the policy such a key names either, so it is no reason to go on.
+    test("a `gates` key the compiler refuses stops the run beside guidance too: exit 2, nothing written", (t) => {
+        for (const gates of [42, "", "../outside.json"]) {
+            for (const conventional of [false, true]) {
+                const dir = guidanceCopy();
+                const manifestPath = path.join(dir, "workspace.json");
+                const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+                m.gates = gates;
+                fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+                if (conventional) fs.writeFileSync(path.join(dir, "gates.json"), JSON.stringify(policy()));
+                const label = `${JSON.stringify(gates)}${conventional ? " beside gates.json" : ""}`;
+                for (const args of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+                    const { code, out } = said(t, args);
+                    assert.equal(code, 2, `${label}, ${args.join(" ")}: ${out}`);
+                    assert.match(out, /names a gate policy this compiler will not read.*Nothing was compiled and nothing was written/s);
+                }
+                assert.ok(!fs.existsSync(path.join(dir, ".claude")), `${label}: nothing written`);
+            }
+        }
+    });
+
     test("a compiled file edited by hand is red, and names the unit to edit instead", (t) => {
         const dir = guidanceCopy();
         said(t, ["--workspace", dir]);
@@ -4004,6 +4045,107 @@ describe("guidance: written, then byte-compared", () => {
         assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
     });
 
+    // Before this case, a workspace with no gate policy stopped before the tidy, and what it had compiled
+    // stayed, an `always` rule loading into every context, until someone deleted it by hand.
+    test("so does one with no gate policy, and the run after refuses it as declaring neither", (t) => {
+        const dir = guidanceCopy();
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        const manifestPath = path.join(dir, "workspace.json");
+        const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        delete m.slots.context;
+        fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+        const check = said(t, ["--workspace", dir, "--check"]);
+        assert.equal(check.code, 1, check.out);
+        assert.match(check.out, /no guidance is declared: what an earlier run compiled from guidance is this compiler's to remove/);
+        assert.match(check.out, /on-read\.md is where this compiler writes guidance, and no unit compiles to it/);
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        assert.ok(!fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR)), "the rules and their marker are gone");
+        assert.ok(!fs.existsSync(path.join(dir, SKILLS_DIR, "release")), "and the compiled skill");
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 2);
+    });
+
+    // Every file under `.claude/`, by its path there, so a run can be shown to have written and removed nothing.
+    const claudeTree = (dir) => {
+        const files = {};
+        const walk = (at) => {
+            for (const entry of fs.readdirSync(at, { withFileTypes: true })) {
+                const file = path.join(at, entry.name);
+                if (entry.isDirectory()) walk(file);
+                else files[path.relative(dir, file).split(path.sep).join("/")] = fs.readFileSync(file, "utf8");
+            }
+        };
+        walk(path.join(dir, ".claude"));
+        return files;
+    };
+
+    // Before this case, from the repository root, as `.portulan/verify/compile.sh` runs it, a manifest that did
+    // not parse was read as one declaring nothing: beside a `gates.json` found by convention, a write compiled
+    // that file and removed every rule and skill compiled from guidance, and the marker with them.
+    test("a manifest that does not parse stops the run, with a gate policy or without one: nothing written or removed", (t) => {
+        for (const policyBeside of [true, false]) {
+            for (const [label, broken] of [
+                ["cut short", (text) => text.slice(0, -2)],
+                ["null", () => "null"],
+                ["an array", () => "[]"],
+            ]) {
+                const dir = scratch();
+                fs.cpSync(GUIDANCE_FIXTURE, path.join(dir, ".portulan"), { recursive: true });
+                if (policyBeside) fs.writeFileSync(path.join(dir, ".portulan", "gates.json"), JSON.stringify(policy()));
+                assert.equal(said(t, ["--workspace", dir]).code, 0);
+                const before = claudeTree(dir);
+                assert.ok(`${GUIDANCE_RULES_DIR}/${RULES_MARKER}` in before, "the marker is among what must survive");
+                assert.equal(`.claude/settings.json` in before, policyBeside);
+                const manifestPath = path.join(dir, ".portulan", "workspace.json");
+                fs.writeFileSync(manifestPath, broken(fs.readFileSync(manifestPath, "utf8")));
+                const why = label === "cut short" ? /it is not valid JSON — \S/ : /it is not a JSON object/;
+                for (const args of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+                    const { code, out } = said(t, args);
+                    const where = `${label}${policyBeside ? " beside gates.json" : ""}, ${args.join(" ")}`;
+                    assert.equal(code, 2, `${where}: ${out}`);
+                    assert.match(out, /workspace\.json is not a manifest this compiler can read/, where);
+                    assert.match(out, why, where);
+                    assert.deepEqual(claudeTree(dir), before, `${where}: nothing written or removed`);
+                }
+            }
+        }
+    });
+
+    // Found by Copilot after the case above: `init`, `vendor` and `upgrade`'s planner reach the guidance through
+    // `compileGuidance` and `guidanceEdits`, not the command line, and read such a manifest as declaring none.
+    test("every entry point that compiles or plans guidance stops on a manifest that does not parse", (t) => {
+        const dir = scratch();
+        fs.cpSync(GUIDANCE_FIXTURE, path.join(dir, ".portulan"), { recursive: true });
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        const before = claudeTree(dir);
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        fs.writeFileSync(manifestPath, fs.readFileSync(manifestPath, "utf8").slice(0, -2));
+        for (const [name, call] of [
+            ["compileGuidance", () => compileGuidance(dir)],
+            ["compileGuidance under check", () => compileGuidance(dir, { check: true })],
+            ["guidanceEdits", () => guidanceEdits(dir)],
+            ["guidanceUnits", () => guidanceUnits(dir, ".portulan")],
+        ]) {
+            assert.throws(call, (e) => e instanceof CompileError && /workspace\.json is not a manifest this compiler can read: it is not valid JSON — \S/.test(e.message), name);
+            assert.deepEqual(claudeTree(dir), before, `${name}: nothing written or removed`);
+        }
+    });
+
+    // The tidy's own scope: a workspace whose manifest is gone has not been authored, so what it lacks is no
+    // reason to remove what an earlier run compiled. Red when the tidy's `no-key` condition is removed.
+    test("a workspace whose manifest is gone, with no gate policy, is no reason to remove anything", (t) => {
+        const dir = scratch();
+        fs.cpSync(GUIDANCE_FIXTURE, path.join(dir, ".portulan"), { recursive: true });
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        const before = claudeTree(dir);
+        fs.rmSync(path.join(dir, ".portulan", "workspace.json"));
+        for (const args of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+            const { code, out } = said(t, args);
+            assert.equal(code, 2, `${args.join(" ")}: ${out}`);
+            assert.match(out, /no readable `workspace.json`/);
+            assert.deepEqual(claudeTree(dir), before, `${args.join(" ")}: nothing removed`);
+        }
+    });
+
     test("a rules directory without the marker is not this compiler's where it owes no rule: left, and green", (t) => {
         const dir = workspace();
         fs.mkdirSync(path.join(dir, GUIDANCE_RULES_DIR), { recursive: true });
@@ -4158,6 +4300,29 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         assert.match(rule(dir, "boot"), /^@\.\.\/\.\.\/\.\.\/identity\.md$/m);
     });
 
+    // Found in the coordinator session's review of #452 after its push, and read in the lexer Claude Code
+    // 2.1.281 bundles: a list item's text reaches the host as one raw block, which it reads for imports before
+    // it skips the code spans inside, a loose item's as much as a tight one's. So a code span there hides no
+    // import, and the refusals that sent text into one sent it where the host still reads it.
+    test("in a list item a code span hides no import, tight or loose, and a refusal sends text that is not one elsewhere", (t) => {
+        const advice = /text that is not an import (goes )?in a fenced block, or in a code span outside a list/;
+        for (const list of [["- Run `cat @../identity.md now` first.", "- Then the rest."], ["- Run `cat @../identity.md now` first.", "", "- Then the rest."]]) {
+            const dir = withFiles({ "context/boot.md": card(...list) });
+            const { code, out } = said(t, ["--workspace", dir]);
+            assert.equal(code, 2, out);
+            assert.match(out, /`@\.\.\/identity\.md` \(in context\/boot\.md\) shares its line with other text/);
+            assert.match(out, advice);
+            assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+        }
+        const below = said(t, ["--workspace", withFiles({ "context/boot.md": card("@../notes.md"), "notes.md": "- Run `cat @gone.md now` first.\n" })]);
+        assert.equal(below.code, 2, below.out);
+        assert.match(below.out, /`@gone\.md` \(in notes\.md\) names no file, so the host would load nothing/);
+        assert.match(below.out, advice);
+        const text = card("Run `cat @../identity.md now` first.", "", "```", "- cat @../identity.md", "```", "", "- Open `@../identity.md` on demand.");
+        const kept = said(t, ["--workspace", withFiles({ "context/boot.md": text })]);
+        assert.equal(kept.code, 0, `a paragraph's code span, a fenced block, and an \`@\` straight after a backtick are text: ${kept.out}`);
+    });
+
     test("a leads line is the lead sentence of each item in the file's first list, and a change there is drift", (t) => {
         const rules = [
             "# Rules",
@@ -4179,6 +4344,26 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         const check = said(t, ["--workspace", dir, "--check"]);
         assert.equal(check.code, 1);
         assert.match(check.out, /boot\.md has drifted from context\/boot\.md, whose leads are written from rules\.md\. Edit the unit or those files, then recompile\./);
+    });
+
+    // Found in the coordinator session's review of #452 after its push: a line with no indent straight under an
+    // item's text is more of that item to CommonMark, and this reader ended the list there, so a card carried
+    // the lead of one principle in four and `--check` stayed green.
+    test("a line with no indent under an item's text is refused, naming its line, and a line that opens a block still ends the list", (t) => {
+        const rules = (under) =>
+            ["# Rules", "", "1. **Ship small.** A reviewer reads a small change", "   whole.", "2. **Say what is enforced.** And what is not.", under, "3. **Never read.** It is past the list.", ""].join("\n");
+        const dir = withFiles({ "rules.md": rules("which is the half a reader forgets."), "context/boot.md": card("<!-- leads: ../rules.md -->") });
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 2, out);
+        assert.match(out, /context\/boot\.md: line 6 of rules\.md follows an item of its first list with no blank line and no indent, .+ indent it under the item, or end the list with a blank line/);
+        assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+        for (const opener of ["## Next", "> A quote.", "---", "* Another list.", "<!-- A note. -->", "```"]) {
+            fs.writeFileSync(path.join(dir, "rules.md"), rules(opener));
+            const opened = said(t, ["--workspace", dir]);
+            assert.equal(opened.code, 0, `${opener}: ${opened.out}`);
+            assert.match(rule(dir, "boot"), /^1\. \*\*Ship small\.\*\*\n2\. \*\*Say what is enforced\.\*\*$/m, opener);
+            assert.doesNotMatch(rule(dir, "boot"), /Never read/, opener);
+        }
     });
 
     const refusedLeads = [
