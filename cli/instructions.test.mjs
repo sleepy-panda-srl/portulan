@@ -286,6 +286,12 @@ describe("the join puts each moved section back where its marker is", () => {
         const mixed = lines.map((l, i) => (i === lines.length - 1 || (i >= build && i < style) ? l : `${l}\r`)).join("\n");
         const both = joinAfter(undefined, mixed);
         assert.equal(both.joined.files[0].after, mixed.replace(`${ON_READ_MARK}\n\n`, "").replace(`${ON_READ_MARK}\r\n`, ""));
+        // An LF file whose Build section is CRLF but for its last line, as a block pasted from elsewhere: no
+        // checkout turned it, and it goes back as it was.
+        const fetch = lines.indexOf("- Fetch every dependency before the first build.");
+        const pasted = lines.map((l, i) => (i >= build && i < fetch ? `${l}\r` : l)).join("\n");
+        const kept = joinAfter(undefined, pasted);
+        assert.equal(kept.joined.files[0].after, pasted.replace(`${ON_READ_MARK}\r\n\r\n`, "").replace(`${ON_READ_MARK}\n`, ""));
     });
 
     test("a unit a byte-order mark opens goes back with none of its frontmatter, and is no edit", () => {

@@ -613,12 +613,12 @@ export function planJoin({ tree, context, read }) {
                 continue;
             }
             // Each line goes back with the line end its unit holds it with, as the move wrote it, and the
-            // last with its marker's, which the split gave the section's last line. Where every other line of
-            // the unit ends the other way from that marker, a checkout or an editor turned them all, and each
-            // takes the marker's.
+            // last with its marker's, which the split gave the section's last line, as it gave the unit's.
+            // Where every line of the unit ends the other way from that marker, a checkout or an editor
+            // turned them all, and each takes the marker's.
             const ends = lines[line].endsWith("\r") ? "\r" : "";
             const held = unitBody(unitText);
-            const turned = line < lines.length - 1 && held.length > 1 && held.slice(0, -1).every((l) => l.endsWith("\r") !== (ends === "\r"));
+            const turned = line < lines.length - 1 && held.every((l) => l.endsWith("\r") !== (ends === "\r"));
             const body = held.map((l, i, all) => (i === all.length - 1 || turned ? `${bare(l)}${ends}` : l));
             const loads = [...importLines(body.join("\n"), from).values()].flat();
             if (loads.length) {
