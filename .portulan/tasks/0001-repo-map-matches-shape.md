@@ -12,7 +12,7 @@ enforces it so the two cannot silently drift apart again.
 
 **Verify.** `./.portulan/verify/docs.sh` — written before the fix, red on two undocumented entries, green
 once the table was corrected. The transcript of both runs is recorded in
-[`../handoffs/2026-07-25-m1-session-3.md`](../handoffs/2026-07-25-m1-session-3.md).
+[`../handoffs/2026-07-25-m1-session-3.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-25-m1-session-3.md).
 
 **Constraints.** The check has to hold for entries that are not yet committed, or it would pass on a new
 directory right up until the moment it stopped mattering — so the recipe reads tracked *and* untracked

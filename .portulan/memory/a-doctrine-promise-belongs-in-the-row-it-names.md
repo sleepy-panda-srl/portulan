@@ -1,7 +1,7 @@
 **type:** rule
 **dated:** 2026-07-27
 **scope:** workspace — anyone writing a milestone row, or grading a build against one
-**provenance:** `form=link` `href=../handoffs/2026-07-27-the-enforcement-compiler.md`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-27-the-enforcement-compiler.md`
 — milestone 4, session 0. `core/operating/loop.md` had promised a session-end gate *to milestone 4*
 since the cadence rule landed, and milestone 4's row named two of the three things the doctrine owed
 there. The build followed the doctrine; the criterion did not know about it.

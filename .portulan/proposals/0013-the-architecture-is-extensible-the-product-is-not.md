@@ -34,7 +34,7 @@ Two of those are worse than gaps, because they will fail a real author on their 
   `packs/<pack>/skills/<skill>/SKILL.md` **cannot be declared as a single path** — it fails as *"has no
   SKILL.md"*. This blocks packs from carrying skills, which is most of what a pack is for, and it will
   be discovered by the first person who writes one. Filed as
-  [`../tasks/0008-a-declared-skills-path-sees-one-level-down.md`](../tasks/0008-a-declared-skills-path-sees-one-level-down.md).
+  [`../tasks/0008-a-declared-skills-path-sees-one-level-down.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/tasks/0008-a-declared-skills-path-sees-one-level-down.md).
 - **`plugin-lint`'s tree walk descends into git-ignored state.** Its skip list is `.git`, `node_modules`
   and `.claude-plugin`; **nothing consults `.gitignore`** — so every worktree copy under `.claude/`
   contributes a full set of false *undeclared skill* notes. Measured in the maintainer's checkout while

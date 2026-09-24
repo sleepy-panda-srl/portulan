@@ -1,7 +1,7 @@
 **type:** rule
 **dated:** 2026-07-26
 **scope:** workspace — anyone declaring a component in a host's manifest and believing the declaration
-**provenance:** `form=link` `href=../handoffs/2026-07-26-the-tag-and-the-install.md`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-26-the-tag-and-the-install.md`
 — milestone 3, session 1. The fresh-machine install demonstration reported `Agents (0)` for a plugin
 whose manifest declared three, whose files all shipped, whose own lint counted three, and which
 `claude plugin validate --strict` passed.

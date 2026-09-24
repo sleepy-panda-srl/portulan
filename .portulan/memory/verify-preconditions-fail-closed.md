@@ -20,7 +20,7 @@ run* must never be mistaken for *ran and passed*.
 **Demonstrated, not reasoned about.** Copying the recipes into a non-git directory and running `docs.sh`
 produced `fatal: not a git repository` followed by three `ok` lines and exit `0`. After the fix the same
 input produces exit `2`. Both runs are in
-[`../handoffs/2026-07-25-workspace-definition-v1.md`](../handoffs/2026-07-25-workspace-definition-v1.md).
+[`../handoffs/2026-07-25-workspace-definition-v1.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-25-workspace-definition-v1.md).
 
 **When to apply:** whenever a recipe gains a step that produces the *set* of things to check — a file
 list, a glob, a manifest of recipes, a directory walk. The test is simple: if this command returned

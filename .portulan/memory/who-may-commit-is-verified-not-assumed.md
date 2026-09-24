@@ -1,7 +1,7 @@
 **type:** rule
 **dated:** 2026-09-24
 **scope:** workspace — this repository's access posture and contribution channel
-**provenance:** `form=link` `href=../handoffs/2026-07-27-who-may-commit.md`
+**provenance:** `form=link` `href=8a33f9b:.portulan/handoffs/2026-07-27-who-may-commit.md`
 — the maintainer's ruling, 2026-07-27: *anyone may clone and view; only team members commit and push*,
 and external pull requests are not accepted: outside participation is proposals and feedback through the
 issue forms.
@@ -17,10 +17,10 @@ described from memory is a claim ([`a-stated-enforcer-must-be-the-real-one.md`](
 The 2026-08-03 flip proved it: a measured, correct visibility row went false without a word.
 
 **So the posture is read back and dated, never assumed.** 2026-07-27: one admin, org default `read`,
-`maintainers` with `push`, nothing to revoke ([its handoff](../handoffs/2026-07-27-who-may-commit.md)).
+`maintainers` with `push`, nothing to revoke (the handoff above).
 2026-08-10: only visibility had moved, and `?affiliation=direct` lists no one: the admin's access is org ownership.
 Secret scanning and push protection are on since 2026-08-17, private vulnerability reporting since the
-2026-08-18 flip ([its handoff](../handoffs/2026-08-18-the-flip-the-publish-and-what-each-measurement-cost.md)).
+2026-08-18 flip (`git show 8a33f9b:.portulan/handoffs/2026-08-18-the-flip-the-publish-and-what-each-measurement-cost.md`).
 **Owed:** the access read-back after that flip, and a re-read of `main`'s protection.
 
 **Retire when:** a second person gains push access, or the external-contribution posture changes. A

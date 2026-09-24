@@ -260,7 +260,7 @@ spellings, quoted as they were written:
 - *"Only the judgement rows are the A/B clause's subject"* — [`../README.md`](../README.md)
 - *"only the judgement-only rows are the A/B clause's subject"* — [`../../cli/skill-goldens.mjs`](../../cli/skill-goldens.mjs)
 - *"the judgement half is the A/B clause's subject, not this one's"* — [`../../.portulan/verify/skill-goldens.sh`](../../.portulan/verify/skill-goldens.sh)
-- *"Only the judgement rows are what the A/B clause exists to reach"* — [`../../docs/milestones/m08.md`](../../docs/milestones/m08.md)
+- *"Only the judgement rows are what the A/B clause exists to reach"* — [`../../docs/milestones/m08.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m08.md)
 
 Each now states the widened reading beside a citation of this file. The superseded sentence in `m08.md`
 is **left standing** with a dated note attached, because that file is relocated history.
@@ -300,7 +300,7 @@ measurement about arm A. It is [#358](https://github.com/sleepy-panda-srl/portul
   vendored tier can be asked, not a backlog.
 - **Scope.** A baseline recorded over this arm is scoped to the tier [`arm.md`](arm.md) specifies, and
   closes row 8 for no other configuration of *"Portulan on"*. **The argument is in
-  [`../../docs/milestones/m08.md`](../../docs/milestones/m08.md) and the observation in
+  [`../../docs/milestones/m08.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m08.md) and the observation in
   [`../README.md`](../README.md); this line cites them rather than restating the claim a third time**,
   which is the defect this file's own registration section is about. Row 8's criterion is untouched:
   narrowing a criterion is a maintainer's amendment, not an implementer's line.

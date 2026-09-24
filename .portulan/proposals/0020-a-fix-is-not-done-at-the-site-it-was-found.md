@@ -379,7 +379,7 @@ form check and the reason it is not offered as a solution to the class.
   pre-commit checkpoint reported no bump was owed *because the manifest had never bumped on a content
   edit*; that manifest has exactly one commit in its history, so the absence of precedent was an absence
   of prior edits, not a ruling. The real precedent is in
-  [`../handoffs/2026-07-30-a-link-resolves-in-the-repository.md`](../handoffs/2026-07-30-a-link-resolves-in-the-repository.md)
+  [`../handoffs/2026-07-30-a-link-resolves-in-the-repository.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-30-a-link-resolves-in-the-repository.md)
   and goes the other way: a bump rode a pack content change *"because an install is resolved and cached
   by the manifest's version field."* **MINOR rather than PATCH**, and the precedent does not govern: it
   bumped PATCH for a *rail fix* — a bug — where this adds step 4 of 7 to a procedure a consumer

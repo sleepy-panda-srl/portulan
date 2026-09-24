@@ -1,7 +1,7 @@
 **type:** rule
 **dated:** 2026-09-23
 **scope:** workspace — every session working in this repository
-**provenance:** `form=link` `href=../handoffs/2026-09-23-x-records-in-commits.md`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-09-23-x-records-in-commits.md`
 — the maintainer's direction of 2026-09-23, *"let the code do the actual talking and handoff - not the
 md files"*, which moved this rule as its retirement condition asked. It was ruled 2026-07-25 on
 [#5](https://github.com/sleepy-panda-srl/portulan/pull/5) as *every session ends with a handoff*.

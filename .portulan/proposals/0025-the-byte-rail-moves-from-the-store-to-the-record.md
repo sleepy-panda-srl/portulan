@@ -156,7 +156,7 @@ identically.
 
 ## Provenance
 
-`form=link` `href=../../.portulan/handoffs/2026-08-10-the-rail-moves-to-the-record.md` — and the two
+`form=link` `href=https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-08-10-the-rail-moves-to-the-record.md` — and the two
 rulings in full on [#199](https://github.com/sleepy-panda-srl/portulan/issues/199), with the
 sequencing note that recorded #202 landing the demote half early and alone.
 

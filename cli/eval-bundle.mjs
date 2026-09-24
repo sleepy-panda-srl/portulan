@@ -168,7 +168,6 @@ export const EXCLUDED_TOP_LEVEL = {
     ".claude": "compiled host configuration for building THIS repository, not for running a copy of it",
     ".github": "CI, issue forms and review wiring — how this repository is run, not what it ships",
     ".gitignore": "a working-copy concern; the bundle is not a working copy of this repository",
-    ".ignore": "what search tools skip in a working copy; the bundle is not a working copy of this repository",
     ".portulan": "the build record — handoffs, proposals, memory; the bundle ships the product, not the record",
     CODEOWNERS: "review routing for this repository's own pull requests",
     "CONTRIBUTING.md": "describes contribution to THIS repository; an evaluation copy is not a contribution surface",

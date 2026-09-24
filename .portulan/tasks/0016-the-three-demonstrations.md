@@ -4,7 +4,7 @@
 **Verify recipe:** `tests` · **Status:** IN REVIEW — [#233](https://github.com/sleepy-panda-srl/portulan/pull/233), four Copilot rounds to empty, awaiting the maintainer's merge
 
 > The last three of row 7's six demonstrations. Nothing here was planned as a mechanism: every clause
-> these exercise is already delivered and recorded in [`m07.md`](../../docs/milestones/m07.md), and what
+> these exercise is already delivered and recorded in [`m07.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m07.md), and what
 > is owed is a session that **runs and records** them — which is the whole of what *demonstrated, not
 > asserted* means here, and the reason the row is still open. One mechanism change did arrive, from a
 > finding the demonstrations themselves produced; it is ruled, scoped and recorded below rather than
@@ -13,7 +13,7 @@
 ## The criterion, quoted rather than paraphrased
 
 Row 7 of [`../../docs/plan.md`](../../docs/plan.md), and the pinned list in
-[`m07.md`](../../docs/milestones/m07.md) → *The demonstration count, pinned — **six***:
+[`m07.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m07.md) → *The demonstration count, pinned — **six***:
 
 > 1. **D1** — a never-seen repo onboards to a validated workspace in one afternoon.
 > 2. **D2** — a user adds a skill, a persona and a pack of their own without editing a file this project ships.

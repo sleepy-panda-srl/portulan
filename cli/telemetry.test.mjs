@@ -988,7 +988,6 @@ test("every carrier of the consent refusals names all three states", () => {
     // time in this review that a claim about the code outran the code.
     const carriers = [
         "evals/README.md",
-        "docs/milestones/m08.md",
         "cli/telemetry.mjs",
         ".portulan/gate-map/gated.md",
         ".portulan/gates.json",

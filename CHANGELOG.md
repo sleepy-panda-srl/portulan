@@ -1300,7 +1300,7 @@ ceiling of nine that does not reset — because a host's end-of-turn event is no
 finished" and a gate that cannot stop is a hang. _(Per-reason rather than per-session because the
 session-wide count gave a missing five-line handoff three times the patience of a failing suite; the
 asymmetry is the maintainer's own observation, and the generalisation is
-[`.portulan/tasks/0007-per-reason-stop-gate-counters.md`](.portulan/tasks/0007-per-reason-stop-gate-counters.md).)_
+[`.portulan/tasks/0007-per-reason-stop-gate-counters.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/tasks/0007-per-reason-stop-gate-counters.md).)_
 
 **Workspace Definition 2.1** — one optional `gates` key, additive. `slots.gates` keeps the prose that
 argues the policy; `gates` points at the policy that compiles. Rule ids are cited from the prose and

@@ -32,7 +32,7 @@ another: **red now** (both noted), green when only the tracked one is. Run by
 than an empty list**, because a check that enumerates nothing reports green having checked nothing.
 
 **Context.** Found while planning milestones 6, 7 and 11 on 2026-07-27, alongside
-[`0008-a-declared-skills-path-sees-one-level-down.md`](0008-a-declared-skills-path-sees-one-level-down.md).
+[`0008-a-declared-skills-path-sees-one-level-down.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/tasks/0008-a-declared-skills-path-sees-one-level-down.md).
 Both are prerequisites for the authoring surface being pleasant to use.
 
 **Lane.** triage

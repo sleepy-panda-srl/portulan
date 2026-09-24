@@ -1,0 +1,2 @@
+# The handoff series: one dated record for each session that ends with work not committed and pushed;
+# filenames lead with YYYY-MM-DD. The series to 2026-09-23 is at `git show 8a33f9b:.portulan/handoffs/`.
