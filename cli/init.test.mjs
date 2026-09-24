@@ -1120,7 +1120,7 @@ describe("the draft does not overstate its own rails to the adopter", () => {
     });
 
     test("the DRAFT is byte-identical on a host that carries the pack and one that does not", async () => {
-        // **`docs/vision.md`'s *no auto-generated curated context*, at the one tool that could break it.**
+        // **`docs/vision.md` § *No auto-generated curated context*, at the one tool that could break it.**
         // Discovery reaches the advice and the resolvability answer; it must never reach `draft()`. Hashed
         // over every drafted file rather than spot-checked, because the failure this guards against is a
         // single interpolated path in a single README.
@@ -1230,11 +1230,11 @@ describe("doctor is green on what init emits — the bar this session must clear
 
 // ---------------------------------------------------------------- the interview
 
-// `docs/vision.md` glosses `init` as *interview + codebase scan → drafted workspace, human curates*.
-// The scan shipped at session 1 and the substrate with it; this is the prompt loop, and every test
-// here runs it with **no TTY in sight** — which is the property that made the substrate worth building
-// first. The reader is injected, so the loop is as testable as the flags path it shares its validators
-// with.
+// `docs/vision.md` § *Delivery tiers* glosses `init` as an interview plus a codebase scan that drafts a
+// workspace, which humans curate. The scan shipped at session 1 and the substrate with it; this is the
+// prompt loop, and every test here runs it with **no TTY in sight** — which is the property that made
+// the substrate worth building first. The reader is injected, so the loop is as testable as the flags
+// path it shares its validators with.
 describe("the interview asks, and only where somebody is there to answer", () => {
     /** A reader with a queue of answers. Records the prompts, so an assertion can be about what was ASKED. */
     function scripted(answers, { interactive = true } = {}) {

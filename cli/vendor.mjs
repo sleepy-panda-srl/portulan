@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // `vendor` — materialise a workspace where it is needed, in either direction.
 //
-// `docs/vision.md`: *"vendor (materialise a workspace where it is needed: a self-contained AGENTS.md +
-// .portulan/ into any host, and the reverse — out of a repository and into a feed-side workspace that
-// names it)"*. The maintainer widened that gloss on 2026-08-03, which is what settled the verb row 7 had
-// deliberately left unassigned — so this tool carries **the residence switch in both directions**.
+// `docs/vision.md` § *Delivery tiers* glosses `vendor` both ways: into any host, and out of a repository
+// into a feed-side workspace that names it. The maintainer widened that gloss on 2026-08-03, which is
+// what settled the verb row 7 had deliberately left unassigned — so this tool carries **the residence
+// switch in both directions**.
 //
 // ## Two jobs, which are one operation with a direction
 //

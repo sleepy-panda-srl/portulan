@@ -34,8 +34,8 @@
 //
 // ## It drafts. It decides nothing.
 //
-// ../docs/vision.md thesis 4: the librarian "retires rules whose incidents can no longer occur. It
-// cannot judge a sealed rule, so it nags the owner to re-validate instead." Read exactly: **it cannot
+// ../docs/vision.md § thesis 4: the librarian retires rules whose incidents can no longer occur, and
+// cannot judge a sealed rule, so it nags the owner to re-validate it instead. Read exactly: **it cannot
 // evaluate a retirement condition at all.** `Retire when: the generated client is deleted` is a
 // sentence about a world this process cannot see. So a demotion draft carries the condition verbatim,
 // the evidence a machine can gather (an age, and whether anything the condition names still exists),
