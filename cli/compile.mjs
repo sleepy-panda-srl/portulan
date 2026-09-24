@@ -2545,11 +2545,23 @@ export function parseUnit(name, text, source = `${name}.md`) {
  * passes a `../` chain. `doctor` refuses such a manifest, but this reader must not depend on `doctor`
  * having run.
  *
+ * A manifest that is there and cannot be read as one is refused here rather than read as declaring none,
+ * so every tool that compiles or plans guidance through this reader stops on it: `compile`, `init`,
+ * `vendor` and `upgrade`'s planner. Read as none, every rule and skill an earlier run compiled would be
+ * planned for removal (`unreadableManifest`).
+ *
  * @returns {{ dir: string, rel: string } | null} null when the manifest declares no `slots.context`, or
- *   there is no readable manifest to declare one.
+ *   there is no manifest to declare one.
  */
 export function guidanceDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const base = path.join(workspaceRoot, workspaceDir);
+    const unreadable = unreadableManifest(workspaceRoot, workspaceDir);
+    if (unreadable !== null) {
+        throw new CompileError(
+            `${unreadable.file} is not a manifest this compiler can read: ${unreadable.why}. Read as one declaring no ` +
+                `guidance, it would have every rule and skill an earlier run compiled removed, so nothing was written or removed`,
+        );
+    }
     let manifest;
     try {
         manifest = JSON.parse(fs.readFileSync(path.join(base, "workspace.json"), "utf8"));
@@ -3095,7 +3107,8 @@ export function guidanceEdits(named) {
  * `compile` and `goldens` stop on it before they ask the manifest anything, because every reader below
  * takes one it cannot parse for one declaring nothing: no guidance, so a write removed every rule and skill
  * an earlier run compiled and the marker with them, and no gate policy, so a `gates.json` found by
- * convention compiled in the manifest's place. `resolveWorkspace` refuses such a manifest only where
+ * convention compiled in the manifest's place. `guidanceDeclaration` refuses it as well, for the tools
+ * that compile or plan guidance without passing through `compile`'s command line. `resolveWorkspace` refuses such a manifest only where
  * `--workspace` names the workspace directory; named as a repository root, as the `compile` recipe runs
  * it, nothing did. An absent manifest is still a legitimate shape (`policyPath`), and the hook's reader
  * still falls back, because it runs on every tool call. Found 2026-09-24 in the follow-ups to #447, whose

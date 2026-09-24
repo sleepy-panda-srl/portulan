@@ -64,6 +64,8 @@ import {
     SKILLS_DIR,
     parseUnit,
     guidanceUnits,
+    compileGuidance,
+    guidanceEdits,
     claudeCodeGuidance,
     agentsMdGuidance,
     HOOK_RUNNERS,
@@ -4105,6 +4107,26 @@ describe("guidance: written, then byte-compared", () => {
                     assert.deepEqual(claudeTree(dir), before, `${where}: nothing written or removed`);
                 }
             }
+        }
+    });
+
+    // Found by Copilot after the case above: `init`, `vendor` and `upgrade`'s planner reach the guidance through
+    // `compileGuidance` and `guidanceEdits`, not the command line, and read such a manifest as declaring none.
+    test("every entry point that compiles or plans guidance stops on a manifest that does not parse", (t) => {
+        const dir = scratch();
+        fs.cpSync(GUIDANCE_FIXTURE, path.join(dir, ".portulan"), { recursive: true });
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        const before = claudeTree(dir);
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        fs.writeFileSync(manifestPath, fs.readFileSync(manifestPath, "utf8").slice(0, -2));
+        for (const [name, call] of [
+            ["compileGuidance", () => compileGuidance(dir)],
+            ["compileGuidance under check", () => compileGuidance(dir, { check: true })],
+            ["guidanceEdits", () => guidanceEdits(dir)],
+            ["guidanceUnits", () => guidanceUnits(dir, ".portulan")],
+        ]) {
+            assert.throws(call, (e) => e instanceof CompileError && /workspace\.json is not a manifest this compiler can read: it is not valid JSON — \S/.test(e.message), name);
+            assert.deepEqual(claudeTree(dir), before, `${name}: nothing written or removed`);
         }
     });
 

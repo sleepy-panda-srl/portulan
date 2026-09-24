@@ -1,13 +1,14 @@
 # Handoff — compile follow-ups to the compile targets and the boot card
 
-**State.** Seven commits, each carrying its why: a `gates` key `compile` refuses stops it beside guidance
+**State.** Eight commits, each carrying its why: a `gates` key `compile` refuses stops it beside guidance
 too; guidance a workspace with no gate policy stops declaring is tidied; the doctrine rule names the steps
 the engine rail counts; `leadsOf` refuses a line with no indent straight under an item; a code span or a
 comment in a list item's text hides no import, as the host reads it; the refused key stops `compile` and
-`goldens` beside a `gates.json` found by convention as well; and so does a `workspace.json` that does not
-parse, by the coordinator session's delegated call of 2026-09-24. Pre-commit checkpoint: skipped by his
+`goldens` beside a `gates.json` found by convention as well; a `workspace.json` that does not parse stops
+them too, by the coordinator session's delegated call of 2026-09-24; and it stops `init`, `vendor` and
+`upgrade`'s planner, which read guidance through the same reader. Pre-commit checkpoint: skipped by his
 instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator session reviewed
-each commit, the sixth after its push; his review is on the PR.
+each commit, the sixth and the eighth after their push; his review is on the PR.
 
 **Open questions.**
 - `leadsOf` still ends a list early, without a word, at a fence indented inside an item, and at an item

@@ -4,4 +4,6 @@
   and skill it had compiled from the workspace's guidance, and the marker that records them, and compiled a
   `gates.json` found by convention in the manifest's place. It now exits 2 in write mode and under
   `--check`, naming the file and the parse error, and the fixture grader [`goldens`](../cli/goldens.mjs)
-  exits 2 on the same manifest. A workspace with no manifest at all is unchanged.
+  exits 2 on the same manifest. `init`, `vendor` and `upgrade`'s guidance planner, which read guidance
+  through the same reader, report it and leave what an earlier run compiled in place. A workspace with
+  no manifest at all is unchanged.
