@@ -4438,6 +4438,7 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
 
     test("refused, and nothing is written: an engine line naming a link in core/ that leads out of it", () => {
         const engine = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-engine-"));
+        SCRATCH.push(engine);
         fs.mkdirSync(path.join(engine, "cli"));
         for (const file of ["compile.mjs", "discover.mjs", "inside.mjs", "symbols.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
         fs.mkdirSync(path.join(engine, "core"));
