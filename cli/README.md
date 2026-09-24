@@ -76,6 +76,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`symbols.mjs`](symbols.mjs) | A code file's outline, one line per symbol, printed from the code at read time. |
 | [`telemetry.mjs`](telemetry.mjs) | The OTel emitter — milestone 8's *OTel opt-in config*, and the first thing in this repository that can send anything anywhere on purpose. |
 | [`version-carriers.mjs`](version-carriers.mjs) | Portulan — every prose statement of the CURRENT version agrees with `package.json`. |
+| [`warm.mjs`](warm.mjs) | The warm-start A/B: what a fresh session costs when an earlier session left its prefix in the prompt cache, against the same session priced cold. [`../core/operating/sessions.md`](../core/operating/sessions.md) is the doctrine this measures, and [`../evals/ab/warm.md`](../evals/ab/warm.md) its specification and record. Not shipped. |
 
 ### Tests
 
@@ -136,6 +137,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`upgrade.test.mjs`](upgrade.test.mjs) | `upgrade` — the migration chain, and the two kinds of step. |
 | [`vendor.test.mjs`](vendor.test.mjs) | Tests for `vendor` — the subcommand that materialises a workspace where it is needed, and carries the residence switch in both directions. |
 | [`version-carriers.test.mjs`](version-carriers.test.mjs) | The rail's suite. Every contracted state is exercised POSITIVELY — green, drift, a carrier reworded away, and could-not-run — because a failure path nobody has run is one nobody has seen work. Two cases exist only because this repository's own corpus refutes the naive design: the record layer must be IGNORED, and a `g` regex must not carry lastIndex between files. |
+| [`warm.test.mjs`](warm.test.mjs) | The warm-start A/B's suite. **No case runs a real agent**: a stub stands in, writing a transcript where the host would and printing the host's JSON result, because a test starting `claude` would put a session and a credential inside a verify recipe. What the stub cannot stand in for is the host honouring a switch; that is the recorded run's to show (`../evals/ab/warm.md`). |
 
 ### Other files
 

@@ -248,6 +248,7 @@ is a new consent question rather than a covered one. It neither queues nor retri
 | [`ab/register.md`](ab/register.md) | Both arms as built, byte-compared by the `ab` recipe |
 | [`ab/graders.md`](ab/graders.md) | The graders' discrimination, byte-compared by the `ab-grade` recipe |
 | [`ab/baseline.json`](ab/baseline.json), [`ab/baseline.md`](ab/baseline.md) | The capture, and the register rendered from it — the one carrier of the figures |
+| [`ab/warm.md`](ab/warm.md) | The warm-start A/B, a sibling of the baseline rather than a clause of row 8: it prices fresh sessions warm against cold from the host's own records, in the three lines every measurement reports, and says which host switch earns a place in `sessions`. Its runner, [`../cli/warm.mjs`](../cli/warm.mjs), is built, and its record waits on the maintainer's word, since every run starts real sessions |
 
 [`../cli/ab.mjs`](../cli/ab.mjs) builds the arms, [`../cli/ab-grade.mjs`](../cli/ab-grade.mjs) grades the
 trees they leave behind, and [`../cli/ab-run.mjs`](../cli/ab-run.mjs) runs the turns between: `k = 5` per

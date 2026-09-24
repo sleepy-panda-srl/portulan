@@ -196,6 +196,8 @@ file. `doctor` checks the slot as it checks every directory slot, and gates it t
 **2.11 adds one to each list.** `memory.store.budget.cutoff` needs `record_kilobytes` beside it, the
 tenth conditional requirement; and its `pattern` admits a day that does not exist, such as `2026-02-30`,
 so `doctor` and `cli/index.mjs` refuse one by hand, and the hand-check covers **ten**.
+`sessions` adds nothing to either: every field of it is a boolean or one of two strings, which the
+schema types in full with `type` and `enum`, so `doctor` only gates the key to 2.11.
 
 _These figures are history rather than state: what 2.3 and 2.4 added cannot change, so they do not go
 stale the way the removed count did. The one forward-looking sentence is the growth rate, and it is
@@ -223,12 +225,17 @@ form would be a constraint an existing manifest could newly fail, which is a MAJ
 
 **2.11 is a MINOR on 2.8's terms: optional keys only.** `memory.store.budget.cutoff`
 makes the per-record cap forward-only, in proposal `0037`'s shape for a handoff, and [`slots.md`](slots.md)
-argues it. Nothing is removed, renamed, tightened or defaulted: without the key, `record_kilobytes` binds
-every record as it did, so every 2.10 manifest is a valid 2.11 manifest unchanged. This repository's own
-workspace moves from 2.10 to 2.11 to declare it, with the cap lowered from 8 KB to 2 and the cutoff
-2026-09-24; `examples/` stays on 2.4. `KNOWN_SPECS` in [`../cli/index.mjs`](../cli/index.mjs) and
-[`../cli/librarian.mjs`](../cli/librarian.mjs) gains `"2.11"` by addition, `doctor` gates the key to 2.11,
-and the four writers stay at `2.7`, since nothing they scaffold declares it.
+argues it. `sessions` is the machine half of [`../core/operating/sessions.md`](../core/operating/sessions.md),
+from `0038`'s rules 3 and 4: the host switches that change what a fresh session writes into the prompt cache,
+two of which `compile` writes into the settings it already generates and one of which only a runner can apply;
+[`slots.md`](slots.md) argues it too. Nothing is removed, renamed, tightened or defaulted: without the cutoff,
+`record_kilobytes` binds every record as it did, and without `sessions` the settings compile byte for byte as
+before, so every 2.10 manifest is a valid 2.11 manifest unchanged. This repository's own workspace moves from
+2.10 to 2.11 to declare the cutoff, with the cap lowered from 8 KB to 2 and the cutoff 2026-09-24, and declares
+no `sessions`; `examples/` stays on 2.4. `KNOWN_SPECS` in [`../cli/index.mjs`](../cli/index.mjs) and
+[`../cli/librarian.mjs`](../cli/librarian.mjs) gains `"2.11"` by addition, `doctor` gates both keys to 2.11,
+and the four writers stay at `2.7`, since nothing they scaffold declares either. `0034`'s key and the rest of
+`0038`'s still take the next free MINOR when they are drafted.
 
 **2.10 is a MINOR on 2.9's terms: one optional slot and nothing else.** `slots.context` is the content
 half of [`../core/operating/context.md`](../core/operating/context.md), from proposal `0036`'s compile

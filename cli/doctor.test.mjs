@@ -594,6 +594,41 @@ describe("the memory cap's cutoff", () => {
     });
 });
 
+describe("the session switches, which compile and the runners read", () => {
+    // Workspace Definition 2.11. Every field is a boolean or one of two strings, so the schema types the key in
+    // full and `doctor` only gates it to its version. `../core/operating/sessions.md`.
+    const withSessions = (spec, sessions) => ({ ...wellFormed(), portulan: { spec }, sessions });
+    const declared = { git_instructions: false, cache_lifetime: "1h", headless: { cache_lifetime: "5m", exclude_dynamic_sections: true } };
+
+    for (const spec of ["2.0", "2.10"]) {
+        test(`\`sessions\` in a manifest declaring ${spec} is a failure that names 2.11`, async () => {
+            const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(withSessions(spec, declared)) });
+            const { findings } = await inspect(dir, { schema: SCHEMA });
+            const hit = severities(findings, "fail").find((f) => /`sessions` is Workspace Definition 2\.11's/.test(f.message));
+            assert.ok(hit, `expected the version gate to refuse \`sessions\` under ${spec}`);
+            assert.match(hit.message, new RegExp(`declares ${spec.replace(".", "\\.")}`));
+        });
+    }
+
+    test("declared at 2.11, every switch passes", async () => {
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(withSessions("2.11", declared)) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.deepEqual(severities(findings, "fail"), []);
+    });
+
+    for (const [what, sessions, pointer] of [
+        ["a lifetime the host does not take", { cache_lifetime: "30m" }, /\/sessions\/cache_lifetime/],
+        ["a switch spelled as a string", { git_instructions: "false" }, /\/sessions\/git_instructions/],
+        ["an unknown switch", { headless: { model: "any" } }, /\/sessions\/headless/],
+    ]) {
+        test(`${what} is refused by the schema`, async () => {
+            const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(withSessions("2.11", sessions)) });
+            const { findings } = await inspect(dir, { schema: SCHEMA });
+            assert.ok(severities(findings, "fail").some((f) => pointer.test(f.message)), JSON.stringify(findings));
+        });
+    }
+});
+
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
         assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 11 });

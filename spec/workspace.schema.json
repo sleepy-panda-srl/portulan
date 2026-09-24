@@ -357,6 +357,42 @@
           }
         }
       }
+    },
+    "sessions": {
+      "description": "Optional, added in 2.11. The host switches that change what a fresh session writes into the prompt cache: the machine half of core/operating/sessions.md, from proposal 0038's rules 3 and 4. Nothing is defaulted: an undeclared switch is the host's own default and `compile` emits nothing for it, and a switch is declared once an A/B run has shown it cuts spend with no loss.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "git_instructions": {
+          "description": "`false` drops the host's git instructions from every session in the repository: on Claude Code, the startup git snapshot and the commit and pull-request instructions, compiled into the project settings as `includeGitInstructions`. A session that needs them is started with them restored (core/operating/sessions.md).",
+          "type": "boolean"
+        },
+        "cache_lifetime": {
+          "description": "The main conversation's prompt-cache lifetime, compiled into the project settings as Claude Code's `promptCacheTtl`: five minutes where the next use of the prefix comes within five minutes, an hour where sessions idle.",
+          "type": "string",
+          "enum": ["5m", "1h"]
+        },
+        "headless": {
+          "description": "What Portulan's own runners apply to the sessions they start, and never compiled: the exclusion below is no host setting, only a flag or an SDK option, so only whatever starts a session can ask for it.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "git_instructions": {
+              "description": "`false` starts those sessions without the host's git instructions.",
+              "type": "boolean"
+            },
+            "cache_lifetime": {
+              "description": "Their prompt-cache lifetime.",
+              "type": "string",
+              "enum": ["5m", "1h"]
+            },
+            "exclude_dynamic_sections": {
+              "description": "`true` starts them with the per-machine sections (working directory, platform, memory paths, the git snapshot) moved from the system prompt into the first message, so runs in different directories or on different machines share the system prompt.",
+              "type": "boolean"
+            }
+          }
+        }
+      }
     }
   },
 
