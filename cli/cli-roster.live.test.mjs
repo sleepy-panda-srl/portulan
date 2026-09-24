@@ -103,6 +103,7 @@ describe("what a row quotes", () => {
 
     test("a /** */ block closed on a line of text keeps the text and drops the delimiter", () => {
         assert.equal(headerOf("/** One-line header. */\nexport const x = 1;\n"), "One-line header.");
+        assert.equal(headerOf("/** Code after the delimiter is not header. */ export const x = 1;\n"), "Code after the delimiter is not header.");
         assert.equal(headerOf("/**\n * First line,\n * last sentence. */\nexport const x = 1;\n"), "First line, last sentence.");
     });
 
