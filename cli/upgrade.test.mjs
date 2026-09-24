@@ -1014,8 +1014,12 @@ describe("the apply loop refuses a plan a step did not describe", () => {
         fs.writeFileSync(path.join(dir, "workspace.json"), `${JSON.stringify(manifest(`${major}.${minor}`, { tree: "../" }), null, 2)}\n`);
         return dir;
     }
-    const owed = (plan) => [{ id: "9996-badplan", kind: "repair", from: null, to: null, title: "t", why: "w",
-        owed: () => ({ owed: true, because: "forced" }), plan }];
+    // Owed until it has run, as a step whose edits are on disk owes nothing.
+    const owed = (plan) => {
+        let ran = false;
+        return [{ id: "9996-badplan", kind: "repair", from: null, to: null, title: "t", why: "w",
+            owed: () => ({ owed: !ran, because: ran ? "ran" : "forced" }), plan: (...args) => ((ran = true), plan(...args)) }];
+    };
 
     test("`{ ok: true }` with no edits array is a refusal, not a throw past the rollback", async () => {
         // Previously `applyEdits(current.dir, undefined)` threw, which bypassed `undo()` entirely —
@@ -1037,6 +1041,33 @@ describe("the apply loop refuses a plan a step did not describe", () => {
         // The guards must refuse what is malformed, not what is merely empty.
         const h = harness();
         assert.equal(await run([green(), "--write"], { ...h.options, steps: owed(() => ({ ok: true, edits: [] })) }), 0, h.text());
+    });
+
+    // A step owed once a LATER one has run: as `0007` compiles the card `0008` edits.
+    const pair = () => {
+        const has = (ws, file) => fs.existsSync(path.join(ws.dir, file));
+        const step = (id, owes, file) => ({ id, kind: "form", from: null, to: null, title: id, why: "w",
+            owed: (ws) => ({ owed: owes(ws) && !has(ws, file), because: `${file} is owed` }),
+            plan: () => ({ ok: true, edits: [{ file, next: "x\n" }] }) });
+        return [step("9994-early", (ws) => has(ws, "late.md"), "early.md"), step("9995-late", () => true, "late.md")];
+    };
+
+    test("the chain is asked again until a pass applies nothing, so a later step can make an earlier one owed", async () => {
+        const h = harness();
+        const dir = green();
+        assert.equal(await run([dir, "--write"], { ...h.options, steps: pair() }), 0, h.text());
+        assert.ok(fs.existsSync(path.join(dir, "early.md")), "the step the later one made owed never ran");
+        assert.match(h.text(), /applied 2 step\(s\)/);
+    });
+
+    test("a chain that never settles is refused and rolled back, not run forever", async () => {
+        const h = harness();
+        const dir = green();
+        const forever = [{ id: "9993-forever", kind: "repair", from: null, to: null, title: "t", why: "w",
+            owed: () => ({ owed: true, because: "always" }), plan: () => ({ ok: true, edits: [{ file: "loop.md", next: "x\n" }] }) }];
+        assert.equal(await run([dir, "--write"], { ...h.options, steps: forever }), 2, h.text());
+        assert.match(h.text(), /did not settle/);
+        assert.ok(!fs.existsSync(path.join(dir, "loop.md")), "a refused chain left its edits behind");
     });
 });
 

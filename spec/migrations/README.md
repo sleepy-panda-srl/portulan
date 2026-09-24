@@ -44,6 +44,9 @@ root, and the report names each file as its root names it.
 
 **After each step applied, the steps after it are asked again.** A step owed only once an earlier one
 has landed, `0007` compiling the card `0006` drafts, is applied in the same run rather than the next.
+**And after a pass that applied a step, the whole chain is asked again** until a pass applies nothing
+(2026-09-24), so a later step can make an earlier one owed, as `0008` does `0007` by editing the card;
+a chain still applying after as many passes as it has steps is refused and rolled back.
 A form step reads a workspace at this bundle's MAJOR only (`notYetForm` in
 [`../../cli/form.mjs`](../../cli/form.mjs)): one a MAJOR behind is moved by a version step first, and
 the form steps are then asked again, so a workspace no version step reaches is still refused.

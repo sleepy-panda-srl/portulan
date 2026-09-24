@@ -917,19 +917,14 @@ export async function run(argv = [], options = {}) {
     // only once the step before it has drafted the card, so each step not owed in the plan is asked
     // again when its turn comes, against the workspace as the steps before it left it, and runs under
     // the same rollback. One that cannot tell then is refused like one that could not tell before.
+    //
+    // **And the chain is asked again until a pass applies nothing** (2026-09-24). A step can make an
+    // EARLIER one owed: `0008` edits the card `0007` has compiled. So after a pass that applied a step,
+    // every step is asked again from the first, and a step owes nothing once its edits are on disk, so the
+    // chain settles; one still applying after as many passes as it has steps is a cycle, refused and
+    // rolled back rather than run forever.
     let applied = 0;
-    for (const entry of plan.entries) {
-        if (entry.owed !== true) {
-            const [again] = (await planFor(current, ctx, [entry.step])).entries;
-            if (again.owed === null) {
-                if (!undo()) return 2;
-                warn(`upgrade: ${entry.step.id} could not tell, after the steps before it — ${again.because}. Rolled back`);
-                return 2;
-            }
-            if (again.owed !== true) continue;
-            say(`upgrade: ${entry.step.id} (${entry.step.kind}) — ${entry.step.title}`);
-            say(`upgrade:   ${again.because}`);
-        }
+    const apply = async (entry) => {
         applied += 1;
         // **A step that throws mid-chain must not take the rollback with it.** `plan()` is a module's
         // code, and an exception here — after earlier steps have already written — would abort the
@@ -974,6 +969,32 @@ export async function run(argv = [], options = {}) {
         }
         current = again.ws;
         treeDir = current.repository?.dir ?? treeDir;
+        return null;
+    };
+    for (let pass = 0; ; pass++) {
+        let appliedNow = 0;
+        for (const entry of plan.entries) {
+            if (pass > 0 || entry.owed !== true) {
+                const [again] = (await planFor(current, ctx, [entry.step])).entries;
+                if (again.owed === null) {
+                    if (!undo()) return 2;
+                    warn(`upgrade: ${entry.step.id} could not tell, after the steps before it — ${again.because}. Rolled back`);
+                    return 2;
+                }
+                if (again.owed !== true) continue;
+                say(`upgrade: ${entry.step.id} (${entry.step.kind}) — ${entry.step.title}`);
+                say(`upgrade:   ${again.because}`);
+            }
+            const refused = await apply(entry);
+            if (refused !== null) return refused;
+            appliedNow += 1;
+        }
+        if (appliedNow === 0) break;
+        if (pass === plan.entries.length) {
+            if (!undo()) return 2;
+            warn(`upgrade: the steps did not settle — pass ${pass + 1} still applied ${appliedNow}, and a chain of ${plan.entries.length} settles in fewer. Rolled back`);
+            return 2;
+        }
     }
 
     // ---- and grade what it produced, with the real validator
