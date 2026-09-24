@@ -26,26 +26,19 @@ The loop runs inside a finite attention window, so context is managed, not hoard
   next action — and drop the transcript. The loop is a stateless reducer over that state, so it resumes
   from the compaction without losing the thread. _(Provenance: HumanLayer ACE-FCA — the loop and
   compaction; 12-Factor Agents — stateless-reducer resumability.)_
-- **Handoffs record decisions and their why**, not just what changed, so the next agent — or the next
-  window — inherits the reasoning. **Every session ends with a dated handoff** — a *session* being one
-  bounded working stretch, however the host names it, from the moment work opens to the moment it closes.
-  Short is fine, absent is not, and an exception is a last resort. The rule is binary on purpose: a
-  discretionary one cannot be enforced, because no gate can judge whether skipping was warranted, and the
-  costs are asymmetric — an unnecessary handoff costs five lines, a skipped one loses the reasoning
-  permanently. Ceremony scales down *inside* the artifact, never by omitting it, so a gate on this checks
-  that one exists and is dated — never its structure or its length. **Dated** means the filename leads
-  with an ISO date: `YYYY-MM-DD-{slug}.md`. Naming the form matters, because a rule justified by being
-  checkable has to say what the checker looks at; a date buried in prose would need parsing and would be
-  read differently by every writer. It also makes the series sort chronologically for free. An unbroken
-  series is what makes the record machine-readable: the session-end gate arrived in milestone 4 — it
-  checks that a handoff dated today exists, never its length or its shape — and milestone 5 built the
-  librarian that **reads** the series, in three ways that only an unbroken one allows. It generates an
-  index over it, every field derived. It ages it from git. And it mines it: an incident nothing in the
-  curated layer points back at is a candidate for the `codify` skill, because a rule whose incident
-  cannot be traced can never be retired on evidence. The pass also **writes** to the series — a
-  scheduled pass is a session, so it ends with a dated handoff like any other — which is why nothing
-  regenerates that index until the pass's own record is on disk. _(Provenance: Cognition. See
-  `../templates/handoff.md`.)_
+- **A change's why goes in its commit; a handoff carries only the work still open.** A commit's subject
+  says what changed and its body says why, in a few lines: the reasoning the next agent cannot
+  reconstruct from the diff, kept beside the diff. A session (one bounded working stretch, however the
+  host names it) that ends with work not committed and pushed ends with a dated handoff: where things
+  stand, the open questions and the single next action, and nothing the diff or a commit already says.
+  **Dated** means the filename leads with an ISO date, `YYYY-MM-DD-{slug}.md`, because a rule justified by
+  being checkable has to say what the checker looks at, and the series then sorts chronologically for
+  free. The session-end gate (milestone 4) checks exactly that: while the tree holds uncommitted or
+  unpushed work, a handoff dated today exists, never its length or its shape. The librarian (milestone 5)
+  reads the series: it indexes it, ages it from git, and mines it, since an incident nothing in the
+  curated layer points back at is a candidate for the `codify` skill.
+  _(Provenance: Cognition — handoffs record decisions and their rationale; Git's own SubmittingPatches —
+  a commit's body explains the problem and justifies the change. See `../templates/handoff.md`.)_
 - **Subagents are context firewalls.** Fan work out to a persona with its own window and return only
   the conclusion; the parent's budget stays clean. Read in parallel, write from one place. _(See
   `../personas/`. Provenance: HumanLayer; Cognition — read-parallel / write-isolated.)_

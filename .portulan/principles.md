@@ -32,6 +32,6 @@
   constitution and public practice. _Why:_ this is a provenance property of the product rather than a
   style preference, and unlike most quality bars it cannot be retrofitted later.
 - **No private-engagement material, ever.** No names, identifiers, paths, or artifacts of any private
-  client engagement enter these files, commit messages, branch names, or the session log — the binding
+  client engagement enter these files, commit messages, or branch names — the binding
   non-goal in [`../docs/vision.md`](../docs/vision.md). The pre-commit scan that enforces it is defined
   outside this repository; running it is condition 5 of [`dod.md`](dod.md).

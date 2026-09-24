@@ -4,9 +4,12 @@ Every release of Portulan, and what changed in it. Kept because
 [`docs/plan.md`](docs/plan.md) — Protocol → Versioning — requires a changelog per release; SemVer
 from `v0.1.0`, and from milestone 8 each release carries an eval result as well.
 
-**`## Unreleased` accumulates.** A change that a reader of a release would want to know about adds its
-entry as it lands; the cut then renames that heading to the version and dates it, in a change merged
-before the tag is created, so the tagged tree still contains its own entry.
+**`## Unreleased` accumulates, one file per entry.** A change that a reader of a release would want to
+know about adds its entry as it lands, as a file in [`changes/`](changes/) named `<slug>.<section>.md`
+and holding one bullet. The cut runs `node cli/index.mjs --changes changes`, pastes what it prints under a
+new version heading below `## Unreleased`, dates it and deletes the fragments, keeping `changes/README.md`, in a change merged before
+the tag is created, so the tagged tree still contains its own entry. _(One file per entry since
+2026-09-23: every change appending to one section conflicted with every other change open at once.)_
 
 _The rule this replaces said only that the file "is written in the change that cuts the release", which
 makes a heading named `Unreleased` one that must always be empty. **The ground for changing it is not
@@ -25,8 +28,8 @@ request that closes it. It settles the half that issue routed to him, not merely
 prompted it._
 
 _**What accumulating does not license.** The bar is still what a *reader of a release* gets, not what a
-session did: the Session log in [`docs/plan.md`](docs/plan.md) is the per-session record and this file
-must not grow into a second one. Nothing checks the bar. It is the same judgement the date rule above is
+session did: a change's commit message is its own record and this file must not grow into a second
+one. Nothing checks the bar. It is the same judgement the date rule above is
 left to, and for the same reason._
 
 **A date here is the day the release was cut, in the maintainer's timezone (Europe/Bucharest) — not
@@ -36,129 +39,13 @@ actually bite. Nothing checks this: the true cut date is exactly the class of fa
 judges, and the one readable artifact — the tag's own timestamp — is the thing this rule declares
 non-authoritative. It is human-owned prose on purpose, and it is not a candidate for a lint.
 
-The Session log in [`docs/plan.md`](docs/plan.md) is the fuller record — it is per *session* and it
-records how things were found. This is per *release* and records what a reader gets.
+A change's commit message is the fuller record: it says why, and `git log` finds it. This is per
+*release* and records what a reader gets.
 
 ## Unreleased
 
-### Changed
-
-- **The boot skill reads its pointer and pack steps only where they apply, halving it for a workspace
-  that uses neither.** `/portulan`'s [`SKILL.md`](plugin/skills/portulan/SKILL.md) keeps every other
-  instruction and moves step 2a, resolving a pointer manifest, into
-  [`pointer-manifest.md`](plugin/skills/portulan/pointer-manifest.md), and step 3a, what declared packs
-  deliver, into [`packs.md`](plugin/skills/portulan/packs.md); a boot opens each only where its condition
-  holds. The skill drops from 17,813 to 8,917 bytes. A workspace naming packs, as the demo does, reads
-  15,198, and the demo's boot read-set drops from 36,195 to 33,580; a pointer to a workspace naming packs
-  reads 1,833 more than before. It is the maintainer's amendment to proposal
-  [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md), and it arrives
-  with the plugin upgrade.
-
-- **The boot skill is 22% smaller on every boot, with nothing to configure.** `/portulan`'s
-  [`SKILL.md`](plugin/skills/portulan/SKILL.md) keeps every instruction and moves the reasons behind
-  them, the measurements and incidents included, into
-  [`rationale.md`](plugin/skills/portulan/rationale.md), which a boot reads only when a step does not
-  fit its case or someone asks why. The skill drops from 22,774 to 17,813 bytes, and the demo
-  workspace's boot read-set from 41,156 to 36,195. It is the first of the two demotions proposal
-  [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md) names, and it
-  arrives with the plugin upgrade.
-
-- **A session working in this repository boots on less than half the text.** Portulan's own gate map,
-  [`.portulan/gate-map.md`](.portulan/gate-map.md), is now the index a boot reads: each gate's rule under
-  its tier, and one line per honest hole and per identity act. Its conditions, measurements, amendments and
-  reasons moved verbatim into nine files under [`.portulan/gate-map/`](.portulan/gate-map/), read when an
-  action is on their path. The file drops from 143,030 to 26,959 bytes and this repository's boot read-set
-  from 211,673 to 95,602. Nothing in the package changes, and the demo workspace's boot read-set is
-  unchanged: it reads its own gate map.
-
-- **A workspace can declare what its always tier may cost, and the doctrine says what that tier is.**
-  [`core/operating/context.md`](core/operating/context.md) states proposal
-  [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md)'s rule: guidance
-  sits in four load tiers (always, on-path, on-invoke, on-read) and belongs in the latest that still
-  reaches the agent in time, with one level of index, and the always tier is budgeted in tokens like
-  memory, never defaulted and repaired by demotion, merge or retirement rather than a raise. Workspace
-  Definition **2.9** adds one optional key, `context`, for that budget and the bytes-per-token ratio it is
-  counted at, and `doctor` checks their shape and refuses the key under an earlier declared version; every
-  2.8 manifest stays valid unchanged. Nothing measures the tier yet: that is the next change. The kernel gains one word, 11 bytes on every boot.
-
-- **What a boot reads and what the host loads into every context are measured, and Portulan's own share
-  cannot grow unnoticed.** [`cli/context.mjs`](cli/context.mjs), proposal
-  [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md)'s measurement,
-  lists for any workspace every file a boot reads in full and every file Claude Code loads into every
-  context there (instruction files and their imports, unscoped rules, skill, command and agent
-  descriptions), each with its size, its tokens at the declared ratio and why it counts. Where a manifest
-  declares a budget, Workspace Definition 2.9's `context.always.budget.tokens`, the always tier is railed
-  against it; otherwise it is a report. A pointer manifest is refused with the reason: its
-  workspace is resolved from the host's install records, which a recipe must not read, so an adopter
-  measures the workspace it resolves to.
-  An adopter runs it as `node <plugin root>/cli/context.mjs --workspace .portulan`. This repository's
-  new [`context`](.portulan/verify/context.sh) recipe rails Portulan's own footprint at its figures plus
-  2%: the boot skill and kernel every adopter's boot reads (11,825 bytes), the skill's two step files
-  (10,729), the plugin's descriptions (3,386), and both workspaces' boot read-sets. **Those now count
-  the manifest**, which the boot reads whole and every figure the day's records gave, from 213,002 to
-  92,998, left out. On the tree this landed on (main at a534f15), the nine files this repository's
-  figures counted are 86,717 bytes, 92,998 with the packs step its boot reads, and 100,053 with the
-  manifest; the demo's 33,591 is 35,393 with it.
-- **The rest of this repository's boot read sheds another 11 KB.** Its identity file, definition of done and
-  repo card keep what routine work needs, the glossary and every condition included, and move their
-  reasons, measurements and history verbatim into [`.portulan/identity/`](.portulan/identity/),
-  [`.portulan/dod/`](.portulan/dod/) and [`.portulan/repos/portulan/`](.portulan/repos/portulan/), each
-  linked from the line it continues. This repository's boot read-set drops from 92,998 to 81,892 bytes,
-  100,053 to 88,947 with the manifest, and the `context` recipe's rail on it drops to match, from 102,055
-  to 90,726. The constitution is not cut, because no agent edits it. Nothing in the package changes, and
-  the demo workspace's boot read-set is unchanged.
-- **The session that owns a pull request awaits Copilot's round and reports it; no check judges the
-  round.** This repository's merge discipline still requires Copilot's feedback to be awaited and
-  resolved. The owning session now awaits the round on the final head and names the review and the commit
-  it addressed when it says the pull request is ready, and unresolved Copilot threads still block the
-  merge. The `copilot-reviewed` check and its workflow are removed; the request for bot-authored pull
-  requests stays. The rule and its carriers are in
-  [`.portulan/gate-map/merge-discipline.md`](.portulan/gate-map/merge-discipline.md). Nothing in the
-  package changes.
-
-- **`doctor` reports what every context in your repository loads, and the boot closes with the same
-  line.** Every `doctor` run now carries a `context` note for each workspace: Claude Code's always tier in
-  the repository its manifest's `tree` names, in bytes and tokens, its three largest files and what each
-  is, what sits on-path beside it, and the Portulan plugin's own descriptions, measured by
-  [`cli/context.mjs`](cli/context.mjs). It fails only where the manifest declares a budget, Workspace
-  Definition 2.9's `context.always.budget.tokens`: over it, or where the budget cannot be judged. The boot
-  skill's closing report gives the same line, `node <plugin root>/cli/context.mjs --workspace .portulan
-  --brief`, run alongside its slot reads, which adds 194 bytes to the skill, to 9,111, on every boot. It is
-  item 4 of proposal [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md)'s
-  order of work, and it arrives with the upgrade.
-
-- **A workspace's guidance compiles into the load tier it declares, so a long instruction file can be split
-  without losing a line.** Workspace Definition 2.10 adds one optional slot, `slots.context`: a directory of
-  Markdown units, each naming in its frontmatter one of proposal
-  [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md)'s four load tiers
-  (`always`, `on-path` with its `paths`, `on-invoke` or `on-read`) and, for every tier but `always`, the
-  one-line description an agent decides by. [`compile`](cli/compile.mjs) emits each in Claude Code's own
-  form: an unscoped rule in `.claude/rules/portulan/`, a rule scoped by `paths:`, a project skill, or one
-  line in an index of pointers, and `compile --check` byte-compares every one against its unit, so the
-  existing compile recipe reds a stale file. A tier a host cannot express degrades to a pointer, never to
-  nothing: the `AGENTS.md` that `vendor --host` writes carries the `always` units inline and the rest as
-  one line each. `compile` never writes `CLAUDE.md`, never writes or removes through a link, and never
-  replaces or removes a rule or a skill it cannot show it wrote. An adopter moves a section of an
-  always-loaded file into a unit and runs `npx @sleepy_panda_srl/portulan compile`. This repository declares
-  no guidance, so its boot read-set is unchanged.
-
-- **What a change spends is read from the host's own records, and a session is told once when continuing
-  costs more than restarting.** [`cli/ledger.mjs`](cli/ledger.mjs), proposal
-  [`0038`](.portulan/proposals/0038-what-a-change-spends-is-measured.md)'s ledger, prints what a branch spent
-  across the repository's worktrees: requests and tokens by class for sessions and subagents apart, contexts
-  opened, compactions, the largest context, the hit rate, each rebuild and its cause, tokens per changed
-  line, the difference from the totals the host saves, and the latest session's restart threshold. It reads
-  Claude Code's local transcripts, numbers only, counts a request once although the host writes it once per
-  content block, makes no network call and never runs inside a recipe; an adopter runs it as
-  `node <plugin root>/cli/ledger.mjs`. `compile` now wires [`cli/advisory.mjs`](cli/advisory.mjs) into
-  `.claude/settings.json` for every workspace: a `UserPromptSubmit` hook that puts one line into the context,
-  once, at the first prompt whose recorded usage has reached the threshold `F × (1 + m_w / (20 × m_r))`, and
-  a status line that shows the human the same figure, each reading only what the transcript gained since
-  its last call. **The status line takes the place of one set in your
-  user settings, in that repository**; set `statusLine` in `.claude/settings.local.json` to keep yours. Until
-  a manifest key declares the multipliers, both say `undeclared` and use the general read multiplier, 0.1×,
-  and the write multiplier of the cache lifetime the host recorded. The new
-  [`ledger`](.portulan/verify/ledger.sh) recipe rails the reader on synthetic records with known totals.
+Each entry for the next release is a file in [`changes/`](changes/), so two open changes never edit the
+same lines; `node cli/index.mjs --changes changes` prints them as the cut pastes them.
 
 ## 0.1.3 — 2026-09-16
 

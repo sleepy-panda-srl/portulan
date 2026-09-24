@@ -34,20 +34,19 @@ A change is done when **all** of the following hold.
 5. **The pre-commit scan is clean** across the changed files, the commit message, and the branch name.
    The term list lives outside this repository. _Why it binds whatever the repository's
    visibility: [`dod/reasons.md`](dod/reasons.md#5-the-pre-commit-scan-is-clean)._
-6. **The plan reflects reality.** Every session appends its Session log entry to
-   [`../docs/plan.md`](../docs/plan.md) — unconditionally, in the shape and within the budget that
-   file's **Session log header** sets out. This condition **cites** that mandate and deliberately does
-   not restate it, not even the budget's number: the header is the one carrier. The **Status column**
-   is the conditional half, and moves only when the work moved milestone state.
-   _Why the split is spelled out: [`dod/reasons.md`](dod/reasons.md#6-the-plan-reflects-reality)._
+6. **The plan reflects reality.** The **Status column** of [`../docs/plan.md`](../docs/plan.md) moves
+   when the work moved milestone state, and only then. A change's record is its commit, so nothing else
+   in the plan is written per change.
+   _Why: [`dod/reasons.md`](dod/reasons.md#6-the-plan-reflects-reality)._
 7. **The supervisor checkpoint passed**, in a fresh context, and is recorded. **Which** work requires
    one is stated in [`gate-map.md`](gate-map.md) → *Supervised-build checkpoints*, and this condition
    **cites** that rule rather than restating it.
    _Why the split is spelled out: [`dod/reasons.md`](dod/reasons.md#7-the-supervisor-checkpoint-passed)._
-8. **The session ended with a dated handoff** in [`handoffs/`](handoffs/). Five lines is enough; absent
-   is not. _Why: the Session log in [`../docs/plan.md`](../docs/plan.md) records what landed, and the
-   handoff records why — and the why is the part a later session cannot reconstruct from the diff. It is
-   uniform rather than discretionary because "write one when it's warranted" is prose no gate can check
+8. **The why is in the commit message**: a subject that says what changed and a body of a few lines
+   that says why, with a `Seam-scan: clean …` trailer (condition 5). A session that ends with work not
+   committed and pushed ends with a dated handoff in [`handoffs/`](handoffs/) naming what is open.
+   _Why: the why is the part a later session cannot reconstruct from the diff, and the commit is where
+   the diff is; a handoff that restated it cost every later reader twice
    ([`../core/operating/loop.md`](../core/operating/loop.md))._
 
 ## What is explicitly *not* required

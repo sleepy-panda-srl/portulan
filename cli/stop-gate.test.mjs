@@ -562,6 +562,18 @@ describe("did-work, in a repository that rebase-merges (#220)", () => {
         assert.match(reason, /no handoff dated/, "and it must block for the handoff reason");
     });
 
+    test("the refusal offers committing and pushing as the other way out, and names no Session log", () => {
+        // The rule since 2026-09-23: committed work carries its why in its commit message, and a handoff
+        // is owed only for work not committed and pushed. A refusal that still asked for a handoff per
+        // session, or pointed at the retired log, would teach the rule this gate no longer holds.
+        const repo = rebaseMerged({ genuinelyUnmerged: true });
+        const { decision, reason } = gate(repo, "open-work-names-both-exits");
+        assert.equal(decision, "block");
+        assert.match(reason, /not committed and pushed/);
+        assert.match(reason, /Commit and push it, its why in the commit message, or end with a dated handoff/);
+        assert.doesNotMatch(reason, /Session log|Every session ends/);
+    });
+
     test("a handoff dated today clears it, orphans or no orphans", () => {
         const repo = rebaseMerged({ genuinelyUnmerged: true });
         fs.writeFileSync(path.join(repo, ".portulan", "handoffs", `${today()}-a-session-that-did-its-job.md`), "five lines is enough\n");
@@ -696,8 +708,8 @@ describe("the handoff question names the tree it answered about (#220, second ha
     test("a handoff dated today in fetched history, absent from THIS tree, is reported rather than hidden", () => {
         // The 2026-08-10 incident's shape: the handoff was written, committed and merged; the tree the
         // gate happened to read did not carry it. The gate still blocks — it cannot know this session
-        // wrote that file — but "no handoff dated X" alone sent a reader to write a duplicate, which
-        // `docs.sh`'s record check would then have refused. The sentence is the repair.
+        // wrote that file — but "no handoff dated X" alone sent a reader to write a duplicate. The
+        // sentence is the repair.
         const repo = rebaseMerged({ genuinelyUnmerged: true });
         const stamp = today();
         git(repo, ["checkout", "-q", "-b", "carries-the-handoff"]);

@@ -67,9 +67,9 @@ rather than a story about this repository. **Work is agent-drafted and fresh-con
 moments**: the plan before building starts, the diff before it goes outward, and the exit criteria at
 the close — where done is *demonstrated, not asserted* (`verification.md`). Two conditions hold the
 cycle up and neither is optional. The unit of work carries **hard exit criteria** fixed before it
-begins, so the close has a standard to grade rather than an impression. And **every session ends by
-writing the record** (`loop.md`), so the context arriving at the next moment inherits the reasoning
-instead of re-deriving it — a graded moment whose grader must first reconstruct what was decided is
+begins, so the close has a standard to grade rather than an impression. And **every change writes its
+record** (`loop.md`), its why in the commit and any open work in a handoff, so the context arriving at
+the next moment inherits the reasoning instead of re-deriving it — a graded moment whose grader must first reconstruct what was decided is
 grading its own reconstruction.
 
 The altitudes stay separate, and the separation is the part that travels. Core states that the three

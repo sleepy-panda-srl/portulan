@@ -49,7 +49,7 @@ are the point:
 | [`memory/`](memory/) | Durable facts with provenance, one per file |
 | [`memory-index.md`](memory-index.md) | The generated index of that store — one line per record, built by [`../cli/index.mjs`](../cli/index.mjs) and never by hand. It sits *beside* the store rather than in it, because `doctor` counts every `.md` in the store as a record |
 | [`tasks/`](tasks/) | Task files: the atomic unit of work and of context |
-| [`handoffs/`](handoffs/) | Decisions and their why, carried across sessions and windows |
+| [`handoffs/`](handoffs/) | Work a session left open, carried to the next one; a change's why is in its commit |
 | [`proposals/`](proposals/) | Agent-drafted rule changes waiting on the human gate |
 
 ## Which workspace is which
@@ -113,9 +113,8 @@ Honest limits, each with the milestone that closes it:
   record from git, nags a sealed stamp's owner to re-validate, chases undecided proposals and drafts
   demotions, and files the result as a pull request. **It has not filed one yet** — that waits on the
   merge and on the two repository secrets the workflow needs, which are the maintainer's. **A pass is a session** (the maintainer's ruling,
-  2026-07-28), so it ends with a dated handoff in [`handoffs/`](handoffs/) and one Session log entry,
-  exactly as a human session does; the `record` check does not know the difference and does not need
-  to. Two halves of the librarian's charter are **still on demand**: mining incidents and reviews into
+  2026-07-28), so it files its report as a dated handoff in [`handoffs/`](handoffs/); the `record`
+  check does not know the difference and does not need to. Two halves of the librarian's charter are **still on demand**: mining incidents and reviews into
   proposals, and running consolidation. On this store nothing currently fires — the thresholds are 90
   / 180 / 30 days and the oldest record is days old — and the pass says so rather than staying silent.
 - **No packs and no rituals.** Nothing this build does yet repeats often enough to earn one.

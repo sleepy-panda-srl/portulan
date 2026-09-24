@@ -4,7 +4,7 @@
 [`../../core/operating/loop.md`](../../core/operating/loop.md), mirrored in the
 [`../../core/templates/handoff.md`](../../core/templates/handoff.md) header, added as condition 8 of
 [`../dod.md`](../dod.md), and recorded with its provenance in
-[`../memory/every-session-ends-with-a-handoff.md`](../memory/every-session-ends-with-a-handoff.md).
+[`../memory/every-session-ends-with-a-handoff.md`](../memory/open-work-ends-with-a-handoff.md).
 Nothing enforces it yet. This file is the rule's first instance.
 
 **Decisions + why.**

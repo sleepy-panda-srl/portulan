@@ -3,11 +3,12 @@
 // **It lives alone because two large modules need it and must not import each other.** It began in
 // `./index.mjs`, which `./doctor.mjs` imports; when `./compile.mjs` needed it too, importing it from
 // there would have closed a cycle — `index.mjs` already imports `resolvePack`/`rootPlan` from
-// `compile.mjs`. This repository has paid for a cycle once already: `../docs/plan.md`'s session log
-// records **an import cycle exiting 13 in silence**, and three modules (`./plugin-lint.mjs:1369`,
-// `./skills-set.mjs:48` and `:114`) carry comments explaining that they chose their import direction
-// to avoid making one. Copying the predicate instead was the other option and is the one its own
-// docblock forbids: two copies of this rule drifted into the identical defect before either shipped.
+// `compile.mjs`. This repository has paid for a cycle once already: the Session log, at
+// `git show c18b314:docs/plan.md`, records **an import cycle exiting 13 in silence**, and three
+// modules (`./plugin-lint.mjs:1369`, `./skills-set.mjs:48` and `:114`) carry comments explaining that
+// they chose their import direction to avoid making one. Copying the predicate instead was the other
+// option and is the one its own docblock forbids: two copies of this rule drifted into the identical
+// defect before either shipped.
 //
 // So the rule keeps one implementation and gains no edges. `./index.mjs` re-exports it, so every
 // existing importer is untouched.

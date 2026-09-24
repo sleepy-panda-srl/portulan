@@ -19,11 +19,11 @@ gh pr create --label workspace --label record …
 **Why it holds:** a repository whose changes are almost all prose loses the ability to say what a change
 *was*. Every pull request here is a diff of Markdown; `git log --stat` distinguishes them by path and
 nothing distinguishes them by kind, so "which pull requests changed doctrine this month" is a question
-the record cannot answer without reading forty bodies. That is the same failure the Session log and the
-handoff series exist to prevent, one layer down, and the librarian at milestone 5 mines exactly this
-kind of series. GitHub's stock labels cannot do it — `documentation` is true of nearly every change here
-and therefore says nothing — which is why the set is derived from this repository's own structure
-instead.
+the record cannot answer without reading forty bodies. That is the same failure the handoff series
+exists to prevent, as the Session log did until 2026-09-23, one layer down, and the librarian at
+milestone 5 mines exactly this kind of series. GitHub's stock labels cannot do it — `documentation` is
+true of nearly every change here and therefore says nothing — which is why the set is derived from this
+repository's own structure instead.
 
 **Why the set is small, and why `covers` is guidance rather than a matcher.** Five labels plus two
 inherited. A taxonomy that needs a decision tree is the ceremony [`../dod.md`](../dod.md) explicitly

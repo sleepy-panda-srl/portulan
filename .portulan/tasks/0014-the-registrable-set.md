@@ -157,7 +157,7 @@ mark blocking.
    of the deliverable.
 7. **The handoff index is regenerated in the records push.** `verify/index.sh` fails when a generated
    index is not exactly what its source renders, so a new dated handoff without a regenerated
-   [`../handoffs-index.md`](../handoffs-index.md) is a red the plan had not listed.
+   `../handoffs-index.md` is a red the plan had not listed.
 8. **A pack that resolves OUTSIDE the plugin root is a fourth outcome**, and the contract names it.
    Both packs here resolve in-tree, but the adopter case discovery exists for — a pack resolved from
    the host's plugin cache — resolves fine and has **no path expressible relative to the plugin

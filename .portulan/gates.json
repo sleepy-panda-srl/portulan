@@ -124,7 +124,7 @@
       "id": "change-the-plan",
       "tier": "propose",
       "action": { "write": "docs/plan.md" },
-      "reason": "The Status column and the Session log change by pull request."
+      "reason": "The milestones and their Status column change by pull request."
     },
     {
       "id": "change-a-verify-recipe",

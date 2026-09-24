@@ -23,13 +23,11 @@ maximum now, and it has never bound less._
 
 ## 6. The plan reflects reality
 
-_Why the split is
-spelled out: this condition used to read "if the work moved milestone state, the same change updates
-… Status column and Session log", which made the log entry conditional too — a second, narrower
-carrier of a rule the plan already stated in full. Five handoff-documented sessions went unlogged
-under it before a two-day review counted them. Both halves of the log↔handoff correspondence, and
-the entry budget, are now rails in `docs.sh`'s `record` check rather than prose anyone must
-remember._
+_Why only the Status column: until 2026-09-23 this condition also required a Session log entry per
+session in `docs/plan.md`, and every pull request open at once appended to that one section — all 15
+of that day's pull requests that had another merge land while they were open conflicted there. The
+entries restated what the commits already said. The log retired, a change's record became its commit,
+and `docs.sh`'s `record` check now fails a Session log entry rather than requiring one._
 
 ## 7. The supervisor checkpoint passed
 

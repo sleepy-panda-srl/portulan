@@ -43,6 +43,8 @@ import {
     readHandoffs,
     render,
     renderHandoffIndex,
+    readChanges,
+    renderChanges,
     inspect,
     run,
 } from "./index.mjs";
@@ -663,6 +665,37 @@ describe("--check compares and never repairs", () => {
         );
     });
 
+    test("a link where the store's index goes is refused, and a write does not follow it", () => {
+        // Copilot, #451: one rule for all three series, in `compareOrWrite`.
+        const outside = path.join(scratch(), "elsewhere.md");
+        fs.writeFileSync(outside, "not an index\n");
+        const dir = workspace({ "memory/a-first.md": record("rule") });
+        fs.symlinkSync(outside, path.join(dir, "memory-index.md"));
+        assert.throws(() => inspect(dir, { write: true }), (e) => e instanceof IndexError && /leads through a link at memory-index\.md/.test(e.message));
+        assert.equal(fs.readFileSync(outside, "utf8"), "not an index\n");
+    });
+
+    test("an index declared through `../`, and a workspace reached through a link, are judged as before", () => {
+        // The escape a path may make is the one its value shows, and only the components the declared
+        // path adds are looked at, so neither of these is a link the refusal above is about.
+        const root = scratch();
+        const dir = tree(path.join(root, "ws"), {
+            "workspace.json": JSON.stringify(wellFormed({ memory: { index: { path: "../shared/memory-index.md" } } }), null, 2),
+            "identity.md": "Identity.\n",
+            "principles.md": "Principles.\n",
+            "gate-map.md": "Gate map.\n",
+            "memory/a-first.md": record("rule"),
+        });
+        fs.mkdirSync(path.join(root, "shared"));
+        assert.deepEqual(failures(inspect(dir, { write: true })), []);
+        assert.match(fs.readFileSync(path.join(root, "shared", "memory-index.md"), "utf8"), /a-first\.md/);
+        const plain = workspace({ "memory/a-first.md": record("rule") });
+        inspect(plain, { write: true });
+        const linked = path.join(scratch(), "linked-ws");
+        fs.symlinkSync(plain, linked);
+        assert.deepEqual(failures(inspect(linked, { write: true })), []);
+    });
+
     test("a permission failure is refused on the same rule", () => {
         const dir = workspace({ "memory/a-first.md": record("rule") });
         run([dir]); // written, correct, and about to be unopenable — the case the old red lied about
@@ -943,6 +976,15 @@ describe("a handoff's date comes from its filename", () => {
         assert.equal(dateOf("2026-7-8-short-fields.md"), null);
     });
 
+    test("reads a year below 100 as that year, as docs.sh does", () => {
+        // Copilot, #451: `Date.UTC` read years 0 to 99 as 1900 to 1999, so these passed `docs.sh`'s
+        // `real_day` and were refused here. Year 0 is a leap year and 100 is not, in both.
+        assert.equal(dateOf("0099-12-31-a.md"), "0099-12-31");
+        assert.equal(dateOf("0000-02-29-a.md"), "0000-02-29");
+        assert.equal(dateOf("0100-02-29-a.md"), null);
+        assert.equal(dateOf("0400-02-29-a.md"), "0400-02-29");
+    });
+
     test("refuses a date-shaped prefix that is not a date", () => {
         // `2026-13-45` sorts fine and means nothing. A generated index whose dates are unparseable
         // strings is a chronological index that is not chronological.
@@ -971,8 +1013,7 @@ describe("rendering the handoff index", () => {
             { "handoffs/2026-07-28-the-librarian-goes-on-a-cron.md": handoff("The librarian goes on a cron") },
             withSeries(),
         );
-        inspect(dir, { write: true });
-        const out = fs.readFileSync(path.join(dir, "handoffs-index.md"), "utf8");
+        const out = inspect(dir).series.handoffs.expected;
         assert.match(out, /\[The librarian goes on a cron\]/);
         assert.doesNotMatch(out, /2026 07 28/);
     });
@@ -985,8 +1026,7 @@ describe("rendering the handoff index", () => {
             },
             withSeries(),
         );
-        inspect(dir, { write: true });
-        const out = fs.readFileSync(path.join(dir, "handoffs-index.md"), "utf8");
+        const out = inspect(dir).series.handoffs.expected;
         assert.ok(out.indexOf("Newer") < out.indexOf("Older"), "newest should lead");
     });
 });
@@ -1016,8 +1056,8 @@ describe("what the handoff index refuses to guess", () => {
 
     test("an index sited inside the series is refused, not special-cased", () => {
         // Same rule as the memory index and a second reason for it: a file in `slots.handoffs` is
-        // either counted as a handoff by docs.sh's date correspondence, or failed by it for carrying
-        // no date. Both are wrong answers about a generated artifact.
+        // either a dated handoff to docs.sh's record check, or failed by it for carrying no date.
+        // Both are wrong answers about a generated artifact.
         const dir = workspace(
             { "handoffs/2026-07-28-a.md": handoff("A") },
             withSeries({ handoffs: { index: { path: "handoffs/index.md" } } }),
@@ -1051,9 +1091,14 @@ describe("what the handoff index refuses to guess", () => {
     });
 });
 
-describe("the handoff index is byte-compared like the store's", () => {
-    test("red when a handoff was added and the index was not regenerated", () => {
-        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+// A copy on disk is how a workspace says it keeps its index (2026-09-23): kept, it is byte-compared like
+// the store's and a write regenerates it; not kept, a write creates none and `--check` renders the series
+// and compares it with nothing. `init` drafts a kept one; this repository keeps none.
+describe("a kept handoff index is byte-compared like the store's", () => {
+    const kept = (files) => workspace({ ...files, "handoffs-index.md": "" }, withSeries());
+
+    test("red when a handoff was added and the kept index was not regenerated", () => {
+        const dir = kept({ "handoffs/2026-07-01-a.md": handoff("A") });
         inspect(dir, { write: true });
         tree(dir, { "handoffs/2026-07-28-b.md": handoff("B") });
         const bad = failures(inspect(dir));
@@ -1064,7 +1109,7 @@ describe("the handoff index is byte-compared like the store's", () => {
     });
 
     test("--check does not write the file it disagrees with", () => {
-        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        const dir = kept({ "handoffs/2026-07-01-a.md": handoff("A") });
         inspect(dir, { write: true });
         const before = fs.readFileSync(path.join(dir, "handoffs-index.md"));
         tree(dir, { "handoffs/2026-07-28-b.md": handoff("B") });
@@ -1072,6 +1117,122 @@ describe("the handoff index is byte-compared like the store's", () => {
         assert.deepEqual(fs.readFileSync(path.join(dir, "handoffs-index.md")), before);
     });
 
+    test("a dangling link where the index is kept is refused, not read as no copy", () => {
+        // Found by Copilot on #451: `existsSync` follows the link, so a dangling one read as no copy.
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        fs.symlinkSync("gone.md", path.join(dir, "handoffs-index.md"));
+        assert.throws(() => inspect(dir), (e) => e instanceof IndexError && /leads through a link at handoffs-index\.md/.test(e.message));
+    });
+
+    test("a link to a file outside the workspace is refused, and nothing is read or written through it", () => {
+        // Found by Copilot on #451: a write followed the link and overwrote what it pointed at.
+        const outside = path.join(scratch(), "elsewhere.md");
+        fs.writeFileSync(outside, "not an index\n");
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        fs.symlinkSync(outside, path.join(dir, "handoffs-index.md"));
+        assert.throws(() => inspect(dir, { write: true }), (e) => e instanceof IndexError && /a kept index is a file of its own/.test(e.message));
+        assert.equal(fs.readFileSync(outside, "utf8"), "not an index\n");
+    });
+
+    test("a kept index under a linked directory is refused the same way", () => {
+        const away = scratch();
+        fs.writeFileSync(path.join(away, "handoffs-index.md"), "not an index\n");
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries({ handoffs: { index: { path: "indexes/handoffs-index.md" } } }));
+        fs.symlinkSync(away, path.join(dir, "indexes"));
+        assert.throws(() => inspect(dir, { write: true }), (e) => e instanceof IndexError && /leads through a link at indexes\b/.test(e.message));
+        assert.equal(fs.readFileSync(path.join(away, "handoffs-index.md"), "utf8"), "not an index\n");
+    });
+
+    test("a linked directory is refused even with no index behind it", () => {
+        // Copilot, #451: a presence check of its own ran before the refusal, read nothing there as no copy
+        // kept, and passed.
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries({ handoffs: { index: { path: "indexes/handoffs-index.md" } } }));
+        fs.symlinkSync(scratch(), path.join(dir, "indexes"));
+        assert.throws(() => inspect(dir), (e) => e instanceof IndexError && /leads through a link at indexes\b/.test(e.message));
+    });
+
+    test("a handoff the index cannot render does not hide a link on the index's path", () => {
+        // Copilot, #451, the round on d48fef5: the early return for a broken handoff came before the walk.
+        const dir = workspace({ "handoffs/2026-07-01-a.md": "no heading\n" }, withSeries());
+        fs.symlinkSync("gone.md", path.join(dir, "handoffs-index.md"));
+        assert.throws(() => inspect(dir), (e) => e instanceof IndexError && /leads through a link at handoffs-index\.md/.test(e.message));
+    });
+
+    test("a handoff that is a link or a directory is refused, never followed", () => {
+        // Copilot, #451: docs.sh skipped one that this then failed to read. Both refuse it now.
+        const outside = tree(scratch(), { "x.md": handoff("From outside") });
+        for (const make of [(p) => fs.symlinkSync(path.join(outside, "x.md"), p), (p) => fs.mkdirSync(p)]) {
+            const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+            make(path.join(dir, "handoffs", "2026-07-02-b.md"));
+            assert.throws(() => inspect(dir), (e) => e instanceof IndexError && /2026-07-02-b\.md is not a regular file/.test(e.message));
+        }
+    });
+
+    test("a handoff series directory that is a link is refused before it is listed", () => {
+        // Copilot, #451: `readdirSync` followed it, and every handoff under it passed the per-file check.
+        const away = tree(scratch(), { "2026-07-01-a.md": handoff("From outside") });
+        const dir = workspace({}, withSeries());
+        fs.symlinkSync(away, path.join(dir, "handoffs"));
+        assert.throws(() => inspect(dir), (e) => e instanceof IndexError && /a handoff series is read where its path says/.test(e.message));
+    });
+
+    test("a write regenerates a kept index", () => {
+        const dir = kept({ "handoffs/2026-07-01-a.md": handoff("A") });
+        tree(dir, { "handoffs/2026-07-28-b.md": handoff("B") });
+        inspect(dir, { write: true });
+        assert.match(fs.readFileSync(path.join(dir, "handoffs-index.md"), "utf8"), /2026-07-28 · \[B\]/);
+        assert.equal(failures(inspect(dir)).length, 0);
+    });
+});
+
+describe("a handoff index nobody keeps is rendered and compared with nothing", () => {
+    test("green with no copy on disk, which is how a clone of this repository has it", () => {
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        const result = inspect(dir);
+        assert.equal(failures(result).length, 0);
+        assert.equal(result.series.handoffs.kept, false);
+        assert.equal(result.series.handoffs.count, 1);
+    });
+
+    test("a write creates none, so no copy is left behind to go stale", () => {
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        inspect(dir, { write: true });
+        assert.equal(fs.existsSync(path.join(dir, "handoffs-index.md")), false);
+    });
+
+    test("a handoff that yields no line is still red", () => {
+        const dir = workspace({ "handoffs/2026-07-01-a.md": "No heading.\n" }, withSeries());
+        assert.equal(failures(inspect(dir)).filter((f) => f.check === "title").length, 1);
+    });
+
+    test("--handoffs prints the index and writes nothing", () => {
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        const said = [];
+        assert.equal(run(["--handoffs", dir], (l) => said.push(l)), 0);
+        assert.match(said.join("\n"), /2026-07-01 · \[A\]/);
+        assert.equal(fs.existsSync(path.join(dir, "handoffs-index.md")), false);
+    });
+
+    test("--handoffs prints past a stale kept copy and leaves it as it is, since freshness is --check's", () => {
+        // Found by Copilot on #451: the usage said "whether or not one is kept", and a stale kept copy
+        // printed its `index` finding instead of the index and exited 1.
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A"), "handoffs-index.md": "stale\n" }, withSeries());
+        const said = [];
+        assert.equal(run(["--handoffs", dir], (l) => said.push(l)), 0);
+        assert.match(said.join("\n"), /2026-07-01 · \[A\]/);
+        assert.doesNotMatch(said.join("\n"), /out of date/);
+        assert.equal(fs.readFileSync(path.join(dir, "handoffs-index.md"), "utf8"), "stale\n");
+    });
+
+    test("--handoffs reports a handoff that yields no line instead of printing, and exits 1", () => {
+        const dir = workspace({ "handoffs/2026-13-45-a.md": handoff("A") }, withSeries());
+        const said = [];
+        assert.equal(run(["--handoffs", dir], (l) => said.push(l)), 1);
+        assert.match(said.join("\n"), /valid YYYY-MM-DD date/);
+    });
+});
+
+describe("the handoff series carries no budget", () => {
     test("no budget is declarable, so no budget finding can be raised over the series", () => {
         // The absence is the design (spec/slots.md): every remedy a budget could ask for on an
         // append-only series is barred, so a rail here is one built to be broken. Asserted rather
@@ -1087,10 +1248,93 @@ describe("the handoff index is byte-compared like the store's", () => {
 });
 
 describe("the live handoff series", () => {
-    test(".portulan's handoff index is current", () => {
+    test("every handoff in .portulan yields an index line, and a clean checkout keeps none", () => {
         const result = inspect(path.join(REPO, ".portulan"));
         assert.equal(result.series.handoffs.declared, true);
+        assert.ok(result.series.handoffs.count > 0);
         assert.equal(text(failures(result).filter((f) => f.series === "handoffs")), "");
+    });
+});
+
+// ---------------------------------------------------------------- changelog fragments
+
+describe("changelog fragments", () => {
+    test("grouped by section in Keep a Changelog order, each fragment pasted whole", () => {
+        const dir = tree(scratch(), {
+            "b-fix.fixed.md": "- **Fixed B.**\n  Its second line.\n",
+            "a-change.changed.md": "- **Changed A.** [`doctor`](../cli/doctor.mjs)\n",
+            "c-new.added.md": "- **Added C.**\n\n",
+            "README.md": "What this directory is for.\n",
+        });
+        const { fragments, problems } = readChanges(dir);
+        assert.deepEqual(problems, []);
+        assert.equal(fragments.length, 3, "README.md is not a fragment");
+        assert.equal(
+            renderChanges(fragments),
+            ["### Added", "", "- **Added C.**", "", "### Changed", "", "- **Changed A.** [`doctor`](cli/doctor.mjs)", "", "### Fixed", "", "- **Fixed B.**", "  Its second line."].join("\n"),
+            "a link written from changes/ is pasted as CHANGELOG.md, one directory up, reads it",
+        );
+    });
+
+    test("a name without a known section, or a file holding two bullets, is refused and nothing is printed", () => {
+        const dir = tree(scratch(), {
+            "no-section.md": "- One.\n",
+            "odd.improved.md": "- One.\n",
+            "two.changed.md": "- One.\n- Two.\n",
+            "prose.changed.md": "Prose first.\n- Then a bullet.\n",
+            "fine.changed.md": "- Fine.\n",
+        });
+        const { fragments, problems } = readChanges(dir);
+        assert.deepEqual(problems.map((p) => p.name), ["no-section.md", "odd.improved.md", "prose.changed.md", "two.changed.md"]);
+        assert.deepEqual(fragments.map((f) => f.name), ["fine.changed.md"]);
+        const said = [];
+        assert.equal(run(["--changes", dir], (l) => said.push(l)), 1);
+        assert.doesNotMatch(said.join("\n"), /### Changed/, "a cut must never paste around a broken fragment");
+    });
+
+    test("a link is refused rather than followed, as docs.sh refuses it", () => {
+        // Found by Copilot on #451: docs.sh's `[ -f ]` followed the link that this refused.
+        const dir = tree(scratch(), { "fine.changed.md": "- Fine.\n" });
+        fs.symlinkSync("fine.changed.md", path.join(dir, "link.changed.md"));
+        const { fragments, problems } = readChanges(dir);
+        assert.deepEqual(problems.map((p) => p.name), ["link.changed.md"]);
+        assert.match(problems[0].message, /not a regular file/);
+        assert.deepEqual(fragments.map((f) => f.name), ["fine.changed.md"]);
+    });
+
+    test("a link standing for the directory itself is refused, and nothing behind it is read", () => {
+        // Copilot, #451: `readdirSync` followed it, so every fragment came from wherever it led.
+        const away = tree(scratch(), { "fine.changed.md": "- Fine.\n" });
+        const link = path.join(scratch(), "changes");
+        fs.symlinkSync(away, link);
+        assert.throws(() => readChanges(link), (e) => e instanceof IndexError && /is a link, and fragments are read where they are written/.test(e.message));
+        const said = [];
+        assert.equal(run(["--changes", link], (l) => said.push(l)), 2);
+    });
+
+    test("a README that is a link is refused like any entry, before it is skipped by name", () => {
+        // Copilot, #451: the README was skipped before its type was looked at.
+        const dir = tree(scratch(), { "fine.changed.md": "- Fine.\n", "notes.md": "# Notes\n" });
+        fs.symlinkSync("notes.md", path.join(dir, "README.md"));
+        const { problems } = readChanges(dir);
+        assert.ok(problems.some((p) => p.name === "README.md" && /not a regular file/.test(p.message)));
+    });
+
+    test("a missing directory is an empty set, since the cut deletes every fragment", () => {
+        const said = [];
+        assert.equal(run(["--changes", path.join(scratch(), "changes")], (l) => said.push(l)), 0);
+        assert.match(said.join("\n"), /no change fragments/);
+    });
+
+    test("--changes judges no workspace, and needs its directory", () => {
+        const said = [];
+        assert.equal(run(["--changes", scratch(), "."], (l) => said.push(l)), 2);
+        assert.equal(run(["--changes"], (l) => said.push(l)), 2);
+        assert.equal(run(["--changes", "--check"], (l) => said.push(l)), 2);
+    });
+
+    test("every fragment in this repository's changes/ can be pasted", () => {
+        assert.deepEqual(readChanges(path.join(REPO, "changes")).problems, []);
     });
 });
 

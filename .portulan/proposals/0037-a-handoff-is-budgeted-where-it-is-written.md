@@ -22,7 +22,7 @@ bytes per token, since this workspace declares no ratio yet, so every token figu
 - The fifteen handoffs dated 2026-09-23, written while this project was cutting its own token spend, average 4,440
   bytes, and the largest is 7,747. A handoff that says what the next session needs fits in far less than the series'
   tail, and nothing holds it there.
-- The **index** over the series, [`../handoffs-index.md`](../handoffs-index.md), is 29,108 bytes in 187 entry lines,
+- The **index** over the series, `../handoffs-index.md`, is 29,108 bytes in 187 entry lines,
   about 9.7k tokens: larger than any one file a boot reads here, the gate map's 26,959 bytes included. It gains a
   line of about 154 bytes with every session and has no bound: 142 lines on 2026-08-26, 187 on 2026-09-23.
 - **A boot reads neither.** [`../../cli/context.mjs`](../../cli/context.mjs) lists the handoffs and their index as

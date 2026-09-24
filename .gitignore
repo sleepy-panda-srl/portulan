@@ -40,3 +40,8 @@ coverage/
 # reappears at the repo root, it can never be tracked or pushed.
 /vision.md
 /plan.md
+
+# This repository keeps no handoff index (`node cli/index.mjs --handoffs .portulan` prints it): a
+# committed copy conflicted on every merge that added a handoff, and it carries nothing the series
+# does not. With no copy, `index --check` renders it, which proves every handoff yields a line.
+/.portulan/handoffs-index.md

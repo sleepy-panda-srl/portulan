@@ -25,7 +25,7 @@
  * and prefixes are what the domain actually needs: doctrine lives in directories. `exclude` entries are
  * prefixes too and win over `scope`.
  *
- * The record layer — handoffs, proposals, milestone files, the Session log, the changelog — is excluded
+ * The record layer — handoffs, proposals, milestone files, the changelog and its fragments — is excluded
  * because it legitimately quotes retired sentences forever: `0004` keeps its own minting words under a
  * dated supersession note, and records here are forward-only. A rail over them would be red on arrival
  * and permanently, which is what `a-superlative-is-a-count-nobody-ran.md` refused a grep over.

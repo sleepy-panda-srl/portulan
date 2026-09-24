@@ -17,7 +17,8 @@
 //
 // It is **not** an implementation of the Claude Code plugin contract, and must never be described
 // as one. `claude plugin validate --strict` is the authority for that contract; it is run at the
-// supervised checkpoints and before any release, and its result is recorded in the session log.
+// supervised checkpoints and before any release, and its result goes in the commit message of the
+// change it was run for.
 // The split exists because CI here installs nothing by stated doctrine (.github/workflows/verify.yml),
 // so a recipe declaring the `claude` binary as a dependency would exit 2 — "could not run" — on
 // every pull request, which under this repository's own precondition rule is permanently red.

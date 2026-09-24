@@ -121,7 +121,7 @@ commit, refusing any packed file that differs from its source.
 | [`doctor`](cli/doctor.mjs) | Validate a workspace against the Workspace Definition |
 | [`compile`](cli/compile.mjs) | Turn gates and verify recipes into host enforcement |
 | [`vendor`](cli/vendor.mjs) | Materialise a workspace where it is needed, in either direction |
-| [`index`](cli/index.mjs) | Rebuild the declared indexes over memory, handoffs and personas |
+| [`index`](cli/index.mjs) | Rebuild the declared indexes over memory, handoffs and personas; print changelog fragments for a release |
 | [`upgrade`](cli/upgrade.mjs) | Migrate a workspace across Workspace Definition versions |
 | [`new`](cli/new.mjs) | Scaffold a skill, persona, pack, workspace, gate policy or repo card |
 | [`feedback`](cli/feedback.mjs) | File a bug, improvement or feedback issue you previewed first |
@@ -142,6 +142,7 @@ are not subcommands at all. [`cli/README.md`](cli/README.md) is the single carri
 | `examples/` | [A fictional, public demo workspace](examples/) — two products, read end to end |
 | `docs/` | [`vision.md`](docs/vision.md) (the constitution), [`plan.md`](docs/plan.md) (the milestone map) and [`milestones/`](docs/milestones/) — one file per milestone, holding amendment arguments, session notes and close evidence |
 | `evals/` | [The eval corpora](evals/) — golden tasks for the compiled gates and for the core skills — plus the review-loop register, the A/B corpus with its arms, graders and recorded baseline, and [`evals/releases/`](evals/releases/), the eval result each release from `0.1.3` onward carries. **No count is written here**; `git ls-files evals` derives it. _(This cell has now recorded going stale twice, and this is the second repair: it said the **graders** and the **baseline run** were *still to arrive* after both landed on 2026-08-31. The sentence that expires is always the one naming what is next, so this cell no longer names one — what is unbuilt lives in [`evals/README.md`](evals/README.md)'s own *What is NOT built yet*, which is the single carrier for it and is checked by nothing, exactly as this cell was.)_ |
+| `changes/` | [Changelog fragments](changes/), one file per change until the release cut assembles them into [`CHANGELOG.md`](CHANGELOG.md) |
 | `.portulan/` | [This repository's own workspace](.portulan/) — Portulan applied to building Portulan |
 | `.claude-plugin/` | The [plugin](.claude-plugin/plugin.json) and [marketplace](.claude-plugin/marketplace.json) manifests that make this repository an installable feed |
 | `.claude/` | [The compiled enforcement](.claude/settings.json) — permissions and hooks generated from [`.portulan/gates.json`](.portulan/gates.json), committed so it stays reviewable and held to its source by the `compile` verify recipe |
