@@ -3613,6 +3613,24 @@ describe("guidance: written, then byte-compared", () => {
         assert.match(check.out, /GREEN — every compiled guidance file matches its unit/);
     });
 
+    // Before this case, guidance compiled past a `gates` key the compiler refuses, and `--check` went green:
+    // the exit 2 such a key had always meant was gone wherever the workspace declared guidance.
+    test("a `gates` key the compiler refuses stops the run beside guidance too: exit 2, nothing written", (t) => {
+        for (const gates of [42, "", "../outside.json"]) {
+            const dir = guidanceCopy();
+            const manifestPath = path.join(dir, "workspace.json");
+            const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+            m.gates = gates;
+            fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+            for (const args of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+                const { code, out } = said(t, args);
+                assert.equal(code, 2, `${JSON.stringify(gates)}, ${args.join(" ")}: ${out}`);
+                assert.match(out, /names a gate policy this compiler will not read.*Nothing was compiled and nothing was written/s);
+            }
+            assert.ok(!fs.existsSync(path.join(dir, ".claude")), `${JSON.stringify(gates)}: nothing written`);
+        }
+    });
+
     test("a compiled file edited by hand is red, and names the unit to edit instead", (t) => {
         const dir = guidanceCopy();
         said(t, ["--workspace", dir]);

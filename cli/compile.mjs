@@ -4025,7 +4025,10 @@ export function run(argv, options = {}) {
         // commonest: this comment read "two different answers" while the code below had four.
         if (!policyDeclared && !fs.existsSync(policyFile)) {
             const packOptions = { named: namedRoots, discovery: () => discoverPackRoots(), forced };
-            if (guidance === null) {
+            // A `gates` key this compiler refuses is not the shape below: the workspace named a policy, and
+            // named one nothing here will read. The run stops, as it did before guidance existed, rather than
+            // compile the guidance past it into a green `--check` that checks no enforcement at all.
+            if (guidance === null || policyReason === "refused") {
                 throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
             }
             // A workspace with no gate policy is a legitimate shape (`policyPath`), and its guidance is not
