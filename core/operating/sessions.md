@@ -83,7 +83,7 @@ sessions and so runs on a maintainer's device; a report of how often sessions st
 ledger's first request per context; and carrying the key to adopters through `init`, `vendor` and
 `upgrade`. Until each lands, the rule it would enforce is held by the human gate.
 
-_(Provenance: the comparison thread's five-run set of 2026-09-24, whose figures the record in
+_(Provenance: the maintainer's five-run measurement of 2026-09-24, whose figures the record in
 [`../../evals/ab/warm.md`](../../evals/ab/warm.md) carries as its before; the techniques survey before it,
 from Claude Code's documentation on prompt caching, settings and the CLI; and each switch read in Claude
 Code 2.1.281's program text on 2026-09-24.)_

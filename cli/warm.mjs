@@ -44,15 +44,17 @@
 // A run is priced twice. **Billed** is what the host recorded. **Cold** prices the first request's reads as
 // writes at the run's lifetime: the run as if nothing had been cached before it, the convention the five-run
 // set's first report priced by. A sequence's warm figure is the mean billed total of its runs after the first, and its cold
-// figure the mean cold total of all of them.
+// figure the mean cold total of all of them. Two sequences compare by their cost: every run as billed, the first priced
+// cold, since what the cache held before a sequence began is neither arm's.
 //
 // ## Never in a recipe
 //
 // It starts real sessions, which spend, and reads the host's usage records, which differ per machine, so it
 // never runs inside a verify recipe (`0038`'s ruling on the ledger). Its suite stands a stub in for the agent.
 //
-// Exit 0 done · 1 `report` of two sequences only: the treatment did not answer every run as its task
-// expects, or cost more than its control · 2 could not run.
+// Exit 0 done · 1 `report` of two sequences only: a run of either has no transcript or changed its clone, a
+// treatment run did not answer as its task expects, or the treatment cost no less than its control · 2 could not
+// run.
 
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -87,11 +89,18 @@ export const isCode = (rel) =>
 /** A line shorter than this matches too many files to say whose it is, so it takes the verdict of the line before. */
 export const MIN_LINE = 16;
 
+/** A negation just before a word: `not green`, `do not propose`, `isn't really green`. */
+const NEGATED = String.raw`\b(?:not|never|no|cannot|\w+n['’]t)\s+(?:\w+\s+)?`;
+
+/** An answer that says `word`, and says it without a negation just before it. */
+const says = (answer, word) => new RegExp(String.raw`\b${word}\b`, "i").test(answer) && !new RegExp(String.raw`${NEGATED}${word}\b`, "i").test(answer);
+
 /**
  * The tasks a sequence can run. `boot` is the boot task of the five-run set of 2026-09-24, word for word, so a
  * figure here stands beside that set's; `probe` is one request with no tool, which measures the prefix alone.
- * `expect` is what an answer must say to count as answered: the tier the gate map gives the change, and the
- * recipes the definition of done runs first. It guards against a cheaper arm that answers worse, not a grade.
+ * `expect` is what an answer must say to count as answered: for `boot`, the tier the gate map gives the change
+ * and the recipes the definition of done runs first, neither negated; for `probe`, the one word and nothing
+ * else. It reads words, not meaning: a guard against a cheaper arm that answers worse, not a grade.
  */
 export const TASKS = {
     boot: {
@@ -99,12 +108,12 @@ export const TASKS = {
             "Boot Portulan first: run its portulan skill and follow its steps. Then answer in at most five sentences: " +
             "in this workspace's gate map, which tier does changing a verify recipe get, and what does the definition " +
             "of done require before such a change counts as done? Change no file.",
-        expect: [/\bpropose\b/i, /\bgreen\b/i],
+        expect: (answer) => says(answer, "propose") && says(answer, "green"),
         args: (tree) => ["--plugin-dir", tree, "--max-turns", "150"],
     },
     probe: {
         prompt: "Reply with the single word: ok",
-        expect: [/\bok\b/i],
+        expect: (answer) => /^\W*ok\W*$/i.test(answer),
         args: () => ["--max-turns", "1"],
     },
 };
@@ -378,7 +387,8 @@ const mean = (xs) => (xs.length === 0 ? null : Math.round(xs.reduce((a, b) => a 
 
 /**
  * A sequence in its three lines and the figures behind C: A and B as means of a run, its first run, its warm and
- * cold means, and what share of cold warm cost.
+ * cold means, and what share of cold warm cost. `cost` is what a comparison weighs: the mean of every run as
+ * billed, except the first, priced cold, since whatever the cache held before a sequence began is not its arm's.
  */
 export function summary(runs) {
     const measured = runs.filter((r) => r.figures !== null);
@@ -400,23 +410,27 @@ export function summary(runs) {
         warm,
         cold,
         billed: mean(measured.map((r) => r.figures.billed)),
+        cost: mean(measured.map((r) => (r.k === 1 ? r.figures.cold : r.figures.billed))),
+        models: [...new Set(measured.flatMap((r) => r.models ?? []))].sort(),
         share: warm !== null && cold ? warm / cold : null,
     };
 }
 
 /**
  * A switch against its control: it passes when every run of both sequences was measured, every treatment run
- * answered as its task expects, no run of either changed a file, and the treatment's mean billed total over all
- * its runs is lower than the control's. A run with no transcript has no cost, so a mean without it is not its
- * sequence's; a control run that changed a file spent tokens on work its task forbids, so a cut against it is
- * not the switch's. The two must differ in their arm and in nothing else the runner records (task, run count,
- * checkouts, what lands between runs, where, the model and the host's version), or no difference between them is
- * the switch's.
+ * answered as its task expects, no run of either changed a file, and the treatment's cost, the mean of its runs
+ * with the first priced cold, is lower than the control's. A run with no transcript has no cost, so a mean
+ * without it is not its sequence's; a control run that changed a file spent tokens on work its task forbids, so a
+ * cut against it is not the switch's; and what the cache held before either sequence began is neither arm's. The
+ * two must differ in their arm and in nothing else the runner records (the commit they started from, the task,
+ * the run count, the checkouts, what lands between runs, where they ran, the model asked for and the models the
+ * host recorded, and the host's version), or no difference between them is the switch's.
  */
 export function verdict(control, treatment) {
     const shape = (s) =>
-        `${s.record.task} × ${s.record.runs.length}, copies ${s.record.copies}, between ${s.record.between ?? "nothing"}` +
-        `${s.record.local ? ", local" : ""}, model ${s.record.model ?? "the host's default"}, host ${s.record.agent ?? "unknown"}`;
+        `${s.record.task} × ${s.record.runs.length} from ${s.record.source ?? "an unrecorded commit"}, copies ${s.record.copies}, ` +
+        `between ${s.record.between ?? "nothing"}${s.record.local ? ", local" : ""}, model ${s.record.model ?? "the host's default"} ` +
+        `(recorded ${s.summary.models.join(" and ") || "none"}), host ${s.record.agent ?? "unknown"}`;
     if (shape(control) !== shape(treatment)) {
         throw new CouldNotRun(`the two sequences differ in shape (${shape(control)} against ${shape(treatment)}), so no difference between them is the switch's`);
     }
@@ -424,13 +438,13 @@ export function verdict(control, treatment) {
     if (arm(control) === arm(treatment)) throw new CouldNotRun(`the two sequences start the same arm, ${arm(control)}, so no switch lies between them`);
     const [a, b] = [control.summary, treatment.summary];
     const measured = a.measured === a.runs && b.measured === b.runs;
-    const cuts = measured && a.billed !== null && b.billed !== null && b.billed < a.billed;
+    const cuts = measured && a.cost !== null && b.cost !== null && b.cost < a.cost;
     const answered = b.graded === b.runs;
     const unchanged = a.changed === 0 && b.changed === 0;
     return {
         measured, cuts, answered, unchanged,
         pass: cuts && answered && unchanged,
-        ratio: measured && a.billed && b.billed !== null ? b.billed / a.billed : null,
+        ratio: measured && a.cost && b.cost !== null ? b.cost / a.cost : null,
     };
 }
 
@@ -503,12 +517,24 @@ export function runSequence({
     model = null, agent = "claude", env = process.env, timeoutMs = TURN_TIMEOUT_MS, say = () => {},
 }) {
     childArgs(task, tree, arm);
+    if (between === "commit" && copies === "each") {
+        throw new CouldNotRun("--between commit needs one checkout: under --copies each every run starts from a new clone of the tree, so the commit never reaches the next run");
+    }
+    if (between === "commit" && !local) {
+        throw new CouldNotRun("--between commit needs --local: a commit between runs moves only the startup git snapshot, which a hosted session never takes");
+    }
+    let source;
+    try {
+        source = git(tree, ["rev-parse", "--verify", "HEAD^{commit}"]).trim();
+    } catch (cause) {
+        throw new CouldNotRun(`${tree} has no commit to clone: ${String(cause.stderr ?? cause.message).trim().split("\n")[0]}`);
+    }
     const dir = path.join(into, label);
     if (fs.existsSync(dir)) throw new CouldNotRun(`${dir} exists; a sequence is recorded once, into a directory of its own`);
     fs.mkdirSync(dir, { recursive: true });
     const version = spawnSync(agent, ["--version"], { encoding: "utf8", env, timeout: 60_000 });
     const record = {
-        label, task, copies, between, arm, local, model,
+        label, task, source, copies, between, arm, local, model,
         agent: (version.stdout ?? "").trim().split("\n")[0] || null,
         started: new Date().toISOString(),
         runs: [],
@@ -541,9 +567,9 @@ export function runSequence({
             transcript = `run-${k}.jsonl`;
             fs.copyFileSync(found, path.join(dir, transcript));
         }
-        // Every task says to change no file. A run that changed its clone, a file or a commit, fails its task,
-        // and once it is recorded the clone goes back to the commit the run started from, so the next run starts
-        // where the others did.
+        // A run leaves its clone as it found it: the boot task says to change no file, and the probe's one reply
+        // needs none. A run that changed its clone, a file or a commit, fails its task, and once it is recorded the
+        // clone goes back to the commit the run started from, so the next run starts where the others did.
         const changed = git(copy, ["rev-parse", "HEAD"]).trim() !== start || git(copy, ["status", "--porcelain"]).trim() !== "";
         record.runs.push({
             k,
@@ -553,7 +579,7 @@ export function runSequence({
             session: result?.session_id ?? null,
             turns: result?.num_turns ?? null,
             answered,
-            graded: answered && !changed && TASKS[task].expect.every((re) => re.test(answer)),
+            graded: answered && !changed && TASKS[task].expect(answer),
             answer,
             changed,
             transcript,
@@ -601,6 +627,7 @@ export function readSequence(dir, rates = GENERAL_RATES) {
         const found = sourcesOf(path.join(dir, record.copies === "each" ? `tree-${r.k}` : "tree"));
         return {
             ...r,
+            models: [...new Set(requests.filter((q) => !q.sidechain && q.model !== null).map((q) => q.model))],
             figures: priced(requests, record.arm?.cache_lifetime ?? DEFAULT_LIFETIME, rates),
             share: found === null ? null : shareOf(transcript, requests, found),
         };
@@ -657,7 +684,7 @@ export function comparisonLines(control, treatment, v) {
         `${treatment.record.label} against ${control.record.label}:`,
         `  A  Portulan's share: ${grouped(t.a)} against ${grouped(c.a)} tokens a run`,
         `  B  the whole task: ${grouped(t.b)} against ${grouped(c.b)} tokens a run`,
-        `  C  cost: ${v.ratio === null ? "no figure" : Math.round(v.ratio * 100)} against the control's 100, the mean billed of all runs; ` +
+        `  C  cost: ${v.ratio === null ? "no figure" : Math.round(v.ratio * 100)} against the control's 100, the mean of all runs with the first priced cold; ` +
             `${facts.join(", ")}: ${v.pass ? "PASS" : "FAIL"}`,
     ];
 }

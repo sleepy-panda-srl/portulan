@@ -302,13 +302,25 @@ describe("a sequence, end to end on a stub", () => {
         const r = rig();
         runSequence({ tree: r.tree, into: r.into, label: "each", runs: 2, copies: "each", agent: r.agent, env: r.env });
         assert.equal(new Set(r.calls().map((c) => c.cwd)).size, 2);
-        runSequence({ tree: r.tree, into: r.into, label: "commits", runs: 3, between: "commit", agent: r.agent, env: r.env });
+        runSequence({ tree: r.tree, into: r.into, label: "commits", runs: 3, between: "commit", local: true, agent: r.agent, env: r.env });
         const clone = path.join(r.into, "commits", "tree");
         const git = (args) => execFileSync("git", args, { cwd: clone, encoding: "utf8" });
         assert.equal(git(["log", "--oneline"]).trim().split("\n").length, 3, "the tree's commit and one between each pair of runs");
         assert.equal(git(["remote"]), "", "no remote, so a run can push nothing");
         assert.equal(git(["rev-list", "--max-count=1", "HEAD", "--not", "--remotes"]), "", "what the runner committed reads as recorded, so the stop gate asks no run for a handoff");
         assert.match(git(["log", "-1", "--format=%B"]), /^Seam-scan: clean\b/m, "the line the docs recipe reads on the newest change");
+    });
+
+    test("a commit between runs needs one checkout and a local session, refused before anything is recorded", () => {
+        const r = rig();
+        const both = { tree: r.tree, into: r.into, runs: 2, between: "commit", agent: r.agent, env: r.env };
+        assert.throws(() => runSequence({ ...both, label: "each", copies: "each", local: true }), /needs one checkout/);
+        assert.throws(() => runSequence({ ...both, label: "hosted" }), /needs --local/);
+        assert.equal(fs.existsSync(r.into), false);
+        const said = [];
+        const argv = ["run", "--tree", r.tree, "--into", r.into, "--label", "cli", "--between", "commit", "--agent", r.agent];
+        assert.equal(run(argv, { say: (l) => said.push(l), env: r.env }), 2);
+        assert.match(said.join("\n"), /needs --local/);
     });
 
     for (const touch of ["file", "commit"]) {
@@ -349,11 +361,12 @@ describe("a sequence, end to end on a stub", () => {
 });
 
 describe("a switch against its control", () => {
+    // One tree, so both start from the same commit, and a stub state each, so each starts cold.
     const pair = ({ answer, touch } = {}) => {
         const a = rig({ touch });
         const b = rig({ answer });
         runSequence({ tree: a.tree, into: a.into, label: "control", runs: 2, agent: a.agent, env: a.env });
-        runSequence({ tree: b.tree, into: b.into, label: "treatment", runs: 2, arm: { cache_lifetime: "5m" }, agent: b.agent, env: b.env });
+        runSequence({ tree: a.tree, into: b.into, label: "treatment", runs: 2, arm: { cache_lifetime: "5m" }, agent: b.agent, env: b.env });
         return [path.join(a.into, "control"), path.join(b.into, "treatment")];
     };
 
@@ -365,7 +378,7 @@ describe("a switch against its control", () => {
         const said = [];
         assert.equal(run(["report", control, treatment], { say: (l) => said.push(l) }), 0);
         assert.deepEqual(said.slice(-3).map((l) => l.slice(0, 5)), ["  A  ", "  B  ", "  C  "]);
-        assert.match(said.at(-1), /cost: 68 against the control's 100, the mean billed of all runs; every run measured, every run answered, no run of either changed a file: PASS/);
+        assert.match(said.at(-1), /cost: 68 against the control's 100, the mean of all runs with the first priced cold; every run measured, every run answered, no run of either changed a file: PASS/);
     });
 
     test("cheaper and answering off-task is a fail, exit 1", () => {
@@ -404,7 +417,7 @@ describe("a switch against its control", () => {
         assert.equal(run(["report", path.join(a.into, "two"), path.join(a.into, "three")], { say: () => {} }), 2);
     });
 
-    test("two sequences of one arm, or of another host's version, are no comparison, exit 2", () => {
+    test("two sequences of one arm, or apart in anything else the runner records, are no comparison, exit 2", () => {
         const a = rig();
         runSequence({ tree: a.tree, into: a.into, label: "one", runs: 2, agent: a.agent, env: a.env });
         runSequence({ tree: a.tree, into: a.into, label: "other", runs: 2, agent: a.agent, env: a.env });
@@ -412,9 +425,42 @@ describe("a switch against its control", () => {
         assert.throws(() => verdict(readSequence(one), readSequence(other)), /the same arm/);
         const file = path.join(other, "sequence.json");
         const record = JSON.parse(fs.readFileSync(file, "utf8"));
-        fs.writeFileSync(file, JSON.stringify({ ...record, arm: { cache_lifetime: "5m" }, agent: "stub 0.0.1" }));
-        assert.throws(() => verdict(readSequence(one), readSequence(other)), /differ in shape/);
+        assert.equal(record.source, execFileSync("git", ["rev-parse", "HEAD"], { cwd: a.tree, encoding: "utf8" }).trim());
+        const apart = { arm: { cache_lifetime: "5m" } };
+        fs.writeFileSync(file, JSON.stringify({ ...record, ...apart }));
+        assert.doesNotThrow(() => verdict(readSequence(one), readSequence(other)), "apart in the arm alone, a comparison");
+        for (const [what, change] of [["the host's version", { agent: "stub 0.0.1" }], ["the commit", { source: "0".repeat(40) }]]) {
+            fs.writeFileSync(file, JSON.stringify({ ...record, ...apart, ...change }));
+            assert.throws(() => verdict(readSequence(one), readSequence(other)), /differ in shape/, what);
+        }
+        fs.writeFileSync(file, JSON.stringify({ ...record, ...apart }));
+        const transcript = path.join(other, "run-1.jsonl");
+        fs.writeFileSync(transcript, fs.readFileSync(transcript, "utf8").replaceAll('"model":"stub"', '"model":"stub-2"'));
+        assert.throws(() => verdict(readSequence(one), readSequence(other)), /recorded stub against|differ in shape/, "the models the host recorded");
         assert.equal(run(["report", one, other], { say: () => {} }), 2);
+    });
+
+    test("what the cache held before a sequence is neither arm's: the first run is priced cold", () => {
+        const r = rig();
+        runSequence({ tree: r.tree, into: r.into, label: "control", runs: 2, agent: r.agent, env: r.env });
+        runSequence({ tree: r.tree, into: r.into, label: "treatment", runs: 2, arm: { cache_lifetime: "5m" }, agent: r.agent, env: r.env });
+        const [control, treatment] = [readSequence(path.join(r.into, "control")), readSequence(path.join(r.into, "treatment"))];
+        assert.equal(treatment.runs[0].figures.startedWarm, true, "the treatment's first run found the control's prefix cached");
+        assert.equal(Math.round((treatment.summary.billed / control.summary.billed) * 100), 24, "billed alone would credit the switch with that");
+        assert.equal(Math.round(verdict(control, treatment).ratio * 100), 68, "the same as two sequences each started cold");
+    });
+
+    test("an answer counts when it says what its task expects, not negated, and the probe's word alone", () => {
+        for (const [answer, counts] of [
+            ["Changing a verify recipe gets the propose tier; done needs every recipe green.", true],
+            ["Tier: **propose**. Done needs the default recipe to run green first.", true],
+            ["do not propose; nothing is green", false],
+            ["It is propose, and it counts as done even if the recipes are not green.", false],
+            ["It isn’t propose, it is decide; green recipes.", false],
+        ]) assert.equal(TASKS.boot.expect(answer), counts, answer);
+        for (const [answer, counts] of [["ok", true], ["OK.", true], ["not ok", false], ["ok, and more", false]]) {
+            assert.equal(TASKS.probe.expect(answer), counts, answer);
+        }
     });
 
     test("the summary of nothing measured is no figure, not a zero", () => {

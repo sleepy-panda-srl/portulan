@@ -16,7 +16,7 @@ nothing of its own cached; each later one finds what the one before it left. Eve
 
 - **A, Portulan's share**: the tokens that carried what Portulan installs or manages (its boot set, rules
   and skill files, the workspace's `.portulan/` context, records and memory), counted once for every
-  request that sent them, by the five-run set's split. A tool's result and the skill text the host injects
+  request that sent them, by the split of the maintainer's five-run measurement of 2026-09-24. A tool's result and the skill text the host injects
   are matched line by line against the run's own clone, whose tracked files are Portulan's unless they are
   code, since the clone is the plugin itself; each takes its share by bytes of the context's growth at the
   request it entered. The plugin's descriptions, loaded before the first request, are estimated from their
@@ -26,16 +26,19 @@ nothing of its own cached; each later one finds what the one before it left. Eve
   lifetime and 1.25 for five minutes, a read at the model's read multiplier and output at its rate, which
   `report` takes as `--read` and `--output`, the general 0.1 and 5 otherwise. A run is priced **billed**,
   as the host recorded it, and **cold**, with the first request's reads priced as writes, the convention of
-  the comparison thread's five-run set of 2026-09-24. A sequence's **warm** figure is the mean billed total
+  that measurement. A sequence's **warm** figure is the mean billed total
   of its runs after the first, its **cold** figure the mean cold total of all of them, and its C is warm
   against cold at 100.
 
 The tasks live in the runner, so there is one source for each prompt. `boot` is that set's boot task
 word for word, so a figure here stands beside its figures. `probe` is one request with no tool, which
-measures the prefix alone. An answer counts only when it says what the task expects; that guards against an
-arm that is cheaper because it answers worse. Every task says to change no file, so a run that changed its
-clone, a file or a commit, has not answered, and the clone goes back to where the run started before the
-next one. The clone has no remote, and what the runner put in it (the tree's commit, and its own empty
+measures the prefix alone. An answer counts only when it says what the task expects and does not negate it,
+and the probe's only when it is the one word; that reads words, not meaning, and guards against an arm that
+is cheaper because it answers worse. A run leaves its clone as it found it (the boot task says to change no
+file, and the probe's one reply needs none), so a run that changed its clone, a file or a commit, has not
+answered, and the clone goes back to where the run started before the next one. A commit between runs needs
+one checkout and `--local`, since it moves only a local session's startup snapshot; the runner refuses it
+otherwise. The clone has no remote, and what the runner put in it (the tree's commit, and its own empty
 commit between runs, which carries the seam line the docs recipe reads) is marked as already recorded, so
 the stop gate asks no run for a handoff.
 
@@ -49,11 +52,12 @@ the stop gate asks no run for a handoff.
 | The per-machine sections, for runs in different directories | `--copies each` | the same, `--exclude-dynamic-sections` | anywhere |
 
 **A switch passes** when every run of both sequences was measured, every treatment run answered as its
-task expects, no run of either changed a file, and the treatment's C is under its control's 100, the mean
-billed totals of two sequences that differ in their arm and in nothing else the runner records (the task, the
-run count, the checkouts, what lands between runs, where they ran, the model and the host's version):
-`node cli/warm.mjs report <control> <treatment>` prints the three lines and PASS and exits 0, or FAIL and
-exits 1. A switch that passes becomes a default of
+task expects, no run of either changed a file, and the treatment's cost is under its control's 100. A
+sequence's cost is the mean of its runs as billed, with the first priced cold, since what the cache held before
+a sequence began is neither arm's. The two sequences must differ in their arm and in nothing else the runner
+records: the commit they start from, the task, the run count, the checkouts, what lands between runs, where they
+ran, the model asked for and the models the host recorded, and the host's version. `node cli/warm.mjs report
+<control> <treatment>` prints the three lines and PASS and exits 0, or FAIL and exits 1. A switch that passes becomes a default of
 Portulan's own headless runs in `.portulan/workspace.json`, and a default an adopter receives only through
 a later change that says so. **The interactive switches are measured on a maintainer's device**, from real
 sessions, because a hosted session never takes the snapshot and a headless run is not how people work.
@@ -73,7 +77,7 @@ lifetime, which is the ledger's to count, not this page's.
 run, each row gets its sequence's three lines, the figures behind C (first, warm, cold, runs started warm)
 and the switch's verdict, with the host version and the date.
 
-**Before**, from the comparison thread's A/B/C scoring of 2026-09-24 of its five-run set, the boot task on
+**Before**, from the A/B/C scoring of the maintainer's five-run measurement of 2026-09-24, the boot task on
 main at `b91055b`, a mean of five runs: **A 175k tokens**, B 371k tokens, and C 111 at one-hour writes and
 82 at five-minute writes, with the task before the 2026-09-23 context work at 100 (there A was 156k and B
 332k). A 70% cut puts that boot task at A 47k and B 100k. Over that set the host's prefix was 12.2k tokens
