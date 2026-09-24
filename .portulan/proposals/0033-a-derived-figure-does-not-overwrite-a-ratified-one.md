@@ -47,7 +47,7 @@ pass may not make"* is, and it is written the same way — a mandate presented a
 is worse than one that admits what holds it up.
 
 **Provenance.** `form=link`
-`href=../handoffs/2026-08-26-the-loop-is-heavier-than-the-rule-that-bounds-it.md` — milestone 8 session
+`href=https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-08-26-the-figure-going-to-him-came-from-the-wrong-thirty.md` — milestone 8 session
 3, 2026-08-26, the first run of `cli/review-meter.mjs` against `sleepy-panda-srl/portulan`. The
 underlying practice is older and is his: on
 [#105](https://github.com/sleepy-panda-srl/portulan/pull/105) the corrected round count was **held back
