@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-09-23
 **scope:** workspace — every pull request into `main` in this repository
 **provenance:** `form=link` `href=../handoffs/2026-07-27-nothing-merges-behind-main.md`
 — the maintainer's ruling, Marius Cetanas, 2026-07-27, and the state of the repository when it was

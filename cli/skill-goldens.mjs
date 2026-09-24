@@ -278,7 +278,7 @@ export const PREDICATES = {
 
 /**
  * The containment case: every budget id the Workspace Definition declares must be named in the
- * routing sentence `consolidate` states. Derived from the schema on both sides — a fifth budget, or a
+ * routing sentence `consolidate` states. Derived from the schema on both sides — a new budget key, or a
  * rename, reddens rather than drifting.
  */
 export function budgetIds(repoRoot) {

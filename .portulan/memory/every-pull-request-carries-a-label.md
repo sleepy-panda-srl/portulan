@@ -1,59 +1,22 @@
 **type:** rule
-**scope:** workspace — every pull request opened against this repository
+**dated:** 2026-09-24
+**scope:** workspace — every pull request opened here
 **provenance:** `form=link` `href=../handoffs/2026-07-27-nothing-merges-behind-main.md`
-— the maintainer's ruling, Marius Cetanas, 2026-07-27: *"each PR should have a label and be labeled
-accordingly"*, taken in the same session as the merge-sync rule and with the same instruction to set it
-in GitHub rather than leave it as prose. The state it was taken in: **45 pull requests, exactly one of
-them labelled** — #27, and by Dependabot rather than by anyone here — with the only labels on the
-repository being GitHub's stock issue set plus the two Dependabot created for itself.
+— the maintainer, 2026-07-27: *"each PR should have a label and be labeled accordingly"*, ruled when 45
+pull requests had one label between them, Dependabot's.
 
-Every pull request carries at least one label from the declared set in
-[`../labels.json`](../labels.json) — `doctrine`, `workspace`, `mechanism`, `record`, `infrastructure`,
-plus `dependencies` and `github_actions` for the ones Dependabot labels itself. Extra labels beyond the
-set are allowed. Apply it at open time, in the same command:
+Every pull request carries at least one label from [`../labels.json`](../labels.json), extras allowed,
+set in `gh pr create --label …`. Labelling later works: the check re-runs on `labeled`, which makes it a
+gate, not a trap.
 
-```
-gh pr create --label workspace --label record …
-```
+**Why it holds:** a diff of prose says where a change is, never what kind it was. The set stays small
+and `covers` guides rather than matches: a path matcher goes falsely red on an incidental touch of
+`core/`, and a false red gets a check switched off. A machine checks that a declared label exists; a
+person judges that it fits.
 
-**Why it holds:** a repository whose changes are almost all prose loses the ability to say what a change
-*was*. Every pull request here is a diff of Markdown; `git log --stat` distinguishes them by path and
-nothing distinguishes them by kind, so "which pull requests changed doctrine this month" is a question
-the record cannot answer without reading forty bodies. That is the same failure the handoff series
-exists to prevent, as the Session log did until 2026-09-23, one layer down, and the librarian at
-milestone 5 mines exactly this kind of series. GitHub's stock labels cannot do it — `documentation` is
-true of nearly every change here and therefore says nothing — which is why the set is derived from this
-repository's own structure instead.
-
-**Why the set is small, and why `covers` is guidance rather than a matcher.** Five labels plus two
-inherited. A taxonomy that needs a decision tree is the ceremony [`../dod.md`](../dod.md) explicitly
-refuses, and a path→label matcher would produce false reds on the first pull request that touches
-`core/` incidentally — and *"a false red is the failure that gets a whole check switched off"*. So the
-binary half is machine-checked (**is there a declared label**) and the judgement half stays human
-(**is it the right one**), which is the same split provenance already has: `doctor` fails a rule with no
-stamp and cannot tell whether the stamp is true.
-
-**When to apply:** at `gh pr create`, before review. Labelling after the fact still works — the checker
-re-runs on `labeled`, which is deliberate and is the difference between a gate and a trap.
-
-**The rail, and the one step still outstanding.**
-[`../../.github/workflows/pr-labels.yml`](../../.github/workflows/pr-labels.yml) reads
-[`../labels.json`](../labels.json) for the set and the **API** for the labels the pull request carries
-now, and fails one carrying no declared label. Tested red-first against four synthetic payloads (none,
-undeclared-only, declared, and an unreadable policy) and then against three live pull requests: #46
-green on three labels, #45 red on none, a nonexistent number red with a stated reason. **The API read
-replaced a payload read on the first run of this checker in anger, and the reason is worth keeping:**
-`gh pr create --label` opens the pull request and applies labels as a *second* operation, so the
-`opened` event's payload is empty and the check went red on a pull request that was labelled from the
-first second. A spurious red on every newly-opened pull request is the false-red failure this rule's own
-reasoning warns about — found by watching the check run rather than by trusting it. Reading current
-state also means the answer is about the pull request, not about the event that woke the job. **It became
-a required status check on 2026-07-27**, and the sequence it waited for is the point: a required context
-that has never reported blocks every open
-pull request that does not carry the workflow, and `enforce_admins: true` leaves nobody able to force
-past it — the lesson [`../proposals/0004-ci-runs-every-declared-recipe.md`](../proposals/0004-ci-runs-every-declared-recipe.md)
-paid for. So the workflow merged to `main` first (#46), reported green on real pull requests, and only
-then did `pr-labeled` join the floor, on the maintainer's explicit instruction, by exactly this command:
+**The rail**, [`pr-labels.yml`](../../.github/workflows/pr-labels.yml), is required since 2026-07-27.
+Contexts go whole, each with its `app_id`: the array is replaced, and a context without one passes for
+any App reporting its name.
 
 ```
 gh api -X PATCH repos/sleepy-panda-srl/portulan/branches/main/protection/required_status_checks \
@@ -62,46 +25,13 @@ gh api -X PATCH repos/sleepy-panda-srl/portulan/branches/main/protection/require
 JSON
 ```
 
-**Both contexts are listed, and both carry `app_id`**, because the `checks` array is sent whole rather
-than added to — and a required check written without its `app_id` is satisfiable by any GitHub App
-reporting that name, which is the hole proposal `0001` closed. `strict` is repeated for the same reason:
-send the state you want, rather than relying on what a `PATCH` leaves alone. `--input` reads a file or,
-as here, stdin; inline JSON as its argument is treated as a filename and fails.
-
-**Applied 2026-07-27, and read back whole.** The one field that moved was the addition: `contexts` and
-`checks` gained `pr-labeled`, `workspace-verify` kept its `app_id` pin, and `strict`, `enforce_admins`,
-conversation resolution, the force-push and deletion blocks and the review count were all compared
-against a before-image and unmoved. It went on at a moment with **zero open pull requests**, which is the
-cheapest time to add a required context: there was nothing in flight for a newly-required check to trap.
-
-**Then demonstrated, red first, on the pull request carrying this paragraph.** It was opened
-deliberately **unlabelled**: `pr-labeled` reported `fail` and the pull request read
-`mergeStateStatus: BLOCKED` with `mergeable: MERGEABLE` — no textual conflict, the platform refusing on
-the required context alone, which is the refusal this row buys. Two labels were then applied and it read
-`pr-labeled` pass, `CLEAN`. **The re-run came from the `labeled` event, with no push**, which is the
-half the workflow's trigger list exists for: without `labeled`/`unlabeled` the check would have stayed
-red with no way to clear it but an empty push — a gate that fails closed and traps the change. That
-comment was a prediction until this run; it is now a measurement.
-This is now a floor rather than a habit, and the sentence that used to say otherwise was corrected in the
-same change rather than left to be discovered
-([`a-stated-enforcer-must-be-the-real-one.md`](a-stated-enforcer-must-be-the-real-one.md) — a rule
-understating its own enforcement is the same defect as one overstating it).
-
-**Adding a label to [`../labels.json`](../labels.json) does not create it on GitHub**, and until it
-exists nobody can apply it — so the policy would name a label that reds every pull request trying to use
-it. This is the other half, run from the repository root, and it is idempotent (`--force` updates an
-existing label rather than failing):
+**Adding a label to `labels.json` does not create it on GitHub**, and nobody can apply it until it
+exists. From the root, idempotent, skipping Dependabot's two:
 
 ```
 node -e 'for (const l of require("./.portulan/labels.json").labels) if (l.appliedBy !== "dependabot") console.log([l.name, l.color, l.description].join("\t"))' \
   | while IFS=$'\t' read -r name color desc; do gh label create "$name" --color "$color" --description "$desc" --force; done
 ```
 
-The `appliedBy` filter is what keeps it from re-creating Dependabot's two, which are declared here but
-owned there.
-
-**Retire when:** the labels stop being read — if nothing (the librarian, a release-note generator, a
-query anyone actually runs) consumes them, the rule is decoration with a gate attached, and the honest
-move is to delete both rather than keep paying for them. Related:
-[`a-branch-syncs-with-main-before-it-merges.md`](a-branch-syncs-with-main-before-it-merges.md), the
-other half of what the maintainer ruled the same day.
+**Retire when:** nothing reads the labels (the librarian, release notes, a query anyone runs): delete
+the rule and its gate together. Related: [merge sync](a-branch-syncs-with-main-before-it-merges.md).

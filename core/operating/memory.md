@@ -46,6 +46,15 @@ which is worse than no check at all. So the breach is a rail and the *remedy* is
 gate holds. Written down rather than implied, because a rule nothing checks that is presented as one
 that does is the failure this page would otherwise be demonstrating.
 
+**The cap can bind forward only** (Workspace Definition 2.11): with `memory.store.budget.cutoff`
+declared beside it, it binds the records dated after the cutoff, and one dated on or before it is
+reported, never railed, in proposal `0037`'s shape for a handoff. A record's date is its `**dated:**`
+line, the day its text last changed, because a verify rail may not read git; an edit re-dates it, so
+an old record meets the cap in the change that next rewrites it, while compression is that change's
+to do. A record whose date cannot be read is refused. The cutoff never moves earlier, and moves later
+only with a cap that tightens: like the raise above, a rule the human gate holds, because a moved
+cutoff unbinds what the cap bound and only history shows the move.
+
 ## One fact per memory, with provenance
 
 A memory holds one fact and states where it came from. A rule links to the **incident** that created
@@ -62,8 +71,8 @@ curated context improves it, and the difference is measurable. So capture is age
 consolidation into the curated layer is a reviewed step. _(Provenance: ETH Zurich, arXiv:2602.11988 —
 generated context hurts, curated helps. The scheduled librarian arrived in milestone 5: a pass that
 regenerates each generated index, ages every record from git, nags a sealed stamp's owner, chases
-undecided proposals, drafts demotions, and **runs consolidation** — filed as a pull request nobody has
-to remember to open. What consolidation means on a schedule is bounded rather than claimed: the pass
+undecided proposals, drafts demotions, and **runs consolidation** — its report filed with a pull request
+nobody has to remember to open whenever the pass changed the tree. What consolidation means on a schedule is bounded rather than claimed: the pass
 reports how close each budget is to its rail, and surfaces records citing one incident as a
 **question**, because `../skills/consolidate/SKILL.md` merges records that are one *mechanism* and one
 incident routinely teaches several. Its steps 3 and 4 — surfacing contradictions and compressing what

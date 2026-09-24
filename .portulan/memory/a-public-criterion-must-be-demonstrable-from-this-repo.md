@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-08-18
 **scope:** workspace — anyone writing or amending a milestone exit criterion in `docs/plan.md`
 **provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/15`
 — milestone 2 spent a session and part of the next "open on the pilot clause", with the maintainer asked twice to do

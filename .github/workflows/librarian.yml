@@ -85,7 +85,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  # Two passes writing the same dated branch would race on the same three files. Never cancel the one
+  # Two passes writing the same dated branch would race on the same files. Never cancel the one
   # already running: it may have pushed and not yet opened the pull request, and cancelling there
   # leaves a branch nothing points at.
   group: librarian
@@ -201,12 +201,14 @@ jobs:
           DATE: ${{ steps.existing.outputs.date }}
         run: |
           set -uo pipefail
-          # `--write` writes the dated handoff carrying the pass's report, then regenerates each index
-          # the workspace keeps — in that order, which is not an implementation detail: the handoff is a
-          # member of the series a kept handoff index covers, and an index regenerated first would be
-          # stale in the commit this job pushes. No `--log`: the Session log retired on 2026-09-23, and
-          # a change's record is its commit.
-          node cli/librarian.mjs --as-of "$DATE" --write --reviews "$RUNNER_TEMP/reviews.json" .portulan examples | tee "$RUNNER_TEMP/pass.txt"
+          # `--write` regenerates an index that has drifted, the pass's only write to the tree. The
+          # report goes to `RUNNER_TEMP`, outside it: a pass leaves no open work, so it writes no
+          # handoff (2026-09-24), and the Session log retired on 2026-09-23. `--since` is the previous
+          # Monday's pass, since the cadence is this scheduler's and the pass remembers nothing; a week
+          # the platform skipped leaves its handoffs out of the list and in the unlinked count.
+          since=$(date -u -d "$DATE - 7 days" +%F)
+          node cli/librarian.mjs --as-of "$DATE" --since "$since" --write --report "$RUNNER_TEMP/report.md" \
+            --reviews "$RUNNER_TEMP/reviews.json" .portulan examples | tee "$RUNNER_TEMP/pass.txt"
           rc=${PIPESTATUS[0]}
           if [ "$rc" -ne 0 ]; then
             printf '::error::the librarian pass exited %s — it could not run, so nothing is filed\n' "$rc"
@@ -215,27 +217,31 @@ jobs:
           {
             printf '### The pass\n\n```\n'
             cat "$RUNNER_TEMP/pass.txt"
-            printf '```\n'
+            printf '```\n\n'
+            cat "$RUNNER_TEMP/report.md"
           } >>"$GITHUB_STEP_SUMMARY"
 
-      - name: Nothing changed?
+      - name: Did the pass change the tree?
         if: steps.existing.outputs.filed == 'no'
         id: diff
         shell: bash
         run: |
           set -uo pipefail
-          # Belt and braces. A pass always writes a handoff and a log entry, so this should never be
-          # empty — but a pull request with no diff cannot be opened, and finding that out from
-          # GitHub's error rather than from our own check is how a job's real failure gets buried
-          # under a symptom.
+          # Usually not: every pull request's `index` recipe keeps `main`'s indexes current, and the
+          # pass writes nothing else. A pull request with no diff cannot be opened, so an unchanged
+          # tree files nothing and the report stays in this run's summary, above. Filing it as an
+          # issue instead is a new act for the gate map's identity table, which is the maintainer's
+          # to add.
           if [ -z "$(git status --porcelain)" ]; then
-            printf '::error::the pass changed nothing, which it is not supposed to be able to do\n'
-            exit 1
+            printf 'changed=no\n' >>"$GITHUB_OUTPUT"
+            printf '::notice::the pass changed nothing in the tree, so nothing is filed; its report is in this run'"'"'s summary\n'
+            exit 0
           fi
+          printf 'changed=yes\n' >>"$GITHUB_OUTPUT"
           git status --porcelain
 
       - name: Commit and push the branch
-        if: steps.existing.outputs.filed == 'no'
+        if: steps.existing.outputs.filed == 'no' && steps.diff.outputs.changed == 'yes'
         shell: bash
         env:
           BRANCH: ${{ steps.existing.outputs.branch }}
@@ -251,14 +257,13 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout -b "$BRANCH"
           git add -A
-          # The trailer `docs.sh`'s `record` check reads: an App's commit owes none, and this one states
-          # why it holds anyway — the pass composes no new prose at run time (`renderLogEntry` in
-          # `cli/librarian.mjs` carries the argument).
+          # The trailer `docs.sh`'s `record` check reads, and why it holds: the pass composes no new
+          # prose at run time (`cli/librarian.mjs`'s header carries the argument).
           git commit -m "The librarian's pass of ${DATE}" -m "Seam-scan: clean by construction; this pass composes no new prose at run time."
           git push -u origin "$BRANCH"
 
       - name: Open the pull request as the agent
-        if: steps.existing.outputs.filed == 'no'
+        if: steps.existing.outputs.filed == 'no' && steps.diff.outputs.changed == 'yes'
         shell: bash
         env:
           BRANCH: ${{ steps.existing.outputs.branch }}
@@ -284,19 +289,22 @@ jobs:
           }
           export GH_TOKEN="$token"
 
-          body=$(cat <<'EOF'
-          The scheduled librarian's pass. Every line in this branch is derived — a filename, a date git
-          recorded, a count, or a retirement condition quoted verbatim out of a record. The pass composes
-          no sentence of its own, which is what makes it safe to file on a cron.
+          # The pass's report follows this preamble, so the description is where it is read.
+          body="$RUNNER_TEMP/body.md"
+          cat >"$body" <<'EOF'
+          The scheduled librarian's pass. Every line in this branch and in the report below is derived:
+          a filename, a date git recorded, a count, or a retirement condition quoted verbatim out of a
+          record. The pass composes no sentence of its own, which is what makes it safe to file on a cron.
 
           **Nothing here is a decision.** The nags are addressed to the maintainer and none of them is
-          answered by re-running the pass. The handoff in this diff is the report; read it there.
+          answered by re-running the pass. The diff is the index the pass found out of date.
 
           Opened by the agent identity rather than by `GITHUB_TOKEN` — a pull request raised by the
           repository's own token starts no `pull_request` runs, so `workspace-verify` and `pr-labeled`
           would never report and this could never merge. See `.github/workflows/librarian.yml`.
+
           EOF
-          )
+          cat "$RUNNER_TEMP/report.md" >>"$body"
           # The URL is captured rather than the branch name re-resolved. `gh pr edit "$BRANCH"` asks
           # the CLI to find a pull request from a head-branch string, which is one more thing that can
           # answer wrongly at 06:00 on a Monday — and answering wrongly here leaves the pull request
@@ -305,7 +313,7 @@ jobs:
           url=$(gh pr create \
             --base main --head "$BRANCH" \
             --title "The librarian's pass of ${DATE}" \
-            --body "$body") || {
+            --body-file "$body") || {
               printf '::error::could not open the pull request; the branch %s is pushed and waiting\n' "$BRANCH"
               exit 1
             }

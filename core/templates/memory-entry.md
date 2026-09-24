@@ -8,6 +8,7 @@
 ---
 
 **type:** rule | decision | reference | glossary
+**dated:** {YYYY-MM-DD — the day this record's text last changed; an edit re-dates it. The per-record cap binds by it where the workspace declares a cutoff}
 **scope:** {the persona / repo / workspace this belongs to — memory is per-agent, not global}
 **provenance:** {one of the two forms below — a rule carrying neither is taste, and `doctor` rejects it}
 

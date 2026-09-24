@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-07-27
 **scope:** workspace — anyone shipping a repository that is also a plugin, and putting enforcement in it
 **provenance:** `form=link` `href=../handoffs/2026-07-27-the-enforcement-compiler.md`
 — milestone 4, session 0. The enforcement compiler needed somewhere to put generated hooks, and the

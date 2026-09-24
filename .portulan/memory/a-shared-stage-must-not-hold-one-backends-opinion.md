@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-07-28
 **scope:** workspace — anyone writing a shared stage that several consumers read
 **provenance:** `form=link` `href=../handoffs/2026-07-27-the-floor-backend-and-the-matrix.md`
 — milestone 4, session 1. The enforcement compiler's shared stage refused two whole tiers before any

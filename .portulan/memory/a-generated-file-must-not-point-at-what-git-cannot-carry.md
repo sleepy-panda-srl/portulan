@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-08-18
 **scope:** workspace — Portulan's generated artifacts and its verify recipes
 **provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/117`
 

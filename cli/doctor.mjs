@@ -1231,8 +1231,13 @@ export async function inspect(workspaceDir, options = {}) {
         // a manifest whose own version's validator refuses it as unknown. A key is refused at birth, when no
         // manifest can newly fail it; refusing an older one now could fail a manifest that passes today, which
         // ../spec/README.md calls a MAJOR. Raised by Copilot on #440, for `context`, the first key born gated.
-        // `slots.context` is the second, at 2.10, and a slot is read one level down.
-        for (const [key, since, value] of [["context", 9, workspace.context], ["slots.context", 10, workspace.slots?.context]]) {
+        // `slots.context` is the second, at 2.10, and a slot is read one level down. The memory cap's cutoff
+        // is the third, at 2.11.
+        for (const [key, since, value] of [
+            ["context", 9, workspace.context],
+            ["slots.context", 10, workspace.slots?.context],
+            ["memory.store.budget.cutoff", 11, workspace.memory?.store?.budget?.cutoff],
+        ]) {
             if (major === 2 && minor < since && value !== undefined) {
                 fail(
                     "schema",
@@ -1984,6 +1989,30 @@ export async function inspect(workspaceDir, options = {}) {
                 "A token covers at least one byte, so a smaller figure is tokens per byte entered inverted. The " +
                 "declared keyword subset has no `minimum`, so this is checked here",
         );
+    }
+
+    // Workspace Definition 2.11's cutoff: the subset's pattern admits `2026-02-30`, and a cutoff with no
+    // `record_kilobytes` beside it says when a cap nobody declared binds. Both are refused where the
+    // manifest is read, as `cli/index.mjs` refuses them with exit 2 at the rail.
+    const cutoff = workspace.memory?.store?.budget?.cutoff;
+    if (cutoff !== undefined) {
+        const m = typeof cutoff === "string" ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(cutoff) : null;
+        const at = new Date(0);
+        if (m) at.setUTCFullYear(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+        if (!m || at.toISOString().slice(0, 10) !== cutoff) {
+            fail(
+                "schema",
+                `memory.store.budget.cutoff is ${JSON.stringify(cutoff)}, which is not a real day written YYYY-MM-DD. ` +
+                    "The declared keyword subset's pattern admits a day that does not exist, so this is checked here",
+            );
+        }
+        if (workspace.memory?.store?.budget?.record_kilobytes === undefined) {
+            fail(
+                "cross",
+                "`memory.store.budget.cutoff` is declared with no `record_kilobytes` beside it. A cutoff says which " +
+                    "records the per-record cap binds, so alone it configures nothing while reading as configured",
+            );
+        }
     }
 
     if (workspace.librarian?.staleness?.proposal_days !== undefined && !workspace.slots?.proposals) {

@@ -44,8 +44,7 @@ import {
     retireWhen,
     proposalPending,
     passWorkspace,
-    renderRecord,
-    renderLogEntry,
+    renderReport,
     run,
 } from "./librarian.mjs";
 
@@ -521,7 +520,7 @@ describe("passWorkspace — refusals", () => {
             ["r.md"],
             "the uncommitted record is not stale; the genuinely old one still is",
         );
-        assert.match(renderRecord([result], { asOf: "2026-06-15" }), /not yet committed/);
+        assert.match(renderReport([result], { asOf: "2026-06-15" }), /not yet committed/);
     });
 
     test("a STAGED record is uncommitted too — tracking is the wrong question", () => {
@@ -635,17 +634,28 @@ describe("passWorkspace — refusals", () => {
 // The record the pass writes
 // ===========================================================================================
 
-describe("renderRecord", () => {
+describe("renderReport", () => {
     const passOf = (files, extra = {}) => {
         const dir = repo(files, { workspace: MANIFEST({ librarian: { staleness: STALENESS }, ...extra }) });
         return { dir, result: passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }) };
     };
 
-    test("is a handoff in the shape the repository's own rail enumerates", () => {
+    test("is a report headed for the pass, and not a handoff: a pass leaves no open work", () => {
         const { result } = passOf({ ".portulan/memory/r.md": [linked(), "2026-06-01"] });
-        const text = renderRecord([result], { asOf: "2026-06-15" });
-        assert.match(text, /^# Handoff — /m);
+        const text = renderReport([result], { asOf: "2026-06-15" });
+        assert.match(text, /^# The librarian's scheduled pass$/m);
+        assert.doesNotMatch(text, /Handoff —|Session log/);
         assert.match(text, /\*\*Date:\*\* 2026-06-15/);
+    });
+
+    test("names the records a forward-only cap leaves unbound, as the index recipe reports them", () => {
+        const memory = { index: { path: "memory-index.md" }, store: { budget: { record_kilobytes: 1, cutoff: "2026-06-10" } } };
+        const { result } = passOf(
+            { ".portulan/memory/old.md": [linked("x".repeat(3000)).replace("**scope:**", "**dated:** 2026-06-01\n**scope:**"), "2026-06-01"] },
+            { memory },
+        );
+        const store = renderReport([result], { asOf: "2026-06-15" }).split("\n").find((l) => l.startsWith("**Store.**"));
+        assert.match(store, /1 record\(s\) dated on or before the cutoff \(2026-06-10\) are over the per-record cap of 1 KB: reported, never railed/);
     });
 
     test("the per-record distance NAMES the record it measured", () => {
@@ -660,7 +670,7 @@ describe("renderRecord", () => {
             },
             { memory },
         );
-        const text = renderRecord([result], { asOf: "2026-06-15" });
+        const text = renderReport([result], { asOf: "2026-06-15" });
         assert.match(text, /Largest record: [\d.]+ of 8 KB \(\d+%\) — `big\.md`/);
         assert.doesNotMatch(text, /no records yet/);
     });
@@ -673,7 +683,7 @@ describe("renderRecord", () => {
         // with no provenance, and this pass counts it either way. Raised by Copilot on #215.
         const memory = { index: { path: "memory-index.md" }, store: { budget: { record_kilobytes: 8 } } };
         const { result } = passOf({ ".portulan/memory/empty.md": ["", "2026-06-01"] }, { memory });
-        const text = renderRecord([result], { asOf: "2026-06-15" });
+        const text = renderReport([result], { asOf: "2026-06-15" });
         assert.equal(result.counts.records, 1);
         assert.match(text, /Largest record: 0 of 8 KB \(0%\) — `empty\.md`/);
         assert.doesNotMatch(text, /no records yet/);
@@ -685,67 +695,24 @@ describe("renderRecord", () => {
         // is a different case the pass refuses outright — `listSeries` will not render an index of
         // nothing, because an empty index compares equal to an empty committed one and would pass.
         const { result } = passOf({ ".portulan/memory/.keep": ["", "2026-06-01"] }, { memory });
-        const text = renderRecord([result], { asOf: "2026-06-15" });
+        const text = renderReport([result], { asOf: "2026-06-15" });
         assert.equal(result.counts.records, 0);
         assert.match(text, /Largest record: .*no records yet/);
     });
 
     test("states the pass date on every claim, so a stale record reads as of when it ran", () => {
         const { result } = passOf({ ".portulan/memory/r.md": [linked(), "2026-06-01"] });
-        const text = renderRecord([result], { asOf: "2026-06-15" });
+        const text = renderReport([result], { asOf: "2026-06-15" });
         assert.match(text, /as of 2026-06-15/i);
     });
 
     test("reports an unfired threshold as unfired rather than omitting the section", () => {
         const { result } = passOf({ ".portulan/memory/r.md": [linked(), "2026-06-01"] });
-        const text = renderRecord([result], { asOf: "2026-06-15" });
+        const text = renderReport([result], { asOf: "2026-06-15" });
         assert.match(text, /nothing/i);
         assert.match(text, /sealed/i, "the sealed section is present even at zero seals");
     });
 
-    test("carries no unindented dated bullet — issue #79's parser reads one as a new log entry", () => {
-        const { result } = passOf({ ".portulan/memory/r.md": [linked(), "2026-06-01"] });
-        const text = renderRecord([result], { asOf: "2026-06-15" });
-        for (const line of text.split("\n")) {
-            assert.doesNotMatch(line, /^- 2[0-9]{3}-/, `unindented dated bullet: ${line}`);
-        }
-    });
-});
-
-describe("renderLogEntry", () => {
-    const entryOf = () => {
-        const dir = repo(
-            { ".portulan/memory/r.md": [linked(), "2026-06-01"] },
-            { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) },
-        );
-        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
-        return renderLogEntry([result], { asOf: "2026-06-15", handoff: "2026-06-15-librarian-pass.md" });
-    };
-
-    test("opens with the shape the record check enumerates entries by", () => {
-        assert.match(entryOf(), /^- 2026-06-15 · /);
-    });
-
-    test("is within the ten-line budget that binds every entry dated after the cutoff", () => {
-        const lines = entryOf().replace(/\n+$/, "").split("\n").length;
-        assert.ok(lines <= 10, `entry is ${lines} lines`);
-    });
-
-    test("carries a seam attestation the record check can read", () => {
-        // The exact grep `.portulan/verify/docs.sh` runs, including the `[[:space:]]+` fix: the words
-        // adjacent, `clean` within 120 characters containing no full stop.
-        const joined = entryOf().replace(/\n/g, " ");
-        assert.match(joined, /seam\s+scan[^.]{0,120}clean/i);
-    });
-
-    test("links the handoff it was written beside", () => {
-        assert.match(entryOf(), /2026-06-15-librarian-pass\.md/);
-    });
-
-    test("has exactly one unindented dated bullet — its own opening line", () => {
-        const opens = entryOf().split("\n").filter((l) => /^- 2[0-9]{3}-/.test(l));
-        assert.equal(opens.length, 1);
-    });
 });
 
 // ===========================================================================================
@@ -844,32 +811,35 @@ describe("run", () => {
 
     test("a value-bearing flag with no value is refused rather than swallowing a flag", () => {
         assert.throws(() => parseArgs(["--as-of"]), LibrarianError);
-        assert.throws(() => parseArgs(["--log"]), LibrarianError);
-        assert.throws(() => parseArgs(["--log", "--write", "a"]), LibrarianError);
+        assert.throws(() => parseArgs(["--report"]), LibrarianError);
+        assert.throws(() => parseArgs(["--report", "--write", "a"]), LibrarianError);
+        assert.throws(() => parseArgs(["--since", "--write", "a"]), LibrarianError);
+    });
+
+    test("the Session log's flag is retired with the log, and refused as unknown", () => {
+        assert.throws(() => parseArgs(["--log", "docs/plan.md", "a"]), /unknown option "--log"/);
     });
 
     test("and where the grammar cannot help, the empty workspace list does", () => {
-        // `--log .portulan` is not detectable at parse time — `.portulan` is a perfectly good value,
+        // `--report .portulan` is not detectable at parse time — `.portulan` is a perfectly good value,
         // and any `--flag value` grammar consumes it. What catches the caller who meant it as a
         // workspace is the check one layer up: no workspaces left, so nothing is examined and the run
         // says so and exits 2 rather than reporting a green over an empty list. Asserted because it is
         // the *only* thing standing between that typo and a pass that examined nothing.
         const out = say();
-        assert.equal(run(["--log", ".portulan"], out), 2);
+        assert.equal(run(["--report", ".portulan"], out), 2);
         assert.match(out.lines.join("\n"), /usage/);
     });
 
     test("the flags it does understand still parse, in any order", () => {
-        assert.deepEqual(parseArgs(["--as-of", "2026-06-15", "--write", "--log", "docs/plan.md", "--reviews", "r.json", "a", "b"]), {
-            asOf: "2026-06-15",
-            logPath: "docs/plan.md",
-            reviewsPath: "r.json",
-            write: true,
-            dirs: ["a", "b"],
-        });
+        assert.deepEqual(
+            parseArgs(["--as-of", "2026-06-15", "--write", "--report", "/tmp/r.md", "--since", "2026-06-08", "--reviews", "r.json", "a", "b"]),
+            { asOf: "2026-06-15", since: "2026-06-08", reportPath: "/tmp/r.md", reviewsPath: "r.json", write: true, dirs: ["a", "b"] },
+        );
         assert.deepEqual(parseArgs(["a", "--write"]), {
             asOf: undefined,
-            logPath: undefined,
+            since: undefined,
+            reportPath: undefined,
             reviewsPath: undefined,
             write: true,
             dirs: ["a"],
@@ -877,7 +847,7 @@ describe("run", () => {
     });
 
     test("`--reviews` needs a value, and a flag is not one", () => {
-        // The same trap `--log` was measured to have: without this, `--reviews --write` sets the path
+        // The same trap a value-bearing flag was measured to have: without this, `--reviews --write` sets the path
         // to `--write` and drops the mode, and the pass then reports *not asked* about a corpus it was
         // handed — a fail-open with a flag in front of it.
         assert.throws(() => parseArgs(["--reviews"]), LibrarianError);
@@ -1085,6 +1055,24 @@ describe("passWorkspace — mining incidents", () => {
         const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
         assert.equal(result.mining.incidents.since, "2026-03-01");
         assert.deepEqual(result.mining.incidents.candidates.map((c) => c.file), ["2026-06-01-after.md"]);
+    });
+
+    test("a window its scheduler names with `--since` outranks the newest pass record", () => {
+        // Passes stopped writing records into the series on 2026-09-24, so the newest one only ages.
+        // The scheduler owns the cadence and names when the previous pass ran; the pass remembers nothing.
+        const dir = repo(
+            {
+                ".portulan/memory/a-fact.md": [linked(), "2026-06-01"],
+                ".portulan/handoffs/2026-03-01-librarian-pass.md": [pass("The librarian's scheduled pass"), "2026-03-01"],
+                ".portulan/handoffs/2026-05-01-earlier.md": [pass("Earlier"), "2026-05-01"],
+                ".portulan/handoffs/2026-06-10-this-week.md": [pass("This week"), "2026-06-10"],
+            },
+            { workspace: WITH_HANDOFFS({ librarian: { staleness: STALENESS } }) },
+        );
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", since: "2026-06-08" });
+        assert.equal(result.mining.incidents.since, "2026-06-08");
+        assert.deepEqual(result.mining.incidents.candidates.map((c) => c.file), ["2026-06-10-this-week.md"]);
+        assert.throws(() => passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", since: "last week" }), LibrarianError);
     });
 
     test("an incident dated the same day as the last pass is inside the window, not lost to it", () => {
@@ -1301,18 +1289,11 @@ describe("a pass leaves the tree it just wrote to green", () => {
         return fn;
     };
 
-    test("the handoff index covers the handoff the pass itself writes", () => {
-        // **This is the fail-open the session-open checkpoint found, and it would have arrived on the
-        // first real run.** A pass is a session, so it ends by writing a dated handoff INTO
-        // `slots.handoffs` — a member of the series the handoff index covers. Regenerate that index
-        // during the pass, as the memory index used to be, and it is stale in the very commit the pass
-        // pushes: `index.sh` reds the pull request, `workspace-verify` fails, and the pull request
-        // this milestone's criterion is demonstrated by cannot merge. Nobody is watching at 06:00 on
-        // a Monday.
-        //
-        // The assertion is deliberately end-to-end rather than a check that some function was called
-        // in some order: what has to be true is that the TREE the pass leaves behind passes the recipe
-        // that guards it.
+    test("a write pass writes no handoff, puts its report where it is told, and leaves a tree the recipe passes", () => {
+        // A pass leaves no open work, so it writes nothing into the series (2026-09-24); what it found
+        // goes to the path its scheduler names, outside the tree, and the only write to the tree is an
+        // index that had drifted. End-to-end, because what has to be true is that the TREE the pass
+        // leaves behind passes the recipe that guards it, or the pull request it files cannot merge.
         const m = MANIFEST({
             librarian: { staleness: STALENESS },
             memory: { index: { path: "memory-index.md" } },
@@ -1323,52 +1304,88 @@ describe("a pass leaves the tree it just wrote to green", () => {
             {
                 ".portulan/memory/r.md": [linked(), "2026-06-01"],
                 ".portulan/handoffs/2026-06-01-x.md": ["# Handoff — x\n\nBody.\n", "2026-06-01"],
-                // A workspace that keeps its handoff index, as `init` drafts one: a copy on disk is what
-                // `index` regenerates and compares. One that keeps none has nothing to go stale.
                 ".portulan/handoffs-index.md": ["", "2026-06-01"],
             },
             { workspace: m },
         );
+        const report = path.join(scratch(), "report.md");
 
         const out = say();
-        assert.equal(run(["--as-of", "2026-06-15", "--write", path.join(dir, ".portulan")], out), 0);
+        assert.equal(run(["--as-of", "2026-06-15", "--write", "--report", report, path.join(dir, ".portulan")], out), 0);
 
-        // The record the pass wrote is really in the series...
-        const written = path.join(dir, ".portulan/handoffs/2026-06-15-librarian-pass.md");
-        assert.ok(fs.existsSync(written), "the pass wrote its own handoff");
-
-        // ...and the index the recipe checks already knows about it.
-        const verdict = inspectIndex(path.join(dir, ".portulan"));
-        assert.deepEqual(
-            verdict.findings.map((f) => f.message),
-            [],
-            "the tree a pass leaves behind must pass `index.sh` — otherwise the pull request it files cannot merge",
-        );
-        assert.match(fs.readFileSync(path.join(dir, ".portulan/handoffs-index.md"), "utf8"), /2026-06-15-librarian-pass\.md/);
+        assert.deepEqual(fs.readdirSync(path.join(dir, ".portulan/handoffs")), ["2026-06-01-x.md"], "the pass wrote no handoff");
+        assert.match(fs.readFileSync(report, "utf8"), /^# The librarian's scheduled pass/);
+        assert.deepEqual(inspectIndex(path.join(dir, ".portulan")).findings.map((f) => f.message), []);
     });
 
-    test("a pass that could not write its record does not regenerate an index either", () => {
-        // An index regenerated over a series missing the handoff that belongs in it is *current about
-        // the wrong tree* — worse than stale, because it is confidently wrong and the recipe agrees
-        // with it.
+    test("a pass that could not write its report does not regenerate an index either", () => {
+        // A pass that did not do everything it was asked files nothing, so it changes nothing. The
+        // report path is a directory, which no write can replace, as root or not.
         const m = MANIFEST({ librarian: { staleness: STALENESS }, memory: { index: { path: "memory-index.md" } } });
-        m.slots.handoffs = "handoffs/";
-        const dir = repo(
-            {
-                ".portulan/memory/r.md": [linked(), "2026-06-01"],
-                ".portulan/handoffs/2026-06-01-x.md": ["# Handoff — x\n\nBody.\n", "2026-06-01"],
-            },
-            { workspace: m },
-        );
-        // Make the series unwritable so the record cannot land.
-        fs.chmodSync(path.join(dir, ".portulan/handoffs"), 0o500);
-        try {
+        const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: m });
+        const out = say();
+        assert.equal(run(["--as-of", "2026-06-15", "--write", "--report", scratch(), path.join(dir, ".portulan")], out), 2);
+        assert.match(out.lines.join("\n"), /cannot write the report/);
+        assert.equal(fs.existsSync(path.join(dir, ".portulan/memory-index.md")), false);
+    });
+
+    test("a report named inside the tree is refused, and nothing is written or regenerated", () => {
+        // A report in the tree is a file the next commit carries, as the workflow stages with `git add
+        // -A`, and in the store it would be read as a record. Refused inside the workspace, inside the
+        // tree it declares, and through a link from outside into either, dangling or not: Copilot, #457,
+        // a dangling link names a file that does not exist yet, and a write through it creates it.
+        const m = MANIFEST({ tree: "../", librarian: { staleness: STALENESS }, memory: { index: { path: "memory-index.md" } } });
+        const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: m });
+        const outside = scratch();
+        fs.symlinkSync(dir, path.join(outside, "into-tree"));
+        fs.symlinkSync(path.join(dir, "new-report.md"), path.join(outside, "dangling.md"));
+        fs.symlinkSync("dangling.md", path.join(outside, "chain.md"));
+        fs.symlinkSync(path.join(dir, ".portulan/memory/new"), path.join(outside, "dangling-dir"));
+        const reports = [
+            path.join(dir, ".portulan/memory/zz.md"),
+            path.join(dir, "report.md"),
+            path.join(outside, "into-tree", "report.md"),
+            path.join(outside, "dangling.md"),
+            path.join(outside, "chain.md"),
+            path.join(outside, "dangling-dir", "report.md"),
+        ];
+        for (const report of reports) {
             const out = say();
-            assert.equal(run(["--as-of", "2026-06-15", "--write", path.join(dir, ".portulan")], out), 2);
-            assert.equal(fs.existsSync(path.join(dir, ".portulan/memory-index.md")), false);
-        } finally {
-            fs.chmodSync(path.join(dir, ".portulan/handoffs"), 0o700);
+            assert.equal(run(["--as-of", "2026-06-15", "--write", "--report", report, path.join(dir, ".portulan")], out), 2, report);
+            assert.match(out.lines.join("\n"), /refusing to write the report inside/);
+            assert.equal(fs.existsSync(report), false, report);
         }
+        assert.equal(fs.existsSync(path.join(dir, "new-report.md")), false, "nothing was written through a dangling link");
+        assert.equal(fs.existsSync(path.join(dir, ".portulan/memory/new")), false, "nor a directory made through one");
+        assert.equal(fs.existsSync(path.join(dir, ".portulan/memory-index.md")), false, "and no index was regenerated");
+    });
+
+    test("a report named at a hard link into the tree replaces the link, never the tree's file", () => {
+        // A hard link has no path to resolve, so containment sees only the outside name. Copilot, #457:
+        // a write in place would change the file in the tree through it; a rename replaces the name.
+        const m = MANIFEST({ tree: "../", librarian: { staleness: STALENESS } });
+        const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: m });
+        fs.writeFileSync(path.join(dir, "notes.md"), "the tree's copy\n");
+        const report = path.join(scratch(), "report.md");
+        fs.linkSync(path.join(dir, "notes.md"), report);
+        const out = say();
+        assert.equal(run(["--as-of", "2026-06-15", "--report", report, path.join(dir, ".portulan")], out), 0);
+        assert.equal(fs.readFileSync(path.join(dir, "notes.md"), "utf8"), "the tree's copy\n");
+        assert.equal(fs.statSync(path.join(dir, "notes.md")).nlink, 1, "the outside name no longer shares the file");
+        assert.match(fs.readFileSync(report, "utf8"), /^# The librarian's scheduled pass/);
+        assert.deepEqual(fs.readdirSync(path.dirname(report)), ["report.md"], "and no temporary file is left");
+    });
+
+    test("a workspace whose pass failed still keeps the report out of the tree it declares", () => {
+        // The tree is read from the manifest, not from the pass's result, which a pass that threw
+        // never returns: a workspace this tool refuses to pass still governs its tree.
+        const m = { ...MANIFEST({ tree: "../" }), portulan: { spec: "9.9" } };
+        const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: m });
+        const report = path.join(dir, "report.md");
+        const out = say();
+        assert.equal(run(["--as-of", "2026-06-15", "--report", report, path.join(dir, ".portulan")], out), 2);
+        assert.match(out.lines.join("\n"), /refusing to write the report inside/);
+        assert.equal(fs.existsSync(report), false);
     });
 });
 
@@ -1400,7 +1417,7 @@ describe("the report never claims an index is current when none is declared", ()
             { workspace: m },
         );
         run(["--as-of", "2026-06-15", "--write", path.join(dir, ".portulan")], say());
-        const record = renderRecord([passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" })], { asOf: "2026-06-15" });
+        const record = renderReport([passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" })], { asOf: "2026-06-15" });
         const store = record.split("\n").find((l) => l.startsWith("**Store.**"));
         assert.match(store, /Index: none declared/);
     });
@@ -1416,7 +1433,7 @@ describe("the report never claims an index is current when none is declared", ()
             { workspace: m },
         );
         run(["--as-of", "2026-06-15", "--write", path.join(dir, ".portulan")], say());
-        const record = renderRecord([passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" })], { asOf: "2026-06-15" });
+        const record = renderReport([passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" })], { asOf: "2026-06-15" });
         const series = record.split("\n").find((l) => l.startsWith("**Handoff series.**"));
         assert.match(series, /Index: none declared/);
         assert.doesNotMatch(series, /Index: current/);

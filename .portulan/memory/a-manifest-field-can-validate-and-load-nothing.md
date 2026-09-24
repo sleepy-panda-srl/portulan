@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-07-26
 **scope:** workspace — anyone declaring a component in a host's manifest and believing the declaration
 **provenance:** `form=link` `href=../handoffs/2026-07-26-the-tag-and-the-install.md`
 — milestone 3, session 1. The fresh-machine install demonstration reported `Agents (0)` for a plugin

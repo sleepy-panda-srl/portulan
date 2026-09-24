@@ -1,6 +1,7 @@
 # An answer lands on the thread that raised it
 
 **type:** rule
+**dated:** 2026-09-23
 **scope:** workspace — every pull request against this repository
 **provenance:** `form=link` `href=../handoffs/2026-08-07-the-channel-that-carried-the-findings-and-lost-them.md`
 — the maintainer's ruling of **shape 1** of proposal

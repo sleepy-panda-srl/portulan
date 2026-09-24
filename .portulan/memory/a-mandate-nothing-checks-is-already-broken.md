@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-08-18
 **scope:** workspace — anyone adopting a rule here that no machine yet enforces
 **provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/8`
 — proposal `0002` was accepted on 2026-07-25 and its two-form provenance mandate written into the spec,

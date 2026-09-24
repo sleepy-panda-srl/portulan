@@ -1,4 +1,5 @@
 **type:** rule
+**dated:** 2026-07-28
 **scope:** workspace — anyone building a job that files work into this repository unattended
 **provenance:** `form=link` `href=../proposals/0015-the-librarian-files-as-the-agent.md`
 — milestone 5, session 1. The scheduled librarian's whole deliverable is *files its first real pull

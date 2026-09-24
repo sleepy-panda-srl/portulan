@@ -112,10 +112,9 @@ Honest limits, each with the milestone that closes it:
   ([`../cli/librarian.mjs`](../cli/librarian.mjs), scheduled weekly by
   [`../.github/workflows/librarian.yml`](../.github/workflows/librarian.yml)): it reindexes, ages every
   record from git, nags a sealed stamp's owner to re-validate, chases undecided proposals and drafts
-  demotions, and files the result as a pull request. **It has not filed one yet** — that waits on the
-  merge and on the two repository secrets the workflow needs, which are the maintainer's. **A pass is a session** (the maintainer's ruling,
-  2026-07-28), so it files its report as a dated handoff in [`handoffs/`](handoffs/); the `record`
-  check does not know the difference and does not need to. Two halves of the librarian's charter are **still on demand**: mining incidents and reviews into
+  demotions. Its report is the description of the pull request it opens when it changed the tree, and
+  its run's summary when it did not; it writes no handoff, since a pass leaves no open work
+  (2026-09-24). Two halves of the librarian's charter are **still on demand**: mining incidents and reviews into
   proposals, and running consolidation. On this store nothing currently fires — the thresholds are 90
   / 180 / 30 days and the oldest record is days old — and the pass says so rather than staying silent.
 - **No packs and no rituals.** Nothing this build does yet repeats often enough to earn one.

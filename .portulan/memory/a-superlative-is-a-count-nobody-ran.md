@@ -1,6 +1,7 @@
 # A superlative is a count nobody ran
 
 **type:** rule
+**dated:** 2026-08-18
 **scope:** workspace — anyone writing about a defect class in this repository
 **provenance:** `form=link` `href=../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`
 — that proposal's Limits section reported the census and deliberately did not repair it, on the ground
