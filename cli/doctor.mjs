@@ -83,6 +83,9 @@ import { composedId } from "./recipe-set.mjs";
 // prints its line rather than counting a second way, and the boot closes with the same line
 // (`context --brief`), so a session is never told a figure this report does not give. Proposal `0036`.
 import { alwaysLine } from "./context.mjs";
+// Which form a consumer's records and boot are in, read from the one definition `init`, `vendor` and
+// `upgrade` share, so the report cannot disagree with what they write.
+import { formLine } from "./form.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -2747,6 +2750,17 @@ export async function inspect(workspaceDir, options = {}) {
     // declares, or where a declared budget cannot be judged, which must not read as one that was met.
     const always = alwaysLine(dir, workspace);
     (always.verdict === "over" || always.verdict === "unjudged" ? fail : report)("context", always.line);
+
+    // Always emitted, and never a verdict (2026-09-24): which form this consumer's records and boot are
+    // in. Today's form boots as it did, so it is named with the command that moves it, and fails nothing;
+    // a failure here would turn every workspace drafted before the new form red on the day it arrived.
+    let form;
+    try {
+        form = formLine(dir, workspace);
+    } catch (error) {
+        form = `not read — ${error.message}`;
+    }
+    report("form", form);
 
     return { dir, workspace, findings, stats };
 }

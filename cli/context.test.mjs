@@ -23,6 +23,7 @@ import {
     OFFER_FLOOR_TOKENS,
     REQUIRED_SLOTS,
     STEPS,
+    alwaysLine,
     alwaysTier,
     importsOf,
     measure,
@@ -637,6 +638,32 @@ describe("a budget is a rail only where it is declared", () => {
         delete manifest.tree;
         fs.writeFileSync(path.join(root, ".portulan/workspace.json"), JSON.stringify(manifest));
         assert.equal(measured(root).code, 2);
+    });
+});
+
+describe("over a budget, a card importing the identity whole is told it can become an on-demand read", () => {
+    const context = (tokens) => ({ context: { always: { budget: { tokens } }, ratio: { bytes_per_token: 3, calibrated_by: "a-host" } } });
+    const carded = (manifest) =>
+        repository({ manifest, files: { ".portulan/identity.md": "i".repeat(300), ".claude/rules/portulan/boot.md": "# Portulan boot card\n\n@../../../.portulan/identity.md\n" } });
+    /** `alwaysLine` on the repository's workspace, as `doctor` calls it with the manifest it read. */
+    const lineOf = (root) => {
+        const ws = path.join(root, ".portulan");
+        return alwaysLine(ws, JSON.parse(fs.readFileSync(path.join(ws, "workspace.json"), "utf8")), { bundleRoot: bundle() });
+    };
+    const hint = /the tier imports \.portulan\/identity\.md whole, ~100 tokens: one demotion is to make it an on-demand read, as Portulan's own card does/;
+
+    test("over the budget, the line names the import and the demotion", () => {
+        const line = lineOf(carded(context(50)));
+        assert.equal(line.verdict, "over", line.line);
+        assert.match(line.line, hint);
+    });
+
+    test("within it, or over it with no identity imported, nothing is suggested", () => {
+        assert.doesNotMatch(lineOf(carded(context(1_000))).line, /on-demand read/);
+        const root = repository({ manifest: context(5), files: { "CLAUDE.md": "x".repeat(30) } });
+        const line = lineOf(root);
+        assert.equal(line.verdict, "over", line.line);
+        assert.doesNotMatch(line.line, /on-demand read/);
     });
 });
 

@@ -34,6 +34,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { InitError, SLUG, slugify, parseArgs, scan, draft, collisions, residenceAt, run } from "./init.mjs";
+import { compileGuidance } from "./compile.mjs";
 
 // A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
 // 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
@@ -460,7 +461,10 @@ describe("the draft claims no capability it does not have", () => {
         // check that passes on a word rather than on a claim has stopped checking. Caught by review,
         // and it is the change this repository says to scrutinise hardest: I loosened a check while
         // retargeting it, which is how a green quietly starts meaning less.
-        assert.match(readme, /session-end gate is wired by `compile`, and this draft has not run it/i);
+        // Retargeted again on 2026-09-24, when `init` began compiling the boot card: the draft has run
+        // compile's guidance half, and not the half that writes `.claude/settings.json`, which is where
+        // the Stop hook lives. The claim pinned is that distinction, not the word.
+        assert.match(readme, /session-end gate is wired by `compile`, and this draft has run only its guidance half/i);
     });
 
     test("the help says WHEN the interview runs, and when nothing is asked", async () => {
@@ -681,12 +685,29 @@ describe("draft decides and returns; writing is a separate step", () => {
         assert.equal(fs.existsSync(path.join(dir, ".portulan")), false);
     });
 
-    test("every path in the file set stays inside the target's .portulan/", () => {
+    // Two files sit beside the workspace since 2026-09-24, both at the repository's root where the
+    // records they serve live: lines appended to `.gitignore`, and `changes/README.md`, drafted only
+    // where absent. Named here, so a third cannot join them unnoticed.
+    test("every path in the file set stays inside the target's .portulan/, but the two it drafts beside it", () => {
         const files = draft({ residence: "in-repo", name: "acme", cycle: true, checkpoints: "rituals/checkpoints" }, scan(scratch()));
-        for (const rel of files.keys()) {
+        const beside = new Map([[".gitignore", "append"], ["changes/README.md", "ifAbsent"]]);
+        for (const [rel, file] of files) {
+            if (beside.has(rel)) {
+                assert.ok(file[beside.get(rel)], `${rel} is drafted beside the workspace, and only by ${beside.get(rel)}, never over the repository's own`);
+                continue;
+            }
             assert.equal(rel.startsWith(".portulan/"), true, `${rel} escapes the workspace directory`);
             assert.equal(rel.includes(".."), false, `${rel} climbs out of the target`);
         }
+    });
+
+    test("a repository's own changes/README.md is left as it is, and its .gitignore is appended to", async () => {
+        const dir = scratch({ "changes/README.md": "ours\n", ".gitignore": "node_modules/\n" });
+        const h = harness();
+        assert.equal(await run(["--residence", "in-repo", dir], h.options), 0);
+        assert.equal(fs.readFileSync(path.join(dir, "changes", "README.md"), "utf8"), "ours\n");
+        assert.match(h.said.join("\n"), /left the repository's own `changes\/README\.md` as it is/);
+        assert.match(fs.readFileSync(path.join(dir, ".gitignore"), "utf8"), /^node_modules\/\n[\s\S]*^\/\.portulan\/handoffs-index\.md$/m);
     });
 });
 
@@ -738,9 +759,14 @@ describe("nothing init writes over, and nothing it half-writes", () => {
         });
         await run(["--residence", "in-repo", dir], harness().options);
         fs.writeFileSync.mock.restore();
-        assert.equal(written.length, files.size, "every drafted file must have been observed — an empty list would pass the order check vacuously");
+        // The compiled card follows the draft (2026-09-24): `compile` reads the manifest, so its writes
+        // come after it, all under `.claude/rules/portulan/`, and a failure there leaves a whole draft.
+        const compiled = path.join(dir, ".claude", "rules", "portulan") + path.sep;
+        const drafted = written.filter((f) => !f.startsWith(compiled));
+        assert.equal(drafted.length, files.size, "every drafted file must have been observed — an empty list would pass the order check vacuously");
         const manifestAt = written.findIndex((f) => f.endsWith("workspace.json"));
-        assert.equal(manifestAt, files.size - 1, "workspace.json must be the last file written, not the first");
+        assert.equal(manifestAt, files.size - 1, "workspace.json must be the last drafted file written, not the first");
+        assert.ok(written.slice(manifestAt + 1).every((f) => f.startsWith(compiled)), "after the manifest, only compile's guidance half writes");
     });
 
     test("a `.portulan` symlink cannot carry the draft out of the repository", async () => {
@@ -897,8 +923,11 @@ describe("init emits no hook, which is why its silence about the gate is honest"
         await run(["--residence", "in-repo", dir], harness().options);
         const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) =>
             e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
-        const written = walk(path.join(dir, ".portulan"));
-        assert.equal(fs.existsSync(path.join(dir, ".claude")), false, "init writes no host settings — compiling is a separate, deliberate act");
+        // `init` compiles the guidance half since 2026-09-24, the boot card among the rules the host
+        // loads, and never the settings half, where hooks and permission rules live.
+        const written = [...walk(path.join(dir, ".portulan")), ...walk(path.join(dir, ".claude"))];
+        assert.deepEqual(fs.readdirSync(path.join(dir, ".claude")), ["rules"], "init writes no host settings — compiling them is a separate, deliberate act");
+        assert.deepEqual(fs.readdirSync(path.join(dir, ".claude", "rules")), ["portulan"]);
         for (const file of written) {
             const text = fs.readFileSync(file, "utf8");
             assert.doesNotMatch(text, /"hooks"\s*:/, `${path.basename(file)} emits a hook`);
@@ -917,7 +946,7 @@ describe("init emits no hook, which is why its silence about the gate is honest"
         // visible here — and this assertion is what will fail when someone adds one.
         const files = draft({ residence: "in-repo", name: "acme", cycle: true, checkpoints: "rituals/checkpoints" }, scan(scratch()));
         for (const [rel, file] of files) {
-            const targets = [...file.contents.matchAll(/\$\{CLAUDE_PROJECT_DIR\}\/([^"'\s]+)/g)].map((m) => m[1]);
+            const targets = [...(file.contents ?? file.append.join("\n")).matchAll(/\$\{CLAUDE_PROJECT_DIR\}\/([^"'\s]+)/g)].map((m) => m[1]);
             assert.deepEqual(targets, [], `${rel} names host-resolved path(s) ${targets.join(", ")} that init cannot prove exist`);
         }
     });
@@ -992,19 +1021,21 @@ describe("the draft does not overstate its own rails to the adopter", () => {
     });
 
     // This test read "the generated index is described in the future tense, because it does not exist
-    // yet" until milestone 7 session 7, and it was the rail on a drafted README that told every adopter
-    // the index "does not exist yet … this draft does not run it". The sentence went false the moment
-    // the draft started writing it — in somebody else's tree, which `init`'s own header calls the worst
-    // shape available. The test is turned around rather than deleted: the same pair, pinned the other
-    // way, so the README cannot drift back into describing a state the draft no longer has.
-    test("the generated index exists, and the README describes what was written rather than what is owed", async () => {
+    // yet" until milestone 7 session 7, then "the generated index exists" until 2026-09-24, when `init`
+    // stopped keeping one: a committed copy conflicts on every merge that adds a handoff. Each time the
+    // pair is pinned to what the draft writes, so the README cannot describe a state the draft no
+    // longer has: here, an index printed on demand and git-ignored, and fragments in `changes/`.
+    test("the handoff index is not kept, and the README describes the records the draft wrote", async () => {
         const dir = scratch();
         await run(["--residence", "in-repo", dir], harness().options);
         const manifest = ok(dir);
-        assert.equal(fs.existsSync(path.join(dir, ".portulan", manifest.handoffs.index.path)), true);
+        assert.equal(fs.existsSync(path.join(dir, ".portulan", manifest.handoffs.index.path)), false);
+        assert.match(fs.readFileSync(path.join(dir, ".gitignore"), "utf8"), new RegExp(`^/\\.portulan/${manifest.handoffs.index.path.replace(".", "\\.")}$`, "m"));
         const readme = fs.readFileSync(path.join(dir, ".portulan", "README.md"), "utf8");
-        assert.doesNotMatch(readme, /index[\s\S]{0,80}does not exist yet/i, "a draft must not tell its adopter a file it just wrote is missing");
-        assert.match(readme, /freshness rail/i);
+        assert.match(readme, /index is printed on demand[\s\S]{0,80}is not kept/i);
+        assert.match(readme, /`changes\/`/);
+        assert.equal(fs.existsSync(path.join(dir, "changes", "README.md")), true, "the directory a release cut assembles is drafted with its rule");
+        assert.equal(fs.existsSync(path.join(dir, ".portulan", "handoffs", "README.md")), true, "the handoff template is drafted in the slot");
         assert.match(readme, /exits\s+\*\*2/i, "the rail's honest first state on an adopter's CI belongs in the artifact that ships it");
     });
 
@@ -1367,10 +1398,10 @@ describe("the drafted workspace carries the rail that holds its index current", 
         }
     };
 
-    test("the index is written by the draft, so day one is green rather than red about a missing file", async () => {
+    test("no index is kept, and day one is green: the series renders with no copy on disk", async () => {
         const dir = scratch();
         assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
-        assert.equal(fs.existsSync(path.join(dir, ".portulan", "handoffs-index.md")), true);
+        assert.equal(fs.existsSync(path.join(dir, ".portulan", "handoffs-index.md")), false);
         const result = runRail(dir);
         assert.equal(result.code, 0, `a freshly drafted workspace must be green on its own rail:\n${result.out}`);
     });
@@ -1384,21 +1415,29 @@ describe("the drafted workspace carries the rail that holds its index current", 
         assert.deepEqual(manifest.verify.recipes[1].requires, ["bash", "node"]);
     });
 
-    test("an index edited by hand is RED, and regenerating returns it to green", async () => {
+    test("a copy kept and edited by hand is RED, and regenerating or deleting it returns the rail to green", async () => {
         const dir = scratch();
         assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
         const index = path.join(dir, ".portulan", "handoffs-index.md");
+        const regenerate = () => execFileSync(process.execPath, [path.join(REPO, "cli", "index.mjs"), path.join(dir, ".portulan")], { stdio: "pipe" });
+        fs.writeFileSync(index, "");
+        regenerate();
+        assert.equal(runRail(dir).code, 0, "a copy the tool wrote is current");
         fs.appendFileSync(index, "\n- 2026-08-11 · [a handoff nobody wrote](handoffs/x.md)\n");
         assert.equal(runRail(dir).code, 1, "a hand-edited generated file must be a verdict, not a note");
-        execFileSync(process.execPath, [path.join(REPO, "cli", "index.mjs"), path.join(dir, ".portulan")], { stdio: "pipe" });
+        regenerate();
         assert.equal(runRail(dir).code, 0, "regenerating must repair it");
+        fs.rmSync(index);
+        assert.equal(runRail(dir).code, 0, "a copy nobody keeps is compared with nothing");
     });
 
-    test("a handoff added without regenerating is RED — the rail is about the pair, not the file", async () => {
+    test("a handoff that yields no index line is RED, with no copy kept", async () => {
         const dir = scratch();
         assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
         fs.writeFileSync(path.join(dir, ".portulan", "handoffs", "2026-08-11-a-session.md"), "# Handoff — a session\n");
-        assert.equal(runRail(dir).code, 1);
+        assert.equal(runRail(dir).code, 0, "a dated handoff with a heading renders");
+        fs.writeFileSync(path.join(dir, ".portulan", "handoffs", "a-session.md"), "no heading\n");
+        assert.equal(runRail(dir).code, 1, "an undated, untitled handoff has no line to render");
     });
 
     test("no reachable CLI is could-not-run, naming all three locations — never a pass", async () => {
@@ -1553,4 +1592,75 @@ test("init on a fresh host: absent record is a verdict, unreadable is could-not-
     // committed again two files away. Copilot, round 3 on #236. Measured: `init` forwards the
     // discovery diagnostic verbatim, so this phrase is present and is unique to it.
     assert.match([...h2.said, ...h2.warned].join("\n"), /Discovery could not look/, "an unreadable host is a fact about the host");
+});
+
+// ---------------------------------------------------------------- the boot card, compiled from the draft
+
+// Since 2026-09-24 `init` drafts the new form a consumer boots in: a card in `context/boot.md` compiled
+// into the rules the host loads, so a session reads no slot to boot, and the offer of proposal 0036's
+// budget, printed rather than written. Each claim here is about the files on disk after a real run.
+describe("init drafts a boot card and compiles it", () => {
+    test("the manifest is at 2.10 and declares the context slot; the card is compiled and current", async () => {
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", dir], harness().options), 0);
+        const manifest = ok(dir);
+        assert.equal(manifest.portulan.spec, "2.10", "slots.context arrived at 2.10");
+        assert.equal(manifest.slots.context, "context/");
+        assert.equal(manifest.context, undefined, "a budget is offered, never written: the schema cannot say a ratio nobody measured");
+        const card = fs.readFileSync(path.join(dir, ".claude", "rules", "portulan", "boot.md"), "utf8");
+        assert.match(card, /^# Portulan boot card$/m);
+        assert.match(card, /^@\.\.\/\.\.\/\.\.\/\.portulan\/identity\.md$/m, "the identity is imported whole, one source");
+        assert.match(card, /^- \*\*Gated\*\*[^\n]*`merge-a-pull-request`/m, "the gates are written out from the policy");
+        assert.match(card, /^1\. \*\*The verify recipe ran green in this working copy\.\*\*$/m, "the definition of done's leads are written out");
+        assert.doesNotMatch(card, /<!-- (?:leads|gates):/, "no instruction line survives the compile");
+        assert.equal(compileGuidance(dir, { check: true }).drifted, 0, "what init compiled is what compile would write");
+    });
+
+    test("a slot edited after init makes the card drift, which compile repairs", async () => {
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", dir], harness().options), 0);
+        const dod = path.join(dir, ".portulan", "dod.md");
+        fs.writeFileSync(dod, fs.readFileSync(dod, "utf8").replace("**You could walk a reviewer through every line.**", "**A reviewer read every line.**"));
+        assert.equal(compileGuidance(dir, { check: true }).drifted, 1);
+        compileGuidance(dir);
+        assert.match(fs.readFileSync(path.join(dir, ".claude", "rules", "portulan", "boot.md"), "utf8"), /^2\. \*\*A reviewer read every line\.\*\*$/m);
+    });
+
+    test("the offer is the larger of 8,000 tokens and the always tier, printed and not written", async () => {
+        const dir = scratch();
+        const h = harness();
+        assert.equal(await run(["--residence", "in-repo", dir], h.options), 0);
+        const line = h.said.find((l) => l.includes("A budget is yours to declare"));
+        assert.ok(line, "the offer is said where the adopter reads it");
+        assert.match(line, /always tier here is ~[\d,]+ tokens with the card/);
+        assert.match(line, /offers the larger of 8,000 tokens and that, 8,000, as `context\.always\.budget\.tokens`/);
+    });
+
+    test("a rule written by hand where the card goes is left alone, and the draft boots through its slots", async () => {
+        const dir = scratch({ ".claude/rules/portulan/boot.md": "mine\n" });
+        const h = harness();
+        assert.equal(await run(["--residence", "in-repo", dir], h.options), 0, "the workspace is drafted whole either way");
+        assert.equal(fs.readFileSync(path.join(dir, ".claude", "rules", "portulan", "boot.md"), "utf8"), "mine\n");
+        assert.match(h.warned.join("\n"), /drafted and NOT compiled/);
+        assert.ok(fs.existsSync(path.join(dir, ".portulan", "context", "boot.md")), "the card's source stays for a compile once the rule is cleared");
+    });
+
+    test("where .gitignore hides .claude/, the exceptions for the compiled rules join it, and git sees the card", async () => {
+        const dir = scratch({ ".gitignore": ".claude/\n" });
+        execFileSync("git", ["init", "-q", dir]);
+        const h = harness();
+        assert.equal(await run(["--residence", "in-repo", dir], h.options), 0);
+        assert.equal(h.warned.some((l) => /git ignores/.test(l)), false, h.warned.join("\n"));
+        const ignored = (rel) => {
+            try {
+                execFileSync("git", ["-C", dir, "check-ignore", "-q", rel]);
+                return true;
+            } catch {
+                return false;
+            }
+        };
+        assert.equal(ignored(".claude/rules/portulan/boot.md"), false, "the compiled card reaches review");
+        assert.equal(ignored(".claude/settings.local.json"), true, "everything else under .claude/ stays ignored");
+        assert.equal(ignored(".portulan/handoffs-index.md"), true, "the handoff index is not kept");
+    });
 });

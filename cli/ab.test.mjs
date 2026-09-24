@@ -353,7 +353,7 @@ test("the arms-differ assertion sees a treatment path in arm B, and a stray file
 });
 
 test("the treatment is the enumerated set and nothing else", () => {
-    assert.deepEqual(TREATMENT_PATHS, ["AGENTS.md", ".portulan/", ".claude/"]);
+    assert.deepEqual(TREATMENT_PATHS, ["AGENTS.md", ".portulan/", ".claude/", "changes/README.md", ".gitignore"]);
 });
 
 // ---------------------------------------------------------------- the CLI

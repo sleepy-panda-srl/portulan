@@ -4206,8 +4206,49 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         }
     });
 
+    /** A gate policy holding one rule per `[id, tier]`, in that order. */
+    const policy = (...rules) => `${JSON.stringify({ portulan: { spec: "2.2" }, rules: rules.map(([id, tier]) => ({ id, tier, action: { write: `${id}.md` }, reason: `Why ${id}.` })) }, null, 2)}\n`;
+
+    test("a gates line writes out the policy's gate ids by tier, in its order, a tier with none says so, and an edit to the policy is drift", (t) => {
+        const dir = withFiles({ "gates.json": policy(["b-first", "gated"], ["a-second", "gated"], ["never", "prohibited"]), "context/boot.md": card("<!-- gates: ../gates.json -->") });
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        assert.match(
+            rule(dir, "boot"),
+            /\n- \*\*Auto\*\*, unattended: none\.\n- \*\*Propose\*\*, a human decides: none\.\n- \*\*Gated\*\*, a human's approval for each action, never inferred and never standing: `b-first`, `a-second`\.\n- \*\*Prohibited\*\*, where no approval exists: `never`\.\n/,
+        );
+        assert.doesNotMatch(rule(dir, "boot"), /Packs/, "a manifest composing no pack has no pack line");
+        fs.writeFileSync(path.join(dir, "gates.json"), policy(["b-first", "gated"]));
+        const check = said(t, ["--workspace", dir, "--check"]);
+        assert.equal(check.code, 1);
+        assert.match(check.out, /boot\.md has drifted from context\/boot\.md, whose gates are written from gates\.json\./);
+    });
+
+    test("a gates line names the packs the manifest composes, whose gates only a compile resolving them can list", (t) => {
+        const dir = withFiles({ "gates.json": policy(["one", "auto"]), "context/boot.md": card("<!-- gates: ../gates.json -->") });
+        const manifest = JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8"));
+        fs.writeFileSync(path.join(dir, "workspace.json"), `${JSON.stringify({ ...manifest, packs: ["team-rules", "house-style"] }, null, 2)}\n`);
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 0, out);
+        assert.match(rule(dir, "boot"), /^- \*\*Packs\*\* add gates of their own, which `portulan compile --matrix` lists: `team-rules`, `house-style`\.$/m);
+    });
+
+    const refusedGates = [
+        ["a file that is no JSON", "not json\n", /the gates of gates\.json were asked for, and it is not a readable JSON policy/],
+        ["a policy the gate reader refuses", `${JSON.stringify({ portulan: { spec: "2.2" }, rules: [] })}\n`, /the gates of gates\.json were asked for, and the gate policy declares no rules/],
+    ];
+    for (const [why, text, pattern] of refusedGates) {
+        test(`refused, and nothing is written: a gates line naming ${why}`, (t) => {
+            const dir = withFiles({ "gates.json": text, "context/boot.md": card("<!-- gates: ../gates.json -->") });
+            const { code, out } = said(t, ["--workspace", dir]);
+            assert.equal(code, 2);
+            assert.match(out, pattern);
+            assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+        });
+    }
+
     const refusedUnits = [
         ["a leads line in an on-read unit", "a", unitText(["tier: on-read", "description: A."], "<!-- leads: ../rules.md -->"), /written out only in an always unit, and this one is `on-read`/],
+        ["a gates line in an on-path unit", "a", unitText(["tier: on-path", "paths: [\"src/**\"]", "description: A."], "<!-- gates: ../gates.json -->"), /a `<!-- gates: … -->` line is written out only in an always unit, and this one is `on-path`/],
         ["a boot unit in another tier", BOOT_CARD_UNIT, unitText(["tier: on-read", "description: A."], `${BOOT_CARD_LINE}\n\nA.`), /is an `always` unit, and this one is `on-read`/],
         ["a boot unit that does not open with the card's line", BOOT_CARD_UNIT, unitText(["tier: always"], "# Boot\n\nA."), /a boot card opens with the line `# Portulan boot card`, which is how the boot skill knows it is loaded/],
         ["the card's line opening another unit", "welcome", unitText(["tier: always"], `${BOOT_CARD_LINE}\n\nA.`), /only the unit named `boot` is one/],
@@ -4228,5 +4269,29 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         const carried = inline.find((body) => body.startsWith(BOOT_CARD_LINE));
         assert.match(carried, /^- `\.portulan\/identity\.md`: read it in full — a host that follows imports loads it here\.$/m);
         assert.doesNotMatch(carried, /^@/m, "a host of that file follows no import");
+    });
+
+    test("and each file an import imports in turn, to the host's depth, once, naming the file that imports it", () => {
+        const dir = withFiles({
+            "context/boot.md": card("@../d1.md", "", "@../identity.md"),
+            "d1.md": "One.\n\n@d2.md\n\n@identity.md\n",
+            "d2.md": "Two.\n\n@sub/d3.md\n",
+            "sub/d3.md": "Three.\n",
+        });
+        const { inline } = agentsMdGuidance(guidanceUnits(dir, "."), ".portulan/context/");
+        const carried = inline.find((body) => body.startsWith(BOOT_CARD_LINE));
+        assert.match(
+            carried,
+            new RegExp(
+                [
+                    "^- `\\.portulan/d1\\.md`: read it in full — a host that follows imports loads it here\\.",
+                    "- `\\.portulan/d2\\.md`: read it in full too — `\\.portulan/d1\\.md` imports it\\.",
+                    "- `\\.portulan/sub/d3\\.md`: read it in full too — `\\.portulan/d2\\.md` imports it\\.$",
+                ].join("\n"),
+                "m",
+            ),
+        );
+        assert.equal(carried.match(/`\.portulan\/identity\.md`/g).length, 1, "a file the card imports itself is named once, on its own line");
+        assert.doesNotMatch(carried, /^@/m);
     });
 });

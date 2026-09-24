@@ -55,6 +55,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`discover.mjs`](discover.mjs) | Host plugin-cache discovery — reading a host's installed-plugin record so a POINTER can be resolved to the workspace it names. |
 | [`drills.mjs`](drills.mjs) | The forced-red drill harness — every rail broken on purpose, and required to fire. |
 | [`eval-bundle.mjs`](eval-bundle.mjs) | Cut a named-recipient evaluation bundle of Portulan from a commit. Not shipped. |
+| [`form.mjs`](form.mjs) | `form` — which form a consumer's records and boot are in, and the files that move them to the new one. |
 | [`fuzz-shell.mjs`](fuzz-shell.mjs) | Grammar-aware fuzzing over this repository's two shell segmenters. |
 | [`goldens.mjs`](goldens.mjs) | Grade this workspace's compiled gates against a corpus of adversarial fixtures. |
 | [`inside.mjs`](inside.mjs) | Is one path inside another? One predicate, one file, no dependencies. |
@@ -100,6 +101,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`eval-bundle.test.mjs`](eval-bundle.test.mjs) | The evaluation-bundle cutter, driven on this repository AND on real fixture repositories. |
 | [`feedback.live.test.mjs`](feedback.live.test.mjs) | The sender's field map, against the real issue forms rather than against a fixture. |
 | [`feedback.test.mjs`](feedback.test.mjs) | `portulan feedback` — the suite, written before the sender. |
+| [`form.test.mjs`](form.test.mjs) | `form` — the one definition of a consumer's new form, which `init`, `vendor`, `upgrade` and `doctor` read. |
 | [`fuzz-shell.ground.test.mjs`](fuzz-shell.ground.test.mjs) | The fuzzer's ground truth, MEASURED under real bash rather than argued. |
 | [`fuzz-shell.test.mjs`](fuzz-shell.test.mjs) | The grammar-fuzzer rail's suite — the hermetic half. |
 | [`gate.test.mjs`](gate.test.mjs) | The PreToolUse gate runner, driven as the host drives it. |

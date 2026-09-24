@@ -873,6 +873,17 @@ export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } 
             : `the Portulan plugin's descriptions are not measured — ${plugin.unavailable}`,
     );
     parts.push(judged.text);
+    // Over a budget, the largest demotion a drafted card offers is named (2026-09-24): `init` and
+    // `upgrade` draft a card importing the identity whole, one source, and a consumer whose identity
+    // outgrows the budget can make it an on-demand read instead, as Portulan's own card does.
+    const identity = typeof manifest.slots?.identity === "string" ? path.resolve(workspaceDir, manifest.slots.identity) : null;
+    const whole = judged.verdict === "over" && identity !== null ? always.entries.find((e) => e.label.startsWith("import") && path.resolve(e.file) === identity) : undefined;
+    if (whole) {
+        parts.push(
+            `the tier imports ${path.relative(root, identity)} whole, ~${grouped(tokensOf(whole.bytes, ratio))} tokens: one demotion is to make it an on-demand read, ` +
+                "as Portulan's own card does, a few lines on the card saying who the team is, naming the file and when to open it",
+        );
+    }
     return said(judged.verdict, parts.join("; "));
 }
 
