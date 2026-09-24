@@ -46,7 +46,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
@@ -61,7 +61,7 @@ export const RECIPE_TIMEOUT_MS = 10 * 60 * 1000;
 /** How many of a failing recipe's last lines are printed: the Stop-gate's measure. */
 export const TAIL_LINES = 25;
 
-/** How much of a failing recipe's output is decoded to find those lines: its last 64 KiB. */
+/** How much of a recipe's output is kept to find those lines: its last 64 KiB. */
 const TAIL_BYTES = 64 * 1024;
 
 const GIT_TIMEOUT_MS = 2 * 60 * 1000;
@@ -262,28 +262,66 @@ export function recipesOf({ root, workspaceDir, named, forced }) {
     return set.ok ? { recipes: set.recipes } : { why: set.reason };
 }
 
-/**
- * Run one recipe as CI and the Stop-gate do: its `run` through `bash -c`, from the repository root. Its
- * stderr is made its stdout before it starts, one pipe this process reads whole, so its lines keep the order
- * it wrote them in and its last lines are its last. No file stands between: a write a full disk refused
- * would reach the recipe as its own failure, and its exit would read as a verdict on the tree. Nor does a
- * cap: its output is held in memory until it ends, and only a failure's last `TAIL_BYTES` are decoded.
- */
-export function runRecipe(recipe, { root, env }) {
-    const r = spawnSync("bash", ["-c", `exec 2>&1\n${recipe.run}`], { cwd: root, env, timeout: RECIPE_TIMEOUT_MS, maxBuffer: Infinity, stdio: ["ignore", "pipe", "pipe"] });
-    const code = r.error ? null : r.status;
-    if (code === 0) return { id: recipe.id, outcome: "green" };
-    const last = (bytes) => (bytes ? bytes.subarray(-TAIL_BYTES).toString("utf8") : "");
-    const output = `${last(r.stdout)}${last(r.stderr)}${r.error ? `\n${r.error.message}` : ""}`;
-    const cannot = code === null || CANNOT_RUN.has(code);
-    return { id: recipe.id, outcome: cannot ? "could not run" : "red", code, output };
+/** A stream's last `limit` bytes, kept as it arrives: what is held never passes `limit` and one chunk. */
+export function tailKeeper(limit = TAIL_BYTES) {
+    const chunks = [];
+    let held = 0;
+    return {
+        add(chunk) {
+            chunks.push(chunk);
+            held += chunk.length;
+            while (held - chunks[0].length >= limit) held -= chunks.shift().length;
+        },
+        get held() {
+            return held;
+        },
+        text: () => Buffer.concat(chunks).subarray(-limit).toString("utf8"),
+    };
 }
 
 /**
- * Close the change the working tree at `cwd` holds. Returns `{ code, lines }`: the exit code and what to
- * print, the first line always the one that says what happened.
+ * Run one recipe as CI and the Stop-gate do: its `run` through `bash -c`, from the repository root. Its
+ * stderr is made its stdout before it starts, one pipe this process drains as it fills, so its lines keep
+ * the order it wrote them in. No file stands between: a write a full disk refused would reach the recipe as
+ * its own failure, and its exit would read as a verdict on the tree. No cap stands between either, and no
+ * store that grows with the output: only its last `TAIL_BYTES` are held, for a failure's report.
  */
-export function finish(options, { cwd = process.cwd(), env = process.env, readStdin, runOne = runRecipe } = {}) {
+export function runRecipe(recipe, { root, env, timeout = RECIPE_TIMEOUT_MS }) {
+    return new Promise((resolve) => {
+        const kept = tailKeeper();
+        let failure = null;
+        let late = false;
+        let timer;
+        const settle = (status) => {
+            clearTimeout(timer);
+            const code = failure || late ? null : status;
+            if (code === 0) return resolve({ id: recipe.id, outcome: "green" });
+            const why = failure ? `\n${failure.message}` : late ? `\nkilled at its time limit of ${timeout / 1000} s` : "";
+            const cannot = code === null || CANNOT_RUN.has(code);
+            resolve({ id: recipe.id, outcome: cannot ? "could not run" : "red", code, output: `${kept.text()}${why}` });
+        };
+        const child = spawn("bash", ["-c", `exec 2>&1\n${recipe.run}`], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
+        child.stdout.on("data", kept.add);
+        child.stderr.on("data", kept.add);
+        child.on("error", (error) => {
+            failure = error;
+            settle(null);
+        });
+        child.on("close", settle);
+        timer = setTimeout(() => {
+            late = true;
+            child.kill();
+            child.stdout.destroy();
+            child.stderr.destroy();
+        }, timeout);
+    });
+}
+
+/**
+ * Close the change the working tree at `cwd` holds. Resolves to `{ code, lines }`: the exit code and what
+ * to print, the first line always the one that says what happened.
+ */
+export async function finish(options, { cwd = process.cwd(), env = process.env, readStdin, runOne = runRecipe } = {}) {
     const stop = (code, ...lines) => ({ code, lines: [`finish: ${lines[0]}`, ...lines.slice(1)] });
     const message = messageOf(options, readStdin);
     if (message?.error) return stop(2, `could not run — ${message.error}`);
@@ -390,13 +428,14 @@ export function finish(options, { cwd = process.cwd(), env = process.env, readSt
     const recipeEnv = { ...env, PORTULAN_BASE_REF: base.ref };
     // A runner that throws judged nothing, whatever it throws: the recipe could not run, and the commit is
     // undone as for any recipe that could not run, never left standing by an error nothing caught.
-    const results = set.recipes.map((recipe) => {
+    const results = [];
+    for (const recipe of set.recipes) {
         try {
-            return runOne(recipe, { root, env: recipeEnv });
+            results.push(await runOne(recipe, { root, env: recipeEnv }));
         } catch (error) {
-            return { id: recipe.id, outcome: "could not run", code: null, output: textOf(error) };
+            results.push({ id: recipe.id, outcome: "could not run", code: null, output: textOf(error) });
         }
-    });
+    }
     const failed = results.filter((r) => r.outcome !== "green");
     if (failed.length) {
         const code = failed.some((r) => r.outcome === "red") ? 1 : 2;
@@ -440,7 +479,7 @@ export function finish(options, { cwd = process.cwd(), env = process.env, readSt
     );
 }
 
-export function run(argv = process.argv.slice(2), { stdout = process.stdout, stderr = process.stderr, cwd = process.cwd(), env = process.env, readStdin } = {}) {
+export async function run(argv = process.argv.slice(2), { stdout = process.stdout, stderr = process.stderr, cwd = process.cwd(), env = process.env, readStdin } = {}) {
     const options = parseArgs(argv, cwd);
     if (options.error) {
         stderr.write(`finish: ${options.error}\n${USAGE}\n`);
@@ -450,11 +489,11 @@ export function run(argv = process.argv.slice(2), { stdout = process.stdout, std
         stdout.write(`${USAGE}\n`);
         return 0;
     }
-    const { code, lines } = finish(options, { cwd, env, readStdin });
+    const { code, lines } = await finish(options, { cwd, env, readStdin });
     stdout.write(`${lines.join("\n")}\n`);
     return code;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-    process.exitCode = run();
+    process.exitCode = await run();
 }
