@@ -9,9 +9,12 @@
 #             the restart threshold — equals the known total it carries. The records carry per-block
 #             duplicates, a request copied into a second transcript, a torn line, a host-written record
 #             with no request behind it, and a sibling directory whose key shares the repository's prefix
-#   advisory  ../../cli/advisory.mjs prompt over two of the fixture's sessions: the one past its threshold
-#             is told once and its second prompt nothing, the one below it nothing, and every run exits 0,
-#             because a UserPromptSubmit hook exiting 2 would erase the person's prompt
+#   advisory  ../../cli/advisory.mjs over two of the fixture's sessions. At the prompt: the one past its
+#             threshold is told once and its second prompt nothing, the one below it nothing. With a tool
+#             result: a subagent's is told nothing, the session's own is told once, with the requests
+#             behind the figure and to finish the current step, and the prompt after it nothing, since the
+#             two halves say one line between them. Every run exits 0, because a UserPromptSubmit hook
+#             exiting 2 would erase the person's prompt
 #
 # ## Why a fixture, and never this machine's records
 #
@@ -62,23 +65,29 @@ node cli/ledger.mjs --fixture "$FIXTURE"
 fixture=$?
 printf '\n'
 
-# The payload the host sends a UserPromptSubmit hook, as far as the advisory reads it. Built by node so a
-# path holding a quote or a backslash is escaped by a JSON encoder rather than by this script.
+# The payload the host sends the hook, as far as the advisory reads it: a UserPromptSubmit's, or a
+# PostToolUse's, whose fourth argument is the subagent's id where a subagent made the call. Built by node so
+# a path holding a quote or a backslash is escaped by a JSON encoder rather than by this script.
 payload() {
-    node -e 'process.stdout.write(JSON.stringify({ session_id: process.argv[1], transcript_path: process.argv[2], hook_event_name: "UserPromptSubmit" }))' "$1" "$root/$2"
+    node -e 'const [session_id, transcript_path, hook_event_name, agent_id] = process.argv.slice(1);
+        process.stdout.write(JSON.stringify({ session_id, transcript_path, hook_event_name, ...(agent_id ? { agent_id } : {}) }))' \
+        "$1" "$root/$2" "$3" "${4:-}"
 }
 
 advisory=0
-# One prompt: its output lands in a file, and its exit status is judged here, in this shell, where a red
+# One hook call: its output lands in a file, and its exit status is judged here, in this shell, where a red
 # can be recorded — a command substitution would judge it in a subshell and lose the verdict.
-prompt() {
-    payload "$1" "$2" | node cli/advisory.mjs prompt >"$tmp/$3"
+call() {
+    local mode=$1 event=$2 session=$3 transcript=$4 out=$5 agent=${6:-}
+    payload "$session" "$transcript" "$event" "$agent" | node cli/advisory.mjs "$mode" >"$tmp/$out"
     local status=$?
     if [ "$status" -ne 0 ]; then
-        printf '  ✗ advisory: exited %s on %s — a UserPromptSubmit hook must exit 0 on every path, or it blocks the prompt\n' "$status" "$2"
+        printf '  ✗ advisory: exited %s on %s — a hook must exit 0 on every path, or a UserPromptSubmit blocks the prompt\n' "$status" "$transcript"
         advisory=1
     fi
 }
+prompt() { call prompt UserPromptSubmit "$@"; }
+tool() { call tool PostToolUse "$@"; }
 
 prompt recipe-past "$PAST" first
 prompt recipe-past "$PAST" second
@@ -95,7 +104,28 @@ if [ -s "$tmp/below" ]; then
     printf '  ✗ advisory: a session below its threshold was told: %s\n' "$(cat -- "$tmp/below")"
     advisory=1
 fi
-[ "$advisory" -eq 0 ] && printf '  ok advisory: the session past its threshold is told once, at its first prompt; its second prompt and a session below the threshold are not\n'
+
+tool tool-past "$PAST" subagent agent-sub1
+tool tool-past "$PAST" tool
+prompt tool-past "$PAST" after
+tool tool-below "$BELOW" tool-below
+if [ -s "$tmp/subagent" ]; then
+    printf '  ✗ advisory: a subagent'"'"'s tool result was told the session'"'"'s line: %s\n' "$(cat -- "$tmp/subagent")"
+    advisory=1
+fi
+if ! grep -q '"hookEventName":"PostToolUse","additionalContext":"Portulan restart advisory: after [0-9][0-9,]* requests, .*80,004.*finish the current step' "$tmp/tool"; then
+    printf '  ✗ advisory: the session past its threshold was not told with its first tool result, with its requests and to finish the step; it printed: %s\n' "$(cat -- "$tmp/tool")"
+    advisory=1
+fi
+if [ -s "$tmp/after" ]; then
+    printf '  ✗ advisory: the prompt after the tool result said the line again: %s\n' "$(cat -- "$tmp/after")"
+    advisory=1
+fi
+if [ -s "$tmp/tool-below" ]; then
+    printf '  ✗ advisory: a session below its threshold was told with a tool result: %s\n' "$(cat -- "$tmp/tool-below")"
+    advisory=1
+fi
+[ "$advisory" -eq 0 ] && printf '  ok advisory: the session past its threshold is told once, at its first prompt or with its first tool result, and never twice; a subagent'"'"'s tool result and a session below the threshold are not\n'
 
 # Could-not-run outranks red: a run that judged nothing cannot vouch for the one that did.
 worst=$advisory

@@ -568,7 +568,7 @@ export function draftCard(manifest, read, { workspace, inTree, repoCards = [] })
     }
     section(
         "Records",
-        "A change's why is its commit message, and its changelog entry a one-bullet file `changes/<slug>.<section>.md`.",
+        'Close a change with `git add <new files> && node <plugin root>/cli/finish.mjs -m "<subject>" -m "<why>"` after writing its changelog entry, a one-bullet file `changes/<slug>.<section>.md`: it commits and pushes only when every verify recipe passes.',
         ...(slots.handoffs ? [`A session ending with work not committed and pushed leaves a dated handoff in ${shown(slots.handoffs)}.`] : []),
     );
     section(

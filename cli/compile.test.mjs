@@ -592,12 +592,14 @@ describe("the Claude Code backend", () => {
         assert.ok(settings.hooks.Stop?.length > 0, "the Stop-gate is the other half of milestone 4");
     });
 
-    test("the restart advisory is the UserPromptSubmit hook and the status line, both on the third runner", () => {
-        // Proposal 0038, rule 2: one line where the agent is, once, and the same figure for the human.
-        // Compiled whatever the policy says, because it gates nothing.
+    test("the restart advisory is the PostToolUse and UserPromptSubmit hooks and the status line, all on the third runner", () => {
+        // Proposal 0038, rule 2: one line where the agent is, once — with its next tool result mid-stretch,
+        // or at its next prompt — and the same figure for the human. Compiled whatever the policy says,
+        // because it gates nothing.
         const result = claudeCode(parse(policy()));
         const settings = result.artifact.value;
         assert.equal(HOOK_RUNNERS[2], "advisory.mjs");
+        assert.deepEqual(settings.hooks.PostToolUse, [{ hooks: [{ type: "command", command: `node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" tool` }] }], "no matcher: every tool's result");
         assert.deepEqual(
             settings.hooks.UserPromptSubmit.flatMap((h) => h.hooks.map((x) => x.command)),
             [`node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" prompt`],
@@ -613,7 +615,7 @@ describe("the Claude Code backend", () => {
 
     test("emitted hook commands invoke node directly rather than an inline shell one-liner", () => {
         const settings = claudeCode(parse(policy())).artifact.value;
-        const commands = [...settings.hooks.PreToolUse, ...settings.hooks.Stop, ...settings.hooks.UserPromptSubmit]
+        const commands = [...settings.hooks.PreToolUse, ...settings.hooks.PostToolUse, ...settings.hooks.Stop, ...settings.hooks.UserPromptSubmit]
             .flatMap((h) => h.hooks.map((x) => x.command))
             .concat(settings.statusLine.command);
         for (const c of commands) {

@@ -1207,7 +1207,7 @@ function emptyIndex(title, store, unit) {
  *
  * **The arm is machine-bound and this function does not fix it.** `../cli/compile.mjs` pins its hook
  * commands to absolute paths under this checkout's `cli/`, and `../cli/vendor.mjs` does not carry
- * `cli/` — so the arm's `PreToolUse`, `Stop` and `UserPromptSubmit` hooks, and its status line, reach back
+ * `cli/` — so the arm's `PreToolUse`, `PostToolUse`, `Stop` and `UserPromptSubmit` hooks, and its status line, reach back
  * here. `arm.md` records this as *not fixable at reasonable cost*; what this function adds is that the
  * pinned hook paths are **returned**, so a caller can assert them rather than assume them.
  */

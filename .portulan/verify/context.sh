@@ -59,9 +59,10 @@ cd -- "$root" || exit 2
 }
 
 # The rails, one line each, in bytes.
-RAIL_OWN_BOOT=16037       # .portulan's boot read-set, 15,722 B: the skill, and the boot card with its two
+RAIL_OWN_BOOT=16037       # .portulan's boot read-set, 15,968 B: the skill, and the boot card with its two
                           # imports, lowered from 89,057 B by the boot card, then raised from 15,525 B by
-                          # the card's line on reading code by symbol, which spends 197 B to spare reads
+                          # the card's line on reading code by symbol, which spends 197 B to spare reads,
+                          # and from 15,735 B by its line on closing a change, 233 B to spare requests
 RAIL_DEMO_BOOT=37803      # examples' boot read-set with the combcount card, 37,061 B, raised by the boot
                           # card from 35,587 B: with no card loaded, a boot reads the skill, which routes,
                           # and then its steps
@@ -70,8 +71,9 @@ RAIL_ENGINE=13763         # the boot skill, its steps and the kernel, 13,493 B, 
 RAIL_STEPS=10944          # the skill's step files, pointer-manifest.md and packs.md, 10,729 B
 RAIL_DESCRIPTIONS=3454    # the plugin's 7 skill and 3 agent descriptions, 3,386 B; 3,405 B since the boot
                           # card, whose skill description now names the card
-RAIL_ADOPTER_BOOT=8227    # a consumer `init` drafts, 8,081 B: the skill, the plugin's kernel, and the card
-                          # `init` compiles, with the identity it imports; 26,759 B before `init` drafted one
+RAIL_ADOPTER_BOOT=8227    # a consumer `init` drafts, 8,219 B: the skill, the plugin's kernel, and the card
+                          # `init` compiles, with the identity it imports; 26,759 B before `init` drafted one,
+                          # 8,081 B before its records line named the finishing command
 
 # The workspaces measured, audited against the tree the way ./index.sh audits its own list: a workspace
 # added and not measured would be a footprint nothing watches, reported as green.

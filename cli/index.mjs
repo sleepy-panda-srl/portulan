@@ -1459,7 +1459,7 @@ function budgetDay(value, where) {
 // `.portulan/verify/docs.sh`'s record check refuses the same fragments this refuses, in bash, because
 // that recipe needs no node; the rule both carry is `CHANGE_NAME` and one top-level bullet.
 export const CHANGE_SECTIONS = ["added", "changed", "deprecated", "removed", "fixed", "security"];
-const CHANGE_NAME = new RegExp(`^[a-z0-9][a-z0-9-]*\\.(${CHANGE_SECTIONS.join("|")})\\.md$`);
+export const CHANGE_NAME = new RegExp(`^[a-z0-9][a-z0-9-]*\\.(${CHANGE_SECTIONS.join("|")})\\.md$`);
 
 /**
  * Every fragment in `dir`, in name order, and what is wrong with any that cannot be pasted. A missing

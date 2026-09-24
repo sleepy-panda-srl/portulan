@@ -1253,7 +1253,7 @@ const HOST_TIER_NOT_A_GATE = {
 
 /**
  * The compiled-hook runners, in the order `claudeCode` spells them: the PreToolUse gate, the Stop gate,
- * then the restart advisory, which is both the `UserPromptSubmit` hook and the status-line command.
+ * then the restart advisory, which is the `PostToolUse` and `UserPromptSubmit` hooks and the status-line command.
  * **This is their one carrier.** They are invoked by generated host configuration rather than
  * imported by anything, so no import graph can find them and every other roster that needs to know
  * which `cli/` modules are runners has to ask here — `./payload.mjs` does. A fourth runner added below
@@ -1526,10 +1526,12 @@ export function claudeCode(parsed, options = {}) {
             })),
             Stop: [{ hooks: [{ type: "command", command: `node ${stopRunner}` }] }],
             // **The restart advisory, proposal `0038`'s rule 2**, compiled for every workspace whatever
-            // its policy says, because it gates nothing: one line at the prompt where the session's
-            // recorded usage has crossed the restart threshold, once, and never a block. The prompt is
-            // where it reaches the agent without an extra turn; a non-blocking Stop hook's output would
-            // reach only the host's debug log. See ./advisory.mjs.
+            // its policy says, because it gates nothing: one line where the session's recorded usage has
+            // crossed the restart threshold, once, and never a block — with the next tool result, on
+            // every tool, since no matcher is match-all, or at the next prompt, whichever comes first.
+            // Each enters the context without an extra turn; a non-blocking Stop hook's output would reach
+            // only the host's debug log. See ./advisory.mjs.
+            PostToolUse: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} tool` }] }],
             UserPromptSubmit: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} prompt` }] }],
         },
         // The same figure for the human, from the host's own last-call counts, at no token cost.
@@ -1564,7 +1566,7 @@ export function claudeCode(parsed, options = {}) {
     notes.push(
         `the status line is compiled: it shows the restart threshold (proposal 0038) and takes the place of a status line ` +
             `set in user settings, in this repository only. To keep your own here, set \`statusLine\` in \`.claude/settings.local.json\`, which ` +
-            `outranks this file; the restart advisory at the prompt is unaffected`,
+            `outranks this file; the restart advisory with a tool result and at the prompt is unaffected`,
     );
     // The session switches are said on every run that emits one, because each changes what every session
     // in this repository starts with, and the way back for one session is not in this file.
