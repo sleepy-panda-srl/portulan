@@ -888,14 +888,16 @@ tier costs and nothing has to read the file to find out where it belongs.
 **`compile` emits it, per host.** For Claude Code, an `always` unit is an unscoped rule, loaded into every
 context; an `on-path` unit is a rule scoped by `paths:`; an `on-invoke` unit is a project skill, whose
 description is always loaded and whose body loads when it is invoked; and an `on-read` unit is one line in
-an unscoped index of pointers, while its file stays where it is for the agent to open. **A tier a host
-cannot express degrades to an on-read pointer, never to nothing**: the vendored `AGENTS.md` carries the
-`always` units inline and every other unit as a pointer, one level deep. The compiled files are committed
-and byte-compared against this slot, as the compiled settings are against `gates`, so a desktop session's
-fresh worktree has them. `compile` shows which rules in `.claude/rules/portulan/` are its own with a marker
-there, `.compiled`, a file no host loads that lists each rule it wrote: it rewrites or removes only a rule the
-marker lists, stops with exit 2 rather than replace one it does not list, and stops too where the directory
-holds Markdown files and no marker in its form. It writes and removes nothing through a link.
+an unscoped index of pointers, naming its file, its size in whole KB and its description (the size since
+2026-09-24, so a session knows what it passes over), while its file stays where it is for the agent to
+open. **A tier a host cannot express degrades to an on-read pointer, never to nothing**: the vendored
+`AGENTS.md` carries the `always` units inline and every other unit as a pointer, one level deep. The
+compiled files are committed and byte-compared against this slot, as the compiled settings are against
+`gates`, so a desktop session's fresh worktree has them. `compile` shows which rules in
+`.claude/rules/portulan/` are its own with a marker there, `.compiled`, a file no host loads that lists
+each rule it wrote: it rewrites or removes only a rule the marker lists, stops with exit 2 rather than
+replace one it does not list, and stops too where the directory holds Markdown files and no marker in its
+form. It writes and removes nothing through a link.
 
 **Checked by `compile`, not by the schema or `doctor`.** The subset cannot see inside a file, so the
 frontmatter is its consumer's to refuse: an unknown key, a tier outside the four, `paths` on a unit that is
@@ -912,6 +914,18 @@ bump (decided 2026-09-23). It is an `always` unit whose first line
 under the frontmatter is `# Portulan boot card`, and the boot skill reads it in place of the slots when
 that line is in its context. `compile` refuses a `boot` unit in another tier or opening with another line,
 and a unit of another name opening with that one, which the skill would take for the card.
+
+**A section of a project instruction file can become an on-read unit**, with no key and no version bump
+(2026-09-24). A team marks it with a line `<!-- portulan: on-read -->` directly under its heading in
+`CLAUDE.md` or `.claude/CLAUDE.md`, and `upgrade`'s form step `0009` moves the section, heading and all
+and byte for byte, into a unit of this slot named by the heading, whose `description` is the heading's own
+text, leaving `<!-- portulan: on-read <unit> <digest> -->` where it was, the digest the moved section's.
+The file must reassemble from its units byte for byte, or nothing moves. Claude Code drops both comments
+before it loads the file, so neither costs a context. The unit's text is not rewritten, so a relative link
+in it still reads from the repository root, as it did in `CLAUDE.md`.
+[`../cli/instructions.mjs`](../cli/instructions.mjs) is the same split on the command line, and `--join`
+puts every section back as it stands, saying which one the digest shows edited since, and refusing a unit
+re-tiered since, or one outside this slot, rather than undo its tier or remove it.
 
 **An `always` unit may import whole files and write out another file's lead sentences or a gate policy's
 gates**, so a card carries a fact without holding a second copy of it:

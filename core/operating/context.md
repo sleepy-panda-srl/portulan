@@ -148,9 +148,17 @@ with the same line; and this repository's `context` recipe rails Portulan's own 
 read a card instead of the slots**: the `boot` unit of `slots.context` (Workspace Definition 2.10) is
 compiled into every context, imports whole the files it needs, writes out the lead sentences of others,
 and names the file behind each line, so the rest loads when a rule's path or the card sends a session to
-it. This repository's own card holds its boot under the 7,500-token line of 2026-09-23, railed at
-today's figure plus 2% by the same recipe. A pointer's repository is not measured, because a pointer
-declares no tree. **Still to land**: the exact mode that
+it. **A team's own instruction file can be split the same way, section by section**: a line
+`<!-- portulan: on-read -->` under a heading of `CLAUDE.md` is the team's word that the section may leave
+every context, and `portulan upgrade` moves it, byte for byte and proved to reassemble, into an on-read
+unit whose index line names the heading and its size in whole KB. `doctor`, the boot and `init` offer it
+where the file is over `0036`'s 8,000-token offer floor, and `doctor` and the boot wherever a declared
+budget is breached, naming there the command that splits while `upgrade` will not run; a section is never
+moved for its size alone. Claude Code 2.1.281 drops a comment standing on its own lines before it loads an
+instruction file or rule (read in its program text on 2026-09-24), so the mark and the marker left behind
+cost nothing. This repository's own card holds its boot under the 7,500-token line of 2026-09-23,
+railed at today's figure plus 2% by the same recipe. A pointer's repository is not measured, because a
+pointer declares no tree. **Still to land**: the exact mode that
 calibrates a ratio, the degradation report that says which tiers a host can express, the Stop-gate's
 named demotion, persona frontmatter and the librarian pass, one change at a time, in `0036`'s order of work
 and under row 12 of [`../../docs/plan.md`](../../docs/plan.md).

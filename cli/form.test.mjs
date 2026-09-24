@@ -366,6 +366,17 @@ describe("which form a consumer is in, read from disk", () => {
         assert.deepEqual(piece, { id: "session-log", state: "today", text: "a Session log with entries in packages/acme/.portulan/notes.md" });
     });
 
+    test("a marked section of the instruction file is today's form, a moved one the new, and a unit gone is named", () => {
+        const piece = (files) => formOf(path.join(tree(files), ".portulan"), manifest()).pieces.find((p) => p.id === "instructions");
+        assert.equal(piece({ "CLAUDE.md": "# A\n\nText.\n" }), undefined, "no mark, no marker: nothing is said");
+        assert.deepEqual(piece({ "CLAUDE.md": "## A\n<!-- portulan: on-read -->\n\nText.\n" }), { id: "instructions", state: "today", text: "1 section of CLAUDE.md marked to move to on-read units" });
+        assert.deepEqual(piece({ "CLAUDE.md": "<!-- portulan: on-read .portulan/context/a.md 0123abcd -->\n<!-- portulan: on-read .portulan/context/b.md 4567cdef -->\n", ".portulan/context/a.md": "a\n" }), {
+            id: "instructions",
+            state: "new",
+            text: "2 sections of CLAUDE.md moved to on-read units, and .portulan/context/b.md, named by a marker, is not there",
+        });
+    });
+
     test("no tree, no pieces, and the report says why", () => {
         const ws = tree();
         assert.deepEqual(formOf(ws, { kind: "demo" }), { tree: null, pieces: [] });

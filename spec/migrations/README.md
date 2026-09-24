@@ -104,13 +104,16 @@ is a question that could not be answered.
 | [`0006-boot-card.mjs`](0006-boot-card.mjs) | `form` | Where `slots.context` is undeclared, a boot card is drafted from the workspace's own files, as `init` drafts one, and the slot declared at 2.10. A declared slot with no `boot` unit is a workspace that boots through its slots, and is owed nothing. |
 | [`0007-guidance-compiled.mjs`](0007-guidance-compiled.mjs) | `form` | The guidance half of `portulan compile` written where it drifted: the card and the rules the host loads, through `compile`'s own planner and refusals, and never `.claude/settings.json`, which enforces gates and is a person's to compile. |
 | [`0008-card-reading.mjs`](0008-card-reading.mjs) | `form` | A card drafted before it carried the engine's rules on reading and the cache gets that section, which `compile` writes out from the installed Portulan's `core/operating/context.md`, and `0007` compiles it. A card lacking the section under any other head is owed it by hand: the run names the head the step looks for and the line to add, applies the rest of the chain and exits 1, and `doctor` names the card until the line is there. |
+| [`0009-instruction-sections-on-read.mjs`](0009-instruction-sections-on-read.mjs) | `form` | Each section a team marks with a line `<!-- portulan: on-read -->` under its heading, in `CLAUDE.md` or `.claude/CLAUDE.md`, moves byte for byte into an on-read unit of `slots.context`, and a comment is left where it was. **Proved before it is offered**: the file must reassemble from its units byte for byte and each clause land once, or the step refuses; a section importing a file, a mark inside a marked section, a mark under no heading and an instruction file that is a link are refused too. Owed only where a team marked a section, and put back by [`../../cli/instructions.mjs`](../../cli/instructions.mjs) `--join`. |
 
 **`0001` has no subject in this tree** — nothing declares 1.0 — and is exercised against a fixture,
 which is said here rather than dressed up. **`0002` has no subject in this repository either**: this
 workspace's `verify/index.sh` was written by hand, not drafted by `init`, and carries no marker. It is
 exercised against workspaces the real `init` drafts. **Neither have the form steps**: this repository
 moved its own records and boot by hand on 2026-09-23 and 24, and `0003`–`0008` are exercised against a
-consumer the real `init` drafts, put back in the form it drafted before, and committed.
+consumer the real `init` drafts, put back in the form it drafted before, and committed. `0009` has none
+either, since this repository keeps no `CLAUDE.md`, and is exercised against such a consumer whose
+instruction file the suite marks.
 
 ## Adding one
 

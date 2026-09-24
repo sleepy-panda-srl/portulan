@@ -549,6 +549,23 @@ describe("which form a consumer's records and boot are in is reported, and never
         assert.deepEqual(severities(findings, "fail"), []);
     });
 
+    test("over a declared budget, marked sections are named with the command that moves them, since `upgrade` does not run", async () => {
+        const context = { always: { budget: { tokens: 5 } }, ratio: { bytes_per_token: 3, calibrated_by: "claude-code" } };
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify({ ...wellFormed(), portulan: { spec: "2.9" }, context }),
+            "CLAUDE.md": "# Desk\n\n## Loans\n<!-- portulan: on-read -->\n\nA loan lasts three weeks.\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(checks(findings, "context")[0].severity, "fail", "the budget is breached");
+        const hit = only(findings);
+        assert.equal(hit.severity, "report");
+        assert.match(
+            hit.message,
+            /1 section of CLAUDE\.md marked to move to on-read units — `node <plugin root>\/cli\/instructions\.mjs --workspace \S+ --write` moves the marked sections, since `portulan upgrade` does not run over a breached budget, and `portulan upgrade --write \S+` moves the rest once it runs, and until then it boots as it did$/,
+        );
+    });
+
     test("the new form says so, and a declared slot with no card is a choice, not a piece owed", async () => {
         const dir = tree(scratch(), {
             ...minimalFiles,
