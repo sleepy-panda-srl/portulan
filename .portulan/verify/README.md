@@ -423,9 +423,9 @@ above. The scheduled librarian, a watcher rather than a rail, carries its own pr
 
 - **The librarian's report is not byte-checked, and nothing can check it**: its content is **time**
   dependent, so a record crossing a threshold changes it with no change to the tree. Since 2026-09-24
-  it is not committed either: it is the description of the pull request a pass opens when it changed
-  the tree, and its run's summary when it did not. The handoffs passes wrote before that stay in the
-  series, dated and never re-derived.
+  it is not committed either: it is the body of one standing issue each pass replaces, and the
+  description of the pull request a pass opens when it changed the tree. The handoffs passes wrote
+  before that stay in the series, dated and never re-derived.
 - **A new proposal's pointer cannot exist before its pull request does**, so `proposal` is red on a
   branch that adds one until the number is known. The red is accurate — nothing has filed it yet — and
   it costs no extra push in practice, because [`a-review-loop-needs-a-bound`](../memory/a-review-loop-needs-a-bound.md)

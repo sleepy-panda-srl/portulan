@@ -253,6 +253,7 @@ and refuses, the third outcome, composition, and how each watcher is observed.
 | **Opening a pull request** — by a person or a session | **The maintainer's credentials**, with the body carrying an attribution line naming the agent |
 | **Opening a pull request** — by the scheduled librarian | **The agent identity**, via an App installation token minted inside the workflow |
 | **Committing and pushing a scheduled pass** | **The workflow**, as `github-actions[bot]` |
+| **Filing a scheduled pass's report** — one standing issue, opened once and edited by each pass | **The workflow**, as `github-actions[bot]`, with `issues: write` in [`librarian.yml`](../.github/workflows/librarian.yml) |
 | **Filing an issue from `portulan feedback`** — by a person or a session here | **The maintainer's** GitHub credentials: the `gh` login already on the machine |
 | **Resolving a review thread** | **The maintainer decides**; the command is his or an agent's, on his explicit per-action approval of the merge the thread blocks |
 | **Requesting Copilot's review on a pull request a bot opened** | **The maintainer's** credentials, as a fine-grained token of his that [`copilot-request.yml`](../.github/workflows/copilot-request.yml) uses with nobody at a keyboard |
