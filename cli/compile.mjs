@@ -49,6 +49,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // all live there, once — see that file's pack-root section for why this half arrived separately.
 import { AUTO, discoverPackRoots, namedWithAuto, resolutionRoots } from "./discover.mjs";
 import { isInside } from "./inside.mjs";
+// A heading's section, for a list named by `#heading`: the one reader of Markdown sections.
+import { CannotOutline, sectionOf } from "./symbols.mjs";
 
 /** Raised when `compile` cannot run, or cannot compile honestly. Always exit 2, never 1. */
 export class CompileError extends Error {
@@ -2064,6 +2066,15 @@ export const IMPORT_DEPTH = 5;
 /** A line asking `compile` for the lead sentences of another file's first list, alone on its line. */
 const LEADS_LINE = /^<!-- leads: (\S+) -->$/;
 
+/**
+ * The same, of a file in the engine this compiler ships with, `../core/`, so every card naming it carries
+ * one text: Portulan's own and each consumer's. Where that engine is the tree compiled, as it is in
+ * Portulan's own repository, `<plugin root>/` is written as nothing, so a command reads as run from the tree.
+ */
+export const ENGINE_LINE = /^<!-- engine: (\S+) -->$/;
+const ENGINE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const PLUGIN_ROOT = "<plugin root>/";
+
 /** A line asking `compile` for a gate policy's gate ids under their tiers, alone on its line. */
 const GATES_LINE = /^<!-- gates: (\S+) -->$/;
 
@@ -2267,8 +2278,17 @@ const OPENS_BLOCK = /^(?:#{1,6}(?:[ \t]|$)|>|([-*_])(?:[ \t]*\1){2,}[ \t]*$|(?:[
  * one wrapped line of `../.portulan/principles.md` wrote a card with one of its four leads, and `--check`
  * stayed green. Found in the coordinator session's review of #452 after its push.
  */
-function leadsOf(file, where) {
-    return leadsOfText(fs.readFileSync(file, "utf8"), path.basename(file), where);
+function leadsOf(file, where, fragment = null, name = path.basename(file)) {
+    let text = fs.readFileSync(file, "utf8");
+    if (fragment !== null) {
+        try {
+            text = sectionOf(text, fragment).text;
+        } catch (error) {
+            if (!(error instanceof CannotOutline)) throw error;
+            throw new CompileError(`${where}: the leads of ${name}#${fragment} were asked for, and ${error.message}`);
+        }
+    }
+    return leadsOfText(text, fragment === null ? name : `${name}#${fragment}`, where);
 }
 
 /** `leadsOf` over a text already read, `name` being the file it came from, as the refusals name it. */
@@ -2354,9 +2374,11 @@ function gatesOf(file, where, packs = []) {
 
 /**
  * An always unit's text as a host loads it: each `<!-- leads: … -->` line replaced by the lead sentences
- * it names, and each `<!-- gates: … -->` line by the policy's gate ids under their tiers. Paths resolve
- * against the unit's own directory and stay inside `root`; each file read is recorded on the unit, so a
- * drifted rule names it beside the unit.
+ * it names, each `<!-- engine: … -->` line by those of the engine's file, and each `<!-- gates: … -->`
+ * line by the policy's gate ids under their tiers. A leads path may end `#<heading>`, for the first list
+ * under that heading. Paths resolve against the unit's own directory and stay inside `root`, an engine
+ * path against the engine and inside it; each file read is recorded on the unit, so a drifted rule names
+ * it beside the unit.
  */
 function expandedBody(unit, dir, root, packs = []) {
     unit.leadSources = [];
@@ -2365,9 +2387,13 @@ function expandedBody(unit, dir, root, packs = []) {
         .split("\n")
         .flatMap((line) => {
             const leads = LEADS_LINE.exec(line);
-            const gates = leads ? null : GATES_LINE.exec(line);
-            if (!leads && !gates) return [line];
-            const [what, named] = leads ? ["leads", leads[1]] : ["gates", gates[1]];
+            const engine = leads ? null : ENGINE_LINE.exec(line);
+            const gates = leads || engine ? null : GATES_LINE.exec(line);
+            if (!leads && !engine && !gates) return [line];
+            if (engine) return engineLeads(unit, engine[1], root);
+            const [what, spelled] = leads ? ["leads", leads[1]] : ["gates", gates[1]];
+            const hash = leads ? spelled.indexOf("#") : -1;
+            const [named, fragment] = hash === -1 ? [spelled, null] : [spelled.slice(0, hash), spelled.slice(hash + 1)];
             const file = path.resolve(dir, named);
             if (!isInside(root, file)) throw new CompileError(`${unit.source}: the ${what} of ${named} were asked for, and it lies outside the tree compiled here`);
             let real;
@@ -2382,9 +2408,26 @@ function expandedBody(unit, dir, root, packs = []) {
             const rel = path.relative(root, file).split(path.sep).join("/");
             if (!unit.leadSources.includes(rel)) unit.leadSources.push(rel);
             unit.written.add(what);
-            return leads ? leadsOf(real, unit.source) : gatesOf(real, unit.source, packs);
+            return leads ? leadsOf(real, unit.source, fragment, path.basename(named)) : gatesOf(real, unit.source, packs);
         })
         .join("\n");
+}
+
+/** The leads an `<!-- engine: … -->` line names, from the engine this compiler ships with. */
+function engineLeads(unit, spelled, root) {
+    const hash = spelled.indexOf("#");
+    const [named, fragment] = hash === -1 ? [spelled, null] : [spelled.slice(0, hash), spelled.slice(hash + 1)];
+    const core = path.join(ENGINE_ROOT, "core");
+    const file = path.resolve(core, named);
+    if (!isInside(core, file) || !fs.statSync(file, { throwIfNoEntry: false })?.isFile()) {
+        throw new CompileError(`${unit.source}: the engine's leads of ${spelled} were asked for, and it names no file in the engine's core/`);
+    }
+    const shown = `core/${path.relative(core, file).split(path.sep).join("/")}`;
+    const source = `the engine's ${shown}`;
+    if (!unit.leadSources.includes(source)) unit.leadSources.push(source);
+    unit.written.add("leads");
+    const own = fs.realpathSync(ENGINE_ROOT) === fs.realpathSync(root);
+    return leadsOf(file, unit.source, fragment, shown).map((lead) => (own ? lead.replaceAll(PLUGIN_ROOT, "") : lead));
 }
 
 const UNIT_KEYS = new Set(["tier", "paths", "description"]);
@@ -2534,8 +2577,9 @@ export function parseUnit(name, text, source = `${name}.md`) {
     }
     // Only an always unit's leads are written out: any other unit compiles to a scoped rule, a skill or a
     // pointer, and would carry the line as it stands.
-    if (tier !== "always" && rest.some((line) => LEADS_LINE.test(line) || GATES_LINE.test(line))) {
-        const which = rest.some((line) => LEADS_LINE.test(line)) ? "leads" : "gates";
+    const written = [["leads", LEADS_LINE], ["engine", ENGINE_LINE], ["gates", GATES_LINE]].find(([, line]) => rest.some((text) => line.test(text)));
+    if (tier !== "always" && written) {
+        const [which] = written;
         throw new CompileError(`${where}: a \`<!-- ${which}: … -->\` line is written out only in an always unit, and this one is \`${tier}\``);
     }
     return { name, tier, paths, description, body: `${rest.join("\n")}\n`, source };

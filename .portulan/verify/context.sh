@@ -59,21 +59,23 @@ cd -- "$root" || exit 2
 }
 
 # The rails, one line each, in bytes.
-RAIL_OWN_BOOT=16037       # .portulan's boot read-set, 15,968 B: the skill, and the boot card with its two
-                          # imports, lowered from 89,057 B by the boot card, then raised from 15,525 B by
-                          # the card's line on reading code by symbol, which spends 197 B to spare reads,
-                          # and from 15,735 B by its line on closing a change, 233 B to spare requests
-RAIL_DEMO_BOOT=37803      # examples' boot read-set with the combcount card, 37,061 B, raised by the boot
-                          # card from 35,587 B: with no card loaded, a boot reads the skill, which routes,
-                          # and then its steps
-RAIL_ENGINE=13763         # the boot skill, its steps and the kernel, 13,493 B, raised by the boot card
-                          # from 12,019 B for the same reason
+RAIL_OWN_BOOT=15650       # .portulan's boot read-set, 15,343 B: the skill, and the boot card with its two
+                          # imports, lowered from 89,057 B by the boot card, raised from 15,735 B by its line
+                          # on closing a change, 233 B to spare requests, and lowered from 15,968 B by the
+                          # rules on reading and the cache, which paid for their lines by moving the kernel's
+                          # and the skill's framing to files read on demand (2026-09-24)
+RAIL_DEMO_BOOT=36975      # examples' boot read-set with the combcount card, 36,250 B, lowered from 37,185 B by
+                          # the same move: with no card loaded, a boot reads the skill, which routes, and
+                          # then its steps
+RAIL_ENGINE=12936         # the boot skill, its steps and the kernel, 12,682 B, lowered from 13,617 B by the
+                          # same move
 RAIL_STEPS=10944          # the skill's step files, pointer-manifest.md and packs.md, 10,729 B
 RAIL_DESCRIPTIONS=3454    # the plugin's 7 skill and 3 agent descriptions, 3,386 B; 3,405 B since the boot
                           # card, whose skill description now names the card
-RAIL_ADOPTER_BOOT=8227    # a consumer `init` drafts, 8,219 B: the skill, the plugin's kernel, and the card
-                          # `init` compiles, with the identity it imports; 26,759 B before `init` drafted one,
-                          # 8,081 B before its records line named the finishing command
+RAIL_ADOPTER_BOOT=7984    # a consumer `init` drafts, 7,827 B: the skill, the plugin's kernel, and the card
+                          # `init` compiles, with the identity it imports; 26,759 B before `init` drafted
+                          # one, 8,081 B before its records line named the finishing command, and 8,219 B
+                          # before the card carried the rules on reading and the cache
 
 # The workspaces measured, audited against the tree the way ./index.sh audits its own list: a workspace
 # added and not measured would be a footprint nothing watches, reported as green.

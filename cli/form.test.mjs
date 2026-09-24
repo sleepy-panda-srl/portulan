@@ -26,6 +26,8 @@ import {
     handoffIndexIgnore,
     markdownOnDisk,
     notYetForm,
+    READING_LINE,
+    READING_TITLE,
     retireSessionLogs,
     sessionLogPointer,
     sessionLogSections,
@@ -34,6 +36,7 @@ import {
     unreleasedFragments,
     unreleasedRewrites,
     withIgnoreLines,
+    withReading,
 } from "./form.mjs";
 import { renderChanges } from "./index.mjs";
 
@@ -309,6 +312,22 @@ describe("the drafted card", () => {
         assert.doesNotMatch(draftCard({ ...manifest, slots: rest }, read, { workspace: ".portulan", inTree: inside, repoCards: ["app"] }), /handoff/, "no handoff series declared, none named");
     });
 
+    test("the card opens with the engine's rules on reading and the cache, which `compile` writes out", () => {
+        const card = draftCard(manifest, read, { workspace: ".portulan", inTree: inside });
+        assert.match(card, new RegExp(`^> import is here in full\\.\n\n## ${READING_TITLE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\n\n${READING_LINE}\n\n## Identity`, "m"));
+    });
+
+    test("a card drafted before that section is moved to the form drafted now, and any other card is left", () => {
+        const card = draftCard(manifest, read, { workspace: ".portulan", inTree: inside, repoCards: ["app"] });
+        const before = card
+            .replace("Each section names its file, and an\n> import is here in full.", "Each section names its file: an\n> import is here in full; open any other file when its subject is your task.")
+            .replace(`\n\n## ${READING_TITLE}\n\n${READING_LINE}`, "");
+        assert.notEqual(before, card);
+        assert.equal(withReading(before), card, "the move writes what `init` drafts now, byte for byte");
+        assert.equal(withReading(card), null, "a card carrying the section is not moved again");
+        assert.equal(withReading(before.replace("Each section names its file: an", "Our own words: an")), null, "a head its workspace rewrote is its own");
+    });
+
     test("a file outside the tree, which no import reaches, is named with when to read it", () => {
         const card = draftCard({ ...manifest, slots: { ...manifest.slots, identity: "../team/identity.md" } }, read, {
             workspace: ".portulan",
@@ -372,8 +391,11 @@ describe("which form a consumer is in, read from disk", () => {
         }
     });
 
+    /** A card source carrying the section on reading and the cache, as `init` drafts one. */
+    const carded = `---\ntier: always\n---\n\n# Portulan boot card\n\n## Reading\n\n${READING_LINE}\n`;
+
     test("a card drafted and not compiled is today's, and compiled it is the new form", () => {
-        const root = tree({ ".portulan/context/boot.md": "---\ntier: always\n---\n\n# Portulan boot card\n" });
+        const root = tree({ ".portulan/context/boot.md": carded });
         const ws = path.join(root, ".portulan");
         const m = manifest({ slots: { context: "context/" } });
         assert.match(formOf(ws, m).pieces.find((p) => p.id === "card").text, /not yet compiled to \.claude\/rules\/portulan\/boot\.md: run `portulan compile`/);
@@ -382,8 +404,28 @@ describe("which form a consumer is in, read from disk", () => {
         assert.equal(formLine(ws, m), "the new form: no Session log with entries; a compiled boot card");
     });
 
+    test("a card drafted before the section on reading and the cache is today's, whether or not it is compiled", () => {
+        const head = "> Compiled by `portulan compile` from `.portulan/context/boot.md`. Each section names its file: an\n> import is here in full; open any other file when its subject is your task.\n";
+        const root = tree({ ".portulan/context/boot.md": `---\ntier: always\n---\n\n# Portulan boot card\n\n${head}`, ".claude/rules/portulan/boot.md": "# Portulan boot card\n" });
+        const piece = formOf(path.join(root, ".portulan"), manifest({ slots: { context: "context/" } })).pieces.find((p) => p.id === "card");
+        assert.deepEqual(piece, { id: "card", state: "today", text: "a boot card drafted before it carried the engine's rules on reading and the cache" });
+    });
+
+    test("a card without the section under a head `upgrade` does not recognise is today's, with the line to add by hand", () => {
+        const root = tree({ ".portulan/context/boot.md": "---\ntier: always\n---\n\n# Portulan boot card\n\nOur own head.\n", ".claude/rules/portulan/boot.md": "# Portulan boot card\n" });
+        const ws = path.join(root, ".portulan");
+        const m = manifest({ slots: { context: "context/" } });
+        const piece = formOf(ws, m).pieces.find((p) => p.id === "card");
+        assert.equal(piece.state, "today");
+        assert.equal(piece.hand, true);
+        assert.equal(piece.text, `a boot card without the engine's rules on reading and the cache, whose head \`upgrade\` does not recognise: add a section holding the line \`${READING_LINE}\``);
+        assert.match(formLine(ws, m), /— `portulan upgrade --write [^`]+` moves all but what is named to add by hand, and until then it boots as it did$/);
+        fs.writeFileSync(path.join(ws, "context", "boot.md"), `---\ntier: always\n---\n\n# Portulan boot card\n\n<!-- engine: operating/context.md#every-request-pays-for-what-the-session-has-read --> \n`);
+        assert.equal(formOf(ws, m).pieces.find((p) => p.id === "card").state, "today", "a line with a trailing space is no line `compile` expands");
+    });
+
     test("a card at the head of AGENTS.md is the new form on a host that reads it, and one mentioning the line is not", () => {
-        const root = tree({ ".portulan/context/boot.md": "---\ntier: always\n---\n\n# Portulan boot card\n", "AGENTS.md": "# AGENTS.md — acme\n\n# Portulan boot card\n\nThe card.\n" });
+        const root = tree({ ".portulan/context/boot.md": carded, "AGENTS.md": "# AGENTS.md — acme\n\n# Portulan boot card\n\nThe card.\n" });
         const m = manifest({ slots: { context: "context/" } });
         assert.deepEqual(formOf(path.join(root, ".portulan"), m).pieces.find((p) => p.id === "card"), { id: "card", state: "new", text: "a boot card at the head of AGENTS.md, which this host reads" });
         fs.writeFileSync(path.join(root, "AGENTS.md"), "# AGENTS.md — acme\n\nNo `# Portulan boot card` here.\n");

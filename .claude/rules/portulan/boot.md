@@ -1,12 +1,20 @@
 # Portulan boot card
 
 > This repository's boot, compiled from `.portulan/context/boot.md` into every context here. Each section
-> names the file behind it: open that file when its subject is your task, not before. A rule scoped to a
-> path loads when you first touch that path, and names the file it continues.
+> names the file behind it. A rule scoped to a path loads when you first touch that path, and names the
+> file it continues.
 
 ## The kernel
 
 @../../../core/engine.md
+
+## Reading and the cache: `core/operating/context.md`
+
+- **Send independent tool calls in one request.**
+- **Read a file once; reuse what your context holds.**
+- **Open a file only when the task needs it, and one of 300 lines or more only where it does: `node cli/symbols.mjs <file>` outlines it, and `<file>#<heading>` prints one section.**
+- **Ask for only the output you need: a range, a count, the failures.**
+- **The prompt cache lasts five minutes or an hour: a longer pause, or a fresh subagent where one could be resumed, writes the whole context again.**
 
 ## Who we are, and what we build: `.portulan/identity.md`
 
@@ -87,9 +95,7 @@ runs. Close a change with
 `git add <new files> && node cli/finish.mjs -m "<subject>" -m "<why and trailers>"`: one call runs
 every recipe CI runs, checks the changelog fragment, commits and pushes, and on a red commits and pushes
 nothing. `node cli/portulan.mjs <subcommand>` runs the CLI. A build-session bootstrap file at the root is
-git-ignored and never committed: in a diff, it is the bug. **Code:** outline a file of 300 or more lines
-with `node cli/symbols.mjs <file>` (or `--find <name>`), then Read only its spans, by `offset` and
-`limit`; read a shorter file you will change whole.
+git-ignored and never committed: in a diff, it is the bug.
 
 ## Packs: `rituals/checkpoints` and `tools/github`
 

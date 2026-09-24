@@ -5,11 +5,6 @@ description: Boot the Portulan engine in this repository — use its boot card w
 
 # Boot Portulan
 
-> Portulan is an operating framework: a universal **engine** plus a per-team **workspace**. Booting
-> means loading the engine's kernel and then the team's own policy layer, so that what follows is
-> tailored to *this* team rather than generically sensible. _(See
-> [`../../../core/engine.md`](../../../core/engine.md) and [`../../../docs/vision.md`](../../../docs/vision.md).)_
->
 > **This file decides which of two boots runs: the card below, or [`steps.md`](steps.md), which is the
 > other in full.** The reasons behind both are in [`rationale.md`](rationale.md), under the same step
 > numbers. A boot does not need it: read it when a step does not fit the case in front of you, or when
@@ -25,6 +20,7 @@ file behind each of its lines. So:
   you are working on, sends you to it, at the moment it applies.
 - **Where your context does not also hold the kernel**, a file whose first line is `# Portulan engine`,
   read `${CLAUDE_PLUGIN_ROOT}/core/engine.md` in full: a card is a boot only with the kernel beside it.
+  `${CLAUDE_PLUGIN_ROOT}` is the `<plugin root>` a card's commands name.
 - **Close with the honest position, from the card**: what it says is enforced here and what is not, the
   packs it names and where their limits are, and the line
   `node "${CLAUDE_PLUGIN_ROOT}/cli/context.mjs" --workspace "${CLAUDE_PROJECT_DIR}/.portulan" --brief`
