@@ -1409,3 +1409,90 @@ test("vendor refuses a named root combined with `--pack-root auto`", async () =>
     assert.equal(await run([src, "--host", "generic", "--pack-root", "auto", "--pack-root", src], h.options), 2);
     assert.match(text(h), /never both/);
 });
+
+// ------------------------------------------------------------------ the new form, carried (2026-09-24)
+
+// A workspace that declares a boot card boots from it, on any host: the vendored file leads with the card
+// and names the slots as files to open, the host's tree gets the records the new form keeps, and a switch
+// into a repository compiles the card where it arrives.
+describe("the new form, carried by vendor", () => {
+    /** A feed-side workspace whose `context/` holds a boot card importing its identity. */
+    function carded(root, extra = {}) {
+        const src = path.join(root, "feed", "acme");
+        fs.mkdirSync(src, { recursive: true });
+        seedWorkspace(src, { kind: "portfolio", tree: null, card: null, extra: { portulan: { spec: "2.10" }, ...extra } });
+        const manifest = readManifest(src);
+        manifest.slots.context = "context/";
+        write(src, "workspace.json", json(manifest));
+        write(src, "context/boot.md", "---\ntier: always\n---\n\n# Portulan boot card\n\n## Identity\n\n@../identity.md\n");
+        return src;
+    }
+
+    test("with a card, AGENTS.md leads with it, and the slots follow as files to open", async () => {
+        const root = scratch();
+        const src = carded(root);
+        const host = path.join(root, "host");
+        fs.mkdirSync(host, { recursive: true });
+        assert.equal(await run([src, "--into", path.join(host, ".portulan"), "--residence", "in-repo", "--host", "generic"], harness().options), 0);
+        const md = fs.readFileSync(path.join(host, "AGENTS.md"), "utf8");
+        const card = md.indexOf("# Portulan boot card");
+        const files = md.indexOf("## The workspace's files, opened when the card or the task sends you to one");
+        assert.ok(card !== -1 && files > card, "the card comes first, and the slots after it");
+        assert.doesNotMatch(md, /## Read these, in this order/, "a carded boot reads no slot in order");
+        assert.doesNotMatch(md, /## Guidance/, "the card is not carried twice");
+        assert.match(md, /^- \*\*`\.portulan\/context\/`\*\* — this team's guidance: the card above is its boot\.$/m);
+        assert.deepEqual(await green(path.join(host, ".portulan")), []);
+        const { findings } = await inspect(path.join(host, ".portulan"), { env: { CLAUDE_CONFIG_DIR: scratch() } });
+        const form = findings.find((f) => f.check === "form");
+        assert.match(form.message, /a boot card at the head of AGENTS\.md, which this host reads/, "a host that reads AGENTS.md boots from the card there, with no rules to compile");
+        assert.doesNotMatch(form.message, /upgrade --write/);
+    });
+
+    test("without a card, the slots are read in order, as before", () => {
+        const manifest = { portulan: { spec: "2.7" }, name: "acme", kind: "repository", tree: "../", slots: { identity: "identity.md" }, verify: { default: "w", recipes: [] } };
+        assert.match(agentsMd(manifest, "generic"), /## Read these, in this order/);
+    });
+
+    test("the host's tree gets the fragments directory and the index's ignore line, and keeps its own", async () => {
+        const root = scratch();
+        const src = carded(root, { handoffs: { index: { path: "handoffs-index.md" } } });
+        write(src, "handoffs/.gitkeep", "");
+        const manifest = readManifest(src);
+        manifest.slots.handoffs = "handoffs/";
+        write(src, "workspace.json", json(manifest));
+
+        const host = path.join(root, "host");
+        write(host, ".gitignore", "dist/\n");
+        const h = harness();
+        assert.equal(await run([src, "--into", path.join(host, ".portulan"), "--residence", "in-repo", "--host", "generic"], h.options), 0, text(h));
+        assert.match(fs.readFileSync(path.join(host, "changes", "README.md"), "utf8"), /^# Changelog fragments$/m);
+        assert.match(fs.readFileSync(path.join(host, ".gitignore"), "utf8"), /^dist\/\n\n# The handoff index is printed on demand[\s\S]*^\/\.portulan\/handoffs-index\.md$/m);
+        assert.match(text(h), /the records the new form keeps, beside it: `changes\/README\.md`, `\.gitignore`/);
+
+        const second = path.join(root, "second");
+        write(second, "changes/README.md", "ours\n");
+        const h2 = harness();
+        assert.equal(await run([src, "--into", path.join(second, ".portulan"), "--residence", "in-repo", "--host", "generic"], h2.options), 0, text(h2));
+        assert.equal(fs.readFileSync(path.join(second, "changes", "README.md"), "utf8"), "ours\n");
+        assert.match(text(h2), /left as they are: `changes\/README\.md` is the tree's own/);
+    });
+
+    test("a switch into a repository compiles the card where it arrives, and settings stay a person's to compile", async () => {
+        const root = scratch();
+        const feed = carded(root);
+        const manifest = readManifest(feed);
+        manifest.slots.repos = "repos/";
+        write(feed, "workspace.json", json(manifest));
+        write(feed, "repos/acme-app.md", "# acme-app\n\n> The card for acme-app.\n");
+        const dst = pointerRepo(root, "acme-app", "acme");
+        const repo = path.dirname(dst);
+        const h = harness();
+        assert.equal(await run([feed, "--into", dst, "--residence", "in-repo", "--switch", "--repo-root", root], h.options), 0, text(h));
+        const rule = path.join(repo, ".claude", "rules", "portulan", "boot.md");
+        assert.match(fs.readFileSync(rule, "utf8"), /^# Portulan boot card$/m);
+        assert.match(fs.readFileSync(rule, "utf8"), /^@\.\.\/\.\.\/\.\.\/\.portulan\/identity\.md$/m, "the import is rebased to the compiled rule");
+        assert.equal(exists(path.join(repo, ".claude", "settings.json")), false);
+        assert.match(text(h), /compiled the guidance into .+, which Claude Code loads there; host settings are not/);
+        assert.match(text(h), /the repository's own records are not moved by a switch — `portulan upgrade --write .+` moves them to the new form/);
+    });
+});

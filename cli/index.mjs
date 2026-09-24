@@ -1077,7 +1077,7 @@ function judgeHandoffs(dir, workspace, { write, fail, remedyFlags = "" }) {
 
     const expected = renderHandoffIndex(workspace, series);
     // **Whether the index is kept is the workspace's choice, and a copy on disk is how it says so**
-    // (2026-09-23). A workspace that keeps one — `init` drafts one — keeps the freshness rail: the copy
+    // (2026-09-23). A workspace that keeps one keeps the freshness rail (`init` drafts none since 2026-09-24): the copy
     // is compared byte for byte and a write regenerates it. One that keeps none has no copy, and then a
     // write creates none and `--check` renders the series, which proves every handoff yields a line, and
     // compares it with nothing. This repository stopped keeping its own that day: a committed copy

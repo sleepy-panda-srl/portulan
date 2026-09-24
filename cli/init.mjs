@@ -81,12 +81,14 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // — so it is the tool that most needed a root it did not have to be told.
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 
-// The handoff index is GENERATED, and this is the generator — the same one `index --check` compares
-// against. Imported rather than approximated: a draft that wrote its own version of this file would be
-// a second renderer of one artifact, and the drafted rail would go red on the adopter's first run
-// against a difference this tool invented. `cli/index.mjs` imports nothing from here, so the direction
-// is one-way.
-import { renderHandoffIndex } from "./index.mjs";
+// The new form's texts and the card's draft, from the one module that says what the new form is, so a
+// drafted workspace and a migrated one read alike. `compile` writes the card's guidance half here, and
+// `context` measures the always tier the offer of a budget is made on. None of them imports from here.
+// _(The handoff index's generator was imported here until 2026-09-24, when a drafted workspace stopped
+// keeping a copy of the index: `index` renders it, and nothing here writes one.)_
+import { compileGuidance } from "./compile.mjs";
+import { alwaysTier, ESTIMATED_BYTES_PER_TOKEN, OFFER_FLOOR_TOKENS, tokensOf } from "./context.mjs";
+import { cardIgnored, changesReadme, claudeRulesUnignore, COMPILED_CARD, draftCard, handoffIndexIgnore, handoffsReadme, withIgnoreLines } from "./form.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -116,6 +118,9 @@ export const SLUG = (() => {
 
 /** The Workspace Definition this tool writes against. A pointer needs 2.7 — the version that added it. */
 const SPEC = "2.7";
+
+/** A drafted workspace carries its boot card in `slots.context`, which 2.10 added, so it declares 2.10. */
+const WORKSPACE_SPEC = "2.10";
 
 /** The gate-policy spec `cli/compile.mjs` reads. Checked by its own suite, not guessed at here. */
 // Exported so `cli/new.test.mjs` can assert that the OTHER policy-generating carrier —
@@ -568,7 +573,7 @@ function draftWorkspace(answers, observed) {
     const name = answers.name ?? "workspace";
 
     const manifest = {
-        portulan: { spec: SPEC },
+        portulan: { spec: WORKSPACE_SPEC },
         name,
         summary: answers.summary ?? `The ${name} workspace — drafted by \`init\`, and not yet curated.`,
         kind: "repository",
@@ -584,6 +589,8 @@ function draftWorkspace(answers, observed) {
             gates: "gate-map.md",
             dod: "dod.md",
             handoffs: "handoffs/",
+            // The boot card and any guidance beside it, compiled by `compile` into what the host loads.
+            context: "context/",
         },
         verify: {
             default: "workspace",
@@ -609,7 +616,8 @@ function draftWorkspace(answers, observed) {
             ],
         },
         // Sited OUTSIDE the series it indexes: an index living in `handoffs/` would be counted as a
-        // handoff by everything that walks the directory.
+        // handoff by everything that walks the directory. Declared, and not kept: `index --handoffs`
+        // prints it, and the `index` recipe renders it to prove every handoff yields a line.
         handoffs: { index: { path: "handoffs-index.md" } },
     };
     if (answers.cycle) manifest.packs = [answers.checkpoints];
@@ -624,18 +632,25 @@ function draftWorkspace(answers, observed) {
     files.set(".portulan/verify/README.md", { contents: draftVerifyReadme() });
     files.set(".portulan/verify/workspace.sh", { contents: draftRecipe(), mode: 0o755 });
     files.set(".portulan/verify/index.sh", { contents: draftIndexRecipe(), mode: 0o755 });
-    // Written by the generator, not by this file, and written NOW rather than left for the adopter's
-    // first `index` run — a rail whose subject does not exist yet is a red on day one for a file
-    // nobody was asked to write. An empty series renders an index with a zero count, which is the
-    // honest state of a workspace drafted five seconds ago.
-    files.set(`.portulan/${manifest.handoffs.index.path}`, {
-        contents: renderHandoffIndex(manifest, { records: [], bytes: 0 }),
-    });
+    // **The index is not kept** (2026-09-23): a committed copy conflicted on every merge that added a
+    // handoff and carried nothing the series does not, so none is written, and its path is git-ignored
+    // so none is committed by accident. `index --check` renders the series with no copy on disk, which
+    // proves every handoff yields a line: the rail keeps a subject from the first day.
+    //
     // A Map of files cannot express an empty directory and git does not track one, so the slot's
-    // directory is created by a file that says why it is there.
-    files.set(".portulan/handoffs/.gitkeep", {
-        contents: "# The handoff series. One dated record per session; filenames lead with YYYY-MM-DD.\n",
-    });
+    // directory is created by its README, which is the handoff template: written for open work only.
+    files.set(".portulan/handoffs/README.md", { contents: handoffsReadme() });
+    files.set(".gitignore", { append: handoffIndexIgnore(`.portulan/${manifest.handoffs.index.path}`, ".portulan") });
+    // A change's changelog entry is a fragment, so the directory a release cut assembles is drafted
+    // with the rule it keeps. At the repository's root, like the changelog it feeds; where the
+    // repository already has one, it is the repository's, and it is left as it is rather than refused.
+    files.set("changes/README.md", { contents: changesReadme(), ifAbsent: true });
+
+    // **The boot card**, drafted from the files above and compiled by `run` once they are on disk: the
+    // identity imported whole, the leads of the principles and the definition of done, and the gates of
+    // the policy, so a session reads no slot to boot and the card says no less than the files it stands for.
+    const read = (rel) => files.get(`.portulan/${rel}`)?.contents ?? null;
+    files.set(".portulan/context/boot.md", { contents: draftCard(manifest, read, { workspace: ".portulan", inTree: (rel) => !path.posix.normalize(rel).startsWith("..") }) });
 
     return files;
 }
@@ -711,8 +726,12 @@ replace the placeholders. A workspace you have not curated is a workspace that m
 
 ## Where to start
 
-1. **\`identity.md\`** — who you are, your stack, your glossary. It is the first thing an agent reads
-   after the kernel, and the scan below could only observe so much.
+1. **\`identity.md\`** — who you are, your stack, your glossary. The boot card imports it whole, so
+   every context here carries it: keep it short and keep it true. Where something is not true yet, say
+   so rather than describing the intended state, since a file claiming a capability the tree does not
+   have is the defect this one exists to prevent. Correct the commands the scan read when they go stale.
+   The glossary earns its place the first time an agent misreads one of your words, and the scan below
+   could only observe so much.
 2. **\`principles.md\`** — the handful of rules that are yours rather than everyone's. Placeholders
    until you write them.
 3. **\`verify/workspace.sh\`** — **this exits 2 (could not run) until you edit it.** It cannot report
@@ -735,12 +754,14 @@ is worse than one with fewer of them.
   \`doctor --pack-root auto .portulan\`, which finds it in this host's installed plugins;
   \`doctor --pack-root <dir> .portulan\` if you would rather name the location; or \`init --no-cycle\`
   to compose the pack later, once you know where it lives.
-- **The records conventions are drafted, and the freshness rail is one of them** — a \`handoffs/\`
-  directory in the \`handoffs\` slot, a generated \`handoffs-index.md\` **written by the same generator
-  that will check it**, and \`verify/index.sh\` declared beside \`workspace\` to hold the two in
-  agreement. The index starts at zero handoffs, which is what this repository has, so the rail is green
-  today rather than red about a file nobody wrote. Edit that index by hand and the rail goes red; add a
-  handoff without regenerating and it goes red the same way. It is **not** the default recipe: the
+- **The records conventions are drafted, and a rail holds them from the first day.** A change's why is
+  its commit message. A changelog entry is a file of one bullet in \`changes/\` beside this directory,
+  which \`changes/README.md\` explains and \`portulan index --changes changes\` prints as a release cut
+  pastes it. A handoff, in the \`handoffs\` slot, is written only for work a session leaves open, from
+  the template in \`handoffs/README.md\`. The handoff index is printed on demand by \`portulan index
+  --handoffs .portulan\` and is not kept: its path is git-ignored, so no copy goes stale on a merge.
+  \`verify/index.sh\`, declared beside \`workspace\`, renders the series and goes red when a handoff
+  yields no index line, or when a copy someone keeps has drifted. It is **not** the default recipe: the
   default is what runs at every session end, and that slot belongs to the one that says whether this
   repository works.
 - **The rail needs the CLI, and may not find it here.** It looks at \`$PORTULAN_CLI\`, then
@@ -748,14 +769,24 @@ is worse than one with fewer of them.
   the machine that ran \`init\`, which git cannot carry to anybody else. Where none answers it exits
   **2 — could not run**, never 0. On CI that is the state to expect until the CLI is installed there,
   and it is said here rather than left to be met as an amber pipeline.
-- **The session-end gate is wired by \`compile\`, and this draft has not run it.** The runner that
-  enforces "a handoff dated today exists" before a session ends **does** ship in the package you have —
-  it is \`cli/stop-gate.mjs\` — and \`portulan compile\` emits a \`Stop\` hook naming it. What this
-  draft does is bind the ritual and the records conventions; running \`compile\` is the step that turns
-  them into enforcement, and it is yours to run because compiling writes host settings and that is not
-  a thing a scaffold should do to your machine unasked. **Until you run it**, treat the session-end
-  handoff as a practice your team holds rather than a rail — a rule nothing checks is worth exactly
-  what you can remember about it.
+- **The session-end gate is wired by \`compile\`, and this draft has run only its guidance half.** The
+  runner that asks for a dated handoff when a session ends with work not committed and pushed **does**
+  ship in the package you have — it is \`cli/stop-gate.mjs\` — and \`portulan compile\` emits a
+  \`Stop\` hook naming it into \`.claude/settings.json\`, beside the gate policy's permission rules.
+  Running that is yours, because it writes host settings and that is not a thing a scaffold should do
+  to your machine unasked. **Until you run it**, treat the session-end handoff as a practice your team
+  holds rather than a rail — a rule nothing checks is worth exactly what you can remember about it.
+
+## The boot card
+
+\`context/boot.md\` is this workspace's boot: an always unit that \`portulan compile\` wrote into
+\`.claude/rules/portulan/boot.md\`, which Claude Code loads into every context here, so a session opens
+no slot to boot. \`init\` drafted it from the files above. It imports \`identity.md\` whole, and
+\`compile\` writes out the lead sentences of \`principles.md\` and \`dod.md\` and the gates of
+\`gates.json\` onto it, so it says what they say. **Run \`portulan compile\` after you edit any of
+them**: until you do, \`portulan compile --check\` reports the card drifted. Commit the compiled rules
+with the files they come from. To boot as before, reading each slot at boot, delete
+\`context/boot.md\` and compile again.
 
 ## What the scan observed
 
@@ -772,10 +803,6 @@ function draftIdentity(observed, name) {
     const row = (label, value) => `| ${label} | ${value ? `\`${value}\`` : unknown} |`;
 
     return `# Identity — ${name}
-
-> Who this team is, what it builds with, and what its words mean. The first thing an agent reads after
-> the kernel, so keep it short and keep it true. \`init\` drafted this from what it could observe; every
-> line marked *not determined* was left blank rather than guessed at.
 
 ## The team
 
@@ -795,19 +822,13 @@ ${row("Run", observed.run)}
 
 ${
     observed.build || observed.test || observed.run
-        ? "These were read out of files in this repository, not inferred. Correct them if they are stale."
+        ? "Read out of files in this repository, not inferred."
         : "The scan found no command written down anywhere it looked. Write them here; anything else would be a guess."
 }
 
 ## Glossary
 
-${unknown} — the words your team uses that a newcomer would misread. This section earns its place the
-first time an agent gets one wrong.
-
-## Write the limit, not the aspiration
-
-Where something is not true yet, say so here rather than describing the intended state. A document that
-claims a capability the tree does not have is the defect this section exists to prevent.
+${unknown} — the words your team uses that a newcomer would misread.
 `;
 }
 
@@ -927,7 +948,7 @@ is a command in a file.
 | Recipe | What it checks |
 |---|---|
 | \`workspace\` | **Nothing yet — it exits 2.** Replace it with the command that tells you this repository is healthy. This one is the **default**: it is what runs at a session end. |
-| \`index\` | The generated \`handoffs-index.md\` against the series it indexes, byte for byte. Finished as drafted — it checks a real thing today. |
+| \`index\` | The handoff series renders an index line for every handoff, and a copy of the index kept on disk matches it byte for byte; none is kept as drafted. Finished as drafted — it checks a real thing today. |
 
 ## The three exit codes, and why the middle one is not enough
 
@@ -947,9 +968,9 @@ ran \`init\`, which git cannot carry to a clone or to a CI runner. Where none of
 where \`node\` itself is absent, the recipe exits **2** and names what it looked for. That is the state
 to expect on CI until the CLI is installed there; it is not a red, and it is not a pass either.
 
-**Regenerating is yours, and the rail deliberately does not do it.** A check that repaired what it
-found would report green on a repository nobody had corrected, and the index is only worth having
-because it is derived — run the index tool yourself and commit the result.
+**Repairing is yours, and the rail deliberately does not do it.** A check that repaired what it found
+would report green on a repository nobody had corrected. A handoff that yields no index line needs its
+title or date fixed; a kept copy that drifted needs the index tool run again, or the copy deleted.
 
 **One thing the three locations cannot establish, said rather than left implicit.** The second of them
 is *whatever \`portulan\` is on your \`PATH\`* — and nothing here can tell that it is this tool rather
@@ -1016,14 +1037,14 @@ exit 2
 function draftIndexRecipe() {
     const bundle = path.resolve(HERE, "..");
     return `#!/usr/bin/env bash
-# Records rail — the generated index is compared against the series it indexes.
+# Records rail — the handoff series is rendered as its index, in memory.
 #
-# \`handoffs-index.md\` is GENERATED. This recipe regenerates it in memory and compares byte for byte,
-# so an index edited by hand, or one left behind when a handoff was added, is a RED rather than a file
-# that quietly stopped being true. Nothing here writes: run the index tool yourself to repair it.
+# The index is not kept: \`index --handoffs\` prints it. This recipe renders it, so a handoff that yields
+# no index line is a RED, and a copy someone keeps on disk is compared byte for byte, so one edited by
+# hand or left behind when a handoff was added is a RED too. Nothing here writes.
 #
-#   exit 0   green: the index matches the series
-#   exit 1   red: it does not — regenerate it
+#   exit 0   green: every handoff yields a line, and any kept copy matches
+#   exit 1   red: one does not — fix the handoff, or regenerate or delete the copy
 #   exit 2   could not run: the Portulan CLI is not reachable from here. NEVER a pass.
 
 set -uo pipefail
@@ -1084,6 +1105,45 @@ if [ "\$code" -eq 126 ] || [ "\$code" -eq 127 ]; then
 fi
 exit "\$code"
 `;
+}
+
+/**
+ * Compile the drafted card, and say what the always tier then costs, with `0036`'s offer of a budget.
+ *
+ * **After everything is written, and never a reason to report writing nothing.** `init` compiles only the
+ * guidance half, through `compile`'s own planner and emitter (2026-09-24): the rules the host loads, never
+ * `.claude/settings.json`, which stays the output of a
+ * `compile` a human runs, as the README says. A refusal there, a rule written by hand where the card would
+ * go, is reported and leaves the workspace booting as it did until it is cleared.
+ *
+ * **The offer is printed and not written.** `0036` rules the budget is declared, never defaulted, and
+ * counted at a ratio the host's exact count measured on this repository; the schema has no way to record a
+ * ratio nobody measured, so a budget written here would claim a calibration no one ran (2026-09-24).
+ */
+function reportCard(target, say, warn) {
+    try {
+        compileGuidance(target);
+        say(`init: compiled the boot card into ${COMPILED_CARD}, which Claude Code loads into every context here`);
+    } catch (error) {
+        warn(`init: the boot card was drafted and NOT compiled — ${error.message}. Until \`portulan compile\` runs clean, a session here boots through the slots, as before`);
+        return;
+    }
+    if (cardIgnored(target)) {
+        warn(`init: git ignores ${COMPILED_CARD}, so the card would reach no review and no fresh checkout — add an exception for it to .gitignore`);
+    }
+    let bytes;
+    try {
+        bytes = alwaysTier(target).entries.reduce((n, e) => n + e.bytes, 0);
+    } catch (error) {
+        warn(`init: the always tier could not be measured — ${error.message}`);
+        return;
+    }
+    const tokens = tokensOf(bytes, ESTIMATED_BYTES_PER_TOKEN);
+    say(
+        `init: the always tier here is ~${tokens.toLocaleString("en-US")} tokens with the card, at 0036's estimate of ${ESTIMATED_BYTES_PER_TOKEN} bytes a token. ` +
+            `A budget is yours to declare: 0036 offers the larger of ${OFFER_FLOOR_TOKENS.toLocaleString("en-US")} tokens and that, ` +
+            `${Math.max(OFFER_FLOOR_TOKENS, tokens).toLocaleString("en-US")}, as \`context.always.budget.tokens\`, beside a \`context.ratio\` Claude Code's exact count measured here`,
+    );
 }
 
 // ------------------------------------------------------------------------- writing
@@ -1269,7 +1329,11 @@ export function collisions(target, files) {
                 break;
             }
             if (i === segments.length - 1) {
-                found.push({ rel, why: "already exists" });
+                // A file drafted as lines to append, the `.gitignore`, is merged into rather than
+                // replaced, and one drafted only where absent, `changes/README.md`, is left as it is, so
+                // neither being there is a collision; being something other than a file is.
+                if (files.get(rel)?.append === undefined && !files.get(rel)?.ifAbsent) found.push({ rel, why: "already exists" });
+                else if (!stat.isFile()) found.push({ rel, why: `\`${where}\` is in the way and is not a file` });
                 break;
             }
             if (!stat.isDirectory()) {
@@ -1617,6 +1681,14 @@ export async function run(argv, options = {}) {
 
         const files = draft(answers, scan(target));
 
+        // Where the repository's `.gitignore` hides `.claude/`, the compiled card would never reach a
+        // review or a fresh checkout: the exceptions that let git see it join the lines drafted for the
+        // file, as git answers for this repository. No git, no ignore rules, nothing to add.
+        if (files.has(".gitignore")) {
+            const { lines } = claudeRulesUnignore(target);
+            if (lines.length) files.get(".gitignore").append.push("", ...lines);
+        }
+
         // The second safety question, and it is not the one above. "Is this repository governed?"
         // keys on the manifest; "may I write here?" keys on every path the draft touches. A
         // `.portulan/` with a hand-written file and no manifest answers no to the first and must
@@ -1650,14 +1722,36 @@ export async function run(argv, options = {}) {
         // and the retry is refused with a sentence that is false. Last, the same failure leaves
         // files and no manifest — which the collision check reports plainly and a person can clear.
         const manifest = ".portulan/workspace.json";
+        const left = [];
         for (const [rel, file] of [...files].filter(([rel]) => rel !== manifest).concat([[manifest, files.get(manifest)]])) {
             const full = path.join(target, rel);
+            if (file.ifAbsent && fs.lstatSync(full, { throwIfNoEntry: false }) !== undefined) {
+                left.push(rel);
+                continue;
+            }
             fs.mkdirSync(path.dirname(full), { recursive: true });
+            if (file.append !== undefined) {
+                let before = null;
+                try {
+                    before = fs.readFileSync(full, "utf8");
+                } catch (error) {
+                    if (error.code !== "ENOENT") throw error;
+                }
+                fs.writeFileSync(full, withIgnoreLines(before, file.append));
+                continue;
+            }
             fs.writeFileSync(full, file.contents);
             if (file.mode !== undefined) fs.chmodSync(full, file.mode);
         }
 
-        say(`init: drafted ${files.size} file(s) into ${path.join(parsed.target, ".portulan")}`);
+        const inWorkspace = [...files.keys()].filter((rel) => rel.startsWith(".portulan/")).length;
+        const beside = [...files.keys()].filter((rel) => !rel.startsWith(".portulan/") && !left.includes(rel));
+        say(
+            `init: drafted ${inWorkspace} file(s) into ${path.join(parsed.target, ".portulan")}` +
+                (beside.length ? `, and ${beside.map((r) => `\`${r}\``).join(", ")} beside it` : ""),
+        );
+        for (const rel of left) say(`init: left the repository's own \`${rel}\` as it is`);
+        if (answers.residence !== "pointer") reportCard(target, say, warn);
         if (answers.residence === "pointer") {
             say(`init: this repository is recorded as governed by \`${answers.governedBy}\`. Nothing was fetched.`);
         } else {

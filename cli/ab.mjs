@@ -1299,11 +1299,13 @@ export function treeFiles(root) {
 /**
  * The construction-time assertion `arm.md` asks for: the two arms are identical outside the treatment.
  *
- * The treatment is the enumerated set — `AGENTS.md`, `.portulan/**`, `.claude/**`. Anything else present
- * in one arm and not the other is a difference the experiment did not intend, and it is returned rather
- * than tolerated.
+ * The treatment is the enumerated set — `AGENTS.md`, `.portulan/**`, `.claude/**`, and since 2026-09-24
+ * the two records files `vendor --host` gives the host's tree, `changes/README.md` and the `.gitignore`
+ * line that keeps the handoff index off the record, which are Portulan's as the rest is. Anything else
+ * present in one arm and not the other is a difference the experiment did not intend, and it is returned
+ * rather than tolerated.
  */
-export const TREATMENT_PATHS = ["AGENTS.md", ".portulan/", ".claude/"];
+export const TREATMENT_PATHS = ["AGENTS.md", ".portulan/", ".claude/", "changes/README.md", ".gitignore"];
 
 export function armsDifferOnlyByTreatment(filesA, filesB) {
     const treatment = (rel) => TREATMENT_PATHS.some((t) => (t.endsWith("/") ? rel.startsWith(t) : rel === t));

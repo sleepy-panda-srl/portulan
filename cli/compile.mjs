@@ -2062,6 +2062,17 @@ export const IMPORT_DEPTH = 5;
 /** A line asking `compile` for the lead sentences of another file's first list, alone on its line. */
 const LEADS_LINE = /^<!-- leads: (\S+) -->$/;
 
+/** A line asking `compile` for a gate policy's gate ids under their tiers, alone on its line. */
+const GATES_LINE = /^<!-- gates: (\S+) -->$/;
+
+/** How a card names each tier: core's four, each with what it asks of an agent. */
+const TIER_GLOSS = {
+    auto: "**Auto**, unattended",
+    propose: "**Propose**, a human decides",
+    gated: "**Gated**, a human's approval for each action, never inferred and never standing",
+    prohibited: "**Prohibited**, where no approval exists",
+};
+
 /** Why an import in a unit of each other tier would not load as its unit does, for the refusal. */
 const STRAY_IMPORT = {
     "on-path": "the host loads a path-scoped rule's imports into every context, so the file would not wait for the path",
@@ -2146,15 +2157,17 @@ export const importPath = (target) => {
  * sit `IMPORT_DEPTH` imports down. An import the host would drop is refused rather than left to load nothing
  * while its author believes it loads.
  *
- * @returns {Array<{ target: string, file: string }>} the text's own imports, in order, each with its file
+ * @returns {Array<{ target: string, file: string, nested: Array<{ file: string, from: string }> }>} the
+ * text's own imports, in order, each with its file and the files it imports in turn, down to the host's
+ * depth, each once and with the file that imports it
  */
 function checkedImports(text, dir, root, where) {
     const own = [];
     const shown = path.relative(process.cwd(), root) || ".";
-    const queue = [{ text, dir, depth: 0, from: where }];
+    const queue = [{ text, dir, depth: 0, from: where, top: null, file: null }];
     const seen = new Set();
     while (queue.length) {
-        const { text: body, dir: base, depth, from } = queue.shift();
+        const { text: body, dir: base, depth, from, top, file: parent } = queue.shift();
         for (const { target, line } of importSpans(body)) {
             const bare = importPath(target);
             if (bare === null) continue;
@@ -2178,10 +2191,20 @@ function checkedImports(text, dir, root, where) {
             if (depth + 1 >= IMPORT_DEPTH) {
                 throw new CompileError(`${spelled} sits ${depth + 1} imports below the rule, and the host loads nothing ${IMPORT_DEPTH} deep — import the file from nearer the rule`);
             }
-            if (depth === 0) own.push({ target, file });
+            // The queue is breadth-first, so every import the text makes itself is seen before any file one of
+            // them imports is read: a file imported both ways is named once, as the text's own.
+            if (depth === 0) own.push({ target, file, nested: [] });
             if (seen.has(real)) continue;
             seen.add(real);
-            queue.push({ text: fs.readFileSync(real, "utf8"), dir: path.dirname(file), depth: depth + 1, from: path.relative(root, file).split(path.sep).join("/") });
+            if (depth > 0) own[top].nested.push({ file, from: parent });
+            queue.push({
+                text: fs.readFileSync(real, "utf8"),
+                dir: path.dirname(file),
+                depth: depth + 1,
+                from: path.relative(root, file).split(path.sep).join("/"),
+                top: depth === 0 ? own.length - 1 : top,
+                file,
+            });
         }
     }
     return own;
@@ -2195,7 +2218,12 @@ function checkedImports(text, dir, root, where) {
  * for the file's own directory and would not resolve from where the unit compiles to.
  */
 function leadsOf(file, where) {
-    const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+    return leadsOfText(fs.readFileSync(file, "utf8"), path.basename(file), where);
+}
+
+/** `leadsOf` over a text already read, `name` being the file it came from, as the refusals name it. */
+export function leadsOfText(source, name, where) {
+    const lines = source.split(/\r?\n/);
     const items = [];
     let kind = null;
     let fence = null;
@@ -2217,9 +2245,9 @@ function leadsOf(file, where) {
             break;
         }
     }
-    if (items.length === 0) throw new CompileError(`${where}: the leads of ${path.basename(file)} were asked for, and it holds no list`);
+    if (items.length === 0) throw new CompileError(`${where}: the leads of ${name} were asked for, and it holds no list`);
     return items.map(({ marker, text }) => {
-        if (!text.startsWith("**")) throw new CompileError(`${where}: an item of ${path.basename(file)}'s first list opens without a bold lead — ${JSON.stringify(text.slice(0, 60))}`);
+        if (!text.startsWith("**")) throw new CompileError(`${where}: an item of ${name}'s first list opens without a bold lead — ${JSON.stringify(text.slice(0, 60))}`);
         const code = [...text.matchAll(/(`+)[\s\S]*?\1/g)].map((m) => [m.index, m.index + m[0].length]);
         let end = text.length;
         for (const stop of text.matchAll(/[.!?]/g)) {
@@ -2231,37 +2259,72 @@ function leadsOf(file, where) {
             }
         }
         const lead = text.slice(0, end);
-        if (/\]\(/.test(lead)) throw new CompileError(`${where}: the lead ${JSON.stringify(lead.slice(0, 60))} of ${path.basename(file)} carries a link, which would not resolve from the compiled file`);
+        if (/\]\(/.test(lead)) throw new CompileError(`${where}: the lead ${JSON.stringify(lead.slice(0, 60))} of ${name} carries a link, which would not resolve from the compiled file`);
         return `${marker} ${lead}`;
     });
 }
 
 /**
- * An always unit's text as a host loads it: each `<!-- leads: … -->` line replaced by the lead sentences
- * it names. Paths resolve against the unit's own directory and stay inside `root`; each file read is
- * recorded on the unit, so a drifted rule names it beside the unit.
+ * The gate ids of the policy at `file`, one line per tier in the tiers' order, each id as the policy
+ * spells it and in its order there, so the policy stays the one place a gate is named, and a line naming
+ * the packs the manifest composes. The policy is read by `parse`, the reader every compiled gate goes
+ * through; a tier holding no gate says so.
  */
-function expandedBody(unit, dir, root) {
+function gatesOf(file, where, packs = []) {
+    let policy;
+    try {
+        policy = JSON.parse(fs.readFileSync(file, "utf8"));
+    } catch (cause) {
+        throw new CompileError(`${where}: the gates of ${path.basename(file)} were asked for, and it is not a readable JSON policy — ${cause.message}`);
+    }
+    let rules;
+    try {
+        ({ rules } = parse(policy));
+    } catch (cause) {
+        if (!(cause instanceof CompileError)) throw cause;
+        throw new CompileError(`${where}: the gates of ${path.basename(file)} were asked for, and ${cause.message}`);
+    }
+    const lines = TIER_ORDER.map((tier) => {
+        const ids = rules.filter((r) => r.tier === tier).map((r) => `\`${r.id}\``);
+        return `- ${TIER_GLOSS[tier]}: ${ids.length ? ids.join(", ") : "none"}.`;
+    });
+    // The workspace's own policy is what this reads; a composed pack adds gates of its own, which only a
+    // compile that resolves the pack can list, so the pack is named and the command that lists them with it.
+    if (packs.length) lines.push(`- **Packs** add gates of their own, which \`portulan compile --matrix\` lists: ${packs.map((p) => `\`${p}\``).join(", ")}.`);
+    return lines;
+}
+
+/**
+ * An always unit's text as a host loads it: each `<!-- leads: … -->` line replaced by the lead sentences
+ * it names, and each `<!-- gates: … -->` line by the policy's gate ids under their tiers. Paths resolve
+ * against the unit's own directory and stay inside `root`; each file read is recorded on the unit, so a
+ * drifted rule names it beside the unit.
+ */
+function expandedBody(unit, dir, root, packs = []) {
     unit.leadSources = [];
+    unit.written = new Set();
     return unit.body
         .split("\n")
         .flatMap((line) => {
-            const asked = LEADS_LINE.exec(line);
-            if (!asked) return [line];
-            const file = path.resolve(dir, asked[1]);
-            if (!isInside(root, file)) throw new CompileError(`${unit.source}: the leads of ${asked[1]} were asked for, and it lies outside the tree compiled here`);
+            const leads = LEADS_LINE.exec(line);
+            const gates = leads ? null : GATES_LINE.exec(line);
+            if (!leads && !gates) return [line];
+            const [what, named] = leads ? ["leads", leads[1]] : ["gates", gates[1]];
+            const file = path.resolve(dir, named);
+            if (!isInside(root, file)) throw new CompileError(`${unit.source}: the ${what} of ${named} were asked for, and it lies outside the tree compiled here`);
             let real;
             try {
                 real = fs.realpathSync(file);
             } catch {
-                throw new CompileError(`${unit.source}: the leads of ${asked[1]} were asked for, and it names no file`);
+                throw new CompileError(`${unit.source}: the ${what} of ${named} were asked for, and it names no file`);
             }
             if (!isInside(fs.realpathSync(root), real) || !fs.statSync(real).isFile()) {
-                throw new CompileError(`${unit.source}: the leads of ${asked[1]} were asked for, and it is not a file inside the tree compiled here`);
+                throw new CompileError(`${unit.source}: the ${what} of ${named} were asked for, and it is not a file inside the tree compiled here`);
             }
             const rel = path.relative(root, file).split(path.sep).join("/");
             if (!unit.leadSources.includes(rel)) unit.leadSources.push(rel);
-            return leadsOf(real, unit.source);
+            unit.written.add(what);
+            return leads ? leadsOf(real, unit.source) : gatesOf(real, unit.source, packs);
         })
         .join("\n");
 }
@@ -2413,8 +2476,9 @@ export function parseUnit(name, text, source = `${name}.md`) {
     }
     // Only an always unit's leads are written out: any other unit compiles to a scoped rule, a skill or a
     // pointer, and would carry the line as it stands.
-    if (tier !== "always" && rest.some((line) => LEADS_LINE.test(line))) {
-        throw new CompileError(`${where}: a \`<!-- leads: … -->\` line is written out only in an always unit, and this one is \`${tier}\``);
+    if (tier !== "always" && rest.some((line) => LEADS_LINE.test(line) || GATES_LINE.test(line))) {
+        const which = rest.some((line) => LEADS_LINE.test(line)) ? "leads" : "gates";
+        throw new CompileError(`${where}: a \`<!-- ${which}: … -->\` line is written out only in an always unit, and this one is \`${tier}\``);
     }
     return { name, tier, paths, description, body: `${rest.join("\n")}\n`, source };
 }
@@ -2455,7 +2519,7 @@ export function guidanceDeclaration(workspaceRoot, workspaceDir = ".portulan") {
                 `a unit there would be overwritten by what it compiles to, and \`vendor\` carries neither directory. Keep guidance in a directory of its own, such as \`context/\``,
         );
     }
-    return { dir, rel: `${rel}/` };
+    return { dir, rel: `${rel}/`, packs: Array.isArray(manifest.packs) ? manifest.packs.filter((p) => typeof p === "string") : [] };
 }
 
 /**
@@ -2521,7 +2585,7 @@ export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
         // naming a file is refused, because it would not load as its unit does; `@` text naming none is text.
         if (unit.tier === "always") {
             unit.dir = path.dirname(full);
-            unit.text = expandedBody(unit, unit.dir, path.resolve(workspaceRoot));
+            unit.text = expandedBody(unit, unit.dir, path.resolve(workspaceRoot), declared.packs);
             unit.imports = checkedImports(unit.text, unit.dir, path.resolve(workspaceRoot), source);
         } else {
             for (const { target } of importSpans(unit.body)) {
@@ -2606,14 +2670,20 @@ export function agentsMdGuidance(guidance, dir) {
     const always = guidance.units.filter((u) => u.tier === "always");
     const pointed = guidance.units.filter((u) => u.tier !== "always");
     // An import is a load this file's hosts do not make, so it degrades as a tier does: to a pointer line
-    // naming the file where it sits in the vendored tree, one level deep.
+    // naming the file where it sits in the vendored tree, and one for each file that file imports in turn,
+    // down to the depth a host that follows imports would load (2026-09-24), since none of them is loaded
+    // here either.
     const inline = (u) => {
         if (u.text === undefined) return u.body;
+        const vendored = (file) => `\`${path.posix.normalize(path.posix.join(dir, path.relative(u.dir, file).split(path.sep).join("/")))}\``;
         const byLine = new Map(
-            u.imports.map(({ target, file }) => {
-                const vendored = path.posix.normalize(path.posix.join(dir, path.relative(u.dir, file).split(path.sep).join("/")));
-                return [`@${target}`, `- \`${vendored}\`: read it in full — a host that follows imports loads it here.`];
-            }),
+            u.imports.map(({ target, file, nested = [] }) => [
+                `@${target}`,
+                [
+                    `- ${vendored(file)}: read it in full — a host that follows imports loads it here.`,
+                    ...nested.map((n) => `- ${vendored(n.file)}: read it in full too — ${vendored(n.from)} imports it.`),
+                ].join("\n"),
+            ]),
         );
         return u.text
             .split("\n")
@@ -2842,7 +2912,7 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
                 say(file.marker
                     ? `RED — ${target} does not list the rules the units compile to now. Recompile to rewrite it.`
                     : file.unit?.leadSources?.length
-                      ? `RED — ${target} has drifted from ${file.unit.source}, whose leads are written from ${file.unit.leadSources.join(" and ")}. Edit the unit or those files, then recompile.`
+                      ? `RED — ${target} has drifted from ${file.unit.source}, whose ${[...file.unit.written].sort().join(" and ")} are written from ${file.unit.leadSources.join(" and ")}. Edit the unit or those files, then recompile.`
                       : `RED — ${target} has drifted from ${file.unit ? file.unit.source : `the on-read units in ${guidance.source}`}. Edit the unit, then recompile.`);
                 drifted += 1;
             }
@@ -2911,6 +2981,52 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
         }
     }
     return 0;
+}
+
+/**
+ * **The guidance half alone**, for a tool that drafts or migrates a workspace and owes it a compiled card:
+ * `init`, `vendor` and `upgrade` (2026-09-24). The units are
+ * read, planned and written by this compiler's own reader, planner and emitter, with every refusal they
+ * make, and the gate policy is not read: host settings stay the output of a `compile` a human runs.
+ *
+ * @returns {{ declared: boolean, drifted: number }} whether a slot is declared, and under `check` how many
+ * files drifted
+ */
+export function compileGuidance(named, { check = false, say = () => {} } = {}) {
+    const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
+    const guidance = guidanceUnits(workspaceRoot, workspaceDir);
+    const plan = planGuidance(guidance, workspaceRoot);
+    return { declared: guidance !== null, drifted: emitGuidance(guidance, plan, { workspaceRoot, check, say }) };
+}
+
+/**
+ * What compiling the guidance would change on disk, as whole-file edits relative to the repository root:
+ * `{ file, next }`, where `next` is `null` for a file the compiler would remove. Nothing is written. Planned
+ * as `compileGuidance` plans it, so a refusal there is a refusal here; a file in the rules directory that
+ * this compiler did not write is returned as `left`, since a compile would leave it and its check stay red.
+ *
+ * @returns {{ root: string, edits: Array<{ file: string, next: string | null }>, left: string[] }}
+ */
+export function guidanceEdits(named) {
+    const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
+    const guidance = guidanceUnits(workspaceRoot, workspaceDir);
+    const { owedFiles, stray, kept } = planGuidance(guidance, workspaceRoot);
+    const markerRel = `${GUIDANCE_RULES_DIR}/${RULES_MARKER}`;
+    const current = (rel) => {
+        try {
+            return fs.readFileSync(path.join(workspaceRoot, ...rel.split("/")), "utf8");
+        } catch (cause) {
+            if (cause.code === "ENOENT") return null;
+            throw new CompileError(`${rel} could not be read — ${cause.code ?? cause.message}`);
+        }
+    };
+    const edits = [];
+    for (const s of stray) if (s.removable && s.path !== markerRel) edits.push({ file: s.path, next: null });
+    for (const file of owedFiles) if (!file.marker && current(file.path) !== file.text) edits.push({ file: file.path, next: file.text });
+    const marker = owedFiles.find((f) => f.marker);
+    if (marker && current(markerRel) !== marker.text) edits.push({ file: markerRel, next: marker.text });
+    else if (!marker && kept !== null && current(markerRel) !== null) edits.push({ file: markerRel, next: null });
+    return { root: path.resolve(workspaceRoot), edits, left: stray.filter((s) => !s.removable).map((s) => s.path) };
 }
 
 // ===========================================================================================

@@ -90,6 +90,10 @@ const PINNED = Object.freeze([
     // recipe set resolved from the host rather than from the tree would grade a different set than the
     // one CI runs.
     { file: ".portulan/verify/telemetry.sh", tool: "cli/telemetry.mjs" },
+    // Added 2026-09-24 with the rail on a consumer `init` drafts. `init` confirms the pack it composes
+    // against a pack root, and one it discovered from the host would make the drafted consumer, and so
+    // the figure railed, depend on the machine running the recipe.
+    { file: ".portulan/verify/context.sh", tool: "cli/init.mjs" },
     { file: ".github/workflows/verify.yml", tool: "cli/recipe-set.mjs" },
     { file: ".portulan/dod.md", tool: "cli/recipe-set.mjs" },
 ]);

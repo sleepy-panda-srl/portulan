@@ -2,7 +2,7 @@
 # Portulan workspace — verify recipe: what a boot reads and what the host loads, measured, with
 # Portulan's own footprint railed. (Proposal 0036, items 3 and 6 of its order of work.)
 #
-# Two checks, over both workspaces in this tree:
+# Two checks, over both workspaces in this tree and a consumer `init` drafts:
 #   measure  every file a boot reads in full, and every file Claude Code loads into every context
 #            here, printed with its size and why it counts — ../../cli/context.mjs, which is the
 #            module an adopter runs, since what it reads is the manifest and not this repository
@@ -41,7 +41,7 @@
 set -uo pipefail
 
 # Every external command this recipe runs — see ./docs.sh for the measurement behind the shape.
-for need in dirname git grep node sed sort tr; do
+for need in dirname git grep mkdir mktemp node rm sed sort tr; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
         exit 2
@@ -70,6 +70,8 @@ RAIL_ENGINE=13763         # the boot skill, its steps and the kernel, 13,493 B, 
 RAIL_STEPS=10944          # the skill's step files, pointer-manifest.md and packs.md, 10,729 B
 RAIL_DESCRIPTIONS=3454    # the plugin's 7 skill and 3 agent descriptions, 3,386 B; 3,405 B since the boot
                           # card, whose skill description now names the card
+RAIL_ADOPTER_BOOT=8227    # a consumer `init` drafts, 8,081 B: the skill, the plugin's kernel, and the card
+                          # `init` compiles, with the identity it imports; 26,759 B before `init` drafted one
 
 # The workspaces measured, audited against the tree the way ./index.sh audits its own list: a workspace
 # added and not measured would be a footprint nothing watches, reported as green.
@@ -98,10 +100,27 @@ printf '\n'
 # measured it with.
 node cli/context.mjs --workspace examples --repo combcount --rail "boot=$RAIL_DEMO_BOOT"
 demo=$?
+printf '\n'
+
+# Every repository that installs Portulan boots from what `init` drafts, so that boot is railed too: a
+# consumer drafted as `init` drafts one by default, into a directory of a fixed name, since the name is
+# written into its identity, and measured with this bundle's skill and kernel.
+drafts=$(mktemp -d) || {
+    printf 'verify: mktemp could not make a directory to draft a consumer in\n' >&2
+    exit 2
+}
+trap 'rm -rf -- "$drafts"' EXIT
+mkdir -- "$drafts/consumer" || exit 2
+if ! drafted=$(node cli/init.mjs --residence in-repo --no-interview --pack-root packs "$drafts/consumer" 2>&1); then
+    printf 'verify: init could not draft the consumer this recipe measures:\n%s\n' "$drafted" >&2
+    exit 2
+fi
+node cli/context.mjs --workspace "$drafts/consumer/.portulan" --rail "boot=$RAIL_ADOPTER_BOOT"
+adopter=$?
 
 # Could-not-run outranks red: a run that judged nothing cannot vouch for the one that did.
 worst=0
-for status in "$own" "$demo"; do
+for status in "$own" "$demo" "$adopter"; do
     case "$status" in
         0) ;;
         1) [ "$worst" -eq 0 ] && worst=1 ;;

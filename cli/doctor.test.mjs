@@ -523,6 +523,55 @@ describe("what every context loads is reported, and failed only against a declar
     });
 });
 
+describe("which form a consumer's records and boot are in is reported, and never failed", () => {
+    // 2026-09-24: the line is ./form.mjs's, the one definition `init`, `vendor` and `upgrade` write, so
+    // these pin that it is one report and moves no exit code; form.test.mjs pins each piece of it.
+    const only = (findings) => {
+        const hits = checks(findings, "form");
+        assert.equal(hits.length, 1, `expected one form finding, got ${JSON.stringify(hits)}`);
+        return hits[0];
+    };
+
+    test("today's form is a report naming each piece and the command that moves it", async () => {
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(wellFormed()),
+            "CHANGELOG.md": "# Changelog\n\n## [Unreleased]\n\n- An entry.\n",
+            "notes.md": "# Notes\n\n## Session log\n\n- 2026-09-20: a thing.\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const hit = only(findings);
+        assert.equal(hit.severity, "report");
+        assert.match(
+            hit.message,
+            /^today's form in 4 of 4: no changes\/README\.md; CHANGELOG\.md holds 1 entry under Unreleased; a Session log with entries in notes\.md; no boot card: `slots\.context` is undeclared — `portulan upgrade --write .+` moves it, and until then it boots as it did$/,
+        );
+        assert.deepEqual(severities(findings, "fail"), []);
+    });
+
+    test("the new form says so, and a declared slot with no card is a choice, not a piece owed", async () => {
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify({ ...wellFormed(), portulan: { spec: "2.10" }, slots: { ...wellFormed().slots, context: "context/" } }),
+            "context/a.md": "---\ntier: always\n---\n\nA.\n",
+            "changes/README.md": "# Changelog fragments\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(
+            only(findings).message,
+            "the new form: changelog fragments in changes/; no Session log with entries; no boot card, by choice: `slots.context` holds no `boot` unit",
+        );
+        assert.deepEqual(severities(findings, "fail"), []);
+    });
+
+    test("a workspace with no tree is not reported on, and says why", async () => {
+        const m = { ...wellFormed(), kind: "demo" };
+        delete m.tree;
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+        assert.match(only((await inspect(dir, { schema: SCHEMA })).findings).message, /^not reported: this workspace declares no tree/);
+    });
+});
+
 describe("the guidance slot, which compile reads", () => {
     // Workspace Definition 2.10. `doctor` checks what it checks of every directory slot and gates the slot to
     // its version; what a unit's frontmatter says is `compile`'s to refuse, since the subset cannot see inside

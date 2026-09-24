@@ -137,7 +137,8 @@ applies to the **skill** scenarios alone — and those are exactly the ones a ve
 
 ## Arm B
 
-A bare tree. No `AGENTS.md`, no `.portulan/`, no compiled settings. The arms receive the **same** task
+A bare tree. No `AGENTS.md`, no `.portulan/`, no compiled settings, and since 2026-09-24 none of the
+records `vendor --host` gives a host's tree, `changes/README.md` and a `.gitignore`. The arms receive the **same** task
 text and differ by the treatment alone; that difference is asserted at construction rather than intended,
 by comparing the two trees and requiring them identical outside the enumerated treatment files.
 

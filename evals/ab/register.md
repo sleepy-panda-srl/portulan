@@ -10,7 +10,7 @@
 
 - **Source workspace:** `.portulan`
 - **Moves:** 26 — 6 keep · 6 emptying · 3 substitution · 11 deletion
-- **Arm A files:** 22 · **arm B files:** 0
+- **Arm A files:** 24 · **arm B files:** 0
 - **Hooks pinned to this machine:** 3
 
 **The source path count is deliberately not here.** It moves whenever a session writes a record,
@@ -52,6 +52,7 @@ noticed by this file.
 ## Arm A, as constructed
 
 - `.claude/settings.json`
+- `.gitignore`
 - `.portulan/compile/github-ruleset.json`
 - `.portulan/dod.md`
 - `.portulan/gate-map.md`
@@ -73,6 +74,7 @@ noticed by this file.
 - `.portulan/verify/build.sh`
 - `.portulan/workspace.json`
 - `AGENTS.md`
+- `changes/README.md`
 
 ## The arms differ only by the treatment
 

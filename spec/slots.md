@@ -841,8 +841,8 @@ under the frontmatter is `# Portulan boot card`, and the boot skill reads it in 
 that line is in its context. `compile` refuses a `boot` unit in another tier or opening with another line,
 and a unit of another name opening with that one, which the skill would take for the card.
 
-**An `always` unit may import whole files and write out another file's lead sentences**, so a card
-carries a fact without holding a second copy of it:
+**An `always` unit may import whole files and write out another file's lead sentences or a gate policy's
+gates**, so a card carries a fact without holding a second copy of it:
 
 - **An import is `@` and a path, alone on its line, relative to the unit's own file.** Claude Code 2.1.281
   loads a rule as it loads `CLAUDE.md`: it resolves an import against the file making it, follows it only
@@ -854,13 +854,19 @@ carries a fact without holding a second copy of it:
   imports down; in a unit of any other tier it refuses an import naming a file, which would not load as
   its unit does. `context.mjs` counts an imported file in the always tier at the depth the host loads it,
   a path-scoped rule's included. The vendored `AGENTS.md` carries each import as a pointer line to the
-  file in the vendored tree, and `vendor` refuses an import leaving the workspace, which is all that
-  tree holds.
+  file in the vendored tree, and one for each file that file imports in turn, to the depth the host would
+  load (2026-09-24), and `vendor` refuses an import leaving the workspace, which is all that tree holds.
 - **A line `<!-- leads: <path> -->`, alone on its line, is replaced by the first sentence of each item in
   the first list of the file it names**, each item opening with a bold lead. The file stays the one
   source of those sentences, so a change there is drift until the unit is recompiled. `compile` refuses
   a file with no list, an item with no bold lead, and a lead carrying a link, which would not resolve
   from the compiled rule.
+- **A line `<!-- gates: <path> -->`, alone on its line, is replaced by the gate ids of the policy it
+  names, one line per tier** in core's order, each id as the policy spells it and in its order there, a
+  tier holding none saying so, and a line naming the packs the manifest composes, whose gates only a
+  compile resolving them can list (2026-09-24). The policy is read by the reader every compiled gate goes
+  through, so `compile` refuses here what it refuses there, and an edit to the policy is drift until the
+  unit is recompiled. `init` and `upgrade` draft a consumer's card with one.
 
 **Nothing is defaulted.** A workspace that declares no slot compiles no guidance, and no directory in an
 adopter's workspace is chosen by a key nobody typed.

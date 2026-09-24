@@ -55,6 +55,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`discover.mjs`](discover.mjs) | Host plugin-cache discovery — reading a host's installed-plugin record so a POINTER can be resolved to the workspace it names. |
 | [`drills.mjs`](drills.mjs) | The forced-red drill harness — every rail broken on purpose, and required to fire. |
 | [`eval-bundle.mjs`](eval-bundle.mjs) | Cut a named-recipient evaluation bundle of Portulan from a commit. Not shipped. |
+| [`form.mjs`](form.mjs) | `form` — which form a consumer's records and boot are in, and the files that move them to the new one. |
 | [`fuzz-shell.mjs`](fuzz-shell.mjs) | Grammar-aware fuzzing over this repository's two shell segmenters. |
 | [`goldens.mjs`](goldens.mjs) | Grade this workspace's compiled gates against a corpus of adversarial fixtures. |
 | [`inside.mjs`](inside.mjs) | Is one path inside another? One predicate, one file, no dependencies. |
@@ -100,6 +101,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`eval-bundle.test.mjs`](eval-bundle.test.mjs) | The evaluation-bundle cutter, driven on this repository AND on real fixture repositories. |
 | [`feedback.live.test.mjs`](feedback.live.test.mjs) | The sender's field map, against the real issue forms rather than against a fixture. |
 | [`feedback.test.mjs`](feedback.test.mjs) | `portulan feedback` — the suite, written before the sender. |
+| [`form.test.mjs`](form.test.mjs) | `form` — the one definition of a consumer's new form, which `init`, `vendor`, `upgrade` and `doctor` read. |
 | [`fuzz-shell.ground.test.mjs`](fuzz-shell.ground.test.mjs) | The fuzzer's ground truth, MEASURED under real bash rather than argued. |
 | [`fuzz-shell.test.mjs`](fuzz-shell.test.mjs) | The grammar-fuzzer rail's suite — the hermetic half. |
 | [`gate.test.mjs`](gate.test.mjs) | The PreToolUse gate runner, driven as the host drives it. |
@@ -134,7 +136,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`telemetry.test.mjs`](telemetry.test.mjs) | The OTel emitter's suite. Every case here exists because something in this repository has already been wrong in that exact way, or because a supervisor named the way it would be. |
 | [`test-isolation.live.test.mjs`](test-isolation.live.test.mjs) | A test that substitutes a shared object hands the restore to the runner, or says why it cannot. |
 | [`upgrade.live.test.mjs`](upgrade.live.test.mjs) | `upgrade` against real workspaces rather than against its own fixtures. |
-| [`upgrade.test.mjs`](upgrade.test.mjs) | `upgrade` — the migration chain, and the two kinds of step. |
+| [`upgrade.test.mjs`](upgrade.test.mjs) | `upgrade` — the migration chain, and the three kinds of step. |
 | [`vendor.test.mjs`](vendor.test.mjs) | Tests for `vendor` — the subcommand that materialises a workspace where it is needed, and carries the residence switch in both directions. |
 | [`version-carriers.test.mjs`](version-carriers.test.mjs) | The rail's suite. Every contracted state is exercised POSITIVELY — green, drift, a carrier reworded away, and could-not-run — because a failure path nobody has run is one nobody has seen work. Two cases exist only because this repository's own corpus refutes the naive design: the record layer must be IGNORED, and a `g` regex must not carry lastIndex between files. |
 | [`warm.test.mjs`](warm.test.mjs) | The warm-start A/B's suite. **No case runs a real agent**: a stub stands in, writing a transcript where the host would and printing the host's JSON result, because a test starting `claude` would put a session and a credential inside a verify recipe. What the stub cannot stand in for is the host honouring a switch; that is the recorded run's to show (`../evals/ab/warm.md`). |

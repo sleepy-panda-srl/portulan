@@ -73,7 +73,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 // The guidance reader and its `AGENTS.md` form, from the compiler that owns them, so a unit is read by one
 // parser whichever of the two tools meets it first.
-import { agentsMdGuidance, CompileError, GENERATED_DIRS, guidanceUnits } from "./compile.mjs";
+import { agentsMdGuidance, BOOT_CARD_UNIT, CompileError, compileGuidance, GENERATED_DIRS, guidanceUnits } from "./compile.mjs";
+// The records a consumer keeps in the new form, from the one definition `init` and `upgrade` share.
+import { changesReadme, CHANGES_README, handoffIndexIgnore, withIgnoreLines } from "./form.mjs";
 import { inspect } from "./doctor.mjs";
 // The discovery keyword, imported so no parse site can spell it differently (#123). _(This said
 // "the five parse sites"; there are seven, and `discover.mjs`'s `NAMED_WITH_AUTO` had already been
@@ -662,8 +664,14 @@ workspace's gate policy, and no copy of files produces them. Run \`portulan comp
  * pointed at because they travel in the `.portulan/` beside this file, and a pack resolves from a feed
  * at a pinned version — which vendoring does not do. That third is named in the artifact rather than
  * quietly implied by the word "self-contained".
+ *
+ * **Where the workspace declares a boot card, the file leads with it** (2026-09-24): the card is the boot,
+ * carried whole with its imports as pointer lines, and the slots follow as files to open when the card
+ * or the task sends a reader to one, as a Claude Code session reads them. Without a card, the slots are
+ * read in order, as before.
  */
 export function agentsMd(manifest, host, kernel = null, guidance = null) {
+    const card = guidance?.units.find((u) => u.name === BOOT_CARD_UNIT) ?? null;
     const lines = [
         `# AGENTS.md — ${manifest.name}`,
         "",
@@ -671,11 +679,20 @@ export function agentsMd(manifest, host, kernel = null, guidance = null) {
         "",
         `Vendored by \`portulan vendor --host ${host}\` from the \`${manifest.name}\` workspace. This file and the`,
         "`.portulan/` directory beside it are the whole of it: no plugin, no marketplace, no second repository in",
-        "the trust path. An agent on this host reads the files named below and works this team's way.",
-        "",
-        "## Read these, in this order",
+        ...(card
+            ? [
+                  "the trust path. The card below is this team's boot, and the engine's kernel ends this file: an agent on",
+                  "this host reads both, and opens a file the card names when that file's subject is the task.",
+              ]
+            : ["the trust path. An agent on this host reads the files named below and works this team's way."]),
         "",
     ];
+    if (card) {
+        const [body] = agentsMdGuidance({ ...guidance, units: [card] }, `.portulan/${manifest.slots.context}`).inline;
+        lines.push(body.trimEnd(), "", "## The workspace's files, opened when the card or the task sends you to one", "");
+    } else {
+        lines.push("## Read these, in this order", "");
+    }
     const GLOSS = {
         identity: "who this team is, the stack, and the glossary",
         principles: "the rules that are this team's rather than everyone's",
@@ -684,6 +701,11 @@ export function agentsMd(manifest, host, kernel = null, guidance = null) {
         constitution: "the team's ground truth, which outranks everything else here",
         context: "this team's guidance, one unit per file in its load tier; *Guidance* below carries the always tier and names the rest",
     };
+    if (card) {
+        GLOSS.context = guidance.units.length > 1
+            ? "this team's guidance, one unit per file in its load tier: the card above is its boot, and *Guidance* below carries the rest of the always tier and names the others"
+            : "this team's guidance: the card above is its boot";
+    }
     const slots = Object.entries(manifest.slots ?? {});
     if (slots.length === 0) {
         lines.push("_This workspace declares no slots. There is nothing for an agent to read here yet._", "");
@@ -697,8 +719,9 @@ export function agentsMd(manifest, host, kernel = null, guidance = null) {
     // **The vendored file inherits the tiers** (proposal `0036`). It is the one tier its hosts are sure to load,
     // so the always units are carried whole and every other unit as a one-line pointer to its file, one
     // level deep: a tier this host cannot express makes a unit late, never lost.
-    if (guidance && guidance.units.length) {
-        const { inline, pointers } = agentsMdGuidance(guidance, `.portulan/${manifest.slots.context}`);
+    const rest = guidance ? guidance.units.filter((u) => u !== card) : [];
+    if (rest.length) {
+        const { inline, pointers } = agentsMdGuidance({ ...guidance, units: rest }, `.portulan/${manifest.slots.context}`);
         lines.push("## Guidance", "");
         for (const body of inline) lines.push(body.trimEnd(), "");
         if (pointers.length) lines.push("Open each of these when it applies; each is one file:", "", ...pointers, "");
@@ -1332,8 +1355,53 @@ export async function run(argv, options = {}) {
         fs.rmSync(staging, { recursive: true, force: true });
         fault("materialise:manifest");
 
+        // **The host's tree gets the records the new form keeps** (2026-09-24), beside `AGENTS.md`: the
+        // fragments directory with its rule, where the tree has none of its own, and the line that keeps the
+        // handoff index off the record, which `index --handoffs` prints on demand. Both written with the
+        // undo still standing, and the `.gitignore` only appended to: nothing here rewrites a file you wrote.
+        const records = [];
+        const recordsLeft = [];
+        if (hostFile !== null) {
+            const hostRoot = path.dirname(dest);
+            const readme = path.join(hostRoot, ...CHANGES_README.split("/"));
+            const readmeBlocked = collisions(hostRoot, [CHANGES_README]);
+            if (readmeBlocked.length) {
+                recordsLeft.push(`\`${CHANGES_README}\` ${readmeBlocked[0].why === "already exists" ? "is the tree's own" : readmeBlocked[0].why}`);
+            } else {
+                // The directory too, where this made it, so an undo leaves the tree as it found it.
+                const made = fs.mkdirSync(path.dirname(readme), { recursive: true });
+                undo.push(() => {
+                    fs.rmSync(readme, { force: true });
+                    if (made !== undefined) fs.rmSync(made, { recursive: true, force: true });
+                });
+                fs.writeFileSync(readme, changesReadme(), { flag: "wx" });
+                records.push(CHANGES_README);
+            }
+            const index = retargeted.handoffs?.index?.path;
+            const ignore = path.join(hostRoot, ".gitignore");
+            const blocked = collisions(hostRoot, [".gitignore"]).filter((c) => c.why !== "already exists");
+            if (typeof index === "string" && blocked.length) recordsLeft.push(`\`.gitignore\` ${blocked[0].why}`);
+            if (typeof index === "string" && blocked.length === 0) {
+                const rel = path.relative(hostRoot, path.resolve(dest, index)).split(path.sep).join("/");
+                let before = null;
+                try {
+                    before = fs.readFileSync(ignore, "utf8");
+                } catch (cause) {
+                    if (cause.code !== "ENOENT") throw cause;
+                }
+                const next = withIgnoreLines(before, handoffIndexIgnore(rel, path.relative(hostRoot, dest).split(path.sep).join("/")));
+                if (next !== (before ?? "")) {
+                    undo.push(() => (before === null ? fs.rmSync(ignore, { force: true }) : fs.writeFileSync(ignore, before)));
+                    fs.writeFileSync(ignore, next);
+                    records.push(".gitignore");
+                }
+            }
+        }
+
         if (!parsed.switching) {
             say(`vendor: wrote ${files.length + (hostFile ? 1 : 0)} file(s) — the \`${manifest.name}\` workspace at ${display(dest)}${hostFile ? `, and ${display(hostFile)}` : ""}.`);
+            if (records.length) say(`vendor: and the records the new form keeps, beside it: ${records.map((r) => `\`${r}\``).join(", ")}.`);
+            if (recordsLeft.length) say(`vendor: left as they are: ${recordsLeft.join("; ")}.`);
             say(`vendor: the source at ${display(source)} is untouched and still governs. This is a rendering, not a move.`);
             say(`vendor: nothing compiled — run \`portulan compile\` there to turn the gate policy into host enforcement.`);
             return 0;
@@ -1458,14 +1526,34 @@ export async function run(argv, options = {}) {
             // Outside the workspace directory, so outside what this tool writes. Named rather than
             // reached for: a tool that starts deleting beyond the directory it was given is the tool
             // that eventually deletes the wrong thing.
-            say(`vendor: \`${display(path.join(path.dirname(source), ".claude", "settings.json"))}\` — if it exists — was compiled from the policy that has just moved, and nothing here writes outside ${display(source)}. It is yours to remove.`);
+            say(`vendor: \`${display(path.join(path.dirname(source), ".claude", "settings.json"))}\` and \`${display(path.join(path.dirname(source), ".claude", "rules", "portulan"))}\` — where they exist — were compiled from the workspace that has just moved, and nothing here writes outside ${display(source)}. They are yours to remove.`);
         }
         if (!parsed.repoRoots.length && cards.length) {
             // A check that vanishes without a word is the fail-open this repository has recorded more
             // than any other. `doctor` says this where it runs; this says it where the switch happened.
             say(`vendor: no --repo-root was given, so the cross-repository half of "green at both ends" reported rather than checked.`);
         }
-        say(`vendor: nothing compiled — run \`portulan compile\` against the new residence.`);
+        // **In a repository, the guidance half is compiled** (2026-09-24), through compile's own planner and
+        // refusals, so a card that travelled is loaded where it arrived. Past the flip, so a refusal goes
+        // forward: governance has moved either way, and the card waits for a `compile` once it is cleared.
+        let guidanceCompiled = false;
+        if (parsed.residence === "in-repo") {
+            try {
+                guidanceCompiled = compileGuidance(dest).declared;
+            } catch (error) {
+                say(`vendor: the guidance was NOT compiled — ${error.message}. Until \`portulan compile\` runs clean there, a session boots through the slots.`);
+            }
+        }
+        if (guidanceCompiled) {
+            say(`vendor: compiled the guidance into ${display(path.join(repoDir, ".claude", "rules", "portulan"))}, which Claude Code loads there; host settings are not — run \`portulan compile\` against the new residence for them.`);
+        } else {
+            say(`vendor: nothing compiled — run \`portulan compile\` against the new residence.`);
+        }
+        // The repository's own records, its changelog, its Session logs, its `.gitignore`, are not the
+        // workspace's, so a switch moves none of them (2026-09-24); `upgrade` moves them where it is asked.
+        if (parsed.residence === "in-repo") {
+            say(`vendor: the repository's own records are not moved by a switch — \`portulan upgrade --write ${display(dest)}\` moves them to the new form, which doctor's \`form\` line reports.`);
+        }
         return 0;
     } catch (error) {
         if (!pastTheFlip) await unwind(undo);

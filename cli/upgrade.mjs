@@ -12,10 +12,12 @@
 // `0.1.0`, closing #242, so that user now exists. See `../.portulan/identity.md`. This file is the runner: it decides which
 // steps a workspace owes, applies them, and grades the result with the real validator.
 //
-// **Two kinds of step**, by the maintainer's ruling of 2026-08-12: a `version` step migrates a
+// **Three kinds of step.** By the maintainer's ruling of 2026-08-12, a `version` step migrates a
 // Workspace Definition MAJOR, and a `repair` fixes something a rewriter owes a workspace it touched.
 // Without the second kind this tool would be machinery with no subject — the train's only MAJOR
-// migration is `1.0 → 2.0` and **nothing in this repository declares 1.0**.
+// migration is `1.0 → 2.0` and **nothing in this repository declares 1.0**. Since 2026-09-24, a
+// `form` step moves a consumer's records and boot to the form Portulan moved its own to, and may
+// edit or delete a file in the tree beside the workspace, which the rollback puts back as well.
 //
 // ## The three states a workspace can be in relative to this bundle, and why two of them are refusals
 //
@@ -50,6 +52,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { inspect, schemaVersion } from "./doctor.mjs";
 import { resolveGovernor } from "./discover.mjs";
+import { gitIn } from "./form.mjs";
 // The guarded walk, not a fourth implementation of one. `vendor`'s `walk` already refuses a symlink
 // anywhere under a workspace — rule 2 of the three a tool writing into somebody's tree owes — and
 // three `collisions()` implementing one rule is already an open complaint against this repository
@@ -190,6 +193,7 @@ export function readWorkspace(dir) {
             dir: root,
             manifest,
             manifestText: text,
+            repository: repositoryView(root, manifest),
             list: () => files,
             // The READ sibling of the write guard. `list()` only ever yields paths `walk` enumerated
             // inside the workspace, so a step iterating it is safe — but `read` takes whatever a step
@@ -202,6 +206,65 @@ export function readWorkspace(dir) {
                 if (!cache.has(rel)) cache.set(rel, fs.readFileSync(at, "utf8"));
                 return cache.get(rel);
             },
+        },
+    };
+}
+
+/**
+ * The repository a workspace governs, as a step reads it: its root, a file in it, and git there.
+ *
+ * **Added for the steps that move a consumer's records and boot (2026-09-24)**, which live beside the
+ * workspace rather than in it: the changelog, the Session log, `.gitignore`, the compiled rules. `null`
+ * where the manifest declares no `tree` or it names no directory, and such a step is owed nothing then.
+ * `read` answers `null` for an absent file, since a step asks whether one exists as often as what it
+ * says, and refuses a path that leaves the tree or runs through a link, as the write guard does. `names`
+ * lists a directory, refusing what `read` refuses. `git` runs git there, or is `null` where no work tree
+ * answers, which a step turns into its own sentence.
+ */
+export function repositoryView(root, manifest) {
+    if (typeof manifest?.tree !== "string") return null;
+    const dir = path.resolve(root, manifest.tree);
+    try {
+        if (!fs.statSync(dir).isDirectory()) return null;
+    } catch {
+        return null;
+    }
+    const cache = new Map();
+    let git;
+    return {
+        dir,
+        read: (rel) => {
+            const at = inside(dir, rel);
+            if (at === null) throw new UpgradeError(`\`${rel}\` resolves outside ${dir} — refusing to read there`);
+            const linked = linkOnPath(dir, at);
+            if (linked !== null) throw new UpgradeError(linked.replace("write through", "read through"));
+            if (!cache.has(rel)) {
+                try {
+                    cache.set(rel, fs.readFileSync(at, "utf8"));
+                } catch (error) {
+                    if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw new UpgradeError(`${at} could not be read — ${error.code ?? error.message}`);
+                    cache.set(rel, null);
+                }
+            }
+            return cache.get(rel);
+        },
+        // The names in a directory of the tree, none where it is absent: a step naming a new file asks
+        // which are taken.
+        names: (rel) => {
+            const at = inside(dir, rel);
+            if (at === null) throw new UpgradeError(`\`${rel}\` resolves outside ${dir} — refusing to list there`);
+            const linked = linkOnPath(dir, at);
+            if (linked !== null) throw new UpgradeError(linked.replace("write through", "list through"));
+            try {
+                return fs.readdirSync(at);
+            } catch (error) {
+                if (error.code === "ENOENT" || error.code === "ENOTDIR") return [];
+                throw new UpgradeError(`${at} could not be listed — ${error.code ?? error.message}`);
+            }
+        },
+        get git() {
+            if (git === undefined) git = gitIn(dir);
+            return git;
         },
     };
 }
@@ -403,6 +466,11 @@ function unwindDirs(dirs) {
  * file, so nothing exercised this in production — which is exactly why it was worth fixing rather than
  * leaving: a later step adding a nested file would have failed `ENOENT` on a perfectly valid edit.
  * Copilot's promoted note, round 2 on #231.
+ *
+ * **Two widenings of 2026-09-24, for the steps that move a consumer's records and boot.** An edit naming
+ * `root: "tree"` is a path in the repository the workspace governs, `options.treeDir`, and is contained
+ * there by the same two guards. An edit whose `next` is `null` deletes the file, a regular file only,
+ * and its snapshot keeps what it held, so a rollback writes it back.
  */
 export function applyEdits(dir, edits, options = {}) {
     // `write` is an injection point for the suite, the way `init` injects its reader and `skills-set`
@@ -411,9 +479,17 @@ export function applyEdits(dir, edits, options = {}) {
     // staged honestly on a real filesystem, and a failure path with no test is how the orphan it
     // guards against got here in the first place.
     const write = options.write ?? fs.writeFileSync;
-    const root = path.resolve(dir);
+    const workspaceRoot = path.resolve(dir);
+    const treeRoot = typeof options.treeDir === "string" ? path.resolve(options.treeDir) : null;
     const snapshots = [];
     for (const edit of edits) {
+        if (edit.root !== undefined && edit.root !== "workspace" && edit.root !== "tree") {
+            return { ok: false, snapshots, reason: `an edit names root \`${edit.root}\`, which is neither the workspace nor the tree` };
+        }
+        if (edit.root === "tree" && treeRoot === null) {
+            return { ok: false, snapshots, reason: `an edit to \`${edit.file}\` names the tree, and this workspace declares none` };
+        }
+        const root = edit.root === "tree" ? treeRoot : workspaceRoot;
         // **A path built from somebody else's text is contained before it is opened.** A step's
         // `edit.file` is a value this tool did not author — an absolute path, or one climbing out
         // with `..`, would have this writing outside the workspace it was pointed at. Nothing in the
@@ -442,6 +518,20 @@ export function applyEdits(dir, edits, options = {}) {
             if (error.code !== "ENOENT") {
                 return { ok: false, snapshots, reason: `${file} could not be read before writing — ${error.code ?? error.message}` };
             }
+        }
+
+        if (edit.next === null) {
+            // A deletion: nothing to stage and no directory to make. Absent already is done; anything
+            // but a regular file is refused, since a step deletes a file it read, never a directory.
+            if (previous === null) continue;
+            if (!fs.lstatSync(file).isFile()) return { ok: false, snapshots, reason: `${file} is not a regular file — refusing to delete it` };
+            try {
+                fs.rmSync(file);
+            } catch (error) {
+                return { ok: false, snapshots, reason: `${file} could not be deleted — ${error.code ?? error.message}` };
+            }
+            snapshots.push({ file: edit.file, root: edit.root, previous, mode, created: [], deleted: true });
+            continue;
         }
 
         // Shallowest first, so `unwindDirs` can take them in reverse. `lstat`, never `existsSync`:
@@ -509,7 +599,7 @@ export function applyEdits(dir, edits, options = {}) {
             unwindDirs(created);
             return { ok: false, snapshots, reason: `${file} could not be written — ${error.code ?? error.message}` };
         }
-        snapshots.push({ file: edit.file, previous, mode, created });
+        snapshots.push({ file: edit.file, root: edit.root, previous, mode, created });
     }
     return { ok: true, snapshots };
 }
@@ -521,8 +611,9 @@ export function applyEdits(dir, edits, options = {}) {
  * exactly as it was" is a promise a mid-restore `EACCES` breaks, and a rollback that lies about
  * having succeeded is worse than one that failed loudly.
  */
-export function restore(dir, snapshots) {
-    const root = path.resolve(dir);
+export function restore(dir, snapshots, options = {}) {
+    const workspaceRoot = path.resolve(dir);
+    const treeRoot = typeof options.treeDir === "string" ? path.resolve(options.treeDir) : null;
     const restored = [];
     const failed = [];
     // **Reverse order — an unwind runs against the stack that made it.** Two edits landing in the same
@@ -537,7 +628,8 @@ export function restore(dir, snapshots) {
         // which is `0020`, in the change whose own commit message was about sweeping for siblings.
         // Copilot found it; the sweep did not. A snapshot normally comes from `applyEdits` and is
         // therefore already contained, but this function is exported and takes them from a caller.
-        const file = inside(root, snapshot.file);
+        const root = snapshot.root === "tree" ? treeRoot : workspaceRoot;
+        const file = root === null ? null : inside(root, snapshot.file);
         if (file === null || linkOnPath(root, file) !== null) {
             failed.push(snapshot.file);
             continue;
@@ -756,7 +848,8 @@ export async function run(argv = [], options = {}) {
     }
 
     // ---- the plan
-    const ctx = { bundle: BUNDLE, spec, tree };
+    // `today` dates what a step writes, a retired Session log's pointer; the suite fixes it.
+    const ctx = { bundle: BUNDLE, spec, tree, today: options.today ?? new Date().toISOString().slice(0, 10) };
     const plan = await planFor(ws, ctx, steps);
 
     if (plan.unknown > 0) {
@@ -808,8 +901,11 @@ export async function run(argv = [], options = {}) {
     // ---- apply, one step at a time, re-reading between them
     let snapshots = [];
     let current = ws;
+    // The tree as the workspace declares it now: a step may declare one, `0001` does, and a later step
+    // then edits it. None changes it once declared, so the latest is the one every snapshot was made in.
+    let treeDir = ws.repository?.dir ?? null;
     const undo = () => {
-        const result = restore(current.dir, snapshots);
+        const result = restore(current.dir, snapshots, { treeDir });
         if (!result.ok) {
             warn(`upgrade: the rollback was INCOMPLETE — put back ${result.restored.join(", ") || "nothing"}; NOT put back ${result.failed.join(", ")}`);
             return false;
@@ -817,7 +913,24 @@ export async function run(argv = [], options = {}) {
         return true;
     };
 
-    for (const entry of plan.entries.filter((e) => e.owed === true)) {
+    // **A step an earlier one makes owed runs in the same run** (2026-09-24). The card's compile is owed
+    // only once the step before it has drafted the card, so each step not owed in the plan is asked
+    // again when its turn comes, against the workspace as the steps before it left it, and runs under
+    // the same rollback. One that cannot tell then is refused like one that could not tell before.
+    let applied = 0;
+    for (const entry of plan.entries) {
+        if (entry.owed !== true) {
+            const [again] = (await planFor(current, ctx, [entry.step])).entries;
+            if (again.owed === null) {
+                if (!undo()) return 2;
+                warn(`upgrade: ${entry.step.id} could not tell, after the steps before it — ${again.because}. Rolled back`);
+                return 2;
+            }
+            if (again.owed !== true) continue;
+            say(`upgrade: ${entry.step.id} (${entry.step.kind}) — ${entry.step.title}`);
+            say(`upgrade:   ${again.because}`);
+        }
+        applied += 1;
         // **A step that throws mid-chain must not take the rollback with it.** `plan()` is a module's
         // code, and an exception here — after earlier steps have already written — would abort the
         // process with `undo()` never called, leaving a half-migrated workspace and no record of it.
@@ -846,11 +959,11 @@ export async function run(argv = [], options = {}) {
             if (snapshots.length) warn("upgrade: nothing was left behind — the steps that had already run were rolled back");
             return 2;
         }
-        const applied = applyEdits(current.dir, planned.edits);
-        snapshots = [...snapshots, ...applied.snapshots];
-        if (!applied.ok) {
+        const edited = applyEdits(current.dir, planned.edits, { treeDir });
+        snapshots = [...snapshots, ...edited.snapshots];
+        if (!edited.ok) {
             if (!undo()) return 2;
-            warn(`upgrade: ${entry.step.id} — ${applied.reason}`);
+            warn(`upgrade: ${entry.step.id} — ${edited.reason}`);
             return 2;
         }
         const again = readWorkspace(current.dir);
@@ -860,6 +973,7 @@ export async function run(argv = [], options = {}) {
             return 2;
         }
         current = again.ws;
+        treeDir = current.repository?.dir ?? treeDir;
     }
 
     // ---- and grade what it produced, with the real validator
@@ -886,8 +1000,13 @@ export async function run(argv = [], options = {}) {
         return 1;
     }
 
-    const written = [...new Set(snapshots.map((s) => s.file))];
-    say(`upgrade: applied ${plan.owed} step(s) to ${shown} — ${written.join(", ")}. doctor is green`);
+    // A file in the tree is named from the workspace, `../CHANGELOG.md`, and a deletion says so.
+    const named = (s) => {
+        const at = s.root === "tree" ? path.relative(current.dir, path.resolve(treeDir, s.file)).split(path.sep).join("/") : s.file;
+        return s.deleted ? `${at} (deleted)` : at;
+    };
+    const written = [...new Set(snapshots.map(named))];
+    say(`upgrade: applied ${applied} step(s) to ${shown} — ${written.join(", ")}. doctor is green`);
     return 0;
 }
 

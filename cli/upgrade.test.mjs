@@ -1,4 +1,4 @@
-// `upgrade` — the migration chain, and the two kinds of step.
+// `upgrade` — the migration chain, and the three kinds of step.
 //
 //   node --test "cli/**/*.test.mjs"
 //
@@ -31,8 +31,10 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { applyEdits, bundleSpec, inside, loadSteps, planFor, readWorkspace, resolveTarget, restore, run, UpgradeError } from "./upgrade.mjs";
+import { applyEdits, bundleSpec, inside, loadSteps, planFor, readWorkspace, repositoryView, resolveTarget, restore, run, UpgradeError } from "./upgrade.mjs";
 import { inspect } from "./doctor.mjs";
+import { readChanges, renderChanges } from "./index.mjs";
+import { execFileSync } from "node:child_process";
 
 // A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
 // 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
@@ -152,7 +154,7 @@ describe("the step contract — every module in spec/migrations/ satisfies it", 
 
     test("every step declares a known kind, and only a version step carries from/to", () => {
         for (const step of steps) {
-            assert.ok(["version", "repair"].includes(step.kind), `${step.id} declares kind \`${step.kind}\``);
+            assert.ok(["version", "repair", "form"].includes(step.kind), `${step.id} declares kind \`${step.kind}\``);
             assert.equal(typeof step.title, "string");
             assert.equal(typeof step.why, "string");
             assert.equal(typeof step.owed, "function");
@@ -161,7 +163,7 @@ describe("the step contract — every module in spec/migrations/ satisfies it", 
                 assert.match(step.from, /^[0-9]+\.[0-9]+$/, `${step.id} is a version step with no \`from\``);
                 assert.match(step.to, /^[0-9]+\.[0-9]+$/, `${step.id} is a version step with no \`to\``);
             } else {
-                assert.equal(step.from, null, `${step.id} is a repair and must not claim a version range`);
+                assert.equal(step.from, null, `${step.id} is a ${step.kind} step and must not claim a version range`);
                 assert.equal(step.to, null);
             }
         }
@@ -557,7 +559,10 @@ describe("exit codes, which are the house three", () => {
         await assert.rejects(() => inspect(dir), /MAJOR|migration/i, "doctor must refuse the pre-state — that refusal is why this tool exists");
         assert.equal(await run([dir, "--write"], harness().options), 0);
         const after = JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8"));
-        assert.equal(after.portulan.spec, "2.0");
+        // 0001 moved it to 2.0; in the same run the steps moving the form were asked again, and 0006
+        // drafted its card, whose slot arrived in 2.10 (2026-09-24).
+        assert.equal(after.portulan.spec, "2.10");
+        assert.equal(after.slots.context, "context/");
         assert.equal(after.tree, "../");
         const { findings } = await inspect(dir);
         assert.deepEqual(findings.filter((f) => f.severity === "fail"), [], "the migrated workspace must be green");
@@ -1176,5 +1181,184 @@ describe("`--tree` refuses what the other three parsers refuse", () => {
         const ok = harness();
         assert.equal(await run([ws, "--write", "--tree", "../"], ok.options), 0, ok.text());
         assert.equal(JSON.parse(fs.readFileSync(path.join(ws, "workspace.json"), "utf8")).tree, "../");
+    });
+});
+
+// ===========================================================================================
+// The steps that move a consumer's records and boot to the new form (2026-09-24)
+// ===========================================================================================
+
+const TODAY = "2026-09-24";
+const TODAY_CHANGELOG = [
+    "# Changelog",
+    "",
+    "## [Unreleased]",
+    "",
+    "### Added",
+    "",
+    "- A thing that links [the guide](docs/guide.md) and",
+    "  carries a second line.",
+    "- Another thing.",
+    "",
+    "### Fixed",
+    "",
+    "- A fix.",
+    "",
+    "## [0.1.0] - 2026-09-01",
+    "",
+    "- First.",
+    "",
+].join("\n");
+const TODAY_NOTES = "# Notes\n\nSome notes.\n\n## Session log\n\n- 2026-09-20: did a thing.\n- 2026-09-21: did another.\n\n## Later\n\nStays.\n";
+
+const git = (repo, ...args) => execFileSync("git", ["-C", repo, ...args], { encoding: "utf8" });
+
+/**
+ * A consumer in today's form, committed: drafted by the real `init`, then put back the way `init` drafted
+ * before the new form, with a kept and tracked handoff index, no card, no fragments, a changelog with
+ * entries under Unreleased and a document carrying a Session log.
+ */
+function todayForm({ spec = "2.7", changelog = TODAY_CHANGELOG, extra = {} } = {}) {
+    const repo = scratch();
+    git(repo, "init", "-q");
+    git(repo, "config", "user.email", "fixture@example.invalid");
+    git(repo, "config", "user.name", "Fixture");
+    execFileSync(process.execPath, [path.join(REPO, "cli", "init.mjs"), "--residence", "in-repo", "--no-interview", "--no-cycle", repo], { stdio: "pipe" });
+    const ws = path.join(repo, ".portulan");
+    const manifest = JSON.parse(fs.readFileSync(path.join(ws, "workspace.json"), "utf8"));
+    manifest.portulan.spec = spec;
+    delete manifest.slots.context;
+    fs.writeFileSync(path.join(ws, "workspace.json"), `${JSON.stringify({ ...manifest, ...extra }, null, 2)}\n`);
+    for (const gone of [path.join(ws, "context"), path.join(repo, ".claude"), path.join(repo, "changes"), path.join(repo, ".gitignore")]) fs.rmSync(gone, { recursive: true, force: true });
+    fs.writeFileSync(path.join(ws, "handoffs-index.md"), "");
+    execFileSync(process.execPath, [path.join(REPO, "cli", "index.mjs"), ws], { stdio: "pipe" });
+    fs.writeFileSync(path.join(repo, "CHANGELOG.md"), changelog);
+    fs.mkdirSync(path.join(repo, "docs"));
+    fs.writeFileSync(path.join(repo, "docs", "notes.md"), TODAY_NOTES);
+    fs.writeFileSync(path.join(repo, "docs", "guide.md"), "# Guide\n");
+    git(repo, "add", "-A");
+    git(repo, "commit", "-qm", "today's form");
+    return { repo, ws };
+}
+
+describe("the steps that move a consumer to the new form, on a real repository in today's form", () => {
+    test("the plan names each step, and says the card's compile follows; nothing is written", async () => {
+        const { repo, ws } = todayForm();
+        const h = harness();
+        assert.equal(await run([ws], { ...h.options, today: TODAY }), 0, h.text());
+        for (const id of ["0003-handoff-index-not-kept", "0004-changelog-fragments", "0005-session-log-retired", "0006-boot-card"]) assert.match(h.text(), new RegExp(id));
+        assert.match(h.text(), /`0007` then compiles it/);
+        assert.equal(git(repo, "status", "--porcelain"), "", "a bare run wrote");
+    });
+
+    test("--write moves every record, proves the changelog, compiles the card, and a second run owes nothing", async () => {
+        const { repo, ws } = todayForm();
+        const sha = git(repo, "log", "-1", "--format=%h", "--", "docs/notes.md").trim();
+        const h = harness();
+        assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 0, h.text());
+        assert.match(h.text(), /applied 5 step\(s\)[\s\S]*doctor is green/);
+
+        // The index: deleted, and git-ignored, so none is committed again.
+        assert.equal(fs.existsSync(path.join(ws, "handoffs-index.md")), false);
+        assert.equal(git(repo, "check-ignore", "--no-index", ".portulan/handoffs-index.md").trim(), ".portulan/handoffs-index.md");
+
+        // The changelog: its entries are fragments, and they print back as it held them.
+        const changelog = fs.readFileSync(path.join(repo, "CHANGELOG.md"), "utf8");
+        assert.match(changelog, /## \[Unreleased\]\n\nEach entry for the next release is a file in \[`changes\/`\]\(changes\/\)/);
+        assert.match(changelog, /## \[0\.1\.0\] - 2026-09-01\n\n- First\.\n/, "a released section is not touched");
+        assert.doesNotMatch(changelog, /Another thing/);
+        const read = readChanges(path.join(repo, "changes"));
+        assert.deepEqual(read.problems, []);
+        const printed = renderChanges(read.fragments);
+        assert.match(printed, /### Added\n\n- A thing that links \[the guide\]\(docs\/guide\.md\) and\n  carries a second line\.\n\n- Another thing\.\n/);
+        assert.match(printed, /### Fixed\n\n- A fix\.$/);
+
+        // The Session log: two lines naming the commit that holds its entries; the rest of the file stays.
+        const notes = fs.readFileSync(path.join(repo, "docs", "notes.md"), "utf8");
+        assert.match(notes, new RegExp(`## Session log\\n\\nRetired ${TODAY}: a change's record is its commit message[^\\n]*\\nlanded\\. The entries written until then are at \`git show ${sha}:docs/notes\\.md\`\\.\\n\\n## Later\\n\\nStays\\.\\n$`));
+        assert.equal(git(repo, "show", `${sha}:docs/notes.md`), TODAY_NOTES, "the pointer names where the entries are");
+
+        // The card: drafted, declared at 2.10, and compiled into what the host loads.
+        const manifest = JSON.parse(fs.readFileSync(path.join(ws, "workspace.json"), "utf8"));
+        assert.equal(manifest.portulan.spec, "2.10");
+        assert.equal(manifest.slots.context, "context/");
+        assert.match(fs.readFileSync(path.join(repo, ".claude", "rules", "portulan", "boot.md"), "utf8"), /^# Portulan boot card$/m);
+        assert.equal(fs.existsSync(path.join(repo, ".claude", "settings.json")), false, "host settings are a person's to compile");
+
+        const again = harness();
+        assert.equal(await run([ws, "--write"], { ...again.options, today: TODAY }), 0, again.text());
+        assert.match(again.text(), /owes nothing/);
+    });
+
+    test("a Session log with changes not committed is refused, and every step before it is rolled back", async () => {
+        const { repo, ws } = todayForm();
+        fs.appendFileSync(path.join(repo, "docs", "notes.md"), "- 2026-09-22: written, not committed.\n");
+        const h = harness();
+        assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 2);
+        assert.match(h.text(), /docs\/notes\.md has changes not committed/);
+        assert.equal(git(repo, "status", "--porcelain").trim(), "M docs/notes.md", "the index, the changelog and the fragments are as they were");
+    });
+
+    test("an Unreleased heading that names no section is refused before anything moves", async () => {
+        const { repo, ws } = todayForm({ changelog: TODAY_CHANGELOG.replace("### Fixed", "### Misc") });
+        const h = harness();
+        assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 2);
+        assert.match(h.text(), /`### Misc` under Unreleased is none of added, changed, deprecated, removed, fixed, security/);
+        assert.equal(git(repo, "status", "--porcelain"), "");
+    });
+
+    test("the tree's view lists nothing through a link, as it reads nothing through one", () => {
+        const root = scratch();
+        const outside = scratch();
+        fs.writeFileSync(path.join(outside, "elsewhere.added.md"), "- Elsewhere.\n");
+        fs.mkdirSync(path.join(root, ".portulan"));
+        fs.symlinkSync(outside, path.join(root, "changes"));
+        const view = repositoryView(path.join(root, ".portulan"), { tree: "../" });
+        assert.throws(() => view.names("changes"), /changes is a symlink, and this refuses to list through one/);
+        assert.throws(() => view.read("changes/elsewhere.added.md"), /changes is a symlink, and this refuses to read through one/);
+        assert.deepEqual(view.names("absent"), [], "an absent directory holds no names");
+    });
+
+    test("a workspace red afterwards is rolled back, deletions and tree edits included, and told how to fit the card", async () => {
+        const { repo, ws } = todayForm({ spec: "2.9", extra: { context: { always: { budget: { tokens: 100 } }, ratio: { bytes_per_token: 2.99, calibrated_by: "claude-code" } } } });
+        const h = harness();
+        assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 1);
+        assert.match(h.text(), /over the 100 declared/);
+        assert.match(h.text(), /imports \.portulan\/identity\.md whole[^;]*on-demand read/);
+        assert.equal(git(repo, "status", "--porcelain", "--untracked-files=all"), "", "every file is as it was, the deleted index among them");
+    });
+});
+
+describe("applyEdits and restore reach the tree, and delete", () => {
+    test("an edit naming the tree lands there, a null `next` deletes, and restore puts both back", () => {
+        const tree = scratch();
+        const ws = path.join(tree, ".portulan");
+        fs.mkdirSync(ws);
+        fs.writeFileSync(path.join(tree, "gone.md"), "kept\n", { mode: 0o640 });
+        const applied = applyEdits(ws, [
+            { root: "tree", file: "changes/one.added.md", next: "- One.\n" },
+            { root: "tree", file: "gone.md", next: null },
+            { root: "tree", file: "absent.md", next: null },
+        ], { treeDir: tree });
+        assert.equal(applied.ok, true, applied.reason);
+        assert.equal(fs.readFileSync(path.join(tree, "changes", "one.added.md"), "utf8"), "- One.\n");
+        assert.equal(fs.existsSync(path.join(tree, "gone.md")), false);
+        assert.equal(applied.snapshots.length, 2, "deleting what is absent is done, and leaves nothing to undo");
+        const back = restore(ws, applied.snapshots, { treeDir: tree });
+        assert.equal(back.ok, true, back.reason);
+        assert.equal(fs.existsSync(path.join(tree, "changes")), false, "the directory it made is gone again");
+        assert.equal(fs.readFileSync(path.join(tree, "gone.md"), "utf8"), "kept\n");
+        assert.equal(fs.statSync(path.join(tree, "gone.md")).mode & 0o777, 0o640);
+    });
+
+    test("the tree with none declared, a root that is neither, and a directory to delete are refused", () => {
+        const tree = scratch();
+        const ws = path.join(tree, ".portulan");
+        fs.mkdirSync(path.join(tree, "dir"), { recursive: true });
+        fs.mkdirSync(ws);
+        assert.match(applyEdits(ws, [{ root: "tree", file: "a.md", next: "a" }]).reason, /names the tree, and this workspace declares none/);
+        assert.match(applyEdits(ws, [{ root: "home", file: "a.md", next: "a" }], { treeDir: tree }).reason, /neither the workspace nor the tree/);
+        assert.match(applyEdits(ws, [{ root: "tree", file: "dir", next: null }], { treeDir: tree }).reason, /could not be read before writing|not a regular file/);
+        assert.match(applyEdits(ws, [{ root: "tree", file: "../escape.md", next: "x" }], { treeDir: tree }).reason, /resolves outside/);
     });
 });
