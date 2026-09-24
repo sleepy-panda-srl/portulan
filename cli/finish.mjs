@@ -61,6 +61,9 @@ export const RECIPE_TIMEOUT_MS = 10 * 60 * 1000;
 /** How many of a failing recipe's last lines are printed: the Stop-gate's measure. */
 export const TAIL_LINES = 25;
 
+/** How much of a failing recipe's output is decoded to find those lines: its last 64 KiB. */
+const TAIL_BYTES = 64 * 1024;
+
 const GIT_TIMEOUT_MS = 2 * 60 * 1000;
 
 /** A recipe's exit codes that are not a verdict about the tree, as `./stop-gate.mjs` reads them. */
@@ -254,13 +257,15 @@ export function recipesOf({ root, workspaceDir, named, forced }) {
  * Run one recipe as CI and the Stop-gate do: its `run` through `bash -c`, from the repository root. Its
  * stderr is made its stdout before it starts, one pipe this process reads whole, so its lines keep the order
  * it wrote them in and its last lines are its last. No file stands between: a write a full disk refused
- * would reach the recipe as its own failure, and its exit would read as a verdict on the tree.
+ * would reach the recipe as its own failure, and its exit would read as a verdict on the tree. Nor does a
+ * cap: its output is held in memory until it ends, and only a failure's last `TAIL_BYTES` are decoded.
  */
 export function runRecipe(recipe, { root, env }) {
-    const r = spawnSync("bash", ["-c", `exec 2>&1\n${recipe.run}`], { cwd: root, env, encoding: "utf8", timeout: RECIPE_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+    const r = spawnSync("bash", ["-c", `exec 2>&1\n${recipe.run}`], { cwd: root, env, timeout: RECIPE_TIMEOUT_MS, maxBuffer: Infinity, stdio: ["ignore", "pipe", "pipe"] });
     const code = r.error ? null : r.status;
-    const output = `${r.stdout ?? ""}${r.stderr ?? ""}${r.error ? `\n${r.error.message}` : ""}`;
     if (code === 0) return { id: recipe.id, outcome: "green" };
+    const last = (bytes) => (bytes ? bytes.subarray(-TAIL_BYTES).toString("utf8") : "");
+    const output = `${last(r.stdout)}${last(r.stderr)}${r.error ? `\n${r.error.message}` : ""}`;
     const cannot = code === null || CANNOT_RUN.has(code);
     return { id: recipe.id, outcome: cannot ? "could not run" : "red", code, output };
 }

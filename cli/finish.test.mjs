@@ -394,6 +394,17 @@ describe("a red stops it, and undoes its own commit", () => {
         assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
     });
 
+    test("a recipe's output has no cap: past 64 MiB, a green one is green and a red one's last line is reported", () => {
+        const loud = "yes x | head -c 67108865";
+        const { work, origin } = clone({ recipes: [{ id: "docs", run: loud }, { id: "tests", run: `${loud}; echo; echo the last line; exit 1` }] });
+        change(work);
+        const r = close(work, ["-m", "One"]);
+        assert.equal(r.code, 1, r.first);
+        assert.match(r.first, /1 of 2 recipe\(s\) not green: tests\./);
+        assert.match(r.out, /\ntests — RED \(exit 1\):\n(?: {4}x\n)+ {4}the last line\n$/);
+        assert.equal(onOrigin(origin, "feat"), "");
+    });
+
     test("a recipe's last lines are its last, whichever stream wrote them", () => {
         const { work } = clone({ recipes: [{ id: "docs", run: "echo first >&2; echo second; echo third >&2; exit 1" }] });
         change(work);
