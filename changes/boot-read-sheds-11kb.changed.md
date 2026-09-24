@@ -4,5 +4,5 @@
   [`.portulan/dod/`](../.portulan/dod/) and [`.portulan/repos/portulan/`](../.portulan/repos/portulan/), each
   linked from the line it continues. This repository's boot read-set drops from 92,998 to 81,892 bytes,
   100,053 to 88,947 with the manifest, and the `context` recipe's rail on it drops to match, from 102,055
-  to 90,726. The constitution is not cut, because no agent edits it. Nothing in the package changes, and
+  to 90,726. The constitution is left whole by this change. Nothing in the package changes, and
   the demo workspace's boot read-set is unchanged.
