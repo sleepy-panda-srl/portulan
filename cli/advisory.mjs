@@ -1,15 +1,24 @@
 #!/usr/bin/env node
 // The restart advisory — one line, once, where the agent is, and the same figure for the human.
 //
-//   node cli/advisory.mjs prompt    a UserPromptSubmit hook: the line, as additionalContext, once
-//   node cli/advisory.mjs status    a status-line command: the figure, on every refresh
+//   node cli/advisory.mjs tool      a PostToolUse hook: the line, as additionalContext, once, mid-stretch
+//   node cli/advisory.mjs prompt    a UserPromptSubmit hook: the same line, at the next prompt, if not said yet
+//   node cli/advisory.mjs status    a status-line command: the figure and the request count, on every refresh
 //
 // Wired by `./compile.mjs` into `.claude/settings.json`. `0038`'s rule 2: every request re-reads the
 // context, so a session is told to end when continuing costs more than restarting, **once, where the
-// agent is**. On Claude Code a non-blocking `Stop` hook's output never reaches the model, so the line
-// goes in at the next prompt, which enters the context without an extra turn; the human sees the same
-// figure in the status line, from the host's own last-call token counts, at no token cost. The
-// threshold is `./ledger.mjs`'s, computed from the session's own records and never written down.
+// agent is**: *with its next tool result mid-stretch, or at its next prompt*. On Claude Code a
+// non-blocking `Stop` hook's output never reaches the model, so the line goes in with a tool result or a
+// prompt, each of which enters the context without an extra turn; the human sees the same figure in the
+// status line, from the host's own last-call token counts, at no token cost. The threshold is
+// `./ledger.mjs`'s, computed from the session's own records and never written down.
+//
+// **The tool-result half is what reaches an agent at work.** The prompt half alone speaks only when a
+// person writes, and a headless run gets one prompt, at its start, before any request is recorded: in the
+// before-and-after runs of 2026-09-24 the advisory said its line in none of the 15 runs that carried it.
+// Both halves read one told-once record, so whichever comes first says the line and the other stays
+// silent. Each line and the status line carry the session's request count, `0038`'s rule 1 figure — a
+// report, never a budget, which `0038` rules out.
 //
 // ## A report, never a gate
 //
@@ -22,9 +31,9 @@
 //
 // ## Once
 //
-// The line is written at the first prompt whose last recorded request is at or past the threshold. The
-// host writes its transcript asynchronously, so that request may be one behind the one just answered:
-// the line is one request late at most, and never early. Whether it was said is kept in the OS temp
+// The line is written at the first tool result or prompt whose last recorded request is at or past the
+// threshold. The host writes its transcript asynchronously, so that request may be one behind the one
+// just answered: the line is one request late at most, and never early. Whether it was said is kept in the OS temp
 // directory, keyed by session and by how many times the session has compacted — a compaction starts the
 // context again, so the line may be owed again, and until the first request after it there is no figure
 // at all, since the context the records last show is the one the compaction replaced. The file is
@@ -35,12 +44,12 @@
 // ## What a call costs
 //
 // This runs at every prompt and at every refresh of the status line, so what it reads is bounded by
-// what the transcript gained, never by its length. The session's running figures — `./ledger.mjs`'s,
+// what the transcript gained, never by its length: at a tool result that is the request just made. The session's running figures — `./ledger.mjs`'s,
 // one fold for both — are kept beside the told-once records with the byte offset they were read to and a
 // digest of the bytes before it, and each call folds in only the complete lines past that offset; a torn
 // last line is read once its newline lands. The transcript is read from its start only when nothing is
 // kept, or what is kept no longer describes it: another path, another file, a file shorter than the
-// offset, or other bytes where the last read ended. At a prompt the told-once record is looked at before
+// offset, or other bytes where the last read ended. At a tool result or a prompt the told-once record is looked at before
 // the transcript is opened, so once the line is said, a prompt with nothing new since the last call costs
 // the runner's startup and nothing more. A first read goes 64 KB at a time rather than holding the
 // transcript whole. What is kept is counts, message ids and a digest, never a byte of what the session
@@ -60,8 +69,8 @@ import { figureOf, foldFigures, readLine, sessionFigures } from "./ledger.mjs";
 
 const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-/** The shape of what is kept between calls; a record of another version is read as none. */
-const STATE_VERSION = 1;
+/** The shape of what is kept between calls; a record of another version is read as none. 2 counts requests. */
+const STATE_VERSION = 2;
 
 /**
  * How much of a transcript is read at a time. Measured on a 7.4 MB transcript, a first read peaked at
@@ -123,6 +132,7 @@ function wellFormed(f) {
         typeof f.pending === "boolean" &&
         (f.fresh === null || isCount(f.fresh)) &&
         (f.last === null || isCount(f.last)) &&
+        isCount(f.requests) &&
         isLifetime(f.freshLifetime) &&
         isLifetime(f.lifetime) &&
         Array.isArray(f.recent) &&
@@ -254,34 +264,42 @@ function refresh(found, warn) {
         : { why: "no request is recorded yet", after: "the first recorded request" };
 }
 
-/** The line the agent reads: the figure, the multipliers it assumed, and what to do. */
-export function adviceLine(figure) {
+/** What each surface asks the agent to finish before it hands off: mid-stretch the step, at a prompt the prompt. */
+const FINISH = { PostToolUse: "finish the current step", UserPromptSubmit: "finish what this prompt asks" };
+
+/** The line the agent reads: the figure, the requests behind it, the multipliers it assumed, and what to do. */
+export function adviceLine(figure, event = "UserPromptSubmit") {
     const m = figure.multipliers;
     const assumed =
         m.source === "declared"
             ? "multipliers declared"
             : `multipliers undeclared, so the general read multiplier and the ${m.recorded ? `${m.lifetime === "1h" ? "one-hour" : "five-minute"} writes the host recorded` : "five-minute write the records did not state"}`;
     return (
-        `Portulan restart advisory: this session's context, ${grouped(figure.context)} tokens, has reached its restart threshold of ` +
+        `Portulan restart advisory: after ${grouped(figure.requests)} requests, each re-reading it, this session's context, ${grouped(figure.context)} tokens, has reached its restart threshold of ` +
         `${grouped(figure.threshold)} = fresh context ${grouped(figure.fresh)} × (1 + write ${m.write}× / (${figure.horizon} more requests × read ${m.read}×)); ${assumed}. ` +
-        "Continuing costs more in re-reads than restarting: finish what this prompt asks, then write the handoff and end the session. Said once."
+        `Continuing costs more in re-reads than restarting: ${FINISH[event]}, then write the handoff and end the session. Said once.`
     );
 }
 
-/** The status line: the same figure, short. */
+/** The status line: the same figure and the request count, short. */
 export function statusLine(figure) {
     const m = figure.multipliers;
     const multiplied = `${m.source === "declared" ? "multipliers declared" : "multipliers undeclared"}: read ${m.read}×, write ${m.write}×`;
+    const requests = `${grouped(figure.requests)} request${figure.requests === 1 ? "" : "s"}`;
     return figure.context >= figure.threshold
-        ? `context ${compact(figure.context)} has reached its ${compact(figure.threshold)} restart threshold: write the handoff and restart · ${multiplied}`
-        : `context ${compact(figure.context)} of a ${compact(figure.threshold)} restart threshold · ${multiplied}`;
+        ? `${requests} · context ${compact(figure.context)} has reached its ${compact(figure.threshold)} restart threshold: write the handoff and restart · ${multiplied}`
+        : `${requests} · context ${compact(figure.context)} of a ${compact(figure.threshold)} restart threshold · ${multiplied}`;
 }
 
 /**
- * The `UserPromptSubmit` half. Returns what to print: the hook's JSON, or null for silence.
- * `dir` is where the told-once records and the running figures live.
+ * Either hook's half: `event` is `PostToolUse` or `UserPromptSubmit`. Returns what to print: the hook's
+ * JSON, or null for silence. `dir` is where the told-once records and the running figures live.
  */
-export function onPrompt(payload, { dir = os.tmpdir(), warn = () => {} } = {}) {
+function once(event, payload, { dir = os.tmpdir(), warn = () => {} } = {}) {
+    // A subagent's tool call reaches this hook with its own `agent_id` and the main session's transcript
+    // (Claude Code 2.1.281's program text). The line and the figures are the main session's, and a subagent
+    // told to end its session would end nothing, so its tool results neither say the line nor spend the once.
+    if (typeof payload?.agent_id === "string" && payload.agent_id !== "") return null;
     const sessionId = sessionOf(payload);
     if (sessionId === null) {
         warn("the host sent no session_id, so saying the line once could not be kept");
@@ -307,8 +325,14 @@ export function onPrompt(payload, { dir = os.tmpdir(), warn = () => {} } = {}) {
         if (error.code !== "EEXIST") warn(`the told-once record could not be written — ${error.code ?? error.message}; staying silent rather than saying the line at every prompt`);
         return null;
     }
-    return JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: adviceLine(figure) } });
+    return JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: adviceLine(figure, event) } });
 }
+
+/** The `PostToolUse` half: the line with the next tool result, mid-stretch, where no prompt comes. */
+export const onTool = (payload, options) => once("PostToolUse", payload, options);
+
+/** The `UserPromptSubmit` half: the line at the next prompt, where no tool result said it first. */
+export const onPrompt = (payload, options) => once("UserPromptSubmit", payload, options);
 
 /**
  * The status-line half. The context is the host's own last-call counts where it sends them, which are
@@ -339,13 +363,13 @@ export function main(argv = process.argv.slice(2), { stdout = process.stdout, st
     const input = payload === undefined ? readPayload() : payload;
     const warn = (why) => stderr.write(`portulan advisory: ${why}\n`);
     try {
-        if (mode === "prompt") {
-            const out = onPrompt(input, { dir, warn });
+        if (mode === "prompt" || mode === "tool") {
+            const out = (mode === "tool" ? onTool : onPrompt)(input, { dir, warn });
             if (out !== null) stdout.write(`${out}\n`);
         } else if (mode === "status") {
             stdout.write(`${onStatus(input, { dir, warn })}\n`);
         } else {
-            warn(`unknown mode ${JSON.stringify(mode)}: the compiled commands pass prompt or status`);
+            warn(`unknown mode ${JSON.stringify(mode)}: the compiled commands pass tool, prompt or status`);
         }
     } catch (cause) {
         // A defect here must cost the person nothing: no line, and the prompt goes through.

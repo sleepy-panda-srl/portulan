@@ -83,7 +83,10 @@ The whole product ships from here, and its history is world-readable, so the sea
 every commit. There is no build step, and none is pending. `./.portulan/verify/docs.sh` is the default
 recipe, the one the Stop-gate runs, and
 `node cli/recipe-set.mjs --workspace .portulan --repo-root . --pack-root packs` prints every recipe CI
-runs. `node cli/portulan.mjs <subcommand>` runs the CLI. A build-session bootstrap file at the root is
+runs. Close a change with
+`git add <new files> && node cli/finish.mjs -m "<subject>" -m "<why and trailers>"`: one call runs
+every recipe CI runs, checks the changelog fragment, commits and pushes, and on a red commits and pushes
+nothing. `node cli/portulan.mjs <subcommand>` runs the CLI. A build-session bootstrap file at the root is
 git-ignored and never committed: in a diff, it is the bug. **Code:** outline a file of 300 or more lines
 with `node cli/symbols.mjs <file>` (or `--find <name>`), then Read only its spans, by `offset` and
 `limit`; read a shorter file you will change whole.

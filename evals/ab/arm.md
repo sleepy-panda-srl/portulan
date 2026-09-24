@@ -122,7 +122,8 @@ Two residuals are named rather than smoothed:
   here. This is **not** fixable at reasonable cost. The record says the arm is machine-bound — and session 6b
   **measured it rather than repeating it**: a constructed arm carried **5** hooks, every one an absolute
   path into this checkout, and `--construct` prints the figure rather than asserting the property. Since
-  proposal `0038`'s restart advisory it carries **6**, and a status-line command pinned the same way.
+  proposal `0038`'s restart advisory it carries **7**, the advisory being a tool-result and a prompt hook, and a
+  status-line command pinned the same way.
 
 ## What the source workspace cannot change
 

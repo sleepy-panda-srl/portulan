@@ -295,13 +295,15 @@ const RECENT = 16;
 /**
  * The running figures one session's restart threshold is computed from: its compactions, whether the
  * last has no request after it yet, the fresh context and its write lifetime, the latest lifetime named,
- * the latest context, and the ids of its latest requests. **One fold, two readers**: `readTranscript`
+ * the latest context, and the ids of its latest requests; and how many requests the session has made,
+ * compactions or not, which the advisory reports beside the threshold (`0038`, rule 1: a change is priced
+ * by its requests, and every request re-reads the context). **One fold, two readers**: `readTranscript`
  * folds a whole transcript into them, and `./advisory.mjs` keeps them between calls and folds in only
  * the lines a transcript gained since, so what the advisory says and what the ledger prints cannot part.
  * Every field is a number, a string, a boolean or null, so they survive a round trip through JSON.
  */
 export function sessionFigures() {
-    return { compactions: 0, pending: false, fresh: null, freshLifetime: null, lifetime: null, last: null, recent: [] };
+    return { compactions: 0, pending: false, fresh: null, freshLifetime: null, lifetime: null, last: null, requests: 0, recent: [] };
 }
 
 /**
@@ -324,6 +326,7 @@ export function foldFigures(figures, read) {
         figures.recent.push(r.id);
         if (figures.recent.length > RECENT) figures.recent.shift();
     }
+    figures.requests += 1;
     const context = contextOf(r);
     const lifetime = lifetimeOf(r);
     if (figures.fresh === null || figures.pending) {
@@ -365,7 +368,7 @@ export function figureOf(figures, { declared = null, horizon = HORIZON } = {}) {
     if (figures.fresh === null || figures.pending || figures.fresh === 0) return null;
     const m = multipliers({ declared, lifetime: figures.freshLifetime ?? figures.lifetime });
     const threshold = restartThreshold({ fresh: figures.fresh, write: m.write, read: m.read, horizon });
-    return { fresh: figures.fresh, context: figures.last, threshold, horizon, multipliers: m, compactions: figures.compactions };
+    return { fresh: figures.fresh, context: figures.last, threshold, horizon, multipliers: m, compactions: figures.compactions, requests: figures.requests };
 }
 
 /** The threshold for one read transcript, or null where it has none yet. */

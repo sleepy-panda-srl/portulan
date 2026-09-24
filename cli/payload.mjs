@@ -117,6 +117,11 @@ export const PRODUCT = {
         "checks it*, since a record shipped without its regenerator is the ships-but-cannot-run inversion " +
         "that change exists to refuse. An earlier draft of this entry fused the two and had the 2026-08-24 " +
         "rule refusing the very split it institutes — caught at the checkpoint",
+    "finish.mjs":
+        "the finishing command, which closes a change in one call: every recipe on the commit it makes, the " +
+        "changelog fragment, the commit and the push. Product under the same 2026-08-24 rule — *the tool is " +
+        "product and the policy it reads is this team's* — since the recipes it runs are the workspace's own; " +
+        "adopters reach it through the card `init` drafts (the coordinator session's delegated call of 2026-09-24)",
     "symbols.mjs":
         "a code file's outline, printed so a session reads spans rather than whole files. Product under " +
         "the same 2026-08-24 rule — *the tool is product and the policy it reads is this team's* — as a " +

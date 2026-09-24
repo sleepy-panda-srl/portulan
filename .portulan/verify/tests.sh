@@ -22,6 +22,13 @@
 # beside a recursive `find` would let a test file in a subdirectory be counted and never run, which
 # is the fail-open in miniature.
 #
+# A red run ends with the tests that failed, one line each with where it is: the last lines a reader
+# is shown, the Stop-gate's 25 and `finish`'s, would otherwise hold the runner's totals alone, and the
+# suite would be run a second time to learn which. Only tests are listed, not the suites around them,
+# so the list is as long as the runner's own `# fail` count. The output still streams; `tee` keeps a
+# copy to read the names from, and the runner's exit is taken from PIPESTATUS, never through the pipe
+# (../memory/an-exit-code-read-through-a-pipe-is-the-pipes.md).
+#
 # Exit 0 green · 1 red · 2 could not run.
 
 set -uo pipefail
@@ -34,7 +41,7 @@ set -uo pipefail
 # on real data. A failed cleanup is not a false verdict, which is why it is none of the eleven; the
 # guard covers it anyway, since a recipe that lists what it runs and then runs something else is the
 # drift this loop exists to stop.
-for need in dirname find mktemp node rm tr wc; do
+for need in awk dirname find mktemp node rm tee tr wc; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
         exit 2
@@ -72,4 +79,28 @@ if [ "$count" -eq 0 ]; then
 fi
 printf 'tests: %s test file(s) found\n' "$count"
 
-node --test "cli/**/*.test.mjs"
+out=$(mktemp) || exit 2
+trap 'rm -f -- "$tmp" "$out"' EXIT
+node --test "cli/**/*.test.mjs" 2>&1 | tee -- "$out"
+status=${PIPESTATUS[0]}
+if [ "$status" -ne 0 ]; then
+    failed=$(awk -v root="$(pwd -P)/" '
+        /^[ \t]*not ok [0-9]+ - / { if (pending != "") print "  " pending; line = $0; sub(/^[ \t]*not ok [0-9]+ - /, "", line); pending = line; next }
+        pending != "" && /^[ \t]*type: \047suite\047/ { pending = ""; next }
+        pending != "" && /^[ \t]*location: / {
+            loc = $0; sub(/^[ \t]*location: \047/, "", loc); sub(/\047$/, "", loc)
+            if (index(loc, root) == 1) loc = substr(loc, length(root) + 1)
+            print "  " loc " — " pending; pending = ""; next
+        }
+        pending != "" && /^[ \t]*(ok|not ok) [0-9]+ / { print "  " pending; pending = "" }
+        END { if (pending != "") print "  " pending }
+    ' "$out")
+    if [ -z "$failed" ]; then
+        printf '\ntests: the runner exited %s and named no failing test; its own lines above say why\n' "$status"
+    else
+        n=$(printf '%s\n' "$failed" | wc -l | tr -d '[:space:]')
+        # The count again after the list, so it survives a 25-line tail that more than 23 names would overflow.
+        printf '\ntests: %s failing test(s), where each is and its name:\n%s\ntests: %s failing\n' "$n" "$failed" "$n"
+    fi
+fi
+exit "$status"

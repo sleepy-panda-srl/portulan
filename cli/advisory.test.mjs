@@ -1,4 +1,5 @@
-// Tests for `advisory` — the restart advisory's one line at the prompt, and its figure in the status line.
+// Tests for `advisory` — the restart advisory's one line with a tool result or at the prompt, and its figure
+// in the status line.
 //
 // Zero dependencies, node's own runner, and run by the same recipe as every suite here:
 //
@@ -6,9 +7,9 @@
 //
 // Every case writes its transcript and its told-once directory under a temporary directory, so no case
 // reads a real session or leaves a record beside one. What the suite pins is proposal `0038`'s promise
-// for the line — at the first prompt whose recorded usage has reached the threshold, once, and at no
-// earlier one — and the runner's own: it exits 0 on every path, because a `UserPromptSubmit` hook that
-// exits 2 erases the person's prompt.
+// for the line — with the first tool result or at the first prompt whose recorded usage has reached the
+// threshold, once between them, and at no earlier one — and the runner's own: it exits 0 on every path,
+// because a `UserPromptSubmit` hook that exits 2 erases the person's prompt.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -18,7 +19,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { adviceLine, compact, main, onPrompt, onStatus, stateFile, statusLine, toldFile } from "./advisory.mjs";
+import { adviceLine, compact, main, onPrompt, onStatus, onTool, stateFile, statusLine, toldFile } from "./advisory.mjs";
 import { readTranscript } from "./ledger.mjs";
 
 // A HERMETIC HOST: nothing here reads the host's configuration, and the suite says so the way every
@@ -92,6 +93,7 @@ describe("the line at the prompt", () => {
             grow(file, [boundary, ...record({ w1h: 19999 }), ...record({ read: 20000, w1h: 20000 })]);
             const out = onPrompt({ session_id: "s", transcript_path: file }, { dir: state });
             assert.match(JSON.parse(out).hookSpecificOutput.additionalContext, /40,001 tokens, has reached its restart threshold of 40,000/);
+            assert.match(JSON.parse(out).hookSpecificOutput.additionalContext, /^Portulan restart advisory: after 4 requests,/, "the session's requests, the compaction's included");
             assert.equal(onPrompt({ session_id: "s", transcript_path: file }, { dir: state }), null);
         });
     });
@@ -128,6 +130,46 @@ describe("the line at the prompt", () => {
             fs.writeFileSync(path.join(dir, "empty.jsonl"), `${JSON.stringify({ type: "user", message: { content: "hi" } })}\n`);
             assert.equal(onPrompt({ session_id: "s", transcript_path: path.join(dir, "empty.jsonl") }, { dir, warn }), null);
             assert.deepEqual(reasons.map((r) => r.split(" — ")[0]), ["the host sent no transcript_path", "the transcript could not be read", "no request is recorded yet"]);
+        });
+    });
+});
+
+describe("the line with a tool result", () => {
+    test("said with the first tool result that reaches it, to finish the step, with the requests behind it", () => {
+        withTemp((dir) => {
+            const state = path.join(dir, "state");
+            fs.mkdirSync(state);
+            const file = session(dir, [60000, 79999]);
+            assert.equal(onTool({ session_id: "s", transcript_path: file }, { dir: state }), null);
+            grow(file, record({ read: 79999 }));
+            const parsed = JSON.parse(onTool({ session_id: "s", transcript_path: file }, { dir: state }));
+            assert.equal(parsed.hookSpecificOutput.hookEventName, "PostToolUse");
+            // Each request is written once per content block; four requests, eight records, counted once each.
+            assert.match(parsed.hookSpecificOutput.additionalContext, /^Portulan restart advisory: after 4 requests, each re-reading it, this session's context, 80,000 tokens, has reached/);
+            assert.match(parsed.hookSpecificOutput.additionalContext, /: finish the current step, then write the handoff and end the session\. Said once\.$/);
+            grow(file, record({ read: 80000, w1h: 10 }));
+            assert.equal(onTool({ session_id: "s", transcript_path: file }, { dir: state }), null, "said once");
+            assert.equal(onPrompt({ session_id: "s", transcript_path: file }, { dir: state }), null, "and the prompt does not say it again");
+        });
+    });
+
+    test("said at the prompt first, the tool results after it stay silent: one line between the two halves", () => {
+        withTemp((dir) => {
+            const file = session(dir, [90000]);
+            assert.match(JSON.parse(onPrompt({ session_id: "s", transcript_path: file }, { dir })).hookSpecificOutput.additionalContext, /finish what this prompt asks/);
+            assert.equal(onTool({ session_id: "s", transcript_path: file }, { dir }), null);
+        });
+    });
+
+    test("a subagent's tool result is not the session's: it is told nothing and does not spend the once", () => {
+        withTemp((dir) => {
+            const state = path.join(dir, "state");
+            fs.mkdirSync(state);
+            const file = session(dir, [90000]);
+            // What Claude Code 2.1.281 sends from inside a subagent: its agent_id, and the session's transcript.
+            assert.equal(onTool({ session_id: "s", transcript_path: file, agent_id: "a1" }, { dir: state }), null);
+            assert.equal(fs.readdirSync(state).length, 0, "nothing was kept for it either");
+            assert.notEqual(onTool({ session_id: "s", transcript_path: file }, { dir: state }), null);
         });
     });
 });
@@ -257,7 +299,7 @@ describe("what a call reads", () => {
     test("the status line keeps the figures it read, so the next call has nothing to read again", () => {
         withTemp((dir) => {
             const file = session(dir, [50000]);
-            assert.equal(onStatus({ session_id: "s", transcript_path: file }, { dir }), "context 50k of a 80k restart threshold · multipliers undeclared: read 0.1×, write 2×");
+            assert.equal(onStatus({ session_id: "s", transcript_path: file }, { dir }), "2 requests · context 50k of a 80k restart threshold · multipliers undeclared: read 0.1×, write 2×");
             const kept = JSON.parse(fs.readFileSync(stateFile("s", dir), "utf8"));
             assert.equal(kept.offset, fs.statSync(file).size);
             assert.deepEqual([kept.figures.fresh, kept.figures.last], [40000, 50000]);
@@ -276,7 +318,7 @@ describe("what a call reads", () => {
             onStatus(call, { dir: state });
             // The call that read less renames its snapshot last.
             fs.writeFileSync(stateFile("race", state), older);
-            assert.equal(onStatus(call, { dir: state }), "context 40k of a 60k restart threshold · multipliers undeclared: read 0.1×, write 2×");
+            assert.equal(onStatus(call, { dir: state }), "4 requests · context 40k of a 60k restart threshold · multipliers undeclared: read 0.1×, write 2×");
             const kept = JSON.parse(fs.readFileSync(stateFile("race", state), "utf8")).figures;
             assert.deepEqual(kept, readTranscript(file).figures);
             assert.equal(kept.compactions, 1, "the compaction the older snapshot had not read is counted once");
@@ -289,8 +331,8 @@ describe("the status line", () => {
         withTemp((dir) => {
             const file = session(dir, [50000]);
             const current_usage = { input_tokens: 3, cache_creation_input_tokens: 997, cache_read_input_tokens: 90000 };
-            assert.equal(onStatus({ transcript_path: file, context_window: { current_usage } }), "context 91k has reached its 80k restart threshold: write the handoff and restart · multipliers undeclared: read 0.1×, write 2×");
-            assert.equal(onStatus({ transcript_path: file, context_window: { current_usage: null } }), "context 50k of a 80k restart threshold · multipliers undeclared: read 0.1×, write 2×");
+            assert.equal(onStatus({ transcript_path: file, context_window: { current_usage } }), "2 requests · context 91k has reached its 80k restart threshold: write the handoff and restart · multipliers undeclared: read 0.1×, write 2×");
+            assert.equal(onStatus({ transcript_path: file, context_window: { current_usage: null } }), "2 requests · context 50k of a 80k restart threshold · multipliers undeclared: read 0.1×, write 2×");
         });
     });
 
@@ -344,14 +386,18 @@ describe("the runner", () => {
         assert.match(written.err, /could not run — boom/);
     });
 
-    test("the hook's output is one JSON line the host reads as additional context", () => {
-        withTemp((dir) => {
-            const file = session(dir, [90000]);
-            const result = spawnSync(process.execPath, [TOOL, "prompt"], { input: JSON.stringify({ session_id: "runner", transcript_path: file }), encoding: "utf8", env: { ...process.env, TMPDIR: dir } });
-            assert.equal(result.status, 0, result.stderr);
-            const lines = result.stdout.trimEnd().split("\n");
-            assert.equal(lines.length, 1);
-            assert.ok(JSON.parse(lines[0]).hookSpecificOutput.additionalContext.startsWith("Portulan restart advisory:"));
-        });
+    test("the hook's output is one JSON line the host reads as additional context, from either hook", () => {
+        for (const [mode, event] of [["prompt", "UserPromptSubmit"], ["tool", "PostToolUse"]]) {
+            withTemp((dir) => {
+                const file = session(dir, [90000]);
+                const result = spawnSync(process.execPath, [TOOL, mode], { input: JSON.stringify({ session_id: "runner", transcript_path: file }), encoding: "utf8", env: { ...process.env, TMPDIR: dir } });
+                assert.equal(result.status, 0, result.stderr);
+                const lines = result.stdout.trimEnd().split("\n");
+                assert.equal(lines.length, 1);
+                const output = JSON.parse(lines[0]).hookSpecificOutput;
+                assert.equal(output.hookEventName, event);
+                assert.ok(output.additionalContext.startsWith("Portulan restart advisory:"));
+            });
+        }
     });
 });

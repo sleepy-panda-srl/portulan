@@ -363,6 +363,7 @@ describe("the roster — every reader of the recipe set reaches this carrier", (
             ".github/workflows/verify.yml",
             "cli/doctor.mjs",
             "cli/drills.mjs",
+            "cli/finish.mjs",
             "cli/stop-gate.mjs",
             "cli/vendor.mjs",
         ]);

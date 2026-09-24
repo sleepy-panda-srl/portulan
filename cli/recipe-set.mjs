@@ -89,6 +89,9 @@ export const RECIPE_SET_READERS = Object.freeze([
     // *enumeration* could not see it and this roster went stale in the one way the pair above was
     // arranged not to allow. Raised as a suppressed note by Copilot, round 1 on #343.
     "cli/drills.mjs",
+    // Added 2026-09-24: `cli/finish.mjs` runs every recipe the set yields before a change is pushed, as
+    // CI runs them, so it asks here rather than reading `verify.recipes` itself.
+    "cli/finish.mjs",
     "cli/stop-gate.mjs",
     "cli/vendor.mjs",
 ]);

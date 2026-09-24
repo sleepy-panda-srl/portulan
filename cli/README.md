@@ -55,6 +55,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`discover.mjs`](discover.mjs) | Host plugin-cache discovery — reading a host's installed-plugin record so a POINTER can be resolved to the workspace it names. |
 | [`drills.mjs`](drills.mjs) | The forced-red drill harness — every rail broken on purpose, and required to fire. |
 | [`eval-bundle.mjs`](eval-bundle.mjs) | Cut a named-recipient evaluation bundle of Portulan from a commit. Not shipped. |
+| [`finish.mjs`](finish.mjs) | The finishing command — one call closes a change: its recipes, its changelog fragment, its commit, its push. |
 | [`form.mjs`](form.mjs) | `form` — which form a consumer's records and boot are in, and the files that move them to the new one. |
 | [`fuzz-shell.mjs`](fuzz-shell.mjs) | Grammar-aware fuzzing over this repository's two shell segmenters. |
 | [`goldens.mjs`](goldens.mjs) | Grade this workspace's compiled gates against a corpus of adversarial fixtures. |
@@ -88,7 +89,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`ab-grade.test.mjs`](ab-grade.test.mjs) | The A/B graders' suite. Every case exists because something has already been wrong in that exact way, or because a supervisor named the way it would be. |
 | [`ab-run.test.mjs`](ab-run.test.mjs) | The A/B runner's suite. Every case exists because something here has already been wrong in that way, or because the session-open checkpoint named the way it would be. |
 | [`ab.test.mjs`](ab.test.mjs) | The A/B arm builder's suite. Every case here exists because something in this repository has already been wrong in that exact way, or because a supervisor named the way it would be. |
-| [`advisory.test.mjs`](advisory.test.mjs) | Tests for `advisory` — the restart advisory's one line at the prompt, and its figure in the status line. |
+| [`advisory.test.mjs`](advisory.test.mjs) | Tests for `advisory` — the restart advisory's one line with a tool result or at the prompt, and its figure in the status line. |
 | [`checkout-refs.live.test.mjs`](checkout-refs.live.test.mjs) | A workflow that checks out MORE THAN ONCE names the ref of every checkout after the first. |
 | [`cli-roster.live.test.mjs`](cli-roster.live.test.mjs) | `cli/README.md` is exactly what ./roster.mjs renders from this directory, and the render keeps its shape. |
 | [`collisions.test.mjs`](collisions.test.mjs) | The collision contract — one rule, three carriers, pinned together. |
@@ -101,6 +102,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`eval-bundle.test.mjs`](eval-bundle.test.mjs) | The evaluation-bundle cutter, driven on this repository AND on real fixture repositories. |
 | [`feedback.live.test.mjs`](feedback.live.test.mjs) | The sender's field map, against the real issue forms rather than against a fixture. |
 | [`feedback.test.mjs`](feedback.test.mjs) | `portulan feedback` — the suite, written before the sender. |
+| [`finish.test.mjs`](finish.test.mjs) | Tests for `finish` — one call closes a change: the fragment, the commit, every recipe on it, the push. |
 | [`form.test.mjs`](form.test.mjs) | `form` — the one definition of a consumer's new form, which `init`, `vendor`, `upgrade` and `doctor` read. |
 | [`fuzz-shell.ground.test.mjs`](fuzz-shell.ground.test.mjs) | The fuzzer's ground truth, MEASURED under real bash rather than argued. |
 | [`fuzz-shell.test.mjs`](fuzz-shell.test.mjs) | The grammar-fuzzer rail's suite — the hermetic half. |
