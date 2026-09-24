@@ -159,6 +159,15 @@ const lastLine = (text) => tail(text, 1) || "no output";
 /** Why git refused a push: its `! [rejected]` line, which names the ref and the reason, not a `hint:` after it. */
 const refusalOf = (text) => text.split("\n").map((line) => line.trim().replace(/\s+/g, " ")).find((line) => line.startsWith("! ")) ?? lastLine(text);
 
+/** What a thrown value says, whatever was thrown: reading it never throws in turn. */
+const textOf = (thrown) => {
+    try {
+        return String(thrown?.message ?? thrown);
+    } catch {
+        return "the runner threw a value with no text";
+    }
+};
+
 /**
  * The branch this change merges into: `--base`, else `PORTULAN_BASE_REF` as the recipes read it, else the
  * remote's own recorded default head — never a branch picked by name, `./stop-gate.mjs`'s rule — asked of
@@ -379,13 +388,13 @@ export function finish(options, { cwd = process.cwd(), env = process.env, readSt
     // What the recipes judge, and so the one commit this call may push.
     const judged = git(["rev-parse", "--verify", "-q", "HEAD^{commit}"]).out;
     const recipeEnv = { ...env, PORTULAN_BASE_REF: base.ref };
-    // A runner that throws judged nothing: the recipe could not run, and the commit is undone as for any
-    // recipe that could not run, never left standing by an error nothing caught.
+    // A runner that throws judged nothing, whatever it throws: the recipe could not run, and the commit is
+    // undone as for any recipe that could not run, never left standing by an error nothing caught.
     const results = set.recipes.map((recipe) => {
         try {
             return runOne(recipe, { root, env: recipeEnv });
         } catch (error) {
-            return { id: recipe.id, outcome: "could not run", code: null, output: error.message };
+            return { id: recipe.id, outcome: "could not run", code: null, output: textOf(error) };
         }
     });
     const failed = results.filter((r) => r.outcome !== "green");

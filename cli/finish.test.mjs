@@ -370,19 +370,27 @@ describe("a red stops it, and undoes its own commit", () => {
         assert.match(r.out, /\ndocs — could not run \(exit 2\):\n {4}node not found/);
     });
 
-    test("a runner that fails could not run, and the commit is undone rather than left standing", () => {
-        const { work, origin } = clone();
-        change(work);
-        const before = git(work, ["rev-parse", "HEAD"]);
-        const runOne = () => {
-            throw new Error("ENOSPC: no space left on device, write");
-        };
-        const r = finish(parseArgs(["-m", "One"], work), { cwd: work, env: ENV, runOne });
-        assert.equal(r.code, 2);
-        assert.equal(r.lines[0], "finish: stopped — 1 of 1 recipe(s) not green: docs. The commit is undone and its changes are staged. Nothing was pushed.");
-        assert.match(r.lines.join("\n"), /\ndocs — could not run \(exit none\):\n {4}ENOSPC: no space left on device, write/);
-        assert.equal(git(work, ["rev-parse", "HEAD"]), before);
-        assert.equal(onOrigin(origin, "feat"), "");
+    test("a runner that fails could not run, whatever it throws, and the commit is undone rather than left standing", () => {
+        const thrown = [
+            [new Error("ENOSPC: no space left on device, write"), "ENOSPC: no space left on device, write"],
+            [null, "null"],
+            ["a string", "a string"],
+            [Object.create(null), "the runner threw a value with no text"],
+        ];
+        for (const [value, text] of thrown) {
+            const { work, origin } = clone();
+            change(work);
+            const before = git(work, ["rev-parse", "HEAD"]);
+            const runOne = () => {
+                throw value;
+            };
+            const r = finish(parseArgs(["-m", "One"], work), { cwd: work, env: ENV, runOne });
+            assert.equal(r.code, 2);
+            assert.equal(r.lines[0], "finish: stopped — 1 of 1 recipe(s) not green: docs. The commit is undone and its changes are staged. Nothing was pushed.");
+            assert.ok(r.lines.join("\n").includes(`\ndocs — could not run (exit none):\n    ${text}`), r.lines.join("\n"));
+            assert.equal(git(work, ["rev-parse", "HEAD"]), before);
+            assert.equal(onOrigin(origin, "feat"), "");
+        }
     });
 
     test("a recipe's output is read from its own pipe, so an unusable TMPDIR stops nothing", () => {
