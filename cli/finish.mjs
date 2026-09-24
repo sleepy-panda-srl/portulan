@@ -45,7 +45,6 @@
 // run, or a push the remote refused. A recipe that could not run is never read as a pass.
 
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
@@ -252,37 +251,15 @@ export function recipesOf({ root, workspaceDir, named, forced }) {
 }
 
 /**
- * Run one recipe as CI and the Stop-gate do: its `run` through `bash -c`, from the repository root. Both of
- * its streams go to one file, so its lines keep the order it wrote them in and its last lines are its last.
- * A file that cannot be made, written or read is no verdict on the tree: the recipe could not run, which
- * undoes the commit as any recipe that could not run does, where an uncaught error would leave it standing.
+ * Run one recipe as CI and the Stop-gate do: its `run` through `bash -c`, from the repository root. Its
+ * stderr is made its stdout before it starts, one pipe this process reads whole, so its lines keep the order
+ * it wrote them in and its last lines are its last. No file stands between: a write a full disk refused
+ * would reach the recipe as its own failure, and its exit would read as a verdict on the tree.
  */
 export function runRecipe(recipe, { root, env }) {
-    let r;
-    let written = "";
-    try {
-        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-finish-"));
-        try {
-            const file = path.join(dir, "output");
-            const fd = fs.openSync(file, "w");
-            try {
-                r = spawnSync("bash", ["-c", recipe.run], { cwd: root, env, timeout: RECIPE_TIMEOUT_MS, stdio: ["ignore", fd, fd] });
-            } finally {
-                fs.closeSync(fd);
-            }
-            written = fs.readFileSync(file, "utf8");
-        } finally {
-            try {
-                fs.rmSync(dir, { recursive: true, force: true });
-            } catch {
-                // A temporary directory left behind changes no verdict.
-            }
-        }
-    } catch (error) {
-        return { id: recipe.id, outcome: "could not run", code: null, output: `its output could not be kept in a temporary file — ${error.message}` };
-    }
+    const r = spawnSync("bash", ["-c", `exec 2>&1\n${recipe.run}`], { cwd: root, env, encoding: "utf8", timeout: RECIPE_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
     const code = r.error ? null : r.status;
-    const output = `${written}${r.error ? `\n${r.error.message}` : ""}`;
+    const output = `${r.stdout ?? ""}${r.stderr ?? ""}${r.error ? `\n${r.error.message}` : ""}`;
     if (code === 0) return { id: recipe.id, outcome: "green" };
     const cannot = code === null || CANNOT_RUN.has(code);
     return { id: recipe.id, outcome: cannot ? "could not run" : "red", code, output };
@@ -397,7 +374,15 @@ export function finish(options, { cwd = process.cwd(), env = process.env, readSt
     // What the recipes judge, and so the one commit this call may push.
     const judged = git(["rev-parse", "--verify", "-q", "HEAD^{commit}"]).out;
     const recipeEnv = { ...env, PORTULAN_BASE_REF: base.ref };
-    const results = set.recipes.map((recipe) => runOne(recipe, { root, env: recipeEnv }));
+    // A runner that throws judged nothing: the recipe could not run, and the commit is undone as for any
+    // recipe that could not run, never left standing by an error nothing caught.
+    const results = set.recipes.map((recipe) => {
+        try {
+            return runOne(recipe, { root, env: recipeEnv });
+        } catch (error) {
+            return { id: recipe.id, outcome: "could not run", code: null, output: error.message };
+        }
+    });
     const failed = results.filter((r) => r.outcome !== "green");
     if (failed.length) {
         const code = failed.some((r) => r.outcome === "red") ? 1 : 2;

@@ -370,17 +370,28 @@ describe("a red stops it, and undoes its own commit", () => {
         assert.match(r.out, /\ndocs — could not run \(exit 2\):\n {4}node not found/);
     });
 
-    test("a recipe whose output has nowhere to go could not run, and the commit is undone", () => {
+    test("a runner that fails could not run, and the commit is undone rather than left standing", () => {
         const { work, origin } = clone();
         change(work);
         const before = git(work, ["rev-parse", "HEAD"]);
-        const r = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env: { ...ENV, TMPDIR: path.join(scratch(), "missing") }, encoding: "utf8" });
-        assert.equal(r.status, 2, r.stdout + r.stderr);
-        assert.equal(r.stderr, "", "a reason, not a stack trace");
-        assert.match(r.stdout, /^finish: stopped — 1 of 1 recipe\(s\) not green: docs\. The commit is undone and its changes are staged\. Nothing was pushed\.\n/);
-        assert.match(r.stdout, /\ndocs — could not run \(exit none\):\n {4}its output could not be kept in a temporary file — ENOENT/);
+        const runOne = () => {
+            throw new Error("ENOSPC: no space left on device, write");
+        };
+        const r = finish(parseArgs(["-m", "One"], work), { cwd: work, env: ENV, runOne });
+        assert.equal(r.code, 2);
+        assert.equal(r.lines[0], "finish: stopped — 1 of 1 recipe(s) not green: docs. The commit is undone and its changes are staged. Nothing was pushed.");
+        assert.match(r.lines.join("\n"), /\ndocs — could not run \(exit none\):\n {4}ENOSPC: no space left on device, write/);
         assert.equal(git(work, ["rev-parse", "HEAD"]), before);
         assert.equal(onOrigin(origin, "feat"), "");
+    });
+
+    test("a recipe's output is read from its own pipe, so an unusable TMPDIR stops nothing", () => {
+        const { work, origin } = clone();
+        change(work);
+        const r = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env: { ...ENV, TMPDIR: path.join(scratch(), "missing") }, encoding: "utf8" });
+        assert.equal(r.status, 0, r.stdout + r.stderr);
+        assert.equal(r.stderr, "");
+        assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
     });
 
     test("a recipe's last lines are its last, whichever stream wrote them", () => {
