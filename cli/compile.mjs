@@ -2211,11 +2211,27 @@ function checkedImports(text, dir, root, where) {
 }
 
 /**
+ * A line with no indent that opens a block of its own, and so ends a list even straight under an item's text,
+ * as CommonMark reads it: an ATX heading, a block quote, a thematic break, a list item, or an HTML block that
+ * opens with `<!` or `<?`. A fence is met before this is asked. Any other line there is more of the item above
+ * it, CommonMark's lazy line. An HTML tag is refused with the lazy lines, though CommonMark ends the list at a
+ * tag it counts as a block, such as `<div>`: telling the two apart takes its list of sixty-odd tag names, and
+ * a blank line above the tag settles it either way.
+ */
+const OPENS_BLOCK = /^(?:#{1,6}(?:[ \t]|$)|>|([-*_])(?:[ \t]*\1){2,}[ \t]*$|(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)|<(?:!--|\?|![A-Za-z]|!\[CDATA\[))/;
+
+/**
  * The lead sentences of the first list in the file at `file`, as that list numbers them: each item's first
  * sentence, byte for byte, so the file stays the one place the text lives. An item must open with a bold
  * lead, and its first sentence ends at the first `.`, `!` or `?` outside a code span that is followed, past
  * any closing emphasis, by a space or the item's end. A lead carrying a link is refused: the link was written
  * for the file's own directory and would not resolve from where the unit compiles to.
+ *
+ * The list ends at a line with no indent after a blank one, or at one that opens a block (`OPENS_BLOCK`). A
+ * line of text with no indent straight under an item is refused: CommonMark reads it as more of that item,
+ * and this reader took it for the list's end and dropped every lead below it without a word. Un-indenting
+ * one wrapped line of `../.portulan/principles.md` wrote a card with one of its four leads, and `--check`
+ * stayed green. Found in the coordinator session's review of #452 after its push.
  */
 function leadsOf(file, where) {
     return leadsOfText(fs.readFileSync(file, "utf8"), path.basename(file), where);
@@ -2227,7 +2243,8 @@ export function leadsOfText(source, name, where) {
     const items = [];
     let kind = null;
     let fence = null;
-    for (const line of lines) {
+    let under = false; // the line above is an item's text, which a line with no indent would carry on
+    for (const [at, line] of lines.entries()) {
         const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
         if (marker) {
             if (kind !== null) break;
@@ -2242,8 +2259,15 @@ export function leadsOfText(source, name, where) {
         } else if (kind !== null && /^\s+\S/.test(line)) {
             items.at(-1).text += ` ${line.trim()}`;
         } else if (kind !== null && line.trim() !== "") {
+            if (under && !OPENS_BLOCK.test(line)) {
+                throw new CompileError(
+                    `${where}: line ${at + 1} of ${name} follows an item of its first list with no blank line and no indent, ` +
+                        `where CommonMark reads a line of text as more of that item — indent it under the item, or end the list with a blank line`,
+                );
+            }
             break;
         }
+        under = kind !== null && line.trim() !== "";
     }
     if (items.length === 0) throw new CompileError(`${where}: the leads of ${name} were asked for, and it holds no list`);
     return items.map(({ marker, text }) => {

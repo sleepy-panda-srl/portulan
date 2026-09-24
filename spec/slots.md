@@ -861,8 +861,9 @@ gates**, so a card carries a fact without holding a second copy of it:
 - **A line `<!-- leads: <path> -->`, alone on its line, is replaced by the first sentence of each item in
   the first list of the file it names**, each item opening with a bold lead. The file stays the one
   source of those sentences, so a change there is drift until the unit is recompiled. `compile` refuses
-  a file with no list, an item with no bold lead, and a lead carrying a link, which would not resolve
-  from the compiled rule.
+  a file with no list, an item with no bold lead, a lead carrying a link, which would not resolve from
+  the compiled rule, and a line of text with no indent straight under an item, which CommonMark reads as
+  more of that item (2026-09-24).
 - **A line `<!-- gates: <path> -->`, alone on its line, is replaced by the gate ids of the policy it
   names, one line per tier** in core's order, each id as the policy spells it and in its order there, a
   tier holding none saying so, and a line naming the packs the manifest composes, whose gates only a

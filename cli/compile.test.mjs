@@ -4231,6 +4231,26 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         assert.match(check.out, /boot\.md has drifted from context\/boot\.md, whose leads are written from rules\.md\. Edit the unit or those files, then recompile\./);
     });
 
+    // Found in the coordinator session's review of #452 after its push: a line with no indent straight under an
+    // item's text is more of that item to CommonMark, and this reader ended the list there, so a card carried
+    // the lead of one principle in four and `--check` stayed green.
+    test("a line with no indent under an item's text is refused, naming its line, and a line that opens a block still ends the list", (t) => {
+        const rules = (under) =>
+            ["# Rules", "", "1. **Ship small.** A reviewer reads a small change", "   whole.", "2. **Say what is enforced.** And what is not.", under, "3. **Never read.** It is past the list.", ""].join("\n");
+        const dir = withFiles({ "rules.md": rules("which is the half a reader forgets."), "context/boot.md": card("<!-- leads: ../rules.md -->") });
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 2, out);
+        assert.match(out, /context\/boot\.md: line 6 of rules\.md follows an item of its first list with no blank line and no indent, .+ indent it under the item, or end the list with a blank line/);
+        assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+        for (const opener of ["## Next", "> A quote.", "---", "* Another list.", "<!-- A note. -->", "```"]) {
+            fs.writeFileSync(path.join(dir, "rules.md"), rules(opener));
+            const opened = said(t, ["--workspace", dir]);
+            assert.equal(opened.code, 0, `${opener}: ${opened.out}`);
+            assert.match(rule(dir, "boot"), /^1\. \*\*Ship small\.\*\*\n2\. \*\*Say what is enforced\.\*\*$/m, opener);
+            assert.doesNotMatch(rule(dir, "boot"), /Never read/, opener);
+        }
+    });
+
     const refusedLeads = [
         ["a file with no list", "# Rules\n\nOnly prose.\n", /the leads of \.\.\/rules\.md were asked for, and it holds no list|the leads of rules\.md were asked for, and it holds no list/],
         ["an item with no bold lead", "1. **Ship small.** Why.\n2. Plain words.\n", /an item of rules\.md's first list opens without a bold lead/],
