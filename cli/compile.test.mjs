@@ -2272,7 +2272,10 @@ describe("customer zero", () => {
         // stays human-owned: it changes by pull request under his review, which is the Propose tier.
         const rule = real.rules.find((r) => r.action?.write === "docs/vision.md");
         assert.equal(rule.tier, "propose", "the constitution changes by pull request");
-        const refusing = real.rules.filter(
+        // The composed policy, packs included: a pack's Gated or Prohibited rule would refuse the edit as
+        // surely as one of the workspace's own.
+        const { contributions } = packContributions(REPO, ".portulan", { packRoots: [path.join(REPO, "packs")] });
+        const refusing = composeFragments(real, contributions).policy.rules.filter(
             (r) => (r.tier === "gated" || r.tier === "prohibited") && matchesRule(r, "Edit", { file_path: path.join(REPO, "docs", "vision.md") }),
         );
         assert.deepEqual(refusing.map((r) => r.id), [], "a rule refuses or prompts an edit the maintainer allowed");
