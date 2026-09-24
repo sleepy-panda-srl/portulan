@@ -897,30 +897,64 @@ describe("this repository", () => {
         assert.deepEqual(unknown, [], "a boot that reads a new file of the skill needs it in STEPS in context.mjs; one it reads on demand, here");
     });
 
-    test("every command the boot skill gives passes each path as one double-quoted word", () => {
-        // Both directories reach the shell as text, so an unquoted one with a space in its path is two
-        // words there: `node` finds no module, or the CLI refuses the rest (Copilot, #446). A path the
-        // reader fills in, such as `<workspace-dir>`, is one word only when quoted too, and a quote that
-        // does not close is as bad as none (Copilot, #461).
+    // Each word of a `node` command in the Markdown `text` that carries a path and is not one double-quoted
+    // word, as `<line> <word>`. Both directories reach the shell as text, so an unquoted one with a space in
+    // its path is two words there: `node` finds no module, or the CLI refuses the rest (Copilot, #446). A
+    // path the reader fills in, such as `<workspace-dir>`, is one word only when quoted too, and a quote
+    // that does not close is as bad as none (Copilot, #461).
+    const unquotedPaths = (text) => {
         const PATH = /\$\{CLAUDE_(?:PLUGIN_ROOT|PROJECT_DIR)[^}]*\}|<[\w-]+>/;
-        const dir = path.join(REPO, "plugin/skills/portulan");
-        const unquoted = [];
-        for (const name of fs.readdirSync(dir).filter((n) => n.endsWith(".md"))) {
-            let fenced = false;
-            fs.readFileSync(path.join(dir, name), "utf8").split("\n").forEach((line, i) => {
-                if (/^\s*```/.test(line)) return void (fenced = !fenced);
-                const code = fenced ? [line] : [...line.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
-                // A command starts at `node` after the span's start, a `$ ` prompt, a separator, or the `)`
-                // that closes a `case` pattern.
-                for (const text of code) {
-                    for (const [, command] of text.matchAll(/(?:^|\$\s+|[;&|()]\s*)(node\s[^;&|)]*)/g)) {
-                        for (const [word] of command.matchAll(/(?:"[^"]*"|'[^']*'|[^\s"'])+/g)) {
-                            if (PATH.test(word) && !/^"[^"]*"$/.test(word)) unquoted.push(`${name}:${i + 1} ${word}`);
-                        }
+        const found = [];
+        let fenced = false;
+        text.split("\n").forEach((line, i) => {
+            if (/^\s*```/.test(line)) return void (fenced = !fenced);
+            const code = fenced ? [line] : [...line.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+            // A command starts at `node` after the span's start, a `$ ` prompt, a separator, or the `)`
+            // that closes a `case` pattern.
+            for (const span of code) {
+                for (const [, command] of span.matchAll(/(?:^|\$\s+|[;&|()]\s*)(node\s[^;&|)]*)/g)) {
+                    for (const [word] of command.matchAll(/(?:"[^"]*"|'[^']*'|[^\s"'])+/g)) {
+                        if (PATH.test(word) && !/^"[^"]*"$/.test(word)) found.push(`${i + 1} ${word}`);
                     }
                 }
-            });
-        }
+            }
+        });
+        return found;
+    };
+
+    test("every command the boot skill gives passes each path as one double-quoted word", () => {
+        const dir = path.join(REPO, "plugin/skills/portulan");
+        const unquoted = fs.readdirSync(dir).filter((n) => n.endsWith(".md"))
+            .flatMap((name) => unquotedPaths(fs.readFileSync(path.join(dir, name), "utf8")).map((hit) => `${name}:${hit}`));
         assert.deepEqual(unquoted, []);
+    });
+
+    test("that check flags each way a path misses its quotes, and passes a quoted one or a path read, not run", () => {
+        // A check that finds nothing in the skill proves nothing on its own, so each case it names is here
+        // (Copilot, #465).
+        const fixture = [
+            '`node "${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs" "<workspace-dir>"`',
+            "`node ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs`",
+            '`node "${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs`',
+            '`node "${CLAUDE_PLUGIN_ROOT}"/cli/doctor.mjs`',
+            "`node '${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs'`",
+            "`cd x && node ${CLAUDE_PROJECT_DIR}/y.mjs`",
+            "`$ node <workspace-dir>`",
+            '`case "$x" in a) node ${CLAUDE_PLUGIN_ROOT}/x.mjs ;; esac`',
+            "Read `${CLAUDE_PLUGIN_ROOT}/core/engine.md` in full.",
+            "```",
+            "node ${CLAUDE_PLUGIN_ROOT}/cli/discover.mjs",
+            "```",
+        ].join("\n");
+        assert.deepEqual(unquotedPaths(fixture), [
+            "2 ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs",
+            "3 ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs",
+            '4 "${CLAUDE_PLUGIN_ROOT}"/cli/doctor.mjs',
+            "5 '${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs'",
+            "6 ${CLAUDE_PROJECT_DIR}/y.mjs",
+            "7 <workspace-dir>",
+            "8 ${CLAUDE_PLUGIN_ROOT}/x.mjs",
+            "11 ${CLAUDE_PLUGIN_ROOT}/cli/discover.mjs",
+        ]);
     });
 });
