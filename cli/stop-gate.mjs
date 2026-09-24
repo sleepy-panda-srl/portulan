@@ -592,13 +592,41 @@ function didWork(root = REPO) {
     }
 }
 
-/** Is there a handoff dated today? The doctrine's checkable form: existence and a date, never length. */
-function handoffToday(stamp, workspace = WORKSPACE) {
+/**
+ * The handoffs dated today in this tree, as `{ own, recorded }`. The doctrine's checkable form is existence
+ * and a date, never length, but only a handoff this tree has not yet committed and pushed answers for its
+ * work: untracked, changed, or in a commit no remote holds, the coarse reading `didWork()` starts from.
+ * One committed and pushed already, as a handoff merged on the base branch is, records recorded work, and
+ * counting it released every tree that carried it on the day it landed.
+ */
+function handoffToday(stamp, tree = { root: REPO, workspace: WORKSPACE }) {
+    let dated;
     try {
-        return fs.readdirSync(path.join(workspace, "handoffs")).some((f) => f.startsWith(stamp) && f.endsWith(".md"));
+        dated = fs.readdirSync(path.join(tree.workspace, "handoffs")).filter((f) => f.startsWith(stamp) && f.endsWith(".md"));
     } catch {
-        return false;
+        return { own: [], recorded: [] };
     }
+    const dir = path.relative(tree.root, path.join(tree.workspace, "handoffs")).split(path.sep).join("/");
+    // A workspace outside the repository holds nothing git records, so each of its handoffs is this tree's.
+    if (dir === "" || dir.startsWith("..") || path.isAbsolute(dir)) return { own: dated, recorded: [] };
+    const git = (args) => execFileSync("git", args, { cwd: tree.root, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
+    const own = [];
+    const recorded = [];
+    for (const name of dated) {
+        const file = `:(literal)${dir}/${name}`;
+        let unrecorded;
+        try {
+            unrecorded =
+                git(["status", "--porcelain", "--untracked-files=all", "--ignored", "--", file]).trim() !== "" ||
+                git(["log", "-1", "--format=%h", "HEAD", "--not", "--remotes", "--", file]).trim() !== "";
+        } catch {
+            // Git cannot say, so the plain form stands, and says so, as `didWork()` does when it cannot tell.
+            process.stderr.write(`portulan stop-gate: could not tell whether ${name} is committed and pushed, so it counts as this tree's own.\n`);
+            unrecorded = true;
+        }
+        (unrecorded ? own : recorded).push(name);
+    }
+    return { own, recorded };
 }
 
 /**
@@ -639,7 +667,7 @@ function treeIdentity(root = REPO) {
 }
 
 /**
- * A handoff dated today somewhere in this repository's history — every ref already on disk — or null.
+ * A handoff dated today in a commit this tree's HEAD does not hold, on any ref already on disk, or null.
  *
  * **No network, deliberately.** A Stop hook runs on every attempt to end a turn, and a fetch would
  * put a remote round trip — and an offline host's timeout — inside the gate. So this reads refs that
@@ -661,7 +689,8 @@ function handoffInHistory(stamp, tree = { root: REPO, workspace: WORKSPACE }) {
         // A workspace outside the repository is not a question git can answer about this history.
         if (dir === "" || dir.startsWith("..") || path.isAbsolute(dir)) return null;
         const git = (args) => execFileSync("git", args, { cwd: tree.root, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
-        // `--all` is every ref already on disk, local and remote-tracking. `-1` because existence is
+        // `--all` is every ref already on disk, local and remote-tracking, and `--not HEAD` leaves out
+        // what this tree holds, which `handoffToday()` has judged. `-1` because existence is
         // the whole question — this is the doctrine's checkable form, not a census.
         // **`:(glob)` magic, because a bare `*` is not reliably a glob.** With `GIT_NOGLOB_PATHSPECS`
         // set, git reads `*` literally, this matches nothing, and the function returns null — silently
@@ -671,7 +700,7 @@ function handoffInHistory(stamp, tree = { root: REPO, workspace: WORKSPACE }) {
         // `core.globPathspec=false` does NOT reproduce it — measured — so the magic is what makes this
         // deterministic, not a config default.)_ Explicit pathspec magic is the same discipline
         // `../.portulan/verify/plugin.sh` documents. Copilot, round 3.
-        const commit = git(["log", "--all", "-1", "--format=%H", "--", `:(glob)${dir}/${stamp}*`]).trim();
+        const commit = git(["log", "-1", "--format=%H", "--all", "--not", "HEAD", "--", `:(glob)${dir}/${stamp}*`]).trim();
         if (!commit) return null;
         const refs = git(["branch", "--all", "--contains", commit, "--format=%(refname:short)"])
             .split("\n").map((r) => r.trim()).filter(Boolean);
@@ -752,7 +781,8 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
     // `today()`'s own header records that this file has already produced one false red from a date
     // disagreement; two dates inside a single verdict is the same class. Copilot, round 3.
     const stamp = today();
-    const handoffPresent = handoffToday(stamp, tree.workspace);
+    const handoffs = handoffToday(stamp, tree);
+    const handoffPresent = handoffs.own.length > 0;
     // **`!handoffPresent` first, and the order is load-bearing rather than stylistic.** `didWork()`
     // shells out to git several times and can print the could-not-compare sentence; ordered the other
     // way, a session that HAS written its handoff still paid that cost on every Stop event and could
@@ -789,11 +819,16 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
               `${elsewhere.commit}${elsewhere.ref ? ` on \`${elsewhere.ref}\`` : ""} — so this working tree may not be ` +
               "the tree that did the work. Check before writing a second one."
             : "";
+        const { recorded } = handoffs;
+        const notCounted = recorded.length
+            ? `${recorded.map((f) => `\`${f}\``).join(", ")} ${recorded.length === 1 ? "is" : "are"} committed and pushed already, ` +
+              `so ${recorded.length === 1 ? "it records" : "they record"} work already recorded. `
+            : "";
         problems.push({
             reason: "handoff",
             text:
-                `no handoff dated ${stamp} in ${path.join(tree.workspace, "handoffs")}, read from ` +
-                `${treeIdentity(tree.root)}${answeredElsewhere}. ` +
+                `no handoff dated ${stamp}${recorded.length ? " of this tree's own" : ""} in ${path.join(tree.workspace, "handoffs")}, read from ` +
+                `${treeIdentity(tree.root)}${answeredElsewhere}. ${notCounted}` +
                 "This tree holds work that is not committed and pushed. Commit and push it, its why in the commit " +
                 "message, or end with a dated handoff naming what is open: where things stand, the open questions " +
                 `and the next action. Five lines is enough; absent is not.${found}`,
