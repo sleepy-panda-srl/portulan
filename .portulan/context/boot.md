@@ -79,7 +79,9 @@ every commit. There is no build step, and none is pending. `./.portulan/verify/d
 recipe, the one the Stop-gate runs, and
 `node cli/recipe-set.mjs --workspace .portulan --repo-root . --pack-root packs` prints every recipe CI
 runs. `node cli/portulan.mjs <subcommand>` runs the CLI. A build-session bootstrap file at the root is
-git-ignored and never committed: in a diff, it is the bug.
+git-ignored and never committed: in a diff, it is the bug. **Code:** outline a file of 300 or more lines
+with `node cli/symbols.mjs <file>` (or `--find <name>`), then Read only its spans, by `offset` and
+`limit`; read a shorter file you will change whole.
 
 ## Packs: `rituals/checkpoints` and `tools/github`
 
