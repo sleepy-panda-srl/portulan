@@ -1644,6 +1644,28 @@ describe("0009 — a section a team marks in its instruction file moves to an on
         assert.equal(git(repo, "status", "--porcelain", "--untracked-files=all"), "");
     });
 
+    test("an instruction file that is a link is read through it: unmarked it owes nothing, and marked it is owed by hand while the rest runs", async () => {
+        const { repo, ws } = marked("# Desk\n", { "AGENTS.md": FILE.replace("<!-- portulan: on-read -->\n", "") });
+        fs.rmSync(path.join(repo, "CLAUDE.md"));
+        fs.symlinkSync("AGENTS.md", path.join(repo, "CLAUDE.md"));
+        git(repo, "add", "-A");
+        git(repo, "commit", "-qm", "CLAUDE.md is AGENTS.md");
+        const plain = harness();
+        assert.equal(await run([ws], { ...plain.options, today: TODAY }), 0, plain.text());
+        assert.match(plain.text(), /owes nothing/);
+        fs.writeFileSync(path.join(repo, "AGENTS.md"), FILE);
+        fs.appendFileSync(path.join(repo, ".claude", "rules", "portulan", "boot.md"), "A line compile did not write.\n");
+        git(repo, "commit", "-qam", "a section marked through the link, and a compiled card edited by hand");
+        const h = harness();
+        assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 1, h.text());
+        assert.match(h.text(), /applied 1 step\(s\) to \S+ — \.\.\/\.claude\/rules\/portulan\/boot\.md\. doctor is green/);
+        assert.match(
+            h.text(),
+            /0009-instruction-sections-on-read is owed and not placed — a marked section cannot move, so none is moved — CLAUDE\.md is a link, to AGENTS\.md, and another host may load that file whole: the split moves sections of a file of its own — make CLAUDE\.md one to split it, or take the marks out, then upgrade again$/m,
+        );
+        assert.equal(fs.readFileSync(path.join(repo, "AGENTS.md"), "utf8"), FILE, "the file the link names is as the team left it");
+    });
+
     test("with no mark, nothing is owed, and the reason says what a mark is", async () => {
         const { ws } = marked(FILE.replace("<!-- portulan: on-read -->\n", ""));
         const [entry] = (await planFor(readWorkspace(ws).ws, { spec: bundleSpec(), today: TODAY }, steps.filter((s) => s.id.startsWith("0009")))).entries;

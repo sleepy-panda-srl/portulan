@@ -12,18 +12,21 @@
 // **Owed only where a team marked a section**: which guidance may leave every context is the team's word, and
 // a size says nothing about it (`0036`, rule 5). A mark the split refuses (a section importing a file, one
 // marked inside another, a mark under no heading) keeps the step owed and refused, as a changelog `0004`
-// cannot prove is, until the team moves the import or the mark.
+// cannot prove is, until the team moves the import or the mark. A mark in an instruction file that is a link
+// is owed by hand, since the file is not the team's to split until it is one of its own, and a refusal would
+// undo every other step with it. `upgrade` reads through no link, so this step reads such a file through the
+// link where it stays in the repository; one leading out of it is not this repository's.
 
 import { ESTIMATED_BYTES_PER_TOKEN, alwaysTier, declaredContext, tokensOf } from "../../cli/context.mjs";
 import { notYetForm } from "../../cli/form.mjs";
-import { INSTRUCTION_FILES, contextDir, grouped, marksOf, planSplit, splitLines } from "../../cli/instructions.mjs";
+import { INSTRUCTION_FILES, contextDir, grouped, instructionReader, linkRefusal, marksOf, planSplit, splitLines } from "../../cli/instructions.mjs";
 
 /** The split of the workspace's repository, planned through the view `upgrade` gives a step. */
 function splitOf(ws) {
     const tree = ws.repository.dir;
     const context = contextDir(tree, ws.dir, ws.manifest);
     const taken = context === null ? [] : ws.repository.names(context).filter((name) => name.endsWith(".md")).map((name) => name.slice(0, -3));
-    return planSplit({ tree, context, taken, read: ws.repository.read });
+    return planSplit({ tree, context, taken, read: instructionReader(tree, ws.repository.read) });
 }
 
 export const step = {
@@ -42,11 +45,14 @@ export const step = {
         const behind = notYetForm(ws, ctx);
         if (behind) return { owed: false, because: behind };
         if (!ws.repository) return { owed: false, because: "this workspace declares no tree, so there is no instruction file of its own" };
-        const marked = INSTRUCTION_FILES.filter((rel) => marksOf(ws.repository.read(rel) ?? "").marks.length > 0);
+        const read = instructionReader(ws.repository.dir, ws.repository.read);
+        const marked = INSTRUCTION_FILES.filter((rel) => marksOf(read(rel) ?? "").marks.length > 0);
         if (marked.length === 0) return { owed: false, because: "no section of CLAUDE.md or .claude/CLAUDE.md is marked `<!-- portulan: on-read -->`" };
         if (typeof ws.manifest?.slots?.context !== "string") {
             return { owed: false, because: `${marked.join(" and ")} marks a section, and \`slots.context\` is undeclared: \`0006\` declares it, and this step is asked again then` };
         }
+        const linked = marked.map((rel) => linkRefusal(ws.repository.dir, rel)).filter((refusal) => refusal !== null);
+        if (linked.length) return { owed: true, hand: true, because: `a marked section cannot move, so none is moved — ${linked.join("; ")}, or take the marks out, then upgrade again` };
         const split = splitOf(ws);
         if (split.refusals.length) return { owed: true, because: `a marked section cannot move — ${split.refusals.join("; ")}` };
         const ratio = declaredContext(ws.manifest).ratio ?? ESTIMATED_BYTES_PER_TOKEN;

@@ -15,6 +15,7 @@ import { alwaysTier } from "./context.mjs";
 import {
     ON_READ_MARK,
     clausesOf,
+    instructionReader,
     instructionsState,
     joinLine,
     landed,
@@ -226,6 +227,24 @@ describe("a mark is refused, and nothing moves, where moving it would change wha
         assert.match(planned.refusals.join("\n"), /^CLAUDE\.md is a link, to AGENTS\.md, and another host may load that file whole: the split moves sections of a file of its own — make CLAUDE\.md one to split it$/);
         assert.deepEqual(splitOffers(tree, { ratio: 3, floor: 0 }), []);
         assert.equal(splitOffers(split({ "CLAUDE.md": FILE }).tree, { ratio: 3, floor: 0 }).length, 1, "the same file, not a link, is offered");
+        assert.deepEqual(instructionsState(tree, treeReader(tree)), { pending: 2, moved: 0, gone: [], files: ["CLAUDE.md"], linked: ["CLAUDE.md"] });
+    });
+
+    test("an instruction file that is a link is read through it where it stays in the repository, and is absent where it leads out", () => {
+        const refused = () => {
+            throw new Error("read through a link");
+        };
+        const inside = scratch();
+        fs.writeFileSync(path.join(inside, "AGENTS.md"), FILE);
+        fs.symlinkSync("AGENTS.md", path.join(inside, "CLAUDE.md"));
+        assert.equal(instructionReader(inside, refused)("CLAUDE.md"), FILE);
+        assert.equal(instructionReader(inside, () => "read")("AGENTS.md"), "read", "any other file is read as the caller reads it");
+        const away = scratch();
+        fs.symlinkSync(path.join(inside, "AGENTS.md"), path.join(away, "CLAUDE.md"));
+        fs.mkdirSync(path.join(away, ".claude"));
+        fs.symlinkSync("gone.md", path.join(away, ".claude", "CLAUDE.md"));
+        assert.equal(instructionReader(away, refused)("CLAUDE.md"), null, "a link out of the repository is not its file");
+        assert.equal(instructionReader(away, refused)(".claude/CLAUDE.md"), null, "and a link to nothing is no file");
     });
 
     test("with no `slots.context`, there is nowhere for a unit to go, and the split says so", () => {
@@ -379,9 +398,9 @@ describe("the offer `doctor`, the boot and `init` print, and the state `form` re
 
     test("the state names the marks waiting, the sections moved, and a marker naming a unit that is gone", () => {
         const planned = split({ "CLAUDE.md": FILE });
-        assert.deepEqual(instructionsState(planned.tree, planned.read), { pending: 2, moved: 0, gone: [], files: ["CLAUDE.md"] });
+        assert.deepEqual(instructionsState(planned.tree, planned.read), { pending: 2, moved: 0, gone: [], files: ["CLAUDE.md"], linked: [] });
         const moved = split({ "CLAUDE.md": planned.files[0].after, [planned.units[1].source]: planned.units[1].text });
-        assert.deepEqual(instructionsState(moved.tree, moved.read), { pending: 0, moved: 2, gone: [".portulan/context/build.md"], files: ["CLAUDE.md"] });
+        assert.deepEqual(instructionsState(moved.tree, moved.read), { pending: 0, moved: 2, gone: [".portulan/context/build.md"], files: ["CLAUDE.md"], linked: [] });
     });
 });
 

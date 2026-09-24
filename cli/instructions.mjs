@@ -408,10 +408,9 @@ export function planSplit({ tree, context, taken, read }) {
         marked += marks.length;
         const refused = refusals.length;
         const from = path.join(tree, ...rel.split("/"));
-        // Read through a link, a split would write through it: a CLAUDE.md linked to AGENTS.md would move out of
-        // that file sections another host loads whole from it.
-        if (fs.lstatSync(from, { throwIfNoEntry: false })?.isSymbolicLink()) {
-            refusals.push(`${rel} is a link, to ${posix(path.relative(tree, fs.realpathSync(from)))}, and another host may load that file whole: the split moves sections of a file of its own — make ${rel} one to split it`);
+        const link = linkRefusal(tree, rel);
+        if (link !== null) {
+            refusals.push(link);
             continue;
         }
         const lines = text.split("\n");
@@ -690,24 +689,63 @@ export function movableSections(text, from) {
 }
 
 /**
- * The marks waiting in a repository's instruction files, the sections already moved, and each marker naming a
- * unit that is not there.
+ * The marks waiting in a repository's instruction files, the sections already moved, each marker naming a unit
+ * that is not there, and each marked file that is a link, whose marks the split refuses.
  *
- * @returns {{ pending: number, moved: number, gone: string[], files: string[] }}
+ * @returns {{ pending: number, moved: number, gone: string[], files: string[], linked: string[] }}
  */
 export function instructionsState(tree, read) {
-    const state = { pending: 0, moved: 0, gone: [], files: [] };
+    const state = { pending: 0, moved: 0, gone: [], files: [], linked: [] };
+    const readThrough = instructionReader(tree, read);
     for (const rel of INSTRUCTION_FILES) {
-        const text = read(rel);
+        const text = readThrough(rel);
         if (text === null) continue;
         const { marks, moved } = marksOf(text);
         if (marks.length === 0 && moved.length === 0) continue;
         state.files.push(rel);
         state.pending += marks.length;
         state.moved += moved.length;
+        if (marks.length && linkRefusal(tree, rel) !== null) state.linked.push(rel);
         for (const { source } of moved) if (read(source) === null) state.gone.push(source);
     }
     return state;
+}
+
+/**
+ * Why an instruction file that is a link is not split, or null where it is a file of its own. Read through the
+ * link, a split would write through it: a CLAUDE.md linked to AGENTS.md would move out of that file sections
+ * another host loads whole from it.
+ */
+export function linkRefusal(tree, rel) {
+    const at = path.join(tree, ...rel.split("/"));
+    if (!fs.lstatSync(at, { throwIfNoEntry: false })?.isSymbolicLink()) return null;
+    return `${rel} is a link, to ${posix(path.relative(fs.realpathSync(tree), fs.realpathSync(at)))}, and another host may load that file whole: the split moves sections of a file of its own — make ${rel} one to split it`;
+}
+
+/**
+ * `read`, but an instruction file that is a link is read through it where it stays in the repository, and is
+ * absent where it leads out of it or nowhere: `upgrade`'s reader reads through no link, and the split must see
+ * such a file's marks to say why it does not move them.
+ */
+export function instructionReader(tree, read) {
+    return (rel) => {
+        const at = path.join(tree, ...rel.split("/"));
+        if (!INSTRUCTION_FILES.includes(rel) || !fs.lstatSync(at, { throwIfNoEntry: false })?.isSymbolicLink()) return read(rel);
+        let to;
+        try {
+            to = fs.realpathSync(at);
+        } catch (error) {
+            if (error.code === "ENOENT" || error.code === "ENOTDIR") return null;
+            throw new InstructionsError(`${rel} could not be followed — ${error.code ?? error.message}`);
+        }
+        // A link out of the repository is not this repository's file to split, as `./context.mjs` does not count it.
+        if (!isInside(fs.realpathSync(tree), to)) return null;
+        try {
+            return fs.readFileSync(to, "utf8");
+        } catch (error) {
+            throw new InstructionsError(`${rel} could not be read — ${error.code ?? error.message}`);
+        }
+    };
 }
 
 /**

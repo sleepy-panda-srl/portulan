@@ -377,6 +377,20 @@ describe("which form a consumer is in, read from disk", () => {
         });
     });
 
+    test("a marked instruction file that is a link is named to make a file of its own by hand, and no command is said to move it", () => {
+        const root = tree({ "AGENTS.md": "## A\n<!-- portulan: on-read -->\n\nText.\n" });
+        fs.symlinkSync("AGENTS.md", path.join(root, "CLAUDE.md"));
+        const ws = path.join(root, ".portulan");
+        assert.deepEqual(formOf(ws, manifest()).pieces.find((p) => p.id === "instructions"), {
+            id: "instructions",
+            state: "today",
+            hand: true,
+            text: "1 section of CLAUDE.md marked to move to on-read units, and CLAUDE.md is a link, whose sections the split does not move: make it a file of its own, or take the marks out",
+        });
+        assert.match(formLine(ws, manifest()), /take the marks out — `portulan upgrade --write \S+` moves all but what is named to add by hand, and until then it boots as it did$/);
+        assert.doesNotMatch(formLine(ws, manifest(), { over: true }), /instructions\.mjs/, "over a declared budget too, since the split does not move a link's sections");
+    });
+
     test("no tree, no pieces, and the report says why", () => {
         const ws = tree();
         assert.deepEqual(formOf(ws, { kind: "demo" }), { tree: null, pieces: [] });
