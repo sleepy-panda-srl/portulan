@@ -451,6 +451,11 @@ describe("a switch against its control", () => {
         const none = reportLines(readSequence(treatment));
         assert.match(none.at(-3), /A {2}Portulan's share: no figure, since no run was measured$/);
         assert.match(none.at(-1), /; measured 0 of 2;/);
+        const v = verdict(readSequence(control), readSequence(treatment));
+        assert.deepEqual([v.measured, v.pass, v.ratio], [false, false, null]);
+        said.length = 0;
+        assert.equal(run(["report", control, treatment], { say: (l) => said.push(l) }), 1);
+        assert.match(said.at(-1), /no figure against the control's 100.*a run was not measured/);
     });
 
     test("two sequences of different shapes are no comparison, exit 2", () => {
