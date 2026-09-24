@@ -910,9 +910,10 @@ describe("this repository", () => {
             fs.readFileSync(path.join(dir, name), "utf8").split("\n").forEach((line, i) => {
                 if (/^\s*```/.test(line)) return void (fenced = !fenced);
                 const code = fenced ? [line] : [...line.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
-                // A command starts at `node` after the span's start, a `$ ` prompt or a separator.
+                // A command starts at `node` after the span's start, a `$ ` prompt, a separator, or the `)`
+                // that closes a `case` pattern.
                 for (const text of code) {
-                    for (const [, command] of text.matchAll(/(?:^|\$\s+|[;&|(]\s*)(node\s[^;&|)]*)/g)) {
+                    for (const [, command] of text.matchAll(/(?:^|\$\s+|[;&|()]\s*)(node\s[^;&|)]*)/g)) {
                         for (const [word] of command.matchAll(/(?:"[^"]*"|'[^']*'|[^\s"'])+/g)) {
                             if (PATH.test(word) && !/^"[^"]*"$/.test(word)) unquoted.push(`${name}:${i + 1} ${word}`);
                         }
