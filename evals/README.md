@@ -176,9 +176,9 @@ together as [#358](https://github.com/sleepy-panda-srl/portulan/issues/358):
 | `codify` step 3 — attach how it earns its place | `.portulan/proposals/` | no enforcement field |
 
 **The maintainer ruled on 2026-08-26 that [`../core/templates/task.md`](../core/templates/task.md)'s shape
-still binds**, so `clarify`'s twelve accepted files are non-compliant by his word rather than by an
+still binds**, so `clarify`'s six accepted files are non-compliant by his word rather than by an
 implementer's inference — which is what makes them accepted drift and not a divergence pinned before
-anyone ruled. Of those twelve, ten carry no acceptance-criteria section in any spelling and two fail on
+anyone ruled. Of those six, five carry no acceptance-criteria section in any spelling and one fails on
 EARS shape alone, so *"fails the EARS mandate"* is arithmetically right and rhetorically wrong; #358 has
 the cohorts.
 

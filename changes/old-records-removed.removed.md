@@ -4,4 +4,5 @@
   points at the file at that commit, by its permalink or, in five memory records, four of them at the
   2 KB cap, as `8a33f9b:<path>`; the plan's milestone rows name their files under one pointer line. The
   three `.ignore` files that kept searches out of them are gone, and `.portulan/handoffs/` keeps a
-  `.gitkeep`, as `init` drafts it, so the declared slot exists while the series is empty.
+  `.gitkeep`, so the declared slot exists while the series is empty; the README `init` drafts there
+  for a new workspace would be an undated Markdown file this repository's record check refuses.
