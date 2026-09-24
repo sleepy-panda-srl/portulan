@@ -16,9 +16,11 @@ nothing of its own cached; each later one finds what the one before it left. Eve
 
 - **A, Portulan's share**: the tokens that carried what Portulan installs or manages (its boot set, rules
   and skill files, the workspace's `.portulan/` context, records and memory), counted once for every
-  request that sent them. What entered the context is matched line by line against the run's own clone,
-  and each block takes its share by bytes of the context's growth at the request it entered; what the host
-  loaded before the first request is estimated from its bytes.
+  request that sent them, by the five-run set's split. A tool's result and the skill text the host injects
+  are matched line by line against the run's own clone, whose tracked files are Portulan's unless they are
+  code, since the clone is the plugin itself; each takes its share by bytes of the context's growth at the
+  request it entered. The plugin's descriptions, loaded before the first request, are estimated from their
+  bytes. A hook's output, the host's reminders and the model's own output are not A.
 - **B, the whole task**: every token the host recorded, cache reads included.
 - **C, the cost**, as an index with the before at 100: uncached input 1, a write at 2 for an hour's
   lifetime and 1.25 for five minutes, a read at the model's read multiplier and output at its rate, which

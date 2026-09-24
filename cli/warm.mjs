@@ -30,11 +30,11 @@
 // and reported in the maintainer's three lines of 2026-09-24, A first:
 //
 // - **A, Portulan's share**: the tokens that carried what Portulan installs or manages, counted once for every
-//   request that sent them. Each block that entered the context (a tool's result, the skill text the host
-//   injects, a hook's) is matched line by line against the tree's own copy of those files, and takes its share
-//   by bytes of the context's growth at the request it entered, the method of the five-run set of 2026-09-24. What the host
-//   loaded before the first request, the always tier and the plugin's descriptions, is estimated from its
-//   bytes, since the host records that request's context only as a total.
+//   request that sent them, by the split of the five-run set of 2026-09-24. A tool's result and the skill text
+//   the host injects are matched line by line against the tree's tracked files that are not code, and each
+//   takes its share by bytes of the context's growth at the request it entered. What the host loaded of
+//   Portulan's before the first request, the plugin's descriptions and any always tier, is estimated from its
+//   bytes, since the host records that request's context only as a total. A hook's output is not in A.
 // - **B, the whole task**: every token the host recorded for the run, cache reads included.
 // - **C, the cost**, as an index with the before at 100: uncached input 1, a write at its lifetime's multiplier,
 //   a read at the model's read multiplier and output at its rate, which `--read` and `--output` name, the
@@ -42,8 +42,8 @@
 //   billed figure when a treatment is read against it.
 //
 // A run is priced twice. **Billed** is what the host recorded. **Cold** prices the first request's reads as
-// writes at the run's lifetime: the run as if nothing had been cached before it, the convention of the
-// five-run set. A sequence's warm figure is the mean billed total of its runs after the first, and its cold
+// writes at the run's lifetime: the run as if nothing had been cached before it, the convention the five-run
+// set's first report priced by. A sequence's warm figure is the mean billed total of its runs after the first, and its cold
 // figure the mean cold total of all of them.
 //
 // ## Never in a recipe
@@ -77,8 +77,12 @@ export const OUTPUT = 5;
 /** The multipliers C prices by unless `--read` and `--output` name the model's own. */
 export const GENERAL_RATES = { read: GENERAL_READ, output: OUTPUT };
 
-/** Where a tree keeps what Portulan installs or manages: the workspace, the engine's doctrine and skills, the plugin. */
-export const PORTULAN_DIRS = [".portulan/", "core/", "plugin/"];
+/**
+ * Code, which A never counts: the five-run set's rule. The tree a run starts is the plugin itself, so every other
+ * tracked file is Portulan's: its boot set, doctrine and skills, the workspace's context, records and memory.
+ */
+export const isCode = (rel) =>
+    /^(?:cli|\.github|\.claude)\//.test(rel) || /\.(?:mjs|js|cjs|sh|yml|yaml)$/.test(rel) || rel === "package.json" || rel === "package-lock.json";
 
 /** A line shorter than this matches too many files to say whose it is, so it takes the verdict of the line before. */
 export const MIN_LINE = 16;
@@ -219,45 +223,49 @@ function readings(raw) {
 
 /**
  * The bytes of `text` that are Portulan's: each line whose text is a line of Portulan's files, and each shorter
- * line after one (a blank, a fence, a table's rule), since a short line cannot say whose it is.
+ * line after one (a blank, a fence, a table's rule), since a short line cannot say whose it is. A line code holds
+ * too is the code's when the tool call named a code file, as a named file wins in the five-run set's split.
  */
-export function portulanBytes(text, lines) {
+export function portulanBytes(text, lines, { code = new Set(), namedCode = false } = {}) {
     const all = String(text);
     let bytes = 0;
     let current = false;
     for (const raw of all.split("\n")) {
         const long = readings(raw).filter((t) => t.length >= MIN_LINE);
-        if (long.length > 0) current = long.some((t) => lines.has(t));
+        if (long.length > 0) current = long.some((t) => lines.has(t) && !(namedCode && code.has(t)));
         if (current) bytes += Buffer.byteLength(raw, "utf8") + 1;
     }
     return Math.min(bytes, Buffer.byteLength(all, "utf8"));
 }
 
 /**
- * What A counts in a tree: the lines of every tracked file under Portulan's directories and of every file its
- * boot reads, and the bytes of Portulan's that the host loads before the first request, the plugin's
- * descriptions and the always tier's lines of those files, as `context` measures them. A tree whose workspace
- * `context` cannot measure counts its files under Portulan's directories and nothing before the first request.
+ * What A counts in a tree: the lines of every tracked file that is not code, the lines of the code (for a tool
+ * call that named a code file), and the bytes of Portulan's that the host loads before the first request, the
+ * plugin's skill and agent descriptions and the always tier's lines of Portulan's files, as `context` measures
+ * them. A tree whose workspace `context` cannot measure loads nothing of Portulan's before the first request.
  */
 export function portulanSources(tree) {
-    const rel = (file) => path.relative(tree, file).split(path.sep).join("/");
-    const files = new Set(git(tree, ["ls-files", "-z"]).split("\0").filter((f) => PORTULAN_DIRS.some((d) => f.startsWith(d))));
+    const tracked = git(tree, ["ls-files", "-z"]).split("\0").filter(Boolean);
+    const lines = new Set();
+    const code = new Set();
+    let files = 0;
+    for (const rel of tracked) {
+        let text;
+        try {
+            if (fs.statSync(path.join(tree, rel)).size > 3_000_000) continue;
+            text = fs.readFileSync(path.join(tree, rel), "utf8");
+        } catch {
+            continue;
+        }
+        const into = isCode(rel) ? code : lines;
+        if (!isCode(rel)) files += 1;
+        for (const line of text.split("\n")) if (line.trim().length >= MIN_LINE) into.add(line.trim());
+    }
     let measured = null;
     try {
         measured = measure(path.join(tree, ".portulan"), { bundleRoot: tree });
     } catch {
         measured = null;
-    }
-    for (const e of measured?.boot.entries ?? []) files.add(rel(e.file));
-    const lines = new Set();
-    for (const f of files) {
-        let text;
-        try {
-            text = fs.readFileSync(path.join(tree, f), "utf8");
-        } catch {
-            continue;
-        }
-        for (const line of text.split("\n")) if (line.trim().length >= MIN_LINE) lines.add(line.trim());
     }
     let before = measured?.figures.descriptions ?? 0;
     for (const e of measured?.always?.entries ?? []) {
@@ -267,30 +275,26 @@ export function portulanSources(tree) {
         } catch {
             text = "";
         }
-        before += files.has(rel(e.file)) ? e.bytes : Math.min(e.bytes, portulanBytes(text, lines));
+        before += Math.min(e.bytes, portulanBytes(text, lines));
     }
-    return { lines, files: files.size, before };
+    return { lines, code, codePaths: tracked.filter(isCode), files, before };
 }
 
-/** The text a user line of a transcript puts into the context, block by block. */
-function userTexts(content) {
-    if (typeof content === "string") return [content];
-    if (!Array.isArray(content)) return [];
-    return content.map((b) => {
-        if (b?.type === "tool_result") {
-            if (typeof b.content === "string") return b.content;
-            return Array.isArray(b.content) ? b.content.map((c) => (c?.type === "text" ? c.text : JSON.stringify(c))).join("\n") : "";
-        }
-        return b?.type === "text" ? String(b.text ?? "") : JSON.stringify(b);
-    });
+/** A path a tool call's input names, the five-run set's way: a token ending in a file extension. */
+const PATH_TOKEN = /[\w./-]*[\w-]+\.(?:md|mjs|json|sh|js|yml|yaml|txt)\b/g;
+
+/** Whether a tool call's input names a tracked code file. */
+function namesCode(input, codePaths) {
+    const text = Object.values(input ?? {}).map((v) => String(v)).join(" ");
+    const tokens = (text.match(PATH_TOKEN) ?? []).map((t) => (t.startsWith(".portulan") ? t : t.replace(/^[./]+/, "")));
+    // An absolute path in the run's clone ends with the tracked path; a bare name is the end of one.
+    return tokens.some((t) => codePaths.some((f) => f === t || t.endsWith(`/${f}`) || f.endsWith(`/${t}`) || (t.length > 6 && f.endsWith(t))));
 }
 
-/** Every string an attachment carries. */
-function strings(value) {
-    if (typeof value === "string") return [value];
-    if (Array.isArray(value)) return value.flatMap(strings);
-    if (value !== null && typeof value === "object") return Object.values(value).flatMap(strings);
-    return [];
+/** A tool's result as the context holds it. */
+function resultText(b) {
+    if (typeof b.content === "string") return b.content;
+    return Array.isArray(b.content) ? b.content.map((c) => (c?.type === "text" ? c.text : JSON.stringify(c))).join("\n") : JSON.stringify(b.content ?? null);
 }
 
 /** A model's block, in bytes, as the next request sends it back. */
@@ -302,18 +306,21 @@ function blockBytes(b) {
 }
 
 /**
- * A for one run. The transcript is walked in the ledger's order (one request per message id, the main chain
- * only) for what entered the context before each request, in bytes and in Portulan's bytes. Each request's
- * growth is shared by bytes over what entered before it and carried by every request from there on; what entered
- * before the first request, with what the host loaded of Portulan's, is estimated from its bytes and carried by
- * all. Null where the walk and the ledger do not name the same requests, or where the run compacted, since a
- * compacted context sends a summary in place of what entered it.
+ * A for one run, the five-run set's split. The transcript is walked in the ledger's order (one request per
+ * message id, the main chain only) for what entered the context before each request, in bytes and in Portulan's
+ * bytes: a tool's result and the skill text the host injects are matched line by line; a prompt, a hook's or the
+ * host's attachment and the model's own blocks enter as bytes only. Each request's growth is shared by bytes over
+ * what entered before it and carried by every request from there on. Request 1 is not split: what the host loaded
+ * of Portulan's before it is estimated from its bytes and carried by all. Null where the walk and the ledger do
+ * not name the same requests, or where the run compacted, since a compacted context sends a summary in place of
+ * what entered it.
  */
 export function shareOf(file, requests, sources) {
     const main = requests.filter((r) => !r.sidechain);
     if (main.length === 0 || main.some((r) => r.compacted)) return null;
     const entering = [{ bytes: 0, portulan: 0 }];
     const ids = new Map();
+    const codeCalls = new Set();
     for (const line of fs.readFileSync(file, "utf8").split("\n")) {
         let record;
         try {
@@ -330,23 +337,34 @@ export function shareOf(file, requests, sources) {
                 entering.push({ bytes: 0, portulan: 0 });
             }
             // The model's own blocks enter the next request, and are never Portulan's.
-            for (const b of Array.isArray(message.content) ? message.content : []) entering[entering.length - 1].bytes += blockBytes(b);
+            for (const b of Array.isArray(message.content) ? message.content : []) {
+                entering[entering.length - 1].bytes += blockBytes(b);
+                if (b?.type === "tool_use" && namesCode(b.input, sources.codePaths)) codeCalls.add(b.id);
+            }
             continue;
         }
         const slot = entering[entering.length - 1];
         if (record.type === "user") {
-            for (const text of userTexts(message?.content)) {
+            const content = message?.content;
+            if (typeof content === "string") {
+                slot.bytes += Buffer.byteLength(content, "utf8");
+                continue;
+            }
+            for (const b of Array.isArray(content) ? content : []) {
+                const loaded = b?.type === "tool_result" ? resultText(b) : b?.type === "text" && record.isMeta === true ? String(b.text ?? "") : null;
+                const text = loaded ?? (b?.type === "text" ? String(b.text ?? "") : JSON.stringify(b));
                 slot.bytes += Buffer.byteLength(text, "utf8");
-                slot.portulan += portulanBytes(text, sources.lines);
+                if (loaded !== null) {
+                    slot.portulan += portulanBytes(loaded, sources.lines, { code: sources.code, namedCode: codeCalls.has(b.tool_use_id) });
+                }
             }
         } else if (record.type === "attachment" && record.attachment?.type !== "prompt_snapshot") {
             slot.bytes += Buffer.byteLength(JSON.stringify(record.attachment ?? null), "utf8");
-            slot.portulan += strings(record.attachment).reduce((total, t) => total + portulanBytes(t, sources.lines), 0);
         }
     }
     if (ids.size !== main.length || main.some((r, i) => ids.get(r.id) !== i)) return null;
     const n = main.length;
-    const before = tokensOf(sources.before + entering[0].portulan, ESTIMATED_BYTES_PER_TOKEN);
+    const before = tokensOf(sources.before, ESTIMATED_BYTES_PER_TOKEN);
     let carried = before * n;
     for (let i = 1; i < n; i += 1) {
         const growth = Math.max(0, contextOf(main[i]) - contextOf(main[i - 1]));

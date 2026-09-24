@@ -147,7 +147,8 @@ describe("A: Portulan's share of what entered the context", () => {
         fs.mkdirSync(path.join(dir, ".portulan"));
         fs.mkdirSync(path.join(dir, "src"));
         fs.writeFileSync(path.join(dir, ".portulan", "notes.md"), `${OWN.join("\n")}\n`);
-        fs.writeFileSync(path.join(dir, "src", "app.js"), `${OTHER}\n`);
+        // The application quotes one of the workspace's lines, so a line can be both code's and Portulan's.
+        fs.writeFileSync(path.join(dir, "src", "app.js"), `${OTHER}\n${OWN[1]}\n`);
         const git = (args) => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.invalid", ...args], { cwd: dir, stdio: "ignore" });
         git(["init", "-q"]);
         git(["add", "."]);
@@ -157,7 +158,7 @@ describe("A: Portulan's share of what entered the context", () => {
 
     test("a line is Portulan's when a file of Portulan's holds it, printed with a line number or not; a short line follows the one before", () => {
         const sources = portulanSources(tree());
-        assert.equal(sources.files, 1, "only the file under Portulan's directories");
+        assert.equal(sources.files, 1, "every tracked file that is not code, and only those");
         assert.equal(sources.before, 0, "a tree whose workspace cannot be measured loads nothing of Portulan's before the first request");
         const read = OWN.map((line, i) => `${String(i + 1).padStart(6)}\t${line}`).join("\n");
         assert.equal(portulanBytes(read, sources.lines), Buffer.byteLength(read));
@@ -193,6 +194,41 @@ describe("A: Portulan's share of what entered the context", () => {
         const { requests } = readTranscript(t.file);
         // Request b grew by 1,000 over request a; the read is that share of what entered, and b and c both send it.
         assert.deepEqual(shareOf(t.file, requests, sources), { tokens: Math.round(((1000 * t.read) / (t.read + t.use)) * 2), estimated: 0 });
+    });
+
+    /** Request a, then what `between` holds, then request b, which grew by 1,000: A is what of that growth is Portulan's. */
+    const aOf = (uses, between) => {
+        const usage = (uncached, written, read, output) => ({
+            input_tokens: uncached, cache_creation_input_tokens: written,
+            cache_creation: { ephemeral_1h_input_tokens: written, ephemeral_5m_input_tokens: 0 }, cache_read_input_tokens: read, output_tokens: output,
+        });
+        const lines = [
+            { type: "user", message: { role: "user", content: "Boot, then answer." } },
+            { type: "assistant", message: { id: "a", model: "m", content: uses, usage: usage(10, 20000, 0, 40) } },
+            ...between,
+            { type: "assistant", message: { id: "b", model: "m", content: [{ type: "text", text: "ok" }], usage: usage(5, 995, 20010, 20) } },
+        ];
+        const file = path.join(scratch(), "t.jsonl");
+        fs.writeFileSync(file, `${lines.map((l) => JSON.stringify(l)).join("\n")}\n`);
+        return shareOf(file, readTranscript(file).requests, portulanSources(tree())).tokens;
+    };
+    const read = (id, file) => ({ type: "tool_use", id, name: "Read", input: { file_path: file } });
+    const result = (id, text) => ({ type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: id, content: text }] } });
+
+    test("a line the code holds too is the code's when the call named a code file, and Portulan's when it named Portulan's", () => {
+        const line = `     2\t${OWN[1]}`;
+        assert.equal(aOf([read("t1", "/x/src/app.js")], [result("t1", line)]), 0);
+        const own = aOf([read("t1", "/x/.portulan/notes.md")], [result("t1", line)]);
+        const use = Buffer.byteLength(JSON.stringify({ file_path: "/x/.portulan/notes.md" }));
+        assert.equal(own, Math.round((1000 * Buffer.byteLength(line)) / (use + Buffer.byteLength(line))));
+    });
+
+    test("the skill text the host injects is matched; a prompt, a plain message and a hook's attachment are bytes only", () => {
+        const text = OWN.join("\n");
+        assert.ok(aOf([], [{ type: "user", isMeta: true, message: { role: "user", content: [{ type: "text", text }] } }]) > 0);
+        assert.equal(aOf([], [{ type: "user", message: { role: "user", content: [{ type: "text", text }] } }]), 0);
+        assert.equal(aOf([], [{ type: "user", message: { role: "user", content: text } }]), 0);
+        assert.equal(aOf([], [{ type: "attachment", attachment: { type: "hook_additional_context", content: [text] } }]), 0);
     });
 
     test("a run that compacted has no A, rather than a count of what its summary replaced", () => {
