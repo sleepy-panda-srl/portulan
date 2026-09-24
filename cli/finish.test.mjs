@@ -283,7 +283,32 @@ describe("the packs it composes", () => {
         assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
     });
 
-    test("a pack the tree lacks is refused, as CI refuses it, never found in an installed copy", () => {
+    test("a consumer's own pack beside a composed pack the plugin installs: both resolve, as the bare set resolves them", () => {
+        const files = {};
+        const tree = scratch();
+        packAt(tree, "tools/mine");
+        for (const rel of ["tools/mine/pack.json", "tools/mine/README.md"]) files[`packs/${rel}`] = fs.readFileSync(path.join(tree, rel), "utf8");
+        const { work, origin } = clone({ manifest: { tree: "../", packs: ["tools/mine", "rituals/checkpoints"] }, files });
+        change(work);
+        const env = { ...ENV, CLAUDE_CONFIG_DIR: hostWith(["rituals/checkpoints"]) };
+        const bare = spawnSync("node", [path.join(REPO, "cli", "recipe-set.mjs"), "--workspace", ".portulan", "--repo-root", "."], { cwd: work, env, encoding: "utf8" });
+        assert.equal(bare.status, 0, bare.stderr);
+        const r = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env, encoding: "utf8" });
+        assert.equal(r.status, 0, r.stdout + r.stderr);
+        assert.match(r.stdout, /; 3 recipe\(s\) green; pushed to origin\/feat$/m);
+        assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
+    });
+
+    test("a packs/ directory that holds no pack hides none the plugin installs", () => {
+        const { work, origin } = clone({ manifest: { tree: "../", packs: ["rituals/checkpoints"] }, files: { "packs/web-app/package.json": "{}\n" } });
+        change(work);
+        const r = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env: { ...ENV, CLAUDE_CONFIG_DIR: hostWith(["rituals/checkpoints"]) }, encoding: "utf8" });
+        assert.equal(r.status, 0, r.stdout + r.stderr);
+        assert.match(r.stdout, /; 2 recipe\(s\) green; pushed to origin\/feat$/m);
+        assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
+    });
+
+    test("named as CI names it, --pack-root packs, a pack the tree lacks is refused, never found in an installed copy", () => {
         const files = {};
         const tree = scratch();
         packAt(tree);
@@ -291,20 +316,20 @@ describe("the packs it composes", () => {
         const { work, origin } = clone({ manifest: { tree: "../", packs: ["tools/thing", "rituals/other"] }, files });
         change(work);
         const before = git(work, ["rev-parse", "HEAD"]);
-        const r = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env: { ...ENV, CLAUDE_CONFIG_DIR: hostWith(["tools/thing", "rituals/other"]) }, encoding: "utf8" });
+        const r = spawnSync("node", [TOOL, "--pack-root", "packs", "-m", "One"], { cwd: work, env: { ...ENV, CLAUDE_CONFIG_DIR: hostWith(["tools/thing", "rituals/other"]) }, encoding: "utf8" });
         assert.equal(r.status, 2, r.stdout + r.stderr);
         assert.match(r.stdout, /^finish: could not run — the recipe set: .*rituals\/other.*Nothing was committed or pushed\.$/m);
         assert.equal(git(work, ["rev-parse", "HEAD"]), before);
         assert.equal(onOrigin(origin, "feat"), "");
     });
 
-    test("the tree's pack root is named wherever it exists and packs are composed", () => {
+    test("the tree's pack root is named only where it carries every pack composed", () => {
         const dir = scratch();
         const workspaceDir = path.join(dir, ".portulan");
         assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../", packs: ["tools/thing"] } }), [], "no packs/ in the tree");
         packAt(path.join(dir, "packs"));
         assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../", packs: ["tools/thing"] } }), [path.join(dir, "packs")]);
-        assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../", packs: ["tools/thing", "rituals/other"] } }), [path.join(dir, "packs")], "one it lacks is then refused");
+        assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../", packs: ["tools/thing", "rituals/other"] } }), [], "one it lacks leaves the set resolving as it does bare");
         assert.deepEqual(treeRoots({ workspaceDir, manifest: { tree: "../" } }), [], "no packs composed");
         assert.deepEqual(treeRoots({ workspaceDir, manifest: { packs: ["tools/thing"] } }), [], "no tree declared");
     });
@@ -343,6 +368,19 @@ describe("a red stops it, and undoes its own commit", () => {
         const r = close(work, ["-m", "One"]);
         assert.equal(r.code, 2);
         assert.match(r.out, /\ndocs — could not run \(exit 2\):\n {4}node not found/);
+    });
+
+    test("a recipe whose output has nowhere to go could not run, and the commit is undone", () => {
+        const { work, origin } = clone();
+        change(work);
+        const before = git(work, ["rev-parse", "HEAD"]);
+        const r = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env: { ...ENV, TMPDIR: path.join(scratch(), "missing") }, encoding: "utf8" });
+        assert.equal(r.status, 2, r.stdout + r.stderr);
+        assert.equal(r.stderr, "", "a reason, not a stack trace");
+        assert.match(r.stdout, /^finish: stopped — 1 of 1 recipe\(s\) not green: docs\. The commit is undone and its changes are staged\. Nothing was pushed\.\n/);
+        assert.match(r.stdout, /\ndocs — could not run \(exit none\):\n {4}its output could not be kept in a temporary file — ENOENT/);
+        assert.equal(git(work, ["rev-parse", "HEAD"]), before);
+        assert.equal(onOrigin(origin, "feat"), "");
     });
 
     test("a recipe's last lines are its last, whichever stream wrote them", () => {
@@ -415,7 +453,7 @@ describe("a red stops it, and undoes its own commit", () => {
         fs.appendFileSync(path.join(work, "f.txt"), "two\n");
         const r = close(work, ["-m", "Two"]);
         assert.equal(r.code, 2);
-        assert.match(r.first, /^finish: not pushed — origin refused feat: .*The commit [0-9a-f]{7} is green and stays; if the remote moved, merge it in, never force/);
+        assert.match(r.first, /^finish: not pushed — origin refused feat: ! \[rejected\] [0-9a-f]{40} -> feat \(fetch first\)\. The commit [0-9a-f]{7} is green and stays; if the remote moved, merge it in, never force/);
         assert.equal(onOrigin(origin, "feat"), theirs, "their commit is still the remote's");
     });
 });

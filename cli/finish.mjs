@@ -51,7 +51,7 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
-import { packRoots } from "./compile.mjs";
+import { packRoots, resolvePack } from "./compile.mjs";
 import { CHANGES_DIR, CHANGES_README } from "./form.mjs";
 import { CHANGE_NAME } from "./index.mjs";
 import { recipeSet, resolverFor } from "./recipe-set.mjs";
@@ -154,6 +154,9 @@ const tail = (text, lines = TAIL_LINES) => text.trim().split("\n").slice(-lines)
 
 const lastLine = (text) => tail(text, 1) || "no output";
 
+/** Why git refused a push: its `! [rejected]` line, which names the ref and the reason, not a `hint:` after it. */
+const refusalOf = (text) => text.split("\n").map((line) => line.trim().replace(/\s+/g, " ")).find((line) => line.startsWith("! ")) ?? lastLine(text);
+
 /**
  * The branch this change merges into: `--base`, else `PORTULAN_BASE_REF` as the recipes read it, else the
  * remote's own recorded default head — never a branch picked by name, `./stop-gate.mjs`'s rule — asked of
@@ -213,16 +216,20 @@ export function fragmentIn(paths) {
 }
 
 /**
- * The pack roots to resolve with where the caller named none: the tree's own, wherever it exists and the
- * workspace composes packs, as CI names it with `--pack-root packs`. So a pack the tree lacks is refused,
- * as CI refuses it, rather than found in a host's installed copy CI never reads, and an installed copy of
- * packs the tree carries cannot make the set refuse them as shadowed. Where the tree keeps no pack root,
- * none is named, and the set resolves as `recipe-set` does bare.
+ * The pack roots to resolve with where the caller named none: the tree's own, when it carries every pack
+ * the workspace composes, so a host with the Portulan plugin installed, carrying the same packs twice, does
+ * not make the set refuse them as shadowed before anything is committed. Otherwise none, and the set
+ * resolves as `recipe-set`, `doctor` and the Stop-gate do bare: the tree's packs beside the installed ones,
+ * which is where a consumer's composed packs live — `init` declares a tree for every consumer, and a
+ * `packs/` of the consumer's own beside it must not hide them. Where CI names the tree's root, the caller
+ * names it too, `--pack-root packs` as this repository's card spells it, and a pack the tree lacks is then
+ * refused as CI refuses it.
  */
 export function treeRoots({ workspaceDir, manifest }) {
     const declared = Array.isArray(manifest?.packs) ? manifest.packs : [];
-    if (declared.length === 0) return [];
-    return packRoots(workspaceDir, manifest).filter((dir) => fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory());
+    const roots = packRoots(workspaceDir, manifest).filter((dir) => fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory());
+    if (declared.length === 0 || roots.length === 0) return [];
+    return declared.every((ref) => resolvePack(String(ref), roots)?.dir) ? roots : [];
 }
 
 /** The recipes the workspace yields with its packs composed, as CI reads them, or `{ why }`. */
@@ -247,22 +254,32 @@ export function recipesOf({ root, workspaceDir, named, forced }) {
 /**
  * Run one recipe as CI and the Stop-gate do: its `run` through `bash -c`, from the repository root. Both of
  * its streams go to one file, so its lines keep the order it wrote them in and its last lines are its last.
+ * A file that cannot be made, written or read is no verdict on the tree: the recipe could not run, which
+ * undoes the commit as any recipe that could not run does, where an uncaught error would leave it standing.
  */
 export function runRecipe(recipe, { root, env }) {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-finish-"));
     let r;
     let written = "";
     try {
-        const file = path.join(dir, "output");
-        const fd = fs.openSync(file, "w");
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-finish-"));
         try {
-            r = spawnSync("bash", ["-c", recipe.run], { cwd: root, env, timeout: RECIPE_TIMEOUT_MS, stdio: ["ignore", fd, fd] });
+            const file = path.join(dir, "output");
+            const fd = fs.openSync(file, "w");
+            try {
+                r = spawnSync("bash", ["-c", recipe.run], { cwd: root, env, timeout: RECIPE_TIMEOUT_MS, stdio: ["ignore", fd, fd] });
+            } finally {
+                fs.closeSync(fd);
+            }
+            written = fs.readFileSync(file, "utf8");
         } finally {
-            fs.closeSync(fd);
+            try {
+                fs.rmSync(dir, { recursive: true, force: true });
+            } catch {
+                // A temporary directory left behind changes no verdict.
+            }
         }
-        written = fs.readFileSync(file, "utf8");
-    } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
+    } catch (error) {
+        return { id: recipe.id, outcome: "could not run", code: null, output: `its output could not be kept in a temporary file — ${error.message}` };
     }
     const code = r.error ? null : r.status;
     const output = `${written}${r.error ? `\n${r.error.message}` : ""}`;
@@ -406,7 +423,7 @@ export function finish(options, { cwd = process.cwd(), env = process.env, readSt
     if (pushed.status !== 0) {
         return stop(
             2,
-            `not pushed — ${remote} refused ${branch}: ${lastLine(pushed.err)}. ${made ? `The commit ${made.slice(0, 7)} is green and stays` : "The branch is green"}; ` +
+            `not pushed — ${remote} refused ${branch}: ${refusalOf(pushed.err)}. ${made ? `The commit ${made.slice(0, 7)} is green and stays` : "The branch is green"}; ` +
                 "if the remote moved, merge it in, never force, and run this again.",
         );
     }
