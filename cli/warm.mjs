@@ -390,6 +390,7 @@ export function summary(runs) {
         runs: runs.length,
         measured: measured.length,
         graded: runs.filter((r) => r.graded).length,
+        changed: runs.filter((r) => r.changed === true).length,
         startedWarm: later.filter((r) => r.figures.startedWarm).length,
         later: later.length,
         a: shared.length === measured.length ? mean(shared.map((r) => r.share.tokens)) : null,
@@ -404,30 +405,56 @@ export function summary(runs) {
 }
 
 /**
- * A switch against its control: it passes when every treatment run answered as its task expects and the
- * treatment's mean billed total over all its runs is lower than the control's. Both sequences must be the
- * same shape, one task and one run count, or the comparison says nothing about the switch.
+ * A switch against its control: it passes when every run of both sequences was measured, every treatment run
+ * answered as its task expects, no run of either changed a file, and the treatment's mean billed total over all
+ * its runs is lower than the control's. A run with no transcript has no cost, so a mean without it is not its
+ * sequence's; a control run that changed a file spent tokens on work its task forbids, so a cut against it is
+ * not the switch's. The two must differ in their arm and in nothing else the runner records (task, run count,
+ * checkouts, what lands between runs, where, the model and the host's version), or no difference between them is
+ * the switch's.
  */
 export function verdict(control, treatment) {
-    const shape = (s) => `${s.record.task} × ${s.record.runs.length}, copies ${s.record.copies}, between ${s.record.between ?? "nothing"}`;
+    const shape = (s) =>
+        `${s.record.task} × ${s.record.runs.length}, copies ${s.record.copies}, between ${s.record.between ?? "nothing"}` +
+        `${s.record.local ? ", local" : ""}, model ${s.record.model ?? "the host's default"}, host ${s.record.agent ?? "unknown"}`;
     if (shape(control) !== shape(treatment)) {
         throw new CouldNotRun(`the two sequences differ in shape (${shape(control)} against ${shape(treatment)}), so no difference between them is the switch's`);
     }
+    const arm = (s) => JSON.stringify(Object.entries(s.record.arm ?? {}).sort(([x], [y]) => x.localeCompare(y)));
+    if (arm(control) === arm(treatment)) throw new CouldNotRun(`the two sequences start the same arm, ${arm(control)}, so no switch lies between them`);
     const [a, b] = [control.summary, treatment.summary];
-    const cuts = a.billed !== null && b.billed !== null && b.billed < a.billed;
+    const measured = a.measured === a.runs && b.measured === b.runs;
+    const cuts = measured && a.billed !== null && b.billed !== null && b.billed < a.billed;
     const answered = b.graded === b.runs;
-    return { cuts, answered, pass: cuts && answered, ratio: a.billed && b.billed !== null ? b.billed / a.billed : null };
+    const unchanged = a.changed === 0 && b.changed === 0;
+    return {
+        measured, cuts, answered, unchanged,
+        pass: cuts && answered && unchanged,
+        ratio: measured && a.billed && b.billed !== null ? b.billed / a.billed : null,
+    };
 }
 
 function git(cwd, args) {
     return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 }
 
+/**
+ * Where a clone keeps what the runner put in it, the tree's commit and the runner's own commits between runs,
+ * as already on a remote. The clone has no remote, so nothing a run does can be pushed; but the stop gate reads a
+ * commit on no remote as work not yet recorded (`HEAD --not --remotes`, `cli/stop-gate.mjs`) and would ask every
+ * run for a handoff, a file its task says not to change. A commit a run makes itself is never recorded here.
+ */
+export const RECORDED_REF = "refs/remotes/source/recorded";
+
+/** The runner's commit between two runs: empty, with the seam line the docs recipe reads on the newest change. */
+const BETWEEN_SEAM = "Seam-scan: clean, an empty commit whose message is the runner's own";
+
 /** A clone of the tree's committed HEAD with no remote: what every run of a sequence starts from. */
 export function cloneTree(tree, dest) {
     try {
         execFileSync("git", ["clone", "--quiet", "--no-hardlinks", tree, dest], { stdio: ["ignore", "pipe", "pipe"] });
         git(dest, ["remote", "remove", "origin"]);
+        git(dest, ["update-ref", RECORDED_REF, "HEAD"]);
     } catch (cause) {
         throw new CouldNotRun(`could not clone ${tree} into ${dest}: ${String(cause.stderr ?? cause.message).trim().split("\n")[0]}`);
     }
@@ -488,8 +515,12 @@ export function runSequence({
     };
     const journal = () => fs.writeFileSync(path.join(dir, "sequence.json"), `${JSON.stringify(record, null, 2)}\n`);
     let copy = null;
+    let start = null;
     for (let k = 1; k <= runs; k += 1) {
-        if (copy === null || copies === "each") copy = cloneTree(tree, path.join(dir, copies === "each" ? `tree-${k}` : "tree"));
+        if (copy === null || copies === "each") {
+            copy = cloneTree(tree, path.join(dir, copies === "each" ? `tree-${k}` : "tree"));
+            start = git(copy, ["rev-parse", "HEAD"]).trim();
+        }
         const started = Date.now();
         const r = spawnSync(agent, childArgs(task, copy, arm, { model }), {
             cwd: copy,
@@ -510,6 +541,10 @@ export function runSequence({
             transcript = `run-${k}.jsonl`;
             fs.copyFileSync(found, path.join(dir, transcript));
         }
+        // Every task says to change no file. A run that changed its clone, a file or a commit, fails its task,
+        // and once it is recorded the clone goes back to the commit the run started from, so the next run starts
+        // where the others did.
+        const changed = git(copy, ["rev-parse", "HEAD"]).trim() !== start || git(copy, ["status", "--porcelain"]).trim() !== "";
         record.runs.push({
             k,
             exit: r.status,
@@ -518,16 +553,24 @@ export function runSequence({
             session: result?.session_id ?? null,
             turns: result?.num_turns ?? null,
             answered,
-            graded: answered && TASKS[task].expect.every((re) => re.test(answer)),
+            graded: answered && !changed && TASKS[task].expect.every((re) => re.test(answer)),
             answer,
-            // A run that changed its clone changes what the next run in it starts from, so it is recorded.
-            changed: git(copy, ["status", "--porcelain"]).trim() !== "",
+            changed,
             transcript,
         });
         journal();
-        say(`${label} run ${k}/${runs}: exit ${r.status}${transcript ? "" : ", no transcript found"}`);
+        if (changed) {
+            git(copy, ["reset", "--quiet", "--hard", start]);
+            git(copy, ["clean", "--quiet", "-d", "--force"]);
+        }
+        say(`${label} run ${k}/${runs}: exit ${r.status}${changed ? ", changed its clone, put back" : ""}${transcript ? "" : ", no transcript found"}`);
         if (between === "commit" && k < runs) {
-            git(copy, ["-c", "user.name=warm", "-c", "user.email=warm@example.invalid", "commit", "--quiet", "--allow-empty", "-m", `warm: between runs ${k} and ${k + 1}`]);
+            git(copy, [
+                "-c", "user.name=warm", "-c", "user.email=warm@example.invalid", "commit", "--quiet", "--allow-empty",
+                "-m", `warm: between runs ${k} and ${k + 1}`, "-m", BETWEEN_SEAM,
+            ]);
+            git(copy, ["update-ref", RECORDED_REF, "HEAD"]);
+            start = git(copy, ["rev-parse", "HEAD"]).trim();
         }
     }
     record.ended = new Date().toISOString();
@@ -588,7 +631,7 @@ export function reportLines(sequence) {
             `  ${String(r.k).padEnd(4)} ${String(f?.requests ?? "—").padEnd(9)} ${`${grouped(f?.first?.read ?? null)} / ${grouped(f?.first?.context ?? null)}`.padEnd(21)} ` +
                 `${grouped(r.share?.tokens ?? null).padEnd(10)} ${grouped(f?.tokens ?? null).padEnd(11)} ` +
                 `${grouped(f?.written ?? null).padEnd(9)} ${grouped(f?.read ?? null).padEnd(11)} ${grouped(f?.output ?? null).padEnd(7)} ` +
-                `${grouped(f?.billed ?? null).padEnd(8)} ${grouped(f?.cold ?? null).padEnd(8)} ${r.graded ? "yes" : r.answered ? "off-task" : "no"}`,
+                `${grouped(f?.billed ?? null).padEnd(8)} ${grouped(f?.cold ?? null).padEnd(8)} ${r.graded ? "yes" : r.changed ? "changed a file" : r.answered ? "off-task" : "no"}`,
         );
     }
     lines.push(
@@ -597,7 +640,7 @@ export function reportLines(sequence) {
             : `  A  Portulan's share: ${grouped(s.a)} tokens a run, ${index(s.a, s.b)}% of B; ${grouped(s.estimated)} of them estimated, what the host loaded before the first request`,
         `  B  the whole task: ${grouped(s.b)} tokens a run, cache reads included`,
         `  C  cost: warm ${index(s.warm, s.cold)} against cold 100 (${grouped(s.warm)} against ${grouped(s.cold)}, ${ratesText(rates)}); ` +
-            `started warm ${s.startedWarm} of ${s.later}; answered ${s.graded} of ${s.runs}`,
+            `started warm ${s.startedWarm} of ${s.later}; answered ${s.graded} of ${s.runs}; changed a file ${s.changed}`,
     );
     return lines;
 }
@@ -605,12 +648,17 @@ export function reportLines(sequence) {
 /** A treatment against its control, in the same three lines, A first; C decides. */
 export function comparisonLines(control, treatment, v) {
     const [c, t] = [control.summary, treatment.summary];
+    const facts = [
+        v.measured ? "every run measured" : "a run has no transcript",
+        v.answered ? "every run answered" : "not every run answered",
+        v.unchanged ? "no run of either changed a file" : "a run changed a file",
+    ];
     return [
         `${treatment.record.label} against ${control.record.label}:`,
         `  A  Portulan's share: ${grouped(t.a)} against ${grouped(c.a)} tokens a run`,
         `  B  the whole task: ${grouped(t.b)} against ${grouped(c.b)} tokens a run`,
         `  C  cost: ${v.ratio === null ? "no figure" : Math.round(v.ratio * 100)} against the control's 100, the mean billed of all runs; ` +
-            `${v.answered ? "every run answered" : "not every run answered"}: ${v.pass ? "PASS" : "FAIL"}`,
+            `${facts.join(", ")}: ${v.pass ? "PASS" : "FAIL"}`,
     ];
 }
 

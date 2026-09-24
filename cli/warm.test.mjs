@@ -38,6 +38,7 @@ function scratch() {
  * reads it, which is what a sequence in one cache looks like; each call logs what it was started with.
  */
 const STUB = `#!/usr/bin/env node
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 const args = process.argv.slice(2);
@@ -59,12 +60,18 @@ fs.writeFileSync(path.join(dir, sid + ".jsonl"), [
     rec(sid + "-1", { input_tokens: 10, ...w(warm ? 0 : 20000), cache_read_input_tokens: warm ? 20000 : 0, output_tokens: 150 }),
     rec(sid + "-2", { input_tokens: 5, ...w(1000), cache_read_input_tokens: 20000, output_tokens: 50 }),
 ].join("\\n") + "\\n");
+// Asked to, it changes its checkout: a file of its own, or that file committed.
+if (e.WARM_STUB_TOUCH) fs.writeFileSync("touched.txt", "a run's own file\\n");
+if (e.WARM_STUB_TOUCH === "commit") {
+    execFileSync("git", ["add", "touched.txt"]);
+    execFileSync("git", ["-c", "user.name=s", "-c", "user.email=s@example.invalid", "commit", "-q", "-m", "a run's own commit"]);
+}
 console.log(JSON.stringify({ type: "result", subtype: "success", is_error: false, session_id: sid, num_turns: 2,
     result: e.WARM_STUB_ANSWER ?? "Propose; every verify recipe ran green first." }));
 `;
 
 /** A committed tree to clone, a stub agent, and an environment whose host home is the scratch directory. */
-function rig({ answer } = {}) {
+function rig({ answer, touch } = {}) {
     const root = scratch();
     const tree = path.join(root, "tree");
     fs.mkdirSync(tree);
@@ -86,6 +93,7 @@ function rig({ answer } = {}) {
         CLAUDE_CODE_PROMPT_CACHE_TTL: "1h",
         [HOSTED_VAR]: "true",
         ...(answer === undefined ? {} : { WARM_STUB_ANSWER: answer }),
+        ...(touch === undefined ? {} : { WARM_STUB_TOUCH: touch }),
     };
     const calls = () => fs.readFileSync(path.join(state, "calls.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
     return { root, tree, agent, env, calls, into: path.join(root, "runs") };
@@ -295,9 +303,28 @@ describe("a sequence, end to end on a stub", () => {
         runSequence({ tree: r.tree, into: r.into, label: "each", runs: 2, copies: "each", agent: r.agent, env: r.env });
         assert.equal(new Set(r.calls().map((c) => c.cwd)).size, 2);
         runSequence({ tree: r.tree, into: r.into, label: "commits", runs: 3, between: "commit", agent: r.agent, env: r.env });
-        const log = execFileSync("git", ["log", "--oneline"], { cwd: path.join(r.into, "commits", "tree"), encoding: "utf8" });
-        assert.equal(log.trim().split("\n").length, 3, "the tree's commit and one between each pair of runs");
+        const clone = path.join(r.into, "commits", "tree");
+        const git = (args) => execFileSync("git", args, { cwd: clone, encoding: "utf8" });
+        assert.equal(git(["log", "--oneline"]).trim().split("\n").length, 3, "the tree's commit and one between each pair of runs");
+        assert.equal(git(["remote"]), "", "no remote, so a run can push nothing");
+        assert.equal(git(["rev-list", "--max-count=1", "HEAD", "--not", "--remotes"]), "", "what the runner committed reads as recorded, so the stop gate asks no run for a handoff");
+        assert.match(git(["log", "-1", "--format=%B"]), /^Seam-scan: clean\b/m, "the line the docs recipe reads on the newest change");
     });
+
+    for (const touch of ["file", "commit"]) {
+        test(`a run that changed its clone (${touch}) fails its task, and the clone goes back to where the run started`, () => {
+            const r = rig({ touch });
+            const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: r.tree, encoding: "utf8" });
+            runSequence({ tree: r.tree, into: r.into, label: "touched", runs: 2, agent: r.agent, env: r.env });
+            const s = readSequence(path.join(r.into, "touched"));
+            assert.deepEqual(s.runs.map((run) => [run.answered, run.changed, run.graded]), [[true, true, false], [true, true, false]]);
+            assert.deepEqual([s.summary.graded, s.summary.changed], [0, 2]);
+            const clone = path.join(r.into, "touched", "tree");
+            assert.equal(execFileSync("git", ["rev-parse", "HEAD"], { cwd: clone, encoding: "utf8" }), head);
+            assert.equal(execFileSync("git", ["status", "--porcelain"], { cwd: clone, encoding: "utf8" }), "");
+            assert.match(reportLines(s).at(-1), /answered 0 of 2; changed a file 2$/);
+        });
+    }
 
     test("a sequence reports its three lines, A first, and C against its cold figure at 100", () => {
         const r = rig();
@@ -322,8 +349,8 @@ describe("a sequence, end to end on a stub", () => {
 });
 
 describe("a switch against its control", () => {
-    const pair = (answer) => {
-        const a = rig();
+    const pair = ({ answer, touch } = {}) => {
+        const a = rig({ touch });
         const b = rig({ answer });
         runSequence({ tree: a.tree, into: a.into, label: "control", runs: 2, agent: a.agent, env: a.env });
         runSequence({ tree: b.tree, into: b.into, label: "treatment", runs: 2, arm: { cache_lifetime: "5m" }, agent: b.agent, env: b.env });
@@ -338,14 +365,36 @@ describe("a switch against its control", () => {
         const said = [];
         assert.equal(run(["report", control, treatment], { say: (l) => said.push(l) }), 0);
         assert.deepEqual(said.slice(-3).map((l) => l.slice(0, 5)), ["  A  ", "  B  ", "  C  "]);
-        assert.match(said.at(-1), /cost: 68 against the control's 100, the mean billed of all runs; every run answered: PASS/);
+        assert.match(said.at(-1), /cost: 68 against the control's 100, the mean billed of all runs; every run measured, every run answered, no run of either changed a file: PASS/);
     });
 
     test("cheaper and answering off-task is a fail, exit 1", () => {
-        const [control, treatment] = pair("I could not tell.");
+        const [control, treatment] = pair({ answer: "I could not tell." });
         const v = verdict(readSequence(control), readSequence(treatment));
         assert.deepEqual([v.cuts, v.answered, v.pass], [true, false, false]);
         assert.equal(run(["report", control, treatment], { say: () => {} }), 1);
+    });
+
+    test("cheaper against a control whose runs changed a file is a fail, exit 1", () => {
+        const [control, treatment] = pair({ touch: "file" });
+        const v = verdict(readSequence(control), readSequence(treatment));
+        assert.deepEqual([v.cuts, v.answered, v.unchanged, v.pass], [true, true, false, false]);
+        const said = [];
+        assert.equal(run(["report", control, treatment], { say: (l) => said.push(l) }), 1);
+        assert.match(said.at(-1), /every run answered, a run changed a file: FAIL/);
+    });
+
+    test("a run with no transcript leaves its sequence unmeasured: no figure and a fail, exit 1", () => {
+        const [control, treatment] = pair();
+        const file = path.join(treatment, "sequence.json");
+        const record = JSON.parse(fs.readFileSync(file, "utf8"));
+        record.runs[1].transcript = null;
+        fs.writeFileSync(file, JSON.stringify(record));
+        const v = verdict(readSequence(control), readSequence(treatment));
+        assert.deepEqual([v.measured, v.cuts, v.pass, v.ratio], [false, false, false, null]);
+        const said = [];
+        assert.equal(run(["report", control, treatment], { say: (l) => said.push(l) }), 1);
+        assert.match(said.at(-1), /no figure against the control's 100.*a run has no transcript/);
     });
 
     test("two sequences of different shapes are no comparison, exit 2", () => {
@@ -353,6 +402,19 @@ describe("a switch against its control", () => {
         runSequence({ tree: a.tree, into: a.into, label: "two", runs: 2, agent: a.agent, env: a.env });
         runSequence({ tree: a.tree, into: a.into, label: "three", runs: 3, agent: a.agent, env: a.env });
         assert.equal(run(["report", path.join(a.into, "two"), path.join(a.into, "three")], { say: () => {} }), 2);
+    });
+
+    test("two sequences of one arm, or of another host's version, are no comparison, exit 2", () => {
+        const a = rig();
+        runSequence({ tree: a.tree, into: a.into, label: "one", runs: 2, agent: a.agent, env: a.env });
+        runSequence({ tree: a.tree, into: a.into, label: "other", runs: 2, agent: a.agent, env: a.env });
+        const [one, other] = [path.join(a.into, "one"), path.join(a.into, "other")];
+        assert.throws(() => verdict(readSequence(one), readSequence(other)), /the same arm/);
+        const file = path.join(other, "sequence.json");
+        const record = JSON.parse(fs.readFileSync(file, "utf8"));
+        fs.writeFileSync(file, JSON.stringify({ ...record, arm: { cache_lifetime: "5m" }, agent: "stub 0.0.1" }));
+        assert.throws(() => verdict(readSequence(one), readSequence(other)), /differ in shape/);
+        assert.equal(run(["report", one, other], { say: () => {} }), 2);
     });
 
     test("the summary of nothing measured is no figure, not a zero", () => {

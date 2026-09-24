@@ -33,7 +33,11 @@ nothing of its own cached; each later one finds what the one before it left. Eve
 The tasks live in the runner, so there is one source for each prompt. `boot` is that set's boot task
 word for word, so a figure here stands beside its figures. `probe` is one request with no tool, which
 measures the prefix alone. An answer counts only when it says what the task expects; that guards against an
-arm that is cheaper because it answers worse.
+arm that is cheaper because it answers worse. Every task says to change no file, so a run that changed its
+clone, a file or a commit, has not answered, and the clone goes back to where the run started before the
+next one. The clone has no remote, and what the runner put in it (the tree's commit, and its own empty
+commit between runs, which carries the seam line the docs recipe reads) is marked as already recorded, so
+the stop gate asks no run for a handoff.
 
 ## One sequence per question
 
@@ -44,9 +48,12 @@ arm that is cheaper because it answers worse.
 | The git instructions, when a commit lands between sessions | `--between commit --local` | the same, `--git-instructions off` | where a session takes the startup snapshot: a local checkout |
 | The per-machine sections, for runs in different directories | `--copies each` | the same, `--exclude-dynamic-sections` | anywhere |
 
-**A switch passes** when every treatment run answered as its task expects and the treatment's C is under
-its control's 100, the mean billed totals of two sequences of the same shape: `node cli/warm.mjs report
-<control> <treatment>` prints the three lines and PASS and exits 0, or FAIL and exits 1. A switch that passes becomes a default of
+**A switch passes** when every run of both sequences was measured, every treatment run answered as its
+task expects, no run of either changed a file, and the treatment's C is under its control's 100, the mean
+billed totals of two sequences that differ in their arm and in nothing else the runner records (the task, the
+run count, the checkouts, what lands between runs, where they ran, the model and the host's version):
+`node cli/warm.mjs report <control> <treatment>` prints the three lines and PASS and exits 0, or FAIL and
+exits 1. A switch that passes becomes a default of
 Portulan's own headless runs in `.portulan/workspace.json`, and a default an adopter receives only through
 a later change that says so. **The interactive switches are measured on a maintainer's device**, from real
 sessions, because a hosted session never takes the snapshot and a headless run is not how people work.
