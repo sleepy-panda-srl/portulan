@@ -64,6 +64,12 @@ export const TAIL_LINES = 25;
 /** How much of a recipe's output is kept to find those lines: its last 64 KiB. */
 const TAIL_BYTES = 64 * 1024;
 
+/**
+ * How long the pipe is still read once a recipe's shell has exited, for what the shell wrote: no process it
+ * left running holds the run longer.
+ */
+const DRAIN_MS = 1000;
+
 const GIT_TIMEOUT_MS = 2 * 60 * 1000;
 
 /** A recipe's exit codes that are not a verdict about the tree, as `./stop-gate.mjs` reads them. */
@@ -247,9 +253,9 @@ export function fragmentIn(paths) {
  */
 export function treeRoots({ workspaceDir, manifest }) {
     const declared = Array.isArray(manifest?.packs) ? manifest.packs : [];
+    if (declared.length === 0) return [];
     const roots = packRoots(workspaceDir, manifest).filter((dir) => fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory());
-    if (declared.length === 0 || roots.length === 0) return [];
-    return declared.every((ref) => resolvePack(String(ref), roots)?.dir) ? roots : [];
+    return roots.length && declared.every((ref) => resolvePack(String(ref), roots)?.dir) ? roots : [];
 }
 
 /** The recipes the workspace yields with its packs composed, as CI reads them, or `{ why }`. */
@@ -293,16 +299,19 @@ export function tailKeeper(limit = TAIL_BYTES) {
  * stderr is made its stdout before it starts, one pipe this process drains as it fills, so its lines keep
  * the order it wrote them in. No file stands between: a write a full disk refused would reach the recipe as
  * its own failure, and its exit would read as a verdict on the tree. No cap stands between either, and no
- * store that grows with the output: only its last `TAIL_BYTES` are held, for a failure's report.
+ * store that grows with the output: only its last `TAIL_BYTES` are held, for a failure's report. The shell's
+ * exit ends the run: a process it left running is not waited for, and the pipe it shares is closed.
  */
 export function runRecipe(recipe, { root, env, timeout = RECIPE_TIMEOUT_MS }) {
     return new Promise((resolve) => {
         const kept = tailKeeper();
         let failure = null;
         let late = false;
-        let timer;
+        let limit;
+        let drain;
         const settle = (status) => {
-            clearTimeout(timer);
+            clearTimeout(limit);
+            clearTimeout(drain);
             const code = failure || late ? null : status;
             if (code === 0) return resolve({ id: recipe.id, outcome: "green" });
             const why = failure ? `\n${failure.message}` : late ? `\nkilled at its time limit of ${timeout / 1000} s` : "";
@@ -310,18 +319,25 @@ export function runRecipe(recipe, { root, env, timeout = RECIPE_TIMEOUT_MS }) {
             resolve({ id: recipe.id, outcome: cannot ? "could not run" : "red", code, output: `${kept.text()}${why}` });
         };
         const child = spawn("bash", ["-c", `exec 2>&1\n${recipe.run}`], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
+        const stop = () => {
+            child.stdout.destroy();
+            child.stderr.destroy();
+        };
         child.stdout.on("data", kept.add);
         child.stderr.on("data", kept.add);
+        child.on("exit", () => {
+            clearTimeout(limit);
+            drain = setTimeout(stop, DRAIN_MS);
+        });
         child.on("error", (error) => {
             failure = error;
             settle(null);
         });
         child.on("close", settle);
-        timer = setTimeout(() => {
+        limit = setTimeout(() => {
             late = true;
             child.kill();
-            child.stdout.destroy();
-            child.stderr.destroy();
+            stop();
         }, timeout);
     });
 }

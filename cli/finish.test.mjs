@@ -299,6 +299,15 @@ describe("the packs it composes", () => {
         assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
     });
 
+    test("a workspace that composes no pack never looks at the tree's packs/, so an unreadable one stops nothing", async () => {
+        const { work } = clone({ manifest: { tree: "../" } });
+        fs.symlinkSync("packs", path.join(work, "packs"));
+        fs.appendFileSync(path.join(work, ".git", "info", "exclude"), "packs\n");
+        change(work);
+        const r = await close(work, ["-m", "One"]);
+        assert.equal(r.code, 0, r.out);
+    });
+
     test("a packs/ directory that holds no pack hides none the plugin installs", async () => {
         const { work, origin } = clone({ manifest: { tree: "../", packs: ["rituals/checkpoints"] }, files: { "packs/web-app/package.json": "{}\n" } });
         change(work);
@@ -434,6 +443,15 @@ describe("a red stops it, and undoes its own commit", () => {
         const r = await runRecipe({ id: "slow", run: "sleep 5" }, { root: scratch(), env: ENV, timeout: 300 });
         assert.deepEqual([r.outcome, r.code], ["could not run", null]);
         assert.match(r.output, /killed at its time limit of 0\.3 s$/);
+        assert.ok(Date.now() - started < 4000, `took ${Date.now() - started} ms`);
+    });
+
+    test("a process a recipe leaves running is not waited for, and what the shell wrote is still read", async () => {
+        const started = Date.now();
+        const green = await runRecipe({ id: "docs", run: "sleep 5 &" }, { root: scratch(), env: ENV });
+        const red = await runRecipe({ id: "docs", run: "sleep 5 &\necho the last line\nexit 1" }, { root: scratch(), env: ENV });
+        assert.deepEqual(green, { id: "docs", outcome: "green" });
+        assert.deepEqual([red.outcome, red.code, red.output.trim()], ["red", 1, "the last line"]);
         assert.ok(Date.now() - started < 4000, `took ${Date.now() - started} ms`);
     });
 
