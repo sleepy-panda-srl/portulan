@@ -70,8 +70,8 @@ RAIL_ENGINE=13763         # the boot skill, its steps and the kernel, 13,493 B, 
 RAIL_STEPS=10944          # the skill's step files, pointer-manifest.md and packs.md, 10,729 B
 RAIL_DESCRIPTIONS=3454    # the plugin's 7 skill and 3 agent descriptions, 3,386 B; 3,405 B since the boot
                           # card, whose skill description now names the card
-RAIL_ADOPTER_BOOT=8227    # a consumer `init` drafts, 8,065 B: the skill, the plugin's kernel, and the card
-                          # `init` compiles, with the identity it imports; 26,637 B before `init` drafted one
+RAIL_ADOPTER_BOOT=8227    # a consumer `init` drafts, 8,081 B: the skill, the plugin's kernel, and the card
+                          # `init` compiles, with the identity it imports; 26,759 B before `init` drafted one
 
 # The workspaces measured, audited against the tree the way ./index.sh audits its own list: a workspace
 # added and not measured would be a footprint nothing watches, reported as green.

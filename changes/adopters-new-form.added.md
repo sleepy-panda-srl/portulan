@@ -9,6 +9,6 @@
   the commit holding its entries, the card drafted and compiled; a consumer that declares no card boots
   as it did. `vendor --host` leads `AGENTS.md` with the card, `doctor` reports which form a consumer is
   in without failing it, and [`cli/form.mjs`](../cli/form.mjs) is the one definition all four read. A
-  consumer `init` drafts boots from 8,065 bytes, down from 26,637, railed in
-  [`context.sh`](../.portulan/verify/context.sh); one upgraded from the old form, from 8,417, down from
-  20,312, most of the rest being the skill and kernel every boot reads and the consumer's own identity.
+  consumer `init` drafts boots from 8,081 bytes, down from 26,759, railed in
+  [`context.sh`](../.portulan/verify/context.sh); one upgraded from the old form, from 8,433, down from
+  20,434, most of the rest being the skill and kernel every boot reads and the consumer's own identity.
