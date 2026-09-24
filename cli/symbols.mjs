@@ -619,7 +619,50 @@ function patternNames(t, open, match) {
 // ===========================================================================================
 
 const SH_FUNCTION = /^(\s*)(?:function\s+([A-Za-z_][\w:.-]*)\s*(?:\(\s*\))?|([A-Za-z_][\w:.-]*)\s*\(\s*\))\s*(\{.*)?$/;
-const HEREDOC = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_][\w-]*)\2/g;
+
+// The here-documents a line opens, in order, each as the shell reads it: `<<` or `<<-`, then a word whose
+// quotes and backslashes are removed to give the line that ends the body, `<<1` and `<<'E F'` alike. A
+// `<<` inside quotes, after a comment or inside `(( … ))` opens none, and `<<<` is a here-string, whose
+// word is on the line. A delimiter whose quote never closes is refused.
+function heredocs(text, line) {
+    const arithmetic = [];
+    for (let i = text.indexOf("(("); i !== -1; i = text.indexOf("((", i + 2)) {
+        let depth = 0;
+        let j = i;
+        for (; j < text.length; j++) {
+            if (text[j] === "(") depth++;
+            else if (text[j] === ")" && --depth === 0) break;
+        }
+        arithmetic.push([i, j]);
+    }
+    const out = [];
+    for (const operator of text.matchAll(/(?<!<)<<(?!<)(-?)[ \t]*/g)) {
+        const before = text.slice(0, operator.index);
+        if ((before.split('"').length - 1) % 2 === 1 || (before.split("'").length - 1) % 2 === 1) continue;
+        if (/(^|[\s;&|()])#/.test(before) || arithmetic.some(([a, b]) => a < operator.index && operator.index < b)) continue;
+        const start = operator.index + operator[0].length;
+        let delimiter = "";
+        let k = start;
+        while (k < text.length && !/[\s|&;()<>]/.test(text[k])) {
+            const c = text[k];
+            if (c === "'" || c === '"') {
+                let close = k + 1;
+                while (close < text.length && text[close] !== c) close += c === '"' && text[close] === "\\" ? 2 : 1;
+                if (close >= text.length) throw new CannotOutline(`an unclosed quote in the here-document delimiter on line ${line}`);
+                delimiter += c === '"' ? text.slice(k + 1, close).replace(/\\(["\\$`])/g, "$1") : text.slice(k + 1, close);
+                k = close + 1;
+            } else if (c === "\\") {
+                delimiter += text[k + 1] ?? "";
+                k += 2;
+            } else {
+                delimiter += c;
+                k++;
+            }
+        }
+        if (k > start) out.push({ strip: operator[1] === "-", delimiter });
+    }
+    return out;
+}
 
 // Words after which another command may start: a brace or a keyword standing where a command does.
 const SH_COMMAND_WORDS = new Set(["{", "}", "!", "then", "do", "else", "elif", "if", "while", "until", "time"]);
@@ -697,14 +740,11 @@ export function outlineSh(src) {
     for (let i = 0; i < lines; i++) {
         code.push({ line: i + 1, text: srcLines[i] });
         if (/^\s*#/.test(srcLines[i])) continue;
-        // Every here-document the line opens, in order: each body runs to its own delimiter's line. A
-        // `<<` inside quotes opens none, and `<<<` is a here-string, whose word is on the line.
+        // Each body runs to its own delimiter's line, the next body starting after it.
         let j = i;
-        for (const heredoc of srcLines[i].matchAll(HEREDOC)) {
-            const before = srcLines[i].slice(0, heredoc.index);
-            if ((before.split('"').length - 1) % 2 === 1 || (before.split("'").length - 1) % 2 === 1) continue;
+        for (const { strip, delimiter } of heredocs(srcLines[i], i + 1)) {
             j++;
-            while (j < lines && (heredoc[1] ? srcLines[j].replace(/^\t+/, "") : srcLines[j]) !== heredoc[3]) j++;
+            while (j < lines && (strip ? srcLines[j].replace(/^\t+/, "") : srcLines[j]) !== delimiter) j++;
             if (j >= lines) throw new CannotOutline(`an unterminated here-document on line ${i + 1}`);
         }
         i = j;

@@ -55,7 +55,7 @@ function compileError(language, text, member, own) {
             new vm.Script(`(async function () {\n${body}\n})`);
             return null;
         }
-        const privates = [...new Set(body.match(/#[A-Za-z_$][\w$]*/g))].filter((name) => name !== own);
+        const privates = [...new Set(body.match(/#[A-Za-z_$][\w$]*/g) ?? [])].filter((name) => name !== own);
         new vm.Script(`(class extends Object {\n${privates.map((name) => `${name};`).join(" ")}\n${body}\n})`);
         return null;
     } catch (error) {

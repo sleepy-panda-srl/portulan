@@ -236,6 +236,26 @@ describe("a shell outline", () => {
         assert.deepEqual(render("two.sh", outlineSh(src)).slice(1), ["1-7 f()", "8 g()"]);
     });
 
+    test("reads a here-document's delimiter as the shell does, and no `<<` in arithmetic or a comment", () => {
+        const src = [
+            "f() {",
+            "    cat <<1",
+            "}",
+            "1",
+            '    cat <<"E F" <<\\G',
+            "}",
+            "E F",
+            "}",
+            "G",
+            "    echo $(( 1 << 2 )) # << x",
+            "}",
+            "g() { :; }",
+            "",
+        ].join("\n");
+        assert.deepEqual(render("words.sh", outlineSh(src)).slice(1), ["1-11 f()", "12 g()"]);
+        assert.throws(() => outlineSh("cat <<'EOF\nx\n"), (error) => error instanceof CannotOutline && /line 1/.test(error.message));
+    });
+
     test("refuses a here-document that never ends and a function that never closes", () => {
         assert.throws(() => outlineSh("cat <<EOT\nno end\n"), (error) => error instanceof CannotOutline && /line 1/.test(error.message));
         assert.throws(() => outlineSh("f() {\n  :\n"), (error) => error instanceof CannotOutline && /f\(\)/.test(error.message));
