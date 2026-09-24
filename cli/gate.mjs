@@ -98,6 +98,8 @@ import { matchesRule, policyPath, packContributions, composeFragments, parse } f
 // `CLAUDE_PROJECT_DIR` is what the host sets and what the emitted hook already interpolates; `cwd` is the
 // honest fallback, because a hook runs from the project. `||` rather than `??` on purpose: an env var set
 // to the empty string must fall through to `cwd`, not resolve every path against `""`.
+// `PORTULAN_WORKSPACE` names the workspace directory inside that repository, `.portulan` when unset.
+// Nothing sets it: it exists so a workspace under another name is not unreachable.
 //
 // **What happens when no workspace is found differs between the two runners, and the first draft of this
 // paragraph claimed the stricter behaviour for both.** THIS file steps aside silently — `main()` catches

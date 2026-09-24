@@ -7,9 +7,9 @@
 // `./ab-grade.mjs` grades the trees they leave behind, and this runs the turns between the two.
 // `../evals/ab/arm.md`, `../evals/ab/corpus.md` and `../evals/ab/graders.md` are **binding input**.
 //
-// **It is a separate module because `./ab-grade.mjs` says of itself, in its header, its verify recipe
-// and `../evals/README.md`, that it runs no agent and imports no child-process API at all — and
-// `./ab-grade.test.mjs` asserts the second by reading its source.** A spawn there would falsify three
+// **It is a separate module because `./ab-grade.mjs` says of itself, in its header and its verify
+// recipe, that it runs no agent and imports no child-process API at all — and
+// `./ab-grade.test.mjs` asserts the second by reading its source.** A spawn there would falsify two
 // carriers and a rail. The one `spawnSync` in the family lives here.
 //
 // ## What a baseline recorded here may and may not say

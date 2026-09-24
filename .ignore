@@ -1,0 +1,6 @@
+# ripgrep, and the search tools built on it, skip these; git and every verify recipe still read them.
+# They are history kept in place until the change that deletes them, on the maintainer's call of
+# 2026-09-24: read one by its path, or search with --no-ignore. The done tasks and the closed milestones
+# are listed in their own directories' .ignore: a line here naming a file path did not hold for a search
+# started in .portulan or docs.
+.portulan/handoffs/

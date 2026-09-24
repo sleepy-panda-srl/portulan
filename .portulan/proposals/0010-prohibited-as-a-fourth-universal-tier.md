@@ -73,7 +73,7 @@ third-party artifact able to demote `push` to Auto would be a dependency with th
 containing it. The workspace may still override explicitly in its own gate map — it owns its policy — with
 core's `prohibited` entries excepted, since those are grantable only here. Nothing is built: no pack
 exists, and a slot before its consumer is the mistake the Workspace Definition was written to avoid.
-Recorded in [`../compile/README.md`](../compile/README.md), with the policy shaped so a later merge step
+Recorded in [`../compile/README.md`](../gate-map/compiler.md#pack-contributed-gate-rules), with the policy shaped so a later merge step
 is an addition rather than a redesign.
 
 **Pull request:** [#31](https://github.com/sleepy-panda-srl/portulan/pull/31) — the change that filed this.

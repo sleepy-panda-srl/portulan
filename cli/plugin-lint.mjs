@@ -13,7 +13,8 @@
 // manifests parse and are objects, that the fields this repository depends on are present and
 // correctly shaped, that the two manifests agree with each other, that every path they declare
 // starts with `./`, stays inside the tree, and resolves — and that every skill and agent behind
-// those paths is a real artifact with frontmatter and a non-empty description.
+// those paths is a real artifact with frontmatter and a non-empty description. A customer's plugin may
+// reasonably differ: it is a tool this repository owns and others may run, not a contract shipped to them.
 //
 // It is **not** an implementation of the Claude Code plugin contract, and must never be described
 // as one. `claude plugin validate --strict` is the authority for that contract; it is run at the
@@ -25,7 +26,7 @@
 //
 // So: the platform's contract is checked by the platform's own tool at a checkpoint, and the rail
 // that runs on every pull request checks what this repository can honestly own. The gap between
-// those two is real and is stated in ./README.md and in ../.portulan/products/portulan/affordances.md
+// those two is real and is stated here and in ../.portulan/products/portulan/affordances.md
 // rather than left for someone to discover — a mandate nothing checks is already broken
 // (../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md), and so is a claim of coverage
 // nothing measures.

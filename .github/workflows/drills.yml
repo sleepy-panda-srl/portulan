@@ -42,24 +42,16 @@
 # `0007` asks for the procedure in the order that makes it a procedure. Two triggers, two answers:
 #
 #   * **`workflow_dispatch`** is **answered**: run `32883413709`, dispatched on `da9c06e` the moment the
-#     merge put this file on the default branch, 21 of 21 forced red and fired. Recorded in
-#     `.portulan/verify/README.md`'s register — which is where **the version of this bullet that shipped
-#     with the workflow** said it would go, before any answer existed. This wording is the update, so it
-#     claims no such thing about itself; the prediction is in the merged history of #343, which is the
-#     only place it can be checked. _(It did claim that for one commit — "written before the answer
-#     existed" survived into the very rewrite that came after it. Copilot, round 1 on #349.)_
-#   * **`schedule`** is answered by the first Thursday run and by nothing earlier. Until that run
-#     existed this calendar was **half-vouched** — dispatch answered, schedule not. **Both halves are
-#     answered since 2026-09-03**, and the runs are recorded in `.portulan/verify/README.md`, which is
-#     the one carrier of that answer; read them there rather than from this comment. What has NOT
-#     changed — and no longer has an unvouched half to hang on — is that **a silence is not evidence**,
-#     in `0007`'s words: a scheduled run that never starts stays undetectable from inside (#344).
-#
-#     _Fourth carrier of that sentence, and the reason it survived is the finding: my sweep grepped for
-#     `calendar is unvouched` line by line, and here the phrase wraps across two comment lines, so a
-#     line-scoped matcher could not see it. **A sweep scoped by its own grep** — the class this
-#     repository has now met at a census size, a word form, and a line break. Copilot, round 2 on #349;
-#     the re-sweep below is whole-file rather than per-line._
+#     merge put this file on the default branch, 21 of 21 forced red and fired. The prediction that
+#     shipped with the workflow is in the merged history of #343.
+#   * **`schedule`** is answered by the first Thursday run and by nothing earlier: run `33097801218` on
+#     `733cea7` at 2026-08-27T17:19:20Z, and run `33745581549` on `6e8a5ed` at 2026-09-03T10:40:32Z, each
+#     21 of 21 forced red and fired. **Both halves are answered since 2026-09-03**, and this comment is
+#     the one carrier of that answer; later runs are read with
+#     `gh run list --workflow=drills.yml --event=schedule`, never copied here. What has NOT changed is
+#     that **a silence is not evidence**, in `0007`'s words: a scheduled run that never starts stays
+#     undetectable from inside (#344), and each run's per-rail results live in its job summary, which
+#     the platform keeps and this tree does not.
 #
 # What is already demonstrated, and needs no CI to be true, is the sweep: all 21 rails were forced red
 # by hand on 2026-08-25 and every one fired. That transcript is in this session's handoff.

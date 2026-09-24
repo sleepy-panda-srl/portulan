@@ -157,7 +157,7 @@ export const NON_RECIPE_RAILS = [
 export const NOT_DRILLED = [
     {
         rail: "the platform floor — branch protection, the required checks, `enforce_admins`",
-        why: "forcing it red means a direct push to `main` or a merge of a red pull request: outward, Gated, and the maintainer's. `../.portulan/verify/README.md` records that `enforce_admins` is what stands behind the last inch and that no pull request can demonstrate it about itself.",
+        why: "forcing it red means a direct push to `main` or a merge of a red pull request: outward, Gated, and the maintainer's. `../.portulan/gate-map/platform-floor.md` records what `enforce_admins` holds and why the test that would force it past is deliberately not run.",
     },
     {
         rail: "the `permissions` layer the compiler emits",

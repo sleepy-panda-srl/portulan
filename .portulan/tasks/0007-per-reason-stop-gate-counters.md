@@ -66,7 +66,7 @@ something it never mentions is the loose-citation defect [`../proposals/0008-ado
 was revised over.
 
 **Context.** [`../handoffs/2026-07-27-the-enforcement-compiler.md`](../handoffs/2026-07-27-the-enforcement-compiler.md)
-— where the hang was found and the ceiling flagged · [`../compile/README.md`](../compile/README.md)
+— where the hang was found and the ceiling flagged · [`../compile/README.md`](../gate-map/compiler.md#the-limits)
 — the current semantics and their stated limits ·
 [`../handoffs/2026-07-27-the-floor-backend-and-the-matrix.md`](../handoffs/2026-07-27-the-floor-backend-and-the-matrix.md)
 — where it was built.
@@ -85,7 +85,7 @@ decisions rather than as details, because each had a defensible opposite:
   rather than left to be inferred from the zeroing.
 
 One acceptance criterion was met **by the suite rather than by a live run** when this task closed, and
-[`../compile/README.md`](../compile/README.md)'s observation table said so in the row itself rather than
+[`../compile/README.md`](../gate-map/compiler.md#how-each-watcher-is-observed)'s observation table said so in the row itself rather than
 counting it as covered: the handoff branch cannot fire in this tree on a day when any session has already
 written a dated handoff. The recipe branch was re-run live end-to-end and released naming its own reason.
 **The milestone-4 close checkpoint then ran the handoff branch too**, in an isolated clone — recipe green

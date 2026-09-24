@@ -1,8 +1,8 @@
 # `evals/releases/`
 
-The eval result each release carries, one pair per version — milestone 8's ninth clause. The argument,
-the limits and the two designs a fresh context reversed are in [`../README.md`](../README.md); the
-mechanism is [`../../cli/release-eval.mjs`](../../cli/release-eval.mjs). This file does not restate
+The eval result each release carries, one pair per version — milestone 8's ninth clause. The limits are
+in [`../README.md`](../README.md); the argument, the mechanism and the two designs a fresh context
+reversed are in [`../../cli/release-eval.mjs`](../../cli/release-eval.mjs). This file does not restate
 either, because a rule with two carriers is obeyed at the narrower one.
 
 - `<version>.json` — the **capture**: the verdict every recipe the workspace yielded returned, at a named

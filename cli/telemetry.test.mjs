@@ -989,7 +989,7 @@ test("every carrier of the consent refusals names all three states", () => {
     const carriers = [
         "evals/README.md",
         "docs/milestones/m08.md",
-        "cli/README.md",
+        "cli/telemetry.mjs",
         ".portulan/gate-map/gated.md",
         ".portulan/gates.json",
     ];

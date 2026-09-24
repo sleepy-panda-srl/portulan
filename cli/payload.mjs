@@ -58,6 +58,9 @@ const git = (root, args) =>
  * reviewable because the reasons are, which is `./eval-bundle.mjs`'s `EXCLUDED_TOP_LEVEL` rule and the
  * only place these reasons can live: `package.json` is JSON and carries no comments.
  *
+ * The criterion, set at the first publish: the package ships the product, not the workshop. A file that
+ * is not part of what an `npx` user runs does not travel.
+ *
  * Checked against the payload roster rather than against the `!` lines that produce it. An entry the
  * payload still carries is a finding; so is an entry naming a file the tree no longer has.
  */
@@ -80,6 +83,9 @@ export const EXCLUDED = {
         "this rail. Its subject is this repository's own publish surface, which is the argument that " +
         "excluded the A/B rig — self-exclusion on `./eval-bundle.mjs`'s precedent, decided when it was " +
         "written rather than after a totality check demanded a class for it",
+    "roster.mjs":
+        "the generator of this directory's README. The page ships as a file; the tool that renders it " +
+        "from this repository's own tree is workshop tooling",
 };
 
 /**
