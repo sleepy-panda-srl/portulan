@@ -71,7 +71,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { HORIZON, SPEND_FIGURES, figureOf, foldFigures, readLine, sessionFigures } from "./ledger.mjs";
+import { HORIZON, LedgerError, SPEND_FIGURES, figureOf, foldFigures, overflowingWrite, readLine, sessionFigures } from "./ledger.mjs";
 
 const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
@@ -264,7 +264,13 @@ function refresh(found, warn, spend) {
     } catch (error) {
         return { why: `the transcript could not be read — ${error.code ?? error.message}` };
     }
-    const figure = figureOf(found.kept.figures, spend);
+    let figure;
+    try {
+        figure = figureOf(found.kept.figures, spend);
+    } catch (error) {
+        if (!(error instanceof LedgerError)) throw error;
+        return { why: error.message };
+    }
     if (figure !== null) return figure;
     return found.kept.figures.pending
         ? { why: "no request is recorded since the compaction", after: "the first request since the compaction" }
@@ -401,6 +407,10 @@ export function spendFlags(args) {
     }
     const missing = MULTIPLIER_FLAGS.filter((flag) => !values.has(flag));
     if (missing.length > 0 && missing.length < MULTIPLIER_FLAGS.length) faults.multipliers.push(`${missing.join(" and ")} ${missing.length === 1 ? "is" : "are"} missing from the set of three`);
+    if (missing.length === 0 && !faults.multipliers.length) {
+        const over = overflowingWrite({ read: values.get("--read"), write: { "5m": values.get("--write-5m"), "1h": values.get("--write-1h") } });
+        if (over !== null) faults.multipliers.push(`--write-${over} divided by --read overflows, which gives no finite threshold`);
+    }
     const said = [];
     if (faults.multipliers.length) said.push(`${faults.multipliers.join(", ")}, so the multipliers are undeclared`);
     if (faults.horizon.length) said.push(`${faults.horizon.join(", ")}, so the horizon is undeclared, and ${HORIZON} requests`);

@@ -717,6 +717,7 @@ describe("the declared multipliers and horizon, which compile and the ledger rea
         ["a horizon of 0", { horizon: { requests: 0 } }, /^spend\.horizon\.requests is 0, which is not a positive integer/],
         ["a negative horizon", { horizon: { requests: -3 } }, /^spend\.horizon\.requests is -3/],
         ["a fractional horizon, which the subset cannot refuse", { horizon: { requests: 2.5 } }, /^spend\.horizon\.requests is 2\.5/],
+        ["a write the read divides past the largest number", { multipliers: { read: Number.MIN_VALUE, write: { ...write, "1h": Number.MAX_VALUE } } }, /^spend\.multipliers\.write\["1h"\] divided by spend\.multipliers\.read overflows, so no finite restart threshold/],
     ]) {
         test(`${what} is refused by hand, and says why`, async () => {
             const fails = severities(await inspected("2.12", spend), "fail");

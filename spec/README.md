@@ -199,13 +199,15 @@ so `doctor` and `cli/index.mjs` refuse one by hand, and the hand-check covers **
 `sessions` adds nothing to either: every field of it is a boolean or one of two strings, which the
 schema types in full with `type` and `enum`, so `doctor` only gates the key to 2.11.
 
-**2.12 adds four to the hand-check and nothing to the conditional requirements.** `required` holds both
+**2.12 adds five to the hand-check and nothing to the conditional requirements.** `required` holds both
 halves of `spend.multipliers` and both lifetimes of its `write` in the schema itself, and the subset types
 the four figures only as `number`, the horizon included, since it cannot say `integer`, so `doctor` holds
-the read in (0, 1], each write at least 1 and the horizon to a positive integer by hand, and the hand-check
-covers **fourteen**. For the two writes `minimum` alone would close the gap, as it would for the ratio; the
-read is the first figure bounded above, so it would need `exclusiveMinimum` and `maximum`, and the horizon
-the budgets' `minimum` and `integer`.
+the read in (0, 1], each write at least 1 and the horizon to a positive integer by hand, and refuses a write
+the read divides past the largest number, since the restart threshold divides one by the other; the
+hand-check covers **fifteen**. For the two writes `minimum` alone would close the gap, as it would for the
+ratio; the read is the first figure bounded above, so it would need `exclusiveMinimum` and `maximum`, and
+the horizon the budgets' `minimum` and `integer`; no keyword in the subset relates two figures, so the
+quotient stays by hand.
 
 _These figures are history rather than state: what 2.3 and 2.4 added cannot change, so they do not go
 stale the way the removed count did. The one forward-looking sentence is the growth rate, and it is

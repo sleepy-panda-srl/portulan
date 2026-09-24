@@ -35,6 +35,7 @@ import {
     markRebuilds,
     mayHold,
     multipliers,
+    overflowingWrite,
     print,
     projectKey,
     readLine,
@@ -587,7 +588,21 @@ describe("the command", () => {
             assert.equal(restart([]), `${unjudged}20 requests and the general multipliers, undeclared: read 0.1×, writes 1.25× for five minutes and 2× for an hour`);
             fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify({ portulan: { spec: "2.12" }, spend: { multipliers: { read: 0.05, write: { "5m": 1.25, "1h": 2 } }, horizon: { requests: 30 } } }));
             assert.equal(restart(["--workspace", ws]), `${unjudged}30 requests and the declared multipliers: read 0.05×, writes 1.25× for five minutes and 2× for an hour`);
+            // A request with no time is counted, and still leaves no session to judge: the second exit says the same.
+            write(path.join(dir, "projects", projectKey(dir), "s.jsonl"), blocks({ cwd: dir, at: null }));
+            const out = say();
+            assert.equal(run(["--branch", "b", "--workspace", ws], out.fn, host), 0, out.lines.join("\n"));
+            assert.ok(!out.lines.includes("  no request on b is recorded here"), out.lines.join("\n"));
+            assert.equal(out.lines.at(-1), `${unjudged}30 requests and the declared multipliers: read 0.05×, writes 1.25× for five minutes and 2× for an hour`);
         });
+    });
+
+    test("figures each in range that give no finite threshold are refused, and a threshold that overflows is none", () => {
+        const where = "ws/workspace.json";
+        assert.throws(() => readSpend({ multipliers: { read: 0.05, write: { "5m": 1.25, "1h": Number.MAX_VALUE } } }, where), (error) => error instanceof LedgerError && /gives no finite restart threshold, since `write\["1h"\]` divided by `read` overflows/.test(error.message));
+        assert.equal(overflowingWrite({ read: 0.05, write: { "5m": 1.25, "1h": 2 } }), null);
+        // A quotient in range, which a fresh context of 100 still carries past the largest number.
+        assert.throws(() => restartThreshold({ fresh: 100, write: Number.MAX_VALUE, read: 1, horizon: 1 }), (error) => error instanceof LedgerError && /overflows, so these multipliers give none$/.test(error.message));
     });
 
     test("--workspace naming a manifest that cannot be read, or a `spend` it refuses, is could-not-run, never a report", () => {

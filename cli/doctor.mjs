@@ -2050,6 +2050,22 @@ export async function inspect(workspaceDir, options = {}) {
             );
         }
     }
+    // Figures each in range can still give no threshold, since it divides each write by the read: a read near
+    // zero under a write near the largest number overflows to Infinity, a line no session reaches.
+    // `cli/ledger.mjs`'s `overflowingWrite` refuses the same pair where `compile` and the ledger read it.
+    if (Number.isFinite(readMultiplier) && readMultiplier > 0) {
+        for (const lifetime of ["5m", "1h"]) {
+            const writeMultiplier = workspace.spend?.multipliers?.write?.[lifetime];
+            if (Number.isFinite(writeMultiplier) && !Number.isFinite(writeMultiplier / readMultiplier)) {
+                fail(
+                    "schema",
+                    `spend.multipliers.write["${lifetime}"] divided by spend.multipliers.read overflows, so no finite restart ` +
+                        "threshold can be computed from them. No keyword in the declared subset relates two figures, so this is " +
+                        "checked here",
+                );
+            }
+        }
+    }
     const horizonRequests = workspace.spend?.horizon?.requests;
     if (horizonRequests !== undefined && !positive(horizonRequests)) {
         fail(

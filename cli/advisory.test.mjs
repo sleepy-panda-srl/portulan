@@ -382,6 +382,7 @@ describe("the declared figures on the command", () => {
             [["--horizon", "2.5"], /^--horizon 2\.5 is not a positive integer, so the horizon is undeclared, and 20 requests$/],
             [["--horizon"], /^--horizon has no value/],
             [["--horizon", "30", "--block", "1"], /^--block is no flag it takes, so it is passed over with the value after it$/],
+            [["--read", "0.05", "--write-5m", "1.25", "--write-1h", "1e308"], /^--write-1h divided by --read overflows, which gives no finite threshold, so the multipliers are undeclared$/],
         ]) {
             const read = spendFlags(args);
             assert.match(read.fault ?? "", said, args.join(" "));
@@ -401,6 +402,19 @@ describe("the declared figures on the command", () => {
             grow(file, record({ read: 90000, w1h: 3333 }));
             const line = JSON.parse(onTool({ session_id: "s", transcript_path: file }, at)).hookSpecificOutput.additionalContext;
             assert.match(line, /93,334 tokens, has reached its restart threshold of 93,333 = fresh context 40,000 × \(1 \+ write 2× \/ \(30 more requests × read 0\.05×\)\); multipliers declared\./);
+        });
+    });
+
+    test("a threshold the declared figures carry past the largest number is none: not known, and the hooks stay silent", () => {
+        withTemp((dir) => {
+            const state = path.join(dir, "state");
+            fs.mkdirSync(state);
+            const file = session(dir, [90000]);
+            const warned = [];
+            const at = { dir: state, declared: { read: 1, write: { "5m": Number.MAX_VALUE, "1h": Number.MAX_VALUE } }, horizon: 1, warn: (w) => warned.push(w) };
+            assert.equal(onTool({ session_id: "s", transcript_path: file }, at), null);
+            assert.match(onStatus({ session_id: "s", transcript_path: file }, at), /^restart threshold: not known, because the restart threshold .* overflows, so these multipliers give none$/);
+            assert.ok(warned.some((w) => /overflows, so these multipliers give none$/.test(w)), warned.join("\n"));
         });
     });
 

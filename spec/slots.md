@@ -846,11 +846,15 @@ workspace's work.
 halves of `multipliers`, both lifetimes of `write`, and no key it does not name. The subset types the four
 figures only as `number`, so `doctor` holds the read above 0 and at most 1, each write at least 1 and the
 horizon to a positive integer by hand: a token read from cache costs something and never more than the same
-token sent uncached, and writing one costs at least what sending it uncached does. The ledger, `compile` and
-the advisory hold the same ranges themselves rather than trusting that `doctor` ran. The first two stop with
-exit 2; the advisory, whose exit 2 would erase the person's prompt, says once on stderr what it could not use
-and prices that half at the general figures. `doctor` refuses the key in a manifest declaring a version before
-2.12, gated from birth as `sessions` was.
+token sent uncached, and writing one costs at least what sending it uncached does. Figures each in range can
+still give no threshold, since it divides each write by the read, so `doctor` also refuses a write the read
+divides past the largest number, which would put the restart line at Infinity, where no session reaches it.
+The ledger, `compile` and the advisory hold the same ranges themselves rather than trusting that `doctor` ran.
+The first two stop with exit 2; the advisory, whose exit 2 would erase the person's prompt, says once on
+stderr what it could not use and prices that half at the general figures. A threshold that a session's fresh
+context still carries past the largest number is none: the ledger stops with exit 2, and the advisory says it
+is not known. `doctor` refuses the key in a manifest declaring a version before 2.12, gated from birth as
+`sessions` was.
 
 ## `slots.context` — the guidance a host loads, each unit in its tier
 

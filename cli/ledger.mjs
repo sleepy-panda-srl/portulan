@@ -57,9 +57,10 @@
 // with the next tool result or at the next prompt, and in the status line, from the same running figures,
 // and it takes the declared ones from the flags `./compile.mjs` writes onto its commands.
 //
-// Exit 0 a report · 1 `--fixture` only: the fixture no longer reproduces its known totals · 2 could not
-// run: an argument, a records directory or file that could not be read, a fixture missing, or a manifest
-// named by `--workspace` that could not be read or whose `spend` is refused.
+// Exit 0 a report · 1 `--fixture` only: the fixture no longer reproduces its known totals · 2 could not run:
+// an argument, a records directory or file that could not be read, a fixture missing, or a manifest named by
+// `--workspace` that could not be read or whose `spend` is refused, or a threshold its figures carry past the
+// largest number.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -360,11 +361,22 @@ export const SPEND_FIGURES = {
 };
 
 /**
+ * The write, `"5m"` or `"1h"`, that the read divides past the largest number, or null. The restart threshold
+ * divides each write by the horizon times the read, so figures each in its range can still give no threshold:
+ * a read near zero under a write near the largest number overflows to Infinity, a line no session reaches. A
+ * horizon is at least 1, so a write the read divides finitely gives a finite quotient at every horizon.
+ */
+export function overflowingWrite({ read, write }) {
+    return ["5m", "1h"].find((at) => !Number.isFinite(write[at] / read)) ?? null;
+}
+
+/**
  * A manifest's `spend`, read: `{ multipliers, horizon }`, each null where its half is undeclared, and both
  * null where `spend` is. `where` names the manifest in a refusal. **Refused at the first fault, in any shape
- * the schema refuses or any figure out of its range**, because every threshold the ledger prints and the
- * advisory says is priced by it, and neither reader may depend on `doctor` having been run: `./compile.mjs`
- * writes what this returns into the settings the host reads, and `--workspace` prints by it.
+ * the schema refuses, any figure out of its range, or a pair that gives no finite threshold**, because every
+ * threshold the ledger prints and the advisory says is priced by it, and neither reader may depend on
+ * `doctor` having been run: `./compile.mjs` writes what this returns into the settings the host reads, and
+ * `--workspace` prints by it.
  */
 export function readSpend(value, where) {
     if (value === undefined) return { multipliers: null, horizon: null };
@@ -390,6 +402,8 @@ export function readSpend(value, where) {
         const read = figure(m.read, "at `multipliers` ", "read", "read");
         const write = shaped(m.write, "at `multipliers.write` ", ["5m", "1h"], true);
         multipliers = { read, write: { "5m": figure(write["5m"], "at `multipliers.write` ", "5m", "write"), "1h": figure(write["1h"], "at `multipliers.write` ", "1h", "write") } };
+        const over = overflowingWrite(multipliers);
+        if (over !== null) throw refuse(`at \`multipliers\` gives no finite restart threshold, since \`write["${over}"]\` divided by \`read\` overflows`);
     }
     const horizon = value.horizon === undefined ? null : figure(shaped(value.horizon, "at `horizon` ", ["requests"], true).requests, "at `horizon` ", "requests", "requests");
     return { multipliers, horizon };
@@ -410,7 +424,10 @@ export function multipliers({ declared = null, lifetime = null } = {}) {
 /** `C* ≈ F × (1 + m_w / (n × m_r))`, in whole tokens. */
 export function restartThreshold({ fresh, write, read, horizon = HORIZON }) {
     if (!(fresh > 0 && write > 0 && read > 0 && horizon > 0)) throw new LedgerError("a restart threshold needs a fresh context, both multipliers and a horizon, each above zero");
-    return Math.round(fresh * (1 + write / (horizon * read)));
+    const threshold = Math.round(fresh * (1 + write / (horizon * read)));
+    // Figures a declaration may hold can still overflow with a fresh context, and a line at Infinity is none.
+    if (!Number.isFinite(threshold)) throw new LedgerError(`the restart threshold ${fresh} × (1 + ${write} / (${horizon} × ${read})) overflows, so these multipliers give none`);
+    return threshold;
 }
 
 /** The words that say which multipliers a figure assumed, and which lifetime its write was taken at. */
