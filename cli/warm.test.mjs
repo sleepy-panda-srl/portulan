@@ -446,6 +446,11 @@ describe("a switch against its control", () => {
         const said = [];
         assert.equal(run(["report", control, treatment], { say: (l) => said.push(l) }), 1);
         assert.match(said.at(-1), /no figure against the control's 100.*a run was not measured/);
+        assert.match(reportLines(readSequence(treatment)).at(-1), /; measured 1 of 2; answered 2 of 2;/);
+        fs.writeFileSync(path.join(treatment, runs[0].transcript), "");
+        const none = reportLines(readSequence(treatment));
+        assert.match(none.at(-3), /A {2}Portulan's share: no figure, since no run was measured$/);
+        assert.match(none.at(-1), /; measured 0 of 2;/);
     });
 
     test("two sequences of different shapes are no comparison, exit 2", () => {

@@ -673,11 +673,11 @@ export function reportLines(sequence) {
     }
     lines.push(
         s.a === null
-            ? "  A  Portulan's share: no figure, since a run's clone is gone or a run compacted"
+            ? `  A  Portulan's share: no figure, since ${s.measured === 0 ? "no run was measured" : "a run's clone is gone or a run compacted"}`
             : `  A  Portulan's share: ${grouped(s.a)} tokens a run, ${index(s.a, s.b)}% of B; ${grouped(s.estimated)} of them estimated, what the host loaded before the first request`,
         `  B  the whole task: ${grouped(s.b)} tokens a run, cache reads included`,
         `  C  cost: warm ${index(s.warm, s.cold)} against cold 100 (${grouped(s.warm)} against ${grouped(s.cold)}, ${ratesText(rates)}); ` +
-            `started warm ${s.startedWarm} of ${s.later}; answered ${s.graded} of ${s.runs}; changed a file ${s.changed}`,
+            `started warm ${s.startedWarm} of ${s.later}; measured ${s.measured} of ${s.runs}; answered ${s.graded} of ${s.runs}; changed a file ${s.changed}`,
     );
     return lines;
 }
