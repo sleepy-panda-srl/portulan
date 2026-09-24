@@ -428,15 +428,15 @@ export function summary(runs) {
  * two must differ in their arm and in nothing else the runner records (the commit they started from, the task,
  * the run count, the checkouts, what lands between runs, where they ran, the model asked for and the models the
  * host recorded, and the host's version), or no difference between them is the switch's. A sequence with no run
- * measured recorded no model, so the models are compared where both recorded some: such a sequence fails as not
- * measured, never as another shape.
+ * measured recorded no model, so the models are compared where both measured a run: such a sequence fails as not
+ * measured, never as another shape, while a measured run that recorded no model still differs from one that did.
  */
 export function verdict(control, treatment) {
-    const recorded = control.summary.models.length > 0 && treatment.summary.models.length > 0;
+    const recorded = control.summary.measured > 0 && treatment.summary.measured > 0;
     const shape = (s) =>
         `${s.record.task} × ${s.record.runs.length} from ${s.record.source ?? "an unrecorded commit"}, copies ${s.record.copies}, ` +
         `between ${s.record.between ?? "nothing"}${s.record.local ? ", local" : ""}, model ${s.record.model ?? "the host's default"}` +
-        `${recorded ? ` (recorded ${s.summary.models.join(" and ")})` : ""}, host ${s.record.agent ?? "unknown"}`;
+        `${recorded ? ` (recorded ${s.summary.models.join(" and ") || "none"})` : ""}, host ${s.record.agent ?? "unknown"}`;
     if (shape(control) !== shape(treatment)) {
         throw new CouldNotRun(`the two sequences differ in shape (${shape(control)} against ${shape(treatment)}), so no difference between them is the switch's`);
     }

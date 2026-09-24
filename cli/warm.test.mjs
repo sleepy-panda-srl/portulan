@@ -486,6 +486,11 @@ describe("a switch against its control", () => {
         fs.writeFileSync(transcript, fs.readFileSync(transcript, "utf8").replaceAll('"model":"stub"', '"model":"stub-2"'));
         assert.throws(() => verdict(readSequence(one), readSequence(other)), /recorded stub against|differ in shape/, "the models the host recorded");
         assert.equal(run(["report", one, other], { say: () => {} }), 2);
+        for (const name of fs.readdirSync(other).filter((n) => /^run-\d+\.jsonl$/.test(n))) {
+            const t = path.join(other, name);
+            fs.writeFileSync(t, fs.readFileSync(t, "utf8").replaceAll(/"model":"stub(?:-2)?"/g, '"model":null'));
+        }
+        assert.throws(() => verdict(readSequence(one), readSequence(other)), /differ in shape.*\(recorded none\)/, "measured runs that recorded no model");
     });
 
     test("what the cache held before a sequence is neither arm's: the first run is priced cold", () => {
