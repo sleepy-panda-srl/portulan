@@ -19,7 +19,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { adviceLine, compact, main, onPrompt, onStatus, onTool, stateFile, statusLine, toldFile } from "./advisory.mjs";
+import { adviceLine, compact, main, onPrompt, onStatus, onTool, spendFlags, stateFile, statusLine, toldFile } from "./advisory.mjs";
 import { readTranscript } from "./ledger.mjs";
 
 // A HERMETIC HOST: nothing here reads the host's configuration, and the suite says so the way every
@@ -357,6 +357,86 @@ describe("the status line", () => {
     });
 });
 
+describe("the declared figures on the command", () => {
+    // Workspace Definition 2.12's `spend`, which `compile` writes onto all three commands as flags. A figure it
+    // cannot use falls back to undeclared for its own half, said once on stderr, and the runner still exits 0.
+    const FLAGS = ["--read", "0.05", "--write-5m", "1.25", "--write-1h", "2", "--horizon", "30"];
+    const declared = { read: 0.05, write: { "5m": 1.25, "1h": 2 } };
+
+    /** One call of the runner, as the host makes it, with what it printed. */
+    const call = (argv, payload, dir) => {
+        const written = { out: "", err: "" };
+        const code = main(argv, { stdout: { write: (s) => (written.out += s) }, stderr: { write: (s) => (written.err += s) }, payload, dir });
+        return { code, ...written };
+    };
+
+    test("they are read as compile writes them, and nothing looser", () => {
+        assert.deepEqual(spendFlags(FLAGS), { declared, horizon: 30, fault: null });
+        assert.deepEqual(spendFlags([]), { declared: null, horizon: null, fault: null });
+        assert.deepEqual(spendFlags(["--horizon", "30"]), { declared: null, horizon: 30, fault: null }, "the horizon stands alone");
+        for (const [args, said] of [
+            [["--read", "0x1", "--write-5m", "1.25", "--write-1h", "2"], /^--read 0x1 is not a number above 0 and at most 1, so the multipliers are undeclared$/],
+            [["--read", "0.05", "--write-5m", "0.5", "--write-1h", "2"], /^--write-5m 0\.5 is not a number of at least 1/],
+            [["--read", "0.05", "--read", "0.05", "--write-5m", "1.25", "--write-1h", "2"], /^--read is given twice/],
+            [["--read", "0.05"], /^--write-5m and --write-1h are missing from the set of three/],
+            [["--horizon", "2.5"], /^--horizon 2\.5 is not a positive integer, so the horizon is undeclared, and 20 requests$/],
+            [["--horizon"], /^--horizon has no value/],
+            [["--horizon", "30", "--block", "1"], /^--block is no flag it takes, so it is passed over with the value after it$/],
+        ]) {
+            const read = spendFlags(args);
+            assert.match(read.fault ?? "", said, args.join(" "));
+        }
+    });
+
+    test("they price the threshold, and the line and the status line say the multipliers were declared", () => {
+        withTemp((dir) => {
+            const state = path.join(dir, "state");
+            fs.mkdirSync(state);
+            // Past 80,000, the threshold at the general multipliers; short of 93,333 = 40,000 × (1 + 2 / (30 × 0.05)).
+            const file = session(dir, [90000]);
+            const at = { dir: state, declared, horizon: 30 };
+            assert.equal(onTool({ session_id: "s", transcript_path: file }, at), null);
+            assert.equal(onPrompt({ session_id: "s", transcript_path: file }, at), null);
+            assert.equal(onStatus({ session_id: "s", transcript_path: file }, at), "2 requests · context 90k of a 93k restart threshold · multipliers declared: read 0.05×, write 2×");
+            grow(file, record({ read: 90000, w1h: 3333 }));
+            const line = JSON.parse(onTool({ session_id: "s", transcript_path: file }, at)).hookSpecificOutput.additionalContext;
+            assert.match(line, /93,334 tokens, has reached its restart threshold of 93,333 = fresh context 40,000 × \(1 \+ write 2× \/ \(30 more requests × read 0\.05×\)\); multipliers declared\./);
+        });
+    });
+
+    test("the runner reads them after its mode, in each of its three, and without them prices as it did", () => {
+        withTemp((dir) => {
+            const file = session(dir, [90000]);
+            const at = (id) => ({ session_id: id, transcript_path: file });
+            for (const mode of ["tool", "prompt"]) {
+                const quiet = call([mode, ...FLAGS], at(`declared-${mode}`), dir);
+                assert.deepEqual([quiet.code, quiet.out, quiet.err], [0, "", ""], `${mode}: below the declared threshold, and nothing to warn of`);
+                assert.match(call([mode], at(`general-${mode}`), dir).out, /has reached its restart threshold of 80,000/, mode);
+            }
+            assert.equal(call(["status", ...FLAGS], at("status"), dir).out, "2 requests · context 90k of a 93k restart threshold · multipliers declared: read 0.05×, write 2×\n");
+        });
+    });
+
+    test("a figure it cannot use is said once, and only the half it belongs to falls back", () => {
+        withTemp((dir) => {
+            const file = session(dir, [90000]);
+            const at = (id) => ({ session_id: id, transcript_path: file });
+            // A set missing one of its three: the multipliers are undeclared, and the horizon still stands at 30.
+            const partial = call(["status", "--read", "0.05", "--write-5m", "1.25", "--horizon", "30"], at("a"), dir);
+            assert.equal(partial.code, 0);
+            assert.equal(partial.err.trimEnd().split("\n").length, 1, "said once");
+            assert.match(partial.err, /^portulan advisory: the figures after status are not all usable — --write-1h is missing from the set of three, so the multipliers are undeclared\n$/);
+            assert.equal(partial.out, "2 requests · context 90k has reached its 67k restart threshold: write the handoff and restart · multipliers undeclared: read 0.1×, write 2×\n");
+            // A horizon out of its range and a flag it does not take: the multipliers stand, the horizon is 20.
+            const bad = call(["status", ...FLAGS.slice(0, 6), "--horizon", "0", "--block", "1"], at("b"), dir);
+            assert.equal(bad.code, 0);
+            assert.equal(bad.err.trimEnd().split("\n").length, 1, "said once");
+            assert.match(bad.err, /--horizon 0 is not a positive integer, so the horizon is undeclared, and 20 requests; --block is no flag it takes/);
+            assert.equal(bad.out, "2 requests · context 90k of a 120k restart threshold · multipliers declared: read 0.05×, write 2×\n");
+        });
+    });
+});
+
 describe("the runner", () => {
     test("it exits 0 on every path, whatever it is handed", () => {
         for (const [mode, input] of [
@@ -368,6 +448,14 @@ describe("the runner", () => {
         ]) {
             const result = spawnSync(process.execPath, [TOOL, mode], { input, encoding: "utf8", env: { ...process.env, TMPDIR: HERMETIC_HOST } });
             assert.equal(result.status, 0, `${mode} ${input}: ${result.stderr}`);
+        }
+        // And whatever figures its command carries, in any of its modes.
+        for (const mode of ["tool", "prompt", "status"]) {
+            for (const flags of [["--read"], ["--read", "x", "--horizon", "-1"], ["--nope", "1"]]) {
+                const result = spawnSync(process.execPath, [TOOL, mode, ...flags], { input: "{}", encoding: "utf8", env: { ...process.env, TMPDIR: HERMETIC_HOST } });
+                assert.equal(result.status, 0, `${mode} ${flags.join(" ")}: ${result.stderr}`);
+                assert.match(result.stderr, new RegExp(`the figures after ${mode} are not all usable`));
+            }
         }
     });
 

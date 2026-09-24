@@ -63,6 +63,7 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `handoffs` | structured | no | criterion — milestone 5 as amended, *a generated index over the handoff series*; [`loop.md`](../core/operating/loop.md) — the librarian that mines the series |
 | `context` | structured | no | criterion — milestone 12, *what a host loads into every context is measured, budgeted and demoted*; [`context.md`](../core/operating/context.md) — the always tier, budgeted in tokens |
 | `sessions` | structured | no | criterion — milestone 13, *the prefix stays stable* and *earned by an A/B run*; [`sessions.md`](../core/operating/sessions.md) — which sessions start warm, and the switches that change the prefix |
+| `spend` | structured | no | criterion — milestone 13, *the manifest declares the multipliers and the horizon*; [proposal 0038](../.portulan/proposals/0038-what-a-change-spends-is-measured.md), rulings 2 and 3 — the figures the restart threshold is computed at |
 | `provenance` | record field | **on every rule** | criterion — *provenance slot*; [proposal 0002](../.portulan/proposals/0002-sealed-provenance.md), adopted |
 
 ## `kind` — which of the four workspace kinds this is, and which of them govern
@@ -785,6 +786,66 @@ for the first two to ride, and `compile` says that it compiled neither.
 **Checked by the schema, and gated by `doctor`.** Every field is a boolean or one of two strings, which the
 subset types in full, so nothing joins `doctor`'s hand-check. `doctor` refuses the key in a manifest
 declaring a version before 2.11, gated from birth as `context` was.
+
+## `spend` — the figures the restart threshold is computed at
+
+Added at **2.12**, from [proposal 0038](../.portulan/proposals/0038-what-a-change-spends-is-measured.md)'s
+ruling 2, *the manifest declares the multipliers*, and its ruling 3's horizon. The proposal carries the
+arithmetic; this object holds the figures a workspace computes it at.
+
+| Field | What it is |
+|---|---|
+| `multipliers.read` | What a cache read costs, as a multiple of an uncached input token. Above 0 and at most 1. |
+| `multipliers.write["5m"]` | What a five-minute cache write costs, as the same multiple. At least 1. |
+| `multipliers.write["1h"]` | What a one-hour cache write costs, as the same multiple. At least 1. |
+| `horizon.requests` | The requests still to go at which the restart threshold is judged. A positive integer. |
+
+```json
+"spend": {
+  "multipliers": { "read": 0.05, "write": { "5m": 1.25, "1h": 2 } },
+  "horizon": { "requests": 30 }
+}
+```
+
+**What reads it.** A session is told to end into a handoff once its context passes
+`C* ≈ F × (1 + m_w / (n × m_r))`: `F` the fresh context, `m_r` the read multiplier, `m_w` the write multiplier
+at the lifetime the host recorded for the session's writes (the five-minute one where the records do not say),
+and `n` the horizon. [`../cli/ledger.mjs`](../cli/ledger.mjs) reads the key from `<dir>/workspace.json` when
+run with `--workspace <dir>`, and computes every threshold its report states at it. The restart advisory,
+[`../cli/advisory.mjs`](../cli/advisory.mjs), is handed its command and the host's payload and nothing else,
+so `compile` writes the figures onto all three of its commands, the `PostToolUse` and `UserPromptSubmit` hooks
+and the status line, as `--read`, `--write-5m`, `--write-1h` and `--horizon`, and its drift check holds them
+to the manifest: an edit to `spend` is drift until recompiled. A workspace with no gate policy has no settings
+for them to ride, and `compile` says that it compiled nothing. Every threshold either prints says whether its
+multipliers are declared or undeclared.
+
+**Declared, not defaulted.** Undeclared, both price at the general multipliers, a read at a tenth and writes
+at 1.25× and 2×, over a horizon of 20 requests, and say `undeclared`. That is ruling 2's answer to a spread no
+one figure fits: a model's cache reads cost between a fortieth and a tenth of an uncached input token. The
+general tenth puts the restart line early, which is the cheaper way to err, since a restart that comes too
+soon costs a fresh write and a handoff, and erring the other way, where reads cost a tenth, costs about four
+times more in excess reads over 20 requests. A declaration makes a team's contracted rates and its host's real
+prices one value. Either half may be declared alone, and the other keeps its general figures. The three
+multipliers are one set, because a threshold priced by one declared figure and two general ones would be
+priced by nobody's.
+
+**What is not here.** Ruling 2 has `init` offer the declaration from the host's own pricing setting where the
+host exposes one, else from a dated per-host table in the engine. Both are keyed by the model a host records,
+so both wait for their own change: until then `init` names the key and offers no figures, and a workspace
+writes its own by hand. Nothing checks a declared figure against what the workspace is billed; keeping it true
+is the declaring workspace's work.
+
+**Checked by the schema and by `doctor`, and refused by every reader.** The schema holds the shape: both
+halves of `multipliers`, both lifetimes of `write`, and no key it does not name. The subset types the four
+figures only as `number`, so `doctor` holds the read above 0 and at most 1, each write at least 1 and the
+horizon to a positive integer by hand: a token read from cache costs something and never more than the same
+token sent uncached, and writing one costs at least what sending it uncached does. The ledger, `compile` and
+the advisory hold the same ranges themselves rather than trusting that `doctor` ran. The first two stop with
+exit 2; the advisory, whose exit 2 would erase the person's prompt, says once on stderr what it could not use
+and prices that half at the general figures. `doctor` refuses the key in a manifest declaring a version before
+2.12, gated from birth as `sessions` was.
+
+
 
 ## `slots.context` — the guidance a host loads, each unit in its tier
 

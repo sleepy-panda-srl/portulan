@@ -1236,12 +1236,14 @@ export async function inspect(workspaceDir, options = {}) {
         // manifest can newly fail it; refusing an older one now could fail a manifest that passes today, which
         // ../spec/README.md calls a MAJOR. Raised by Copilot on #440, for `context`, the first key born gated.
         // `slots.context` is the second, at 2.10, and a slot is read one level down. The memory cap's cutoff
-        // and `sessions` are the third and fourth, at 2.11.
+        // and `sessions` are the third and fourth, at 2.11, and `spend`, `0038`'s multipliers and horizon, is
+        // the fifth, at 2.12.
         for (const [key, since, value] of [
             ["context", 9, workspace.context],
             ["slots.context", 10, workspace.slots?.context],
             ["memory.store.budget.cutoff", 11, workspace.memory?.store?.budget?.cutoff],
             ["sessions", 11, workspace.sessions],
+            ["spend", 12, workspace.spend],
         ]) {
             if (major === 2 && minor < since && value !== undefined) {
                 fail(
@@ -2018,6 +2020,40 @@ export async function inspect(workspaceDir, options = {}) {
                     "records the per-record cap binds, so alone it configures nothing while reading as configured",
             );
         }
+    }
+
+    // Workspace Definition 2.12's `spend`, proposal `0038`'s ruling 2: four figures the subset types only as
+    // `number`. A read is held above nothing and to at most an uncached token, since the restart threshold
+    // divides by it; a write to at least one; and the horizon to a positive integer, as `cli/ledger.mjs`'s
+    // `readSpend` holds them where `compile` and the ledger read the manifest, so a figure this passes is one
+    // they take.
+    const readMultiplier = workspace.spend?.multipliers?.read;
+    if (readMultiplier !== undefined && !(Number.isFinite(readMultiplier) && readMultiplier > 0 && readMultiplier <= 1)) {
+        fail(
+            "schema",
+            `spend.multipliers.read is ${String(readMultiplier)}, and it must be a finite number above 0 and at most 1. A token ` +
+                "read from cache costs something, and never more than the same token sent uncached. The declared keyword subset " +
+                "has neither `minimum` nor `maximum`, so this is checked here",
+        );
+    }
+    for (const lifetime of ["5m", "1h"]) {
+        const writeMultiplier = workspace.spend?.multipliers?.write?.[lifetime];
+        if (writeMultiplier !== undefined && !(Number.isFinite(writeMultiplier) && writeMultiplier >= 1)) {
+            fail(
+                "schema",
+                `spend.multipliers.write["${lifetime}"] is ${String(writeMultiplier)}, and it must be a finite number of at least 1. ` +
+                    "Writing a token to the cache costs at least what sending it uncached does. The declared keyword subset " +
+                    "has no `minimum`, so this is checked here",
+            );
+        }
+    }
+    const horizonRequests = workspace.spend?.horizon?.requests;
+    if (horizonRequests !== undefined && !positive(horizonRequests)) {
+        fail(
+            "schema",
+            `spend.horizon.requests is ${JSON.stringify(horizonRequests)}, which is not a positive integer. ` +
+                "The declared keyword subset has no `minimum` and cannot say `integer`, so this is checked here",
+        );
     }
 
     if (workspace.librarian?.staleness?.proposal_days !== undefined && !workspace.slots?.proposals) {

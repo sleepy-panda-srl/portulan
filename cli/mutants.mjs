@@ -613,12 +613,16 @@ export function mutate(source, op) {
 /**
  * Rewrite the subject's relative imports to absolute `file://` URLs.
  *
- * A mutant lives in a temp directory, so `./discover.mjs` and `./inside.mjs` would not resolve from
- * there. Both import node builtins only, so pointing at the real modules costs nothing and copies
- * nothing. Measured before this was written rather than assumed: `${SUBJECT}` has exactly two relative
- * imports, no dynamic `import(`, and its only top-level `import.meta.url` use is the entry guard —
- * which compares against `process.argv[1]` and therefore cannot fire for a module imported from a
- * temp directory while argv[1] is this runner.
+ * A mutant lives in a temp directory, so `./discover.mjs`, `./inside.mjs`, `./symbols.mjs` and `./ledger.mjs`
+ * would not resolve from there. The first three import node builtins only, and the fourth imports node
+ * builtins and `./inside.mjs`, which resolves from the real module's own directory, so pointing at the real
+ * modules costs nothing and copies nothing. Measured before this was written rather than assumed, and again
+ * on 2026-09-24, when Workspace Definition 2.12's `spend` brought the fourth: `${SUBJECT}` has exactly four
+ * relative imports and no dynamic `import(`. It reads `import.meta.url` at top level twice: in the entry
+ * guard, which compares against `process.argv[1]` and therefore cannot fire for a module imported from a
+ * temp directory while argv[1] is this runner, and in `ENGINE_ROOT`, which a mutant resolves under its temp
+ * directory and which only the guidance compiler reads, never `matchesRule`. `./discover.mjs`,
+ * `./symbols.mjs` and `./ledger.mjs` have entry guards of the same form.
  */
 export function absolutiseImports(source, cliDir) {
     return source.replace(/from "\.\/([A-Za-z0-9._-]+\.mjs)"/g, (_, name) => `from "${pathToFileURL(path.join(cliDir, name)).href}"`);

@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 // The restart advisory — one line, once, where the agent is, and the same figure for the human.
 //
-//   node cli/advisory.mjs tool      a PostToolUse hook: the line, as additionalContext, once, mid-stretch
-//   node cli/advisory.mjs prompt    a UserPromptSubmit hook: the same line, at the next prompt, if not said yet
-//   node cli/advisory.mjs status    a status-line command: the figure and the request count, on every refresh
+//   node cli/advisory.mjs tool [<figures>]      a PostToolUse hook: the line, as additionalContext, once, mid-stretch
+//   node cli/advisory.mjs prompt [<figures>]    a UserPromptSubmit hook: the same line, at the next prompt, if not said yet
+//   node cli/advisory.mjs status [<figures>]    a status-line command: the figure and the request count, on every refresh
+//
+//   <figures>  --read <m> --write-5m <m> --write-1h <m>, the three together or none, and --horizon <n>:
+//              a workspace's `spend` (Workspace Definition 2.12), as `./compile.mjs` writes it onto all three
+//              commands. Undeclared, the threshold is computed at the general multipliers and 20 requests.
 //
 // Wired by `./compile.mjs` into `.claude/settings.json`. `0038`'s rule 2: every request re-reads the
 // context, so a session is told to end when continuing costs more than restarting, **once, where the
@@ -27,7 +31,9 @@
 // never blocks and never ends anything — ending stays the agent's or the human's act. **It exits 0 on
 // every path.** For `UserPromptSubmit` an exit of 2 would erase the person's prompt, so a runner that
 // could crash into it would be the one way this line did harm; anything it cannot read, it passes over
-// in silence, and says why on stderr, which the host keeps for its debug log.
+// in silence, and says why on stderr, which the host keeps for its debug log. That holds for the figures
+// on its command too: a flag it does not take, a multiplier set missing one of its three or a figure out
+// of its range is said once, and the half it belongs to falls back to undeclared.
 //
 // ## Once
 //
@@ -65,7 +71,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { figureOf, foldFigures, readLine, sessionFigures } from "./ledger.mjs";
+import { HORIZON, SPEND_FIGURES, figureOf, foldFigures, readLine, sessionFigures } from "./ledger.mjs";
 
 const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
@@ -250,14 +256,15 @@ function locate(payload, dir) {
 /**
  * Bring what `locate` found up to date with the transcript, and keep it; the figure, or the reason for none,
  * with `after` naming the request that brings one where the transcript was read and simply has none yet.
+ * `spend` is the declared multipliers and horizon the figure is priced at.
  */
-function refresh(found, warn) {
+function refresh(found, warn, spend) {
     try {
         if (advance(found.kept, found.transcriptPath, found.stat.size) && found.file !== null) keep(found.file, found.kept, warn);
     } catch (error) {
         return { why: `the transcript could not be read — ${error.code ?? error.message}` };
     }
-    const figure = figureOf(found.kept.figures);
+    const figure = figureOf(found.kept.figures, spend);
     if (figure !== null) return figure;
     return found.kept.figures.pending
         ? { why: "no request is recorded since the compaction", after: "the first request since the compaction" }
@@ -293,9 +300,10 @@ export function statusLine(figure) {
 
 /**
  * Either hook's half: `event` is `PostToolUse` or `UserPromptSubmit`. Returns what to print: the hook's
- * JSON, or null for silence. `dir` is where the told-once records and the running figures live.
+ * JSON, or null for silence. `dir` is where the told-once records and the running figures live; `declared`
+ * and `horizon` are the figures on the command, as `spendFlags` reads them.
  */
-function once(event, payload, { dir = os.tmpdir(), warn = () => {} } = {}) {
+function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = null, horizon = HORIZON } = {}) {
     // A subagent's tool call reaches this hook with its own `agent_id` and the main session's transcript
     // (Claude Code 2.1.281's program text). The line and the figures are the main session's, and a subagent
     // told to end its session would end nothing, so its tool results neither say the line nor spend the once.
@@ -313,7 +321,7 @@ function once(event, payload, { dir = os.tmpdir(), warn = () => {} } = {}) {
     // Said in this epoch, and nothing written since the figures were kept: nothing can have compacted, so
     // nothing is owed, and the transcript is not opened.
     if (found.stat.size === found.kept.offset && fs.existsSync(toldFile(sessionId, found.kept.figures.compactions, dir))) return null;
-    const figure = refresh(found, warn);
+    const figure = refresh(found, warn, { declared, horizon });
     if (figure.why !== undefined) {
         warn(figure.why);
         return null;
@@ -340,9 +348,9 @@ export const onPrompt = (payload, options) => once("UserPromptSubmit", payload, 
  * records. Returns the line, or why there is no figure: none yet, or a transcript it could not read, which
  * is said as that and never as one with no request in it.
  */
-export function onStatus(payload, { dir = os.tmpdir(), warn = () => {} } = {}) {
+export function onStatus(payload, { dir = os.tmpdir(), warn = () => {}, declared = null, horizon = HORIZON } = {}) {
     const found = locate(payload, dir);
-    const figure = found.why === undefined ? refresh(found, warn) : found;
+    const figure = found.why === undefined ? refresh(found, warn, { declared, horizon }) : found;
     if (figure.why !== undefined) return figure.after !== undefined ? `restart threshold: after ${figure.after}` : `restart threshold: not known, because ${figure.why}`;
     const usage = payload?.context_window?.current_usage;
     const counts = usage !== null && typeof usage === "object" ? ["input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"].map((k) => usage[k]) : [];
@@ -358,16 +366,65 @@ function readPayload() {
     }
 }
 
+/** The flags `./compile.mjs` writes from a workspace's `spend`, each with the range `./ledger.mjs` holds its figure to. */
+const SPEND_FLAGS = { "--read": "read", "--write-5m": "write", "--write-1h": "write", "--horizon": "requests" };
+
+const MULTIPLIER_FLAGS = ["--read", "--write-5m", "--write-1h"];
+
+/** A figure as `String` spells a positive number, and nothing looser: no sign, no hex, no blank. */
+const DECIMAL = /^[0-9]+(\.[0-9]+)?(e[+-]?[0-9]+)?$/;
+
+/**
+ * The declared figures in the arguments after the mode, where every flag takes one value, as `./compile.mjs`
+ * writes them: `declared`, the multipliers in `readSpend`'s shape, or null; `horizon`, a count, or null; and
+ * `fault`, what could not be used and what fell back for it, or null. The three multiplier flags are one set:
+ * a threshold priced by one declared figure and two general ones would be priced by nobody's figures, so a
+ * set with one of the three missing, given twice or out of its range is undeclared whole.
+ */
+export function spendFlags(args) {
+    const values = new Map();
+    const faults = { multipliers: [], horizon: [], other: [] };
+    const shown = (s) => (typeof s === "string" && /^[-+.a-zA-Z0-9]+$/.test(s) ? s : JSON.stringify(s));
+    for (let i = 0; i < args.length; i += 2) {
+        const [flag, raw] = [args[i], args[i + 1]];
+        if (!Object.hasOwn(SPEND_FLAGS, flag)) {
+            faults.other.push(`${shown(flag)} is no flag it takes`);
+            continue;
+        }
+        const part = flag === "--horizon" ? faults.horizon : faults.multipliers;
+        const range = SPEND_FIGURES[SPEND_FLAGS[flag]];
+        const value = typeof raw === "string" && DECIMAL.test(raw) ? Number(raw) : Number.NaN;
+        if (values.has(flag)) part.push(`${flag} is given twice`);
+        else if (raw === undefined) part.push(`${flag} has no value`);
+        else if (!range.holds(value)) part.push(`${flag} ${shown(raw)} is not ${range.is}`);
+        values.set(flag, value);
+    }
+    const missing = MULTIPLIER_FLAGS.filter((flag) => !values.has(flag));
+    if (missing.length > 0 && missing.length < MULTIPLIER_FLAGS.length) faults.multipliers.push(`${missing.join(" and ")} ${missing.length === 1 ? "is" : "are"} missing from the set of three`);
+    const said = [];
+    if (faults.multipliers.length) said.push(`${faults.multipliers.join(", ")}, so the multipliers are undeclared`);
+    if (faults.horizon.length) said.push(`${faults.horizon.join(", ")}, so the horizon is undeclared, and ${HORIZON} requests`);
+    if (faults.other.length) said.push(`${faults.other.join(", ")}, so ${faults.other.length === 1 ? "it is" : "each is"} passed over with the value after it`);
+    return {
+        declared: missing.length === 0 && !faults.multipliers.length ? { read: values.get("--read"), write: { "5m": values.get("--write-5m"), "1h": values.get("--write-1h") } } : null,
+        horizon: values.has("--horizon") && !faults.horizon.length ? values.get("--horizon") : null,
+        fault: said.length ? said.join("; ") : null,
+    };
+}
+
 export function main(argv = process.argv.slice(2), { stdout = process.stdout, stderr = process.stderr, payload = undefined, dir = os.tmpdir() } = {}) {
     const mode = argv[0];
     const input = payload === undefined ? readPayload() : payload;
     const warn = (why) => stderr.write(`portulan advisory: ${why}\n`);
     try {
+        const figures = spendFlags(argv.slice(1));
+        if (figures.fault !== null) warn(`the figures after ${mode} are not all usable — ${figures.fault}`);
+        const priced = { dir, warn, declared: figures.declared, horizon: figures.horizon ?? HORIZON };
         if (mode === "prompt" || mode === "tool") {
-            const out = (mode === "tool" ? onTool : onPrompt)(input, { dir, warn });
+            const out = (mode === "tool" ? onTool : onPrompt)(input, priced);
             if (out !== null) stdout.write(`${out}\n`);
         } else if (mode === "status") {
-            stdout.write(`${onStatus(input, { dir, warn })}\n`);
+            stdout.write(`${onStatus(input, priced)}\n`);
         } else {
             warn(`unknown mode ${JSON.stringify(mode)}: the compiled commands pass tool, prompt or status`);
         }
