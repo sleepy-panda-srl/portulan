@@ -108,6 +108,11 @@ export const PRODUCT = {
         "checks it*, since a record shipped without its regenerator is the ships-but-cannot-run inversion " +
         "that change exists to refuse. An earlier draft of this entry fused the two and had the 2026-08-24 " +
         "rule refusing the very split it institutes — caught at the checkpoint",
+    "symbols.mjs":
+        "a code file's outline, printed so a session reads spans rather than whole files. Product under " +
+        "the same 2026-08-24 rule — *the tool is product and the policy it reads is this team's* — as a " +
+        "tool that reads no policy at all; which boots name it in an adopter's repository is the " +
+        "adopters' change to decide (the coordinator session's delegated call of 2026-09-24)",
 };
 
 /**
