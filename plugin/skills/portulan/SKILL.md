@@ -27,7 +27,7 @@ file behind each of its lines. So:
   read `${CLAUDE_PLUGIN_ROOT}/core/engine.md` in full: a card is a boot only with the kernel beside it.
 - **Close with the honest position, from the card**: what it says is enforced here and what is not, the
   packs it names and where their limits are, and the line
-  `node ${CLAUDE_PLUGIN_ROOT}/cli/context.mjs --workspace ${CLAUDE_PROJECT_DIR}/.portulan --brief`
+  `node "${CLAUDE_PLUGIN_ROOT}/cli/context.mjs" --workspace "${CLAUDE_PROJECT_DIR}/.portulan" --brief`
   prints.
 
 ## Otherwise, steps 1 to 5
