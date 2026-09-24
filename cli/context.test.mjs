@@ -32,6 +32,7 @@ import {
     run,
     tokensOf,
 } from "./context.mjs";
+import { fenced } from "./form.mjs";
 
 // A HERMETIC HOST. `context` never asks the host where packs are installed, but it imports
 // `./skills-set.mjs`, which can, so this suite neutralises the installed-plugin record the way every
@@ -905,10 +906,11 @@ describe("this repository", () => {
     const unquotedPaths = (text) => {
         const PATH = /\$\{CLAUDE_(?:PLUGIN_ROOT|PROJECT_DIR)[^}]*\}|<[\w-]+>/;
         const found = [];
-        let fenced = false;
-        text.split("\n").forEach((line, i) => {
-            if (/^\s*```/.test(line)) return void (fenced = !fenced);
-            const code = fenced ? [line] : [...line.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+        // A fence is the one `form` reads Markdown by: backticks or tildes, closed by the same character.
+        const lines = text.split("\n");
+        const inFence = fenced(lines);
+        lines.forEach((line, i) => {
+            const code = inFence[i] ? [line] : [...line.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
             // A command starts at `node` after the span's start, a `$ ` prompt, a separator, or the `)`
             // that closes a `case` pattern.
             for (const span of code) {
@@ -945,6 +947,9 @@ describe("this repository", () => {
             "```",
             "node ${CLAUDE_PLUGIN_ROOT}/cli/discover.mjs",
             "```",
+            "~~~sh",
+            "node ${CLAUDE_PROJECT_DIR}/z.mjs",
+            "~~~",
         ].join("\n");
         assert.deepEqual(unquotedPaths(fixture), [
             "2 ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs",
@@ -955,6 +960,7 @@ describe("this repository", () => {
             "7 <workspace-dir>",
             "8 ${CLAUDE_PLUGIN_ROOT}/x.mjs",
             "11 ${CLAUDE_PLUGIN_ROOT}/cli/discover.mjs",
+            "14 ${CLAUDE_PROJECT_DIR}/z.mjs",
         ]);
     });
 });
