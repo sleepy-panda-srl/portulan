@@ -109,7 +109,7 @@ work."* Those record rails are **customer zero's**, wired in this repository's c
 something a new workspace receives. Closing that gap is the instantiation half, drafted for the
 maintainer's ratification **in [#137](https://github.com/sleepy-panda-srl/portulan/pull/137)'s own
 diff** — row 7 of [`../../docs/plan.md`](../../docs/plan.md), with the argument in
-[`../../docs/milestones/m07.md`](../../docs/milestones/m07.md) — and not claimed here as shipped.
+[`../../docs/milestones/m07.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m07.md) — and not claimed here as shipped.
 
 ## Limits
 

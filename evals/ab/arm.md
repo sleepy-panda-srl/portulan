@@ -6,7 +6,7 @@
 > baseline it eventually produces can be read by somebody who was not there.
 >
 > [`../../docs/plan.md`](../../docs/plan.md) row 8 is the binding criterion and
-> [`../../docs/milestones/m08.md`](../../docs/milestones/m08.md) is its legislative history; this file
+> [`../../docs/milestones/m08.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m08.md) is its legislative history; this file
 > restates neither. It says what the arms are.
 
 ## Why this file exists at all

@@ -1,7 +1,7 @@
 **type:** rule
 **dated:** 2026-07-26
 **scope:** workspace — anyone adopting a checker written elsewhere, or citing one as evidence
-**provenance:** `form=link` `href=../handoffs/2026-07-26-plugin-and-public-marketplace.md`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-26-plugin-and-public-marketplace.md`
 — milestone 3, session 0, where two validators were run against the same tree within the same hour and
 each returned GREEN on a defect the other caught.
 

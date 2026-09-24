@@ -3,7 +3,7 @@
 **Lane:** full · **Opened:** 2026-08-10, milestone 7 session 6, at the session-open checkpoint
 **Verify recipe:** `tests` · **Status:** IN PROGRESS, 2026-08-10, milestone 7 session 6
 
-> Scoped the way [`0011`](0011-vendor-carries-the-residence-switch.md) was: the blocking question is
+> Scoped the way [`0011`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/tasks/0011-vendor-carries-the-residence-switch.md) was: the blocking question is
 > named and answered before a line is written, so the *Done when* list below is the failing-test spec
 > rather than a summary of one. Proposal [`0014`](../proposals/0014-a-feedback-pipe-points-out-of-the-seam.md)
 > named this agreement — the field names the sender fills — as belonging "in a task when both halves
@@ -17,7 +17,7 @@ issue from a report the user previewed, under the Gated tier, seam-scanned befor
 machine.** [`../../docs/vision.md`](../../docs/vision.md) glosses it identically, so nothing here needs
 the constitution widened.
 
-The demonstration is **D3**, pinned in [`../../docs/milestones/m07.md`](../../docs/milestones/m07.md):
+The demonstration is **D3**, pinned in [`../../docs/milestones/m07.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m07.md):
 *"`feedback` both ways: a send whose exact payload the user saw first, and a send a seam hit refused."*
 
 ## Why this is not a convenience feature
@@ -125,7 +125,7 @@ rail · and **three of six** demonstrations — D1, D2 and D5.
 
 _(This line said **D5 stays blocked on the feed pin, which is the maintainer's act** when it was written
 at this session's opening. It was already false: the pin moved on 2026-08-09, and
-[`../../docs/milestones/m07.md`](../../docs/milestones/m07.md) establishes it with the measurement in the
+[`../../docs/milestones/m07.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m07.md) establishes it with the measurement in the
 same change that carries this file. Corrected here rather than left, because a stale claim a change
 introduces while correcting that same claim elsewhere is the two-carrier defect committed inside its own
 repair — found by review on the pull request, which is the only reader that saw both files at once. D5

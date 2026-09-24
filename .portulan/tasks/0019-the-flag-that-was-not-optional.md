@@ -110,7 +110,7 @@ happens to carry, and every one of them would have passed or failed by accident 
 **Only `doctor` had an injection seam; six other call sites read `process.env` directly.** Threading
 `env` through all of them was tried and **reverted at five**: no test reached those parameters, and a
 parameter that reads as a capability and has no caller is the defect this repository has been bitten by
-twice ([`0014`](0014-the-registrable-set.md), and `recipe-set`'s own `discovery`/`forced` pair). `env`
+twice ([`0014`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/tasks/0014-the-registrable-set.md), and `recipe-set`'s own `discovery`/`forced` pair). `env`
 is kept where a test uses it — `doctor` (pre-existing), `init`, `vendor`.
 
 **The containment is a rail rather than diligence.** One line per test file pointing

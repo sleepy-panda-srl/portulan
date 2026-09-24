@@ -79,10 +79,10 @@ the classification is the handoffs'.
 low-confidence notes into threads, the derived verdict the agent identity submitted and dismissed, and the
 re-run re-request. Proposal [`0023`](../proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md)'s
 exit (2) had been retired earlier the same day. The history is in the handoffs:
-[2026-07-27](../handoffs/2026-07-27-the-review-lands-before-the-merge.md),
-[2026-07-28](../handoffs/2026-07-28-awaiting-a-review-is-not-a-failure.md),
-[2026-07-29](../handoffs/2026-07-29-the-verdict-is-derived.md),
-[2026-08-18](../handoffs/2026-08-18-a-review-object-is-not-a-round.md),
-[2026-09-23 c](../handoffs/2026-09-23-c-the-copilot-review-window-is-three-minutes.md),
-[2026-09-23 g](../handoffs/2026-09-23-g-a-copilot-window-with-no-round-is-reported-not-failed.md) and
-[2026-09-23 j](../handoffs/2026-09-23-j-the-session-awaits-copilot-and-no-check-does.md).
+[2026-07-27](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-27-the-review-lands-before-the-merge.md),
+[2026-07-28](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-28-awaiting-a-review-is-not-a-failure.md),
+[2026-07-29](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-29-the-verdict-is-derived.md),
+[2026-08-18](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-08-18-a-review-object-is-not-a-round.md),
+[2026-09-23 c](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-09-23-c-the-copilot-review-window-is-three-minutes.md),
+[2026-09-23 g](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-09-23-g-a-copilot-window-with-no-round-is-reported-not-failed.md) and
+[2026-09-23 j](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-09-23-j-the-session-awaits-copilot-and-no-check-does.md).

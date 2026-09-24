@@ -56,7 +56,7 @@ That distinction is not theoretical. It is the measured failure of this same day
 - #206 had already repaired the same line by **re-arming** it: a fresh count, a fresh roster, both
   hand-maintained, both able to go stale again.
 - A sibling handoff on `main` is titled
-  [`the-correction-merged-and-the-next-pull-request-put-it-back`](../handoffs/2026-08-10-the-correction-merged-and-the-next-pull-request-put-it-back.md).
+  [`the-correction-merged-and-the-next-pull-request-put-it-back`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-08-10-the-correction-merged-and-the-next-pull-request-put-it-back.md).
 
 **Reduction is the repair; nothing holds a reduction in place.** `core/operating/evolution.md` already
 ranks *removing what would otherwise need enforcing* above catching, and `0020` §1 makes it earned prose.

@@ -52,6 +52,6 @@ milestone close is how this gets done twice.
 **Lane.** full — it changes the verify machinery, which [`../gate-map.md`](../gate-map.md) places in the
 full lane on its own.
 
-**Context.** [`../handoffs/2026-07-25-doctor-and-the-demo-workspace.md`](../handoffs/2026-07-25-doctor-and-the-demo-workspace.md),
+**Context.** [`../handoffs/2026-07-25-doctor-and-the-demo-workspace.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-25-doctor-and-the-demo-workspace.md),
 open question 1 · [`../memory/verify-preconditions-fail-closed.md`](../memory/verify-preconditions-fail-closed.md)
 — the rule these defects keep evading · [`../verify/README.md`](../verify/README.md).

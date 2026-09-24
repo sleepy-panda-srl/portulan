@@ -2,7 +2,7 @@
 
 Milestone 8's home: the golden corpora, the review-loop register, the telemetry opt-in, the A/B harness's
 records and the eval result each release carries. Row 8 of [`../docs/plan.md`](../docs/plan.md) is the
-binding criterion; [`../docs/milestones/m08.md`](../docs/milestones/m08.md) is its legislative history.
+binding criterion; [`../docs/milestones/m08.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m08.md) is its legislative history.
 This file does not restate either — a rule with two carriers is obeyed at the narrower one. It says what
 is here, how to run or extend each rail, and what each one does not establish; a rail's detail is its
 module's header comment. How each clause came to be — first-run figures, reversed designs, review
@@ -176,9 +176,9 @@ together as [#358](https://github.com/sleepy-panda-srl/portulan/issues/358):
 | `codify` step 3 — attach how it earns its place | `.portulan/proposals/` | no enforcement field |
 
 **The maintainer ruled on 2026-08-26 that [`../core/templates/task.md`](../core/templates/task.md)'s shape
-still binds**, so `clarify`'s twelve accepted files are non-compliant by his word rather than by an
+still binds**, so `clarify`'s six accepted files are non-compliant by his word rather than by an
 implementer's inference — which is what makes them accepted drift and not a divergence pinned before
-anyone ruled. Of those twelve, ten carry no acceptance-criteria section in any spelling and two fail on
+anyone ruled. Of those six, five carry no acceptance-criteria section in any spelling and one fails on
 EARS shape alone, so *"fails the EARS mandate"* is arithmetically right and rhetorically wrong; #358 has
 the cohorts.
 
@@ -293,7 +293,7 @@ Row 8's clause *a rule change merges or is rejected on eval evidence* is dischar
 of [`../.portulan/gate-map.md`](../.portulan/gate-map.md): a `gated` or `prohibited` path target that can
 never match. [#337](https://github.com/sleepy-panda-srl/portulan/issues/337) set out three answers, the
 instruments chose between them, and the change merged on 2026-09-09; the evidence table and the argument
-are [`../docs/milestones/m08.md`](../docs/milestones/m08.md)'s session-10 note. The rail is `neverMatches`
+are [`../docs/milestones/m08.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m08.md)'s session-10 note. The rail is `neverMatches`
 and the backend refusal beside `HOST_GATE_TIERS` in [`../cli/compile.mjs`](../cli/compile.mjs), a suite
 block, and a second forced-red drill on `doctor`; its limit — the refusal is at compile time, not at the
 hook — is stated beside the refusal. The hazard is held there and not in the gate corpus, whose
@@ -308,7 +308,7 @@ claims a capability that does not exist:
 - **A release actually *published* with its eval result.** The mechanism is built and `0.1.3`'s record is
   in the tree; the tag and a release body citing its register are not. **Ruled 2026-09-01: it waits for a
   real cut.** `tag-a-release` and `publish-a-release` are Gated, so the clause stays undemonstrated until
-  the maintainer takes them; [`../docs/milestones/m08.md`](../docs/milestones/m08.md) carries the argument.
+  the maintainer takes them; [`../docs/milestones/m08.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m08.md) carries the argument.
 - **The `evals` and `telemetry` Workspace Definition slots.** Proposal
   [`0034`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md), accepted
   2026-08-28, carries both in one spec bump. The deferral in [`../spec/slots.md`](../spec/slots.md) is due

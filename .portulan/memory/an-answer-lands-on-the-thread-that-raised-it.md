@@ -3,7 +3,7 @@
 **type:** rule
 **dated:** 2026-09-23
 **scope:** workspace — every pull request against this repository
-**provenance:** `form=link` `href=../handoffs/2026-08-07-the-channel-that-carried-the-findings-and-lost-them.md`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-08-07-the-channel-that-carried-the-findings-and-lost-them.md`
 — the maintainer's ruling of **shape 1** of proposal
 [`0021`](../proposals/0021-the-suppressed-channel-needs-a-state.md), 2026-08-07, with the price measured
 first. Split out of [`a-review-loop-needs-a-bound.md`](a-review-loop-needs-a-bound.md) on 2026-08-10 under

@@ -71,7 +71,7 @@ this proposal exists to close rather than a claim that it is closed.
 
 **Provenance.** Milestone 8 session 5's session-open checkpoint, 2026-08-28, which cut a `telemetry`
 slot out of that session's plan — recorded in
-[`../../docs/milestones/m08.md`](../../docs/milestones/m08.md)'s session note and in
+[`../../docs/milestones/m08.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m08.md)'s session note and in
 [`../../cli/telemetry.mjs`](../../cli/telemetry.mjs)'s header. The rule it was cut under is
 [`../gate-map.md`](../gate-map.md)'s *"an idea that adds an axis, a mode, or a surface starts as a
 proposal … never opened as an implementation pull request with tests"*, and the precedent that a slot

@@ -1331,7 +1331,12 @@ describe("the live handoff series", () => {
     test("every handoff in .portulan yields an index line, and a clean checkout keeps none", () => {
         const result = inspect(path.join(REPO, ".portulan"));
         assert.equal(result.series.handoffs.declared, true);
-        assert.ok(result.series.handoffs.count > 0);
+        // Held to the files there rather than to a minimum: a handoff is written only for work left
+        // open, and the series before 2026-09-24 left the tree, so an empty series is a real state.
+        const dated = fs
+            .readdirSync(path.join(REPO, ".portulan", "handoffs"))
+            .filter((n) => /^\d{4}-\d{2}-\d{2}-.+\.md$/.test(n));
+        assert.equal(result.series.handoffs.count, dated.length);
         assert.equal(text(failures(result).filter((f) => f.series === "handoffs")), "");
     });
 });

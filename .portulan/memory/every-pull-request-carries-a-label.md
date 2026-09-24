@@ -1,11 +1,11 @@
 **type:** rule
 **dated:** 2026-09-24
 **scope:** workspace — every pull request opened here
-**provenance:** `form=link` `href=../handoffs/2026-07-27-nothing-merges-behind-main.md`
+**provenance:** `form=link` `href=8a33f9b:.portulan/handoffs/2026-07-27-nothing-merges-behind-main.md`
 — the maintainer, 2026-07-27: *"each PR should have a label and be labeled accordingly"*, ruled when 45
 pull requests had one label between them, Dependabot's.
 
-Every pull request carries at least one label from [`../labels.json`](../labels.json), extras allowed,
+Every pull request carries a label from [labels.json](../labels.json), extras allowed,
 set in `gh pr create --label …`. Labelling later works: the check re-runs on `labeled`, which makes it a
 gate, not a trap.
 

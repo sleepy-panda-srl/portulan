@@ -96,7 +96,7 @@ private; the visibility flip is a separate authorization hold, not part of this 
 **Context.** [`../../docs/plan.md`](../../docs/plan.md) — the milestone-3 row and its amendment ·
 [`../memory/a-checkers-coverage-is-measured-not-named.md`](../memory/a-checkers-coverage-is-measured-not-named.md)
 — why both validators are run and neither is trusted on its name ·
-[`../handoffs/2026-07-25-doctor-and-the-demo-workspace.md`](../handoffs/2026-07-25-doctor-and-the-demo-workspace.md)
+[`../handoffs/2026-07-25-doctor-and-the-demo-workspace.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-25-doctor-and-the-demo-workspace.md)
 — what milestone 3 inherited · [`0004-a-harness-for-the-verify-recipes.md`](0004-a-harness-for-the-verify-recipes.md)
 — the carried item this task deliberately does not absorb.
 

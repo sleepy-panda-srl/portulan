@@ -1,7 +1,7 @@
 **type:** rule
 **dated:** 2026-08-18
 **scope:** workspace — Portulan's build sessions
-**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/blob/main/.portulan/handoffs/2026-07-25-ci-runs-declared-recipes.md`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-25-ci-runs-declared-recipes.md`
 
 **Never read `$?` after a pipe.** In `bash` and `zsh`, `cmd | sed …; echo $?` reports **`sed`'s** status,
 not `cmd`'s — and `sed` almost always succeeds, so every forced-red measurement taken that way prints `0`

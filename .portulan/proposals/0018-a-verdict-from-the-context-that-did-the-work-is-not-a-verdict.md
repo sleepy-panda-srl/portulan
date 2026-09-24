@@ -134,7 +134,7 @@ the one that made the change, and every one was invisible to the change's own au
    supervisor's attack pass found **five holes that list had missed** — the list had four entries — and
    fourteen review rounds then found **three more live bypasses the attack pass had not tried**. Eight
    in all, every one found after the gate was called done by the context that built it.
-   _([`../../docs/milestones/m08.md`](../../docs/milestones/m08.md).)_
+   _([`../../docs/milestones/m08.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m08.md).)_
 3. **The relocation that dropped a deliverable.** Moving 55,643 characters of argument into
    `docs/milestones/` lost a clause from milestone 5's row. Caught at **pre-commit** by a fresh context
    re-measuring the diff against the criterion it claimed to preserve. _(Session log, 2026-07-29,

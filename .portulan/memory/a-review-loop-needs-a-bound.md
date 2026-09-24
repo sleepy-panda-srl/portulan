@@ -1,19 +1,19 @@
 **type:** rule
 **dated:** 2026-09-24
 **scope:** workspace — every pull request here
-**provenance:** `form=link` `href=../handoffs/2026-07-28-awaiting-a-review-is-not-a-failure.md`
+**provenance:** `form=link` `href=8a33f9b:.portulan/handoffs/2026-07-28-awaiting-a-review-is-not-a-failure.md`
 — the maintainer, 2026-07-28: the loop *"can grow out of hand; it hinders development more than it
 helps"*, and *"is a must and must be upheld"*. Both stand.
 
 A **round** is a Copilot review the working session answers with a push, records-only too
-([counting it](../handoffs/2026-07-30-a-round-gets-its-definition.md)).
+(see `git show 8a33f9b:.portulan/handoffs/2026-07-30-a-round-gets-its-definition.md`).
 
-1. **One push per round**, fixes batched. Each thread is still answered, but only resolving, the
-   maintainer's, opens the gate ([gate map](../gate-map.md)).
+1. **One push per round**, fixes batched. Each thread is still answered; only the maintainer's
+   resolving opens the gate ([gate map](../gate-map.md)).
 2. **Records land last**: in the final push or after the merge, never between rounds.
-3. **Moved** to [its own record](an-answer-lands-on-the-thread-that-raised-it.md).
+3. **Moved** to [its record](an-answer-lands-on-the-thread-that-raised-it.md).
 4. **Two fix-rounds, then triage**: the rest becomes an issue and holds no merge. A **sibling** of an
-   earlier fix spends nothing. This file carries its one definition, worded to re-derive from diffs:
+   earlier fix spends nothing. Its one definition, worded to re-derive from diffs:
 
    > a finding whose governing rule was already **enforced at another site of the same operation** — in
    > this change or in the tree — when the defect was written.

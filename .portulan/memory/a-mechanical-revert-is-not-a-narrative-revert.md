@@ -1,7 +1,7 @@
 **type:** rule
 **dated:** 2026-07-27
 **scope:** workspace — anywhere an automated rewrite touches a value that prose nearby describes
-**provenance:** `form=link` `href=../handoffs/2026-07-27-dependabot-security-and-the-watchers.md`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-07-27-dependabot-security-and-the-watchers.md`
 — 2026-07-27, where a deliberate experiment was reverted by the mechanism it was testing, and `main`
 carried a false claim for the interval as a direct result of that mechanism working.
 
