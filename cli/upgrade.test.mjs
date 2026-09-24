@@ -31,7 +31,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { applyEdits, bundleSpec, inside, loadSteps, planFor, readWorkspace, resolveTarget, restore, run, UpgradeError } from "./upgrade.mjs";
+import { applyEdits, bundleSpec, inside, loadSteps, planFor, readWorkspace, repositoryView, resolveTarget, restore, run, UpgradeError } from "./upgrade.mjs";
 import { inspect } from "./doctor.mjs";
 import { readChanges, renderChanges } from "./index.mjs";
 import { execFileSync } from "node:child_process";
@@ -1305,6 +1305,18 @@ describe("the steps that move a consumer to the new form, on a real repository i
         assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 2);
         assert.match(h.text(), /`### Misc` under Unreleased is none of added, changed, deprecated, removed, fixed, security/);
         assert.equal(git(repo, "status", "--porcelain"), "");
+    });
+
+    test("the tree's view lists nothing through a link, as it reads nothing through one", () => {
+        const root = scratch();
+        const outside = scratch();
+        fs.writeFileSync(path.join(outside, "elsewhere.added.md"), "- Elsewhere.\n");
+        fs.mkdirSync(path.join(root, ".portulan"));
+        fs.symlinkSync(outside, path.join(root, "changes"));
+        const view = repositoryView(path.join(root, ".portulan"), { tree: "../" });
+        assert.throws(() => view.names("changes"), /changes is a symlink, and this refuses to list through one/);
+        assert.throws(() => view.read("changes/elsewhere.added.md"), /changes is a symlink, and this refuses to read through one/);
+        assert.deepEqual(view.names("absent"), [], "an absent directory holds no names");
     });
 
     test("a workspace red afterwards is rolled back, deletions and tree edits included, and told how to fit the card", async () => {

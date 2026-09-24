@@ -119,6 +119,19 @@ describe("the Session log", () => {
             { file: "a.md", line: 1 },
         ]);
     });
+
+    test("on disk, a workspace below the tree is read wherever it sits, and a dot-directory above it only on the way down", () => {
+        const root = tree({
+            "packages/acme/.portulan/a.md": "# A\n",
+            "packages/acme/.claude/b.md": "# B\n",
+            ".config/ws/.portulan/c.md": "# C\n",
+            ".config/other/d.md": "# D\n",
+            ".config/e.md": "# E\n",
+            "f.md": "# F\n",
+        });
+        assert.deepEqual(markdownOnDisk(root, "packages/acme/.portulan"), ["f.md", "packages/acme/.portulan/a.md"]);
+        assert.deepEqual(markdownOnDisk(root, ".config/ws/.portulan"), [".config/ws/.portulan/c.md", "f.md"]);
+    });
 });
 
 describe("the changelog's Unreleased entries, as fragments", () => {
@@ -292,6 +305,12 @@ describe("the drafted card", () => {
 
 describe("which form a consumer is in, read from disk", () => {
     const manifest = (more = {}) => ({ kind: "repository", tree: "../", slots: {}, ...more });
+
+    test("a workspace nested below its tree has its own Session log read", () => {
+        const root = tree({ "packages/acme/.portulan/notes.md": "## Session log\n\n- a\n" });
+        const piece = formOf(path.join(root, "packages", "acme", ".portulan"), manifest({ tree: "../../../" })).pieces.find((p) => p.id === "session-log");
+        assert.deepEqual(piece, { id: "session-log", state: "today", text: "a Session log with entries in packages/acme/.portulan/notes.md" });
+    });
 
     test("no tree, no pieces, and the report says why", () => {
         const ws = tree();

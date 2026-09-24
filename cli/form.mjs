@@ -263,11 +263,14 @@ export function retireSessionLogs(text, pointer) {
 /**
  * The Markdown files of a tree as they sit on disk, for a reader that does not ask git: every `.md` file,
  * never through a link, skipping `.git`, `node_modules` and the dot-directories a host or a tool keeps,
- * though not the workspace's own. `doctor` reads these; `upgrade` reads git's tracked list instead.
+ * though not the workspace's own, `keep`, wherever it sits below the tree: a dot-directory it sits in is
+ * walked only on the way down to it. `doctor` reads these; `upgrade` reads git's tracked list instead.
  */
 export function markdownOnDisk(root, keep = null) {
     const out = [];
-    const walk = (dir, rel) => {
+    // `narrow` is a dot-directory entered only because the workspace sits below it: in there, nothing but the
+    // way down to the workspace is walked.
+    const walk = (dir, rel, narrow) => {
         let entries;
         try {
             entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -277,14 +280,16 @@ export function markdownOnDisk(root, keep = null) {
         }
         for (const e of entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
             const r = rel ? `${rel}/${e.name}` : e.name;
+            const toward = keep !== null && (r === keep || keep.startsWith(`${r}/`));
+            if (narrow && !toward) continue;
             if (e.isDirectory()) {
                 if (e.name === "node_modules" || e.name === ".git") continue;
-                if (e.name.startsWith(".") && r !== keep) continue;
-                walk(path.join(dir, e.name), r);
+                if (e.name.startsWith(".") && !toward) continue;
+                walk(path.join(dir, e.name), r, r !== keep && (narrow || e.name.startsWith(".")));
             } else if (e.isFile() && e.name.endsWith(".md")) out.push(r);
         }
     };
-    walk(root, "");
+    walk(root, "", false);
     return out;
 }
 
@@ -578,7 +583,7 @@ export function formOf(workspaceDir, manifest) {
     if (entries) add("changelog", "today", `${CHANGELOG} holds ${entries} entr${entries === 1 ? "y" : "ies"} under Unreleased`);
     else if (entries === 0) add("changelog", "new", `no entry under ${CHANGELOG}'s Unreleased`);
 
-    const logs = sessionLogsIn(tree, markdownOnDisk(tree, posix(path.relative(tree, wsDir)).split("/")[0] || null));
+    const logs = sessionLogsIn(tree, markdownOnDisk(tree, posix(path.relative(tree, wsDir)) || null));
     add("session-log", logs.length ? "today" : "new", logs.length ? `a Session log with entries in ${logs.map((l) => l.file).join(", ")}` : "no Session log with entries");
 
     const index = manifest?.handoffs?.index?.path;

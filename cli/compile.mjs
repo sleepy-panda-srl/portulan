@@ -2191,6 +2191,8 @@ function checkedImports(text, dir, root, where) {
             if (depth + 1 >= IMPORT_DEPTH) {
                 throw new CompileError(`${spelled} sits ${depth + 1} imports below the rule, and the host loads nothing ${IMPORT_DEPTH} deep — import the file from nearer the rule`);
             }
+            // The queue is breadth-first, so every import the text makes itself is seen before any file one of
+            // them imports is read: a file imported both ways is named once, as the text's own.
             if (depth === 0) own.push({ target, file, nested: [] });
             if (seen.has(real)) continue;
             seen.add(real);

@@ -218,10 +218,10 @@ export function readWorkspace(dir) {
  * where the manifest declares no `tree` or it names no directory, and such a step is owed nothing then.
  * `read` answers `null` for an absent file, since a step asks whether one exists as often as what it
  * says, and refuses a path that leaves the tree or runs through a link, as the write guard does. `names`
- * lists a directory. `git` runs git there, or is `null` where no work tree answers, which a step turns
- * into its own sentence.
+ * lists a directory, refusing what `read` refuses. `git` runs git there, or is `null` where no work tree
+ * answers, which a step turns into its own sentence.
  */
-function repositoryView(root, manifest) {
+export function repositoryView(root, manifest) {
     if (typeof manifest?.tree !== "string") return null;
     const dir = path.resolve(root, manifest.tree);
     try {
@@ -253,6 +253,8 @@ function repositoryView(root, manifest) {
         names: (rel) => {
             const at = inside(dir, rel);
             if (at === null) throw new UpgradeError(`\`${rel}\` resolves outside ${dir} — refusing to list there`);
+            const linked = linkOnPath(dir, at);
+            if (linked !== null) throw new UpgradeError(linked.replace("write through", "list through"));
             try {
                 return fs.readdirSync(at);
             } catch (error) {
