@@ -875,8 +875,10 @@ The first two stop with exit 2; the advisory, whose exit 2 would erase the perso
 stderr what it could not use and prices that half at the general figures. A threshold that a session's fresh
 context still carries past the largest number is none: the ledger stops with exit 2, and the advisory says it
 is not known. `doctor` refuses the key in a manifest declaring a version before 2.12, gated from birth as
-`sessions` was, and `restart` in one before 2.13; it is one of two strings, which the subset types in full, and
-the ledger and `compile` refuse any other with exit 2.
+`sessions` was, and `restart` in one before 2.13. `compile` refuses `restart` there too, with exit 2 and
+nothing written, so that no block is compiled from a declaration its own version's validator refuses.
+`restart` is one of two strings, which the subset types in full, and the ledger and `compile` refuse any other
+with exit 2.
 
 ## `slots.context` — the guidance a host loads, each unit in its tier
 

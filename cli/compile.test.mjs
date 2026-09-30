@@ -77,6 +77,7 @@ import {
 } from "./compile.mjs";
 import { alwaysTier } from "./context.mjs";
 import { spendFlags } from "./advisory.mjs";
+import { inspect } from "./doctor.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
@@ -956,12 +957,13 @@ describe("the declared figures", () => {
         });
     }
 
-    test("a restart in a manifest that declares 2.12 stops compile with exit 2, as doctor refuses it", () => {
+    test("a restart in a manifest that declares 2.12 stops compile with exit 2, in doctor's words", async () => {
         for (const restart of ["block", "advise"]) {
             const dir = workspaceWithSpend({ restart }, policy(), "2.12");
+            const doctors = (await inspect(path.join(dir, ".portulan"))).findings.find((f) => f.message.startsWith("`spend.restart`"));
             assert.throws(
                 () => spendDeclaration(dir),
-                (error) => error instanceof CompileError && /^`spend\.restart` in \.portulan\/workspace\.json is Workspace Definition 2\.13's, and this manifest declares 2\.12/.test(error.message),
+                (error) => error instanceof CompileError && error.message === doctors?.message.replace("`spend.restart`", "`spend.restart` in .portulan/workspace.json"),
             );
             assert.equal(run(["--workspace", dir], { quiet: true }), 2);
             assert.equal(fs.existsSync(path.join(dir, ".claude", "settings.json")), false);
