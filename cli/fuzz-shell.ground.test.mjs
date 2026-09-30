@@ -1,4 +1,4 @@
-// Tests for `fuzz-shell`'s ground truth, measured under real bash: each production's position, the path spellings, the wrappers.
+// Tests for `fuzz-shell`'s ground truth, measured under real bash: each bash-safe production's position, the path spellings, the wrappers.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";

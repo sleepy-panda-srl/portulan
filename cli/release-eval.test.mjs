@@ -1,4 +1,4 @@
-// The release-eval suite, on the record layer only: `--capture` spawns every rail, this suite included.
+// The release-eval suite, on the record layer only: `--capture` spawns every other rail, the tests that run this suite included.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";

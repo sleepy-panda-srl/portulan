@@ -94,7 +94,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`advisory.test.mjs`](advisory.test.mjs) | Tests for `advisory` — the restart advisory's one line with a tool result or at the prompt, and its figure in the status line. |
 | [`checkout-refs.live.test.mjs`](checkout-refs.live.test.mjs) | A workflow that checks out MORE THAN ONCE names the ref of every checkout after the first. |
 | [`cli-roster.live.test.mjs`](cli-roster.live.test.mjs) | `cli/README.md` is exactly what ./roster.mjs renders from this directory, and the render keeps its shape. |
-| [`collisions.test.mjs`](collisions.test.mjs) | The collision contract: `init`, `new` and `vendor` answer each state alike, and no fourth `collisions` exists. |
+| [`collisions.test.mjs`](collisions.test.mjs) | The collision contract: `init`, `new` and `vendor` answer each contracted state alike, and no fourth `collisions` exists. |
 | [`comments.test.mjs`](comments.test.mjs) | Tests for `comments`: each language's comments found exactly, and the four kinds of history told from the rest. |
 | [`compile.test.mjs`](compile.test.mjs) | Tests for `compile` — the enforcement compiler. |
 | [`context.test.mjs`](context.test.mjs) | Tests for `context` — what a boot reads and what the host loads into every context, measured. |
@@ -107,7 +107,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`feedback.test.mjs`](feedback.test.mjs) | Tests for `portulan feedback`: draft, preview, send, the seam scan and the payload; `gh` is injected, never run. |
 | [`finish.test.mjs`](finish.test.mjs) | Tests for `finish` — one call closes a change: the fragment, the commit, every recipe on it, the push. |
 | [`form.test.mjs`](form.test.mjs) | `form` — the one definition of a consumer's new form, which `init`, `vendor`, `upgrade` and `doctor` read. |
-| [`fuzz-shell.ground.test.mjs`](fuzz-shell.ground.test.mjs) | Tests for `fuzz-shell`'s ground truth, measured under real bash: each production's position, the path spellings, the wrappers. |
+| [`fuzz-shell.ground.test.mjs`](fuzz-shell.ground.test.mjs) | Tests for `fuzz-shell`'s ground truth, measured under real bash: each bash-safe production's position, the path spellings, the wrappers. |
 | [`fuzz-shell.test.mjs`](fuzz-shell.test.mjs) | Tests for `fuzz-shell` — the hermetic half: its payloads are gated commands, so nothing here spawns bash or runs one. |
 | [`gate.test.mjs`](gate.test.mjs) | The PreToolUse gate runner, driven as the host drives it. |
 | [`gh-bot.test.mjs`](gh-bot.test.mjs) | The agent identity's wrapper refuses the endpoints it is not for. |
@@ -128,7 +128,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`portulan.test.mjs`](portulan.test.mjs) | Tests for the `npx` entry point: dispatch through an injected loader, its refusals, and its version. |
 | [`recipe-set.live.test.mjs`](recipe-set.live.test.mjs) | The composed recipe set, against THIS repository rather than against fixtures. |
 | [`recipe-set.test.mjs`](recipe-set.test.mjs) | The recipe set — one carrier, and every reader reaches it. |
-| [`release-eval.test.mjs`](release-eval.test.mjs) | The release-eval suite, on the record layer only: `--capture` spawns every rail, this suite included. |
+| [`release-eval.test.mjs`](release-eval.test.mjs) | The release-eval suite, on the record layer only: `--capture` spawns every other rail, the tests that run this suite included. |
 | [`review-meter.test.mjs`](review-meter.test.mjs) | Tests for `review-meter` — the review-loop meter: arithmetic, snapshot contract, register rail, window and shaping. |
 | [`rule-carriers.test.mjs`](rule-carriers.test.mjs) | Tests for `rule-carriers` — the rail that keeps a reduced rule reduced. |
 | [`sessions.test.mjs`](sessions.test.mjs) | `sessions` — the cache lifetime's offer, and `doctor`'s one line on the session switches. |
@@ -138,7 +138,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`skills-set.live.test.mjs`](skills-set.live.test.mjs) | The registrable set, against THIS repository rather than against fixtures. |
 | [`skills-set.test.mjs`](skills-set.test.mjs) | The registrable set — what a plugin manifest must declare so a composed pack's skills register. |
 | [`stop-gate.test.mjs`](stop-gate.test.mjs) | Tests for the Stop-gate runner: its per-reason caps, the handoff date, its verdicts, the did-work signals and the tree it answers about. |
-| [`symbols.live.test.mjs`](symbols.live.test.mjs) | `symbols` against this repository: every tracked code and Markdown file outlines, every span compiles alone, every heading link lands. |
+| [`symbols.live.test.mjs`](symbols.live.test.mjs) | `symbols` against this repository: tracked code and Markdown files outline, each declaration compiles alone, and heading links land. |
 | [`symbols.test.mjs`](symbols.test.mjs) | The outline's contract, on fixtures: what each construct prints, and every refusal. |
 | [`telemetry.test.mjs`](telemetry.test.mjs) | Tests for the OTel emitter: its consent gate, closed payload, offline audit and transport. |
 | [`test-isolation.live.test.mjs`](test-isolation.live.test.mjs) | A test that substitutes a shared object hands the restore to the runner, or says why it cannot. |

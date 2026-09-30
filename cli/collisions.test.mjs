@@ -1,4 +1,4 @@
-// The collision contract: `init`, `new` and `vendor` answer each state alike, and no fourth `collisions` exists.
+// The collision contract: `init`, `new` and `vendor` answer each contracted state alike, and no fourth `collisions` exists.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
