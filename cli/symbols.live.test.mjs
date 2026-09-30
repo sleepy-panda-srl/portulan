@@ -1,4 +1,4 @@
-// `symbols` against this repository: every tracked file outlines, every span compiles alone, every heading link lands.
+// `symbols` against this repository: every tracked code and Markdown file outlines, every span compiles alone, every heading link lands.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";

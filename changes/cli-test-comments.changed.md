@@ -2,8 +2,8 @@
   [`cli/`](../cli/), and the fixtures only the tests read, drops the dates, proposal and milestone numbers,
   review rounds, pull request numbers and narration its comments carried. A comment stays where it states
   a host's behaviour at its version, an ordering or safety constraint, or what a test cannot prove, and
-  four file-private names now say what a comment said. Their comments fall from 765,536 to 85,759 bytes,
+  four file-private names now say what a comment said. Their comments fall from 765,536 to 85,822 bytes,
   and [`cli/README.md`](../cli/README.md) renders each suite's new one-line header. The tree's comment
   lines recording history fall from 650 to none, and the
   [`comments`](../.portulan/verify/comments.sh) recipe's limit falls to 0, with its byte rail at
-  261,403, the tree's 256,277 comment bytes plus 2%. What each test checks is unchanged.
+  261,467, the tree's 256,340 comment bytes plus 2%. What each test checks is unchanged.

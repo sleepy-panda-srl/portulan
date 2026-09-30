@@ -337,7 +337,7 @@ describe("payload — could-not-run is exit 2, from every call that can refuse",
     });
 
     test("`packedPaths` failing is translated — its CannotRun is a DIFFERENT class than this file's", () => {
-        // Shown on the class boundary: making `packedPaths` fail for real would mean breaking npm.
+        // A limit: this shows only that the two classes differ; making `packedPaths` fail for real would mean breaking npm.
         assert.equal(typeof CannotRun, "function");
         const theirs = class CannotRun extends Error {};
         assert.ok(!(new theirs("x") instanceof CannotRun), "the two CannotRun classes are not interchangeable");

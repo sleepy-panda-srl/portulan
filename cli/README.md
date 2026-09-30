@@ -138,7 +138,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`skills-set.live.test.mjs`](skills-set.live.test.mjs) | The registrable set, against THIS repository rather than against fixtures. |
 | [`skills-set.test.mjs`](skills-set.test.mjs) | The registrable set — what a plugin manifest must declare so a composed pack's skills register. |
 | [`stop-gate.test.mjs`](stop-gate.test.mjs) | Tests for the Stop-gate runner: its per-reason caps, the handoff date, its verdicts, the did-work signals and the tree it answers about. |
-| [`symbols.live.test.mjs`](symbols.live.test.mjs) | `symbols` against this repository: every tracked file outlines, every span compiles alone, every heading link lands. |
+| [`symbols.live.test.mjs`](symbols.live.test.mjs) | `symbols` against this repository: every tracked code and Markdown file outlines, every span compiles alone, every heading link lands. |
 | [`symbols.test.mjs`](symbols.test.mjs) | The outline's contract, on fixtures: what each construct prints, and every refusal. |
 | [`telemetry.test.mjs`](telemetry.test.mjs) | Tests for the OTel emitter: its consent gate, closed payload, offline audit and transport. |
 | [`test-isolation.live.test.mjs`](test-isolation.live.test.mjs) | A test that substitutes a shared object hands the restore to the runner, or says why it cannot. |

@@ -1,6 +1,6 @@
 // A test that substitutes a shared object hands the restore to the runner, or says why it cannot.
 //
-// Only `fs` is swept: a stream mock may need a shorter lifetime than the test, which `t.mock.method` cannot give.
+// Only `fs` is swept; stream substitutions, some of which end within their test, are left to judgement.
 
 import test from "node:test";
 import assert from "node:assert/strict";

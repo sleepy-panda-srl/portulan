@@ -75,7 +75,7 @@ test("the RECORD LAYER is ignored, because it quotes retired versions on purpose
 });
 
 test("a `g` pattern does not carry lastIndex between files", () => {
-    // A shared `g` regex resumes past the first claim and misses the second.
+    // Both claims sit in one text, so this checks one call's matches; it cannot show state crossing files.
     const two = "**Current release: `1.2.3`**\n\n**Current release: `1.2.3`**\n";
     assert.equal(claimsIn(two).length, 2);
 });
