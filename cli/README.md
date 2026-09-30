@@ -6,10 +6,9 @@
 The command line of the npm package. `portulan <subcommand>` reaches each subcommand through
 `package.json`'s `bin`, [`portulan.mjs`](portulan.mjs); every tool here also runs from a clone as
 `node cli/<file>.mjs`. A subcommand's line is its `portulan --help` summary, and every other line is the
-first paragraph of its file's header comment. The header is each file's full account: read it before
-changing the file. The groups come from the code: `SUBCOMMANDS` in [`portulan.mjs`](portulan.mjs),
-`HOOK_RUNNERS` in [`compile.mjs`](compile.mjs), and `EXCLUDED` in [`payload.mjs`](payload.mjs), which
-says why each file marked *Not shipped* stays home.
+first paragraph of its file's header comment, which says what the file is. The groups come from the
+code: `SUBCOMMANDS` in [`portulan.mjs`](portulan.mjs), `HOOK_RUNNERS` in [`compile.mjs`](compile.mjs),
+and `EXCLUDED` in [`payload.mjs`](payload.mjs), which says why each file marked *Not shipped* stays home.
 
 A tool belongs here when it works on any workspace or plugin root. This repository's own recipes live
 in [`../.portulan/verify/`](../.portulan/verify/), and its operator tooling in
@@ -50,6 +49,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`ab-grade.mjs`](ab-grade.mjs) | The A/B graders — what an arm's tree says it did, and the discrimination that proves a grader read it. Not shipped. |
 | [`ab-run.mjs`](ab-run.mjs) | The A/B run — the only module in this family that spawns an agent, and the only one that records a figure about behaviour. Not shipped. |
 | [`ab.mjs`](ab.mjs) | The A/B arm builder — what "Portulan on" is made of, built rather than described. Not shipped. |
+| [`comments.mjs`](comments.mjs) | `comments` — the comments in a tree that record a change's history instead of what the code cannot show. |
 | [`context.mjs`](context.mjs) | What a context loads, measured — the measurement module proposal `0036` names. |
 | [`control-chars.mjs`](control-chars.mjs) | `control-chars` — the rail on bytes a reader cannot see. |
 | [`discover.mjs`](discover.mjs) | Host plugin-cache discovery — reading a host's installed-plugin record so a POINTER can be resolved to the workspace it names. |
@@ -95,6 +95,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`checkout-refs.live.test.mjs`](checkout-refs.live.test.mjs) | A workflow that checks out MORE THAN ONCE names the ref of every checkout after the first. |
 | [`cli-roster.live.test.mjs`](cli-roster.live.test.mjs) | `cli/README.md` is exactly what ./roster.mjs renders from this directory, and the render keeps its shape. |
 | [`collisions.test.mjs`](collisions.test.mjs) | The collision contract — one rule, three carriers, pinned together. |
+| [`comments.test.mjs`](comments.test.mjs) | Tests for `comments`: each language's comments found exactly, and the four kinds of history told from the rest. |
 | [`compile.test.mjs`](compile.test.mjs) | Tests for `compile` — the enforcement compiler. |
 | [`context.test.mjs`](context.test.mjs) | Tests for `context` — what a boot reads and what the host loads into every context, measured. |
 | [`control-chars.test.mjs`](control-chars.test.mjs) | Tests for `control-chars` — the rail on bytes a reader cannot see. |

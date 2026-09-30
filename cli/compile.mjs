@@ -2116,7 +2116,7 @@ export const BOOT_CARD_LINE = "# Portulan boot card";
 export const IMPORT_DEPTH = 5;
 
 /** A line asking `compile` for the lead sentences of another file's first list, alone on its line. */
-const LEADS_LINE = /^<!-- leads: (\S+) -->$/;
+export const LEADS_LINE = /^<!-- leads: (\S+) -->$/;
 
 /**
  * The same, of a file in the engine this compiler ships with, `../core/`, so every card naming it carries
@@ -2128,7 +2128,7 @@ const ENGINE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const PLUGIN_ROOT = "<plugin root>/";
 
 /** A line asking `compile` for a gate policy's gate ids under their tiers, alone on its line. */
-const GATES_LINE = /^<!-- gates: (\S+) -->$/;
+export const GATES_LINE = /^<!-- gates: (\S+) -->$/;
 
 /** How a card names each tier: core's four, each with what it asks of an agent. */
 const TIER_GLOSS = {

@@ -92,6 +92,7 @@ export const RECIPE_SET_READERS = Object.freeze([
     // Added 2026-09-24: `cli/finish.mjs` runs every recipe the set yields before a change is pushed, as
     // CI runs them, so it asks here rather than reading `verify.recipes` itself.
     "cli/finish.mjs",
+    "cli/form.mjs",
     "cli/stop-gate.mjs",
     "cli/vendor.mjs",
 ]);

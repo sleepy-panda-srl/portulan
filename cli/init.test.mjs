@@ -529,6 +529,13 @@ describe("the scan drafts what it observed and says what it could not determine"
         assert.equal(observed.build, null);
     });
 
+    test("the comments are counted only where the draft uses the count, which a pointer's does not", () => {
+        const dir = scratch({ "a.js": "// Added 2026-09-01.\nexport const a = 1;\n" });
+        execFileSync("git", ["init", "-q", dir]);
+        assert.equal(scan(dir).commentHistory, 1);
+        assert.equal(scan(dir, { comments: false }).commentHistory, null);
+    });
+
     test("what the scan could not determine is written down as unknown, not omitted", async () => {
         const dir = scratch({ "notes.txt": "hello" });
         await run(["--residence", "in-repo", dir], harness().options);
@@ -1604,6 +1611,80 @@ describe("the drafted rail's machine-local path stays findable", () => {
             const source = fs.readFileSync(path.join(REPO, rel), "utf8");
             assert.match(source, /portulan:bundle-fallback/, `${rel} must name the marker it re-derives or copies`);
         }
+    });
+});
+
+describe("where git lists the tree, the drafted workspace holds its comments' history at the count it has", () => {
+    const repository = (seed) => {
+        const dir = scratch(seed);
+        execFileSync("git", ["init", "-q"], { cwd: dir });
+        return dir;
+    };
+    const railOf = (dir) => path.join(dir, ".portulan", "verify", "comments.sh");
+    const runRail = (dir, env = { ...process.env, PORTULAN_CLI: path.join(REPO, "cli") }) => {
+        try {
+            return { code: 0, out: execFileSync(railOf(dir), { cwd: dir, encoding: "utf8", stdio: "pipe", env }) };
+        } catch (error) {
+            return { code: error.status, out: `${error.stdout ?? ""}${error.stderr ?? ""}` };
+        }
+    };
+
+    test("the recipe is declared at the tree's count, green as drafted and red on one line more", async () => {
+        const dir = repository({ "src/a.js": "// Added 2026-09-01: the first thing.\nexport const a = 1;\n" });
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        const manifest = ok(dir);
+        assert.deepEqual(manifest.verify.recipes.map((r) => r.id), ["workspace", "index", "comments"]);
+        assert.equal(manifest.verify.default, "workspace");
+        assert.deepEqual(manifest.verify.recipes[2].requires, ["bash", "git", "node"]);
+        assert.match(fs.readFileSync(railOf(dir), "utf8"), /^LIMIT=1$/m, "the drafted files add no line to the tree's one");
+        const green = runRail(dir);
+        assert.equal(green.code, 0, green.out);
+        fs.appendFileSync(path.join(dir, "src", "a.js"), "// Fixed in PR #12.\n");
+        const red = runRail(dir);
+        assert.equal(red.code, 1, red.out);
+        assert.match(red.out, /src\/a\.js: 1 date · 3 reference/);
+    });
+
+    test("a bundle whose source map is one comment line of 200,000 characters is counted like any file", async () => {
+        const dir = repository({ "dist/bundle.js": `x();\n//# sourceMappingURL=data:application/json;base64,${"A".repeat(200_000)}\n` });
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        assert.deepEqual(ok(dir).verify.recipes.map((r) => r.id), ["workspace", "index", "comments"]);
+        assert.match(fs.readFileSync(railOf(dir), "utf8"), /^LIMIT=0$/m);
+        const green = runRail(dir);
+        assert.equal(green.code, 0, green.out);
+    });
+
+    test("its two lines naming the bundle are marked, in the shape `0002` re-derives", async () => {
+        const dir = repository();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        const marked = fs.readFileSync(railOf(dir), "utf8").split("\n").filter((line) => line.includes("portulan:bundle-fallback"));
+        assert.equal(marked.length, 2);
+        for (const line of marked) assert.equal([...line.matchAll(/"([^"]*)"/g)].filter((m) => m[1].endsWith("/cli/index.mjs")).length, 1, line);
+    });
+
+    test("a `portulan` on PATH holding no comments.mjs is passed over for the bundle; a PORTULAN_CLI holding none cannot run", async () => {
+        const dir = repository();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        const bin = scratch({ portulan: "#!/bin/sh\nexit 0\n" });
+        fs.chmodSync(path.join(bin, "portulan"), 0o755);
+        const onPath = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` };
+        delete onPath.PORTULAN_CLI;
+        const bundle = runRail(dir, onPath);
+        assert.equal(bundle.code, 0, bundle.out);
+        fs.writeFileSync(path.join(bin, "comments.mjs"), "console.log('the copy on PATH');\n");
+        assert.match(runRail(dir, onPath).out, /the copy on PATH/);
+        const explicit = runRail(dir, { ...onPath, PORTULAN_CLI: scratch() });
+        assert.equal(explicit.code, 2, explicit.out);
+        assert.match(explicit.out, /holds no comments\.mjs/);
+    });
+
+    test("a tree git does not list gets no recipe, and is told `upgrade` offers one", async () => {
+        const dir = scratch();
+        const h = harness();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], h.options), 0);
+        assert.deepEqual(ok(dir).verify.recipes.map((r) => r.id), ["workspace", "index"]);
+        assert.equal(fs.existsSync(railOf(dir)), false);
+        assert.ok(h.said.some((line) => /drafted no `comments` recipe.*git could not list the files.*`portulan upgrade` offers one/.test(line)), h.said.join("\n"));
     });
 });
 

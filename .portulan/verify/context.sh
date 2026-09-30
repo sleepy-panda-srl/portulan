@@ -21,9 +21,7 @@
 #
 # ## How a rail is set, lowered and raised
 #
-# Each is the figure measured on the tree this recipe landed in, main at a534f15 with this change's own
-# recipe entry in the manifest, plus 2%, rounded up (railFor in ../../cli/context.mjs), unless its line
-# names the change that moved it since, on that change's own figure.
+# Each is its figure plus 2%, rounded up (railFor in ../../cli/context.mjs).
 # At exactly today's figure every added byte in a file a boot reads would be red, and the memory index
 # alone is 37 of its 40 lines. The report says when a rail's headroom passes 5%, and gives the figure
 # to lower it to. **A change that demotes lowers its line here, in the same pull request**, or the gain
@@ -59,24 +57,18 @@ cd -- "$root" || exit 2
 }
 
 # The rails, one line each, in bytes.
-RAIL_OWN_BOOT=15650       # .portulan's boot read-set, 15,361 B: the skill, and the boot card with its two
-                          # imports, lowered from 89,057 B by the boot card, raised from 15,735 B by its line
-                          # on closing a change, 233 B to spare requests, and lowered from 15,968 B by the
-                          # rules on reading and the cache, which paid for their lines by moving the kernel's
-                          # and the skill's framing to files read on demand (2026-09-24), to 15,343 B; the
-                          # closing line's `--pack-root packs`, as CI names the root, spends 18 B
-RAIL_DEMO_BOOT=36975      # examples' boot read-set with the combcount card, 36,250 B, lowered from 37,185 B by
-                          # the same move: with no card loaded, a boot reads the skill, which routes, and
-                          # then its steps
-RAIL_ENGINE=12936         # the boot skill, its steps and the kernel, 12,682 B, lowered from 13,617 B by the
-                          # same move
+RAIL_OWN_BOOT=15893       # .portulan's boot read-set, 15,581 B: the skill, and the boot card with its two
+                          # imports; the card carries every rule on reading and the cache, the one on
+                          # comments included
+RAIL_DEMO_BOOT=36975      # examples' boot read-set with the combcount card, 36,250 B: with no card loaded, a
+                          # boot reads the skill, which routes, and then its steps
+RAIL_ENGINE=12936         # the boot skill, its steps and the kernel, 12,682 B
 RAIL_STEPS=10944          # the skill's step files, pointer-manifest.md and packs.md, 10,729 B
 RAIL_DESCRIPTIONS=3454    # the plugin's 7 skill and 3 agent descriptions, 3,386 B; 3,405 B since the boot
                           # card, whose skill description now names the card
-RAIL_ADOPTER_BOOT=7984    # a consumer `init` drafts, 7,827 B: the skill, the plugin's kernel, and the card
-                          # `init` compiles, with the identity it imports; 26,759 B before `init` drafted
-                          # one, 8,081 B before its records line named the finishing command, and 8,219 B
-                          # before the card carried the rules on reading and the cache
+RAIL_ADOPTER_BOOT=8208    # a consumer `init` drafts, 8,047 B: the skill, the plugin's kernel, and the card
+                          # `init` compiles, with the identity it imports; the card carries every rule on
+                          # reading and the cache, the one on comments included, since a consumer is owed them
 
 # The workspaces measured, audited against the tree the way ./index.sh audits its own list: a workspace
 # added and not measured would be a footprint nothing watches, reported as green.

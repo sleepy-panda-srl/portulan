@@ -1,9 +1,10 @@
 // `form` — which form a consumer's records and boot are in, and the files that move them to the new one.
 //
-// Portulan moved its own records and boot on 2026-09-23 and 24: a change's why lives in its commit
-// message, a changelog entry is a fragment under `changes/`, the handoff index is printed on demand
-// rather than kept, the Session log is retired to a pointer, and the boot is a card the host loads into
-// every context. This module carries the same to a repository that installs Portulan. `init` drafts it,
+// The new form is the one Portulan's own repository is in: a change's why lives in its commit message, a
+// changelog entry is a fragment under `changes/`, the handoff index is printed on demand rather than kept,
+// the Session log is retired to a pointer, the boot is a card the host loads into every context, and a
+// `comments` recipe holds the comment lines that record a change's history at a limit that only falls.
+// This module carries the same to a repository that installs Portulan. `init` drafts it,
 // `vendor` carries it, the steps in `../spec/migrations/` move an existing consumer to it, and `doctor`
 // reports which form a consumer is in. They read one definition of the new form, here, so the four
 // cannot disagree about it.
@@ -22,6 +23,7 @@ import path from "node:path";
 import { BOOT_CARD_LINE, BOOT_CARD_UNIT, GUIDANCE_RULES_DIR, leadsOfText } from "./compile.mjs";
 import { CHANGE_SECTIONS, readChanges, renderChanges } from "./index.mjs";
 import { instructionsState, shellWord, splitCommand } from "./instructions.mjs";
+import { recipeSet } from "./recipe-set.mjs";
 
 /** Anything that means the form could not be read. Carries no verdict. */
 export class FormError extends Error {}
@@ -143,6 +145,78 @@ export function withIgnoreLines(text, lines) {
     const base = text ?? "";
     const sep = base === "" ? "" : base.endsWith("\n\n") ? "" : base.endsWith("\n") ? "\n" : "\n\n";
     return `${base}${sep}${lines.join("\n")}\n`;
+}
+
+export const COMMENTS_RECIPE = "comments";
+
+/**
+ * The workspace's own `comments` recipe, a pack's being namespaced apart from it: `null` where there is none,
+ * `drafted` where it runs a `verify/comments.sh`, and otherwise the other command holding its name.
+ */
+export function commentsRecipeOf(manifest) {
+    const own = recipeSet(manifest, { packs: [] });
+    const recipe = own.ok ? own.recipes.find((entry) => entry.id === COMMENTS_RECIPE) : undefined;
+    if (!recipe) return null;
+    return /(?:^|\/)verify\/comments\.sh'?$/.test(recipe.run) ? { drafted: true } : { drafted: false, run: recipe.run };
+}
+
+export function commentsRecipeEntry(workspaceRel) {
+    const run = shellWord(workspaceRel === "." ? "./verify/comments.sh" : `./${workspaceRel}/verify/comments.sh`);
+    return { id: COMMENTS_RECIPE, run, requires: ["bash", "git", "node"] };
+}
+
+/**
+ * `verify/comments.sh`, holding the count at `limit`. `toTree` leads from the recipe's directory to the tree.
+ * The CLI is looked for where `verify/index.sh` looks, a `portulan` on PATH only where it holds `comments.mjs`,
+ * and the bundle's two lines carry its marker, so `0002` re-derives them where the workspace travels.
+ */
+export function commentsRecipe({ bundle, limit, toTree }) {
+    const entry = JSON.stringify(`${bundle}/cli/index.mjs`);
+    return `#!/usr/bin/env bash
+# Comments rail: no more comment lines record a change's history than LIMIT. A comment is paid for on
+# every read of its file, and a change's history goes in its commit message, so LIMIT is only lowered.
+# Code not written here, vendored, is left out with \`--exclude <dir>/\` on the \`node\` line.
+#
+#   exit 0   green: the count is within LIMIT
+#   exit 1   red: it is over, and the lines are listed
+#   exit 2   could not run: git, node or the Portulan CLI is not reachable from here. NEVER a pass.
+
+set -uo pipefail
+cd -- "\$(dirname -- "\$0")"/${shellWord(toTree)} || exit 2
+
+LIMIT=${limit}
+
+for need in git node; do
+    command -v "\$need" >/dev/null 2>&1 || {
+        printf 'verify: %s is needed and is not on PATH, so the comments were NOT counted.\\n' "\$need" >&2
+        exit 2
+    }
+done
+
+if [ -n "\${PORTULAN_CLI:-}" ]; then
+    cli=\$PORTULAN_CLI
+elif command -v portulan >/dev/null 2>&1 &&
+    entry=\$(node -e 'process.stdout.write(require("node:fs").realpathSync(process.argv[1]))' "\$(command -v portulan)") &&
+    [ -f "\$(dirname -- "\$entry")/comments.mjs" ]; then
+    cli=\$(dirname -- "\$entry")
+elif [ -f ${entry} ]; then # portulan:bundle-fallback
+    cli=\$(dirname -- ${entry}) # portulan:bundle-fallback
+else
+    printf 'verify: the Portulan CLI is not reachable, so the comments were NOT counted. Looked at\\n' >&2
+    printf 'verify: $PORTULAN_CLI, a portulan on PATH holding comments.mjs, and the bundle this workspace was drafted from.\\n' >&2
+    exit 2
+fi
+if [ ! -f "\$cli/comments.mjs" ]; then
+    printf 'verify: %s holds no comments.mjs, so the comments were NOT counted.\\n' "\$cli" >&2
+    exit 2
+fi
+
+node "\$cli/comments.mjs" --limit "\$LIMIT"
+status=\$?
+[ "\$status" -le 2 ] && exit "\$status"
+printf 'verify: comments.mjs exited %s, which is no verdict, so the comments were NOT counted.\\n' "\$status" >&2
+exit 2
+`;
 }
 
 // ===========================================================================================
@@ -649,9 +723,9 @@ function indexKept(tree, rel, onDisk) {
 
 /**
  * Each piece of the form, read from disk: `new`, `today`, or absent where it does not apply. A piece of a
- * repository's own, its changelog, Session log, handoff index and card, applies only where the workspace
- * declares a tree, and the card only to a `repository` workspace, as the steps in `../spec/migrations/`
- * that move them are owed only there.
+ * repository's own, its changelog, Session log, handoff index, card and comments recipe, applies only where
+ * the workspace declares a tree, the card and the recipe only to a `repository` workspace, and the recipe
+ * only where git lists the tree, as the steps in `../spec/migrations/` that move them are owed only there.
  *
  * **Read from disk, as `doctor` reads everything**, so a report may say less than `upgrade` knows: the
  * Session log is looked for in the tree's Markdown on disk rather than in git's tracked files. The handoff
@@ -724,6 +798,12 @@ export function formOf(workspaceDir, manifest) {
                 pieces.push({ id: "instructions", state: "today", hand: true, text: `${pending}, and ${links}, whose sections the split does not move: make ${one ? "it" : "each"} a file of its own, or take the marks out` });
             } else if (marked.pending) add("instructions", "today", pending);
             else add("instructions", "new", `${count(marked.moved)} of ${files} moved to on-read units${gone}`);
+        }
+        if (gitIn(tree) !== null) {
+            const recipe = commentsRecipeOf(manifest);
+            if (recipe?.drafted) add("comments", "new", "a `comments` recipe holding the comments that record a change's history");
+            else if (recipe) pieces.push({ id: "comments", state: "today", hand: true, text: `the \`comments\` recipe runs ${recipe.run}, not a \`verify/comments.sh\`: rename it, so \`upgrade\` can draft the one that counts the comments recording a change's history` });
+            else add("comments", "today", "no `comments` recipe: nothing counts the comments that record a change's history");
         }
     }
     return { tree, pieces };

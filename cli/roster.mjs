@@ -9,7 +9,7 @@
 // repository, a listed file with no header to quote or a name no row can carry, or a page `--write`
 // could not write.
 //
-// Each file's header comment is its full account, and the page quotes the first paragraph of it: the
+// Each file's header comment says what the file is, and the page quotes its first paragraph: the
 // leading `//` lines, or a leading `/** */` block, up to the first blank comment line. A Markdown file
 // is quoted by its H1. Where the code already says what a file is for, the page reads it there rather
 // than restating it: the subcommands and their summaries from `SUBCOMMANDS` in ./portulan.mjs, the hook
@@ -172,10 +172,9 @@ export function render(root = ROOT) {
         "The command line of the npm package. `portulan <subcommand>` reaches each subcommand through",
         "`package.json`'s `bin`, [`portulan.mjs`](portulan.mjs); every tool here also runs from a clone as",
         "`node cli/<file>.mjs`. A subcommand's line is its `portulan --help` summary, and every other line is the",
-        "first paragraph of its file's header comment. The header is each file's full account: read it before",
-        "changing the file. The groups come from the code: `SUBCOMMANDS` in [`portulan.mjs`](portulan.mjs),",
-        "`HOOK_RUNNERS` in [`compile.mjs`](compile.mjs), and `EXCLUDED` in [`payload.mjs`](payload.mjs), which",
-        "says why each file marked *Not shipped* stays home.",
+        "first paragraph of its file's header comment, which says what the file is. The groups come from the",
+        "code: `SUBCOMMANDS` in [`portulan.mjs`](portulan.mjs), `HOOK_RUNNERS` in [`compile.mjs`](compile.mjs),",
+        "and `EXCLUDED` in [`payload.mjs`](payload.mjs), which says why each file marked *Not shipped* stays home.",
         "",
         "A tool belongs here when it works on any workspace or plugin root. This repository's own recipes live",
         "in [`../.portulan/verify/`](../.portulan/verify/), and its operator tooling in",

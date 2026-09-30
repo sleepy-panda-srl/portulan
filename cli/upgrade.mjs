@@ -478,6 +478,9 @@ function unwindDirs(dirs) {
  * `root: "tree"` is a path in the repository the workspace governs, `options.treeDir`, and is contained
  * there by the same two guards. An edit whose `next` is `null` deletes the file, a regular file only,
  * and its snapshot keeps what it held, so a rollback writes it back.
+ *
+ * A file an edit creates takes the edit's `mode`, as a new recipe must be executable; one it replaces
+ * keeps its own.
  */
 export function applyEdits(dir, edits, options = {}) {
     // `write` is an injection point for the suite, the way `init` injects its reader and `skills-set`
@@ -595,7 +598,8 @@ export function applyEdits(dir, edits, options = {}) {
             // fail-closed direction and rule 2 of the three a tool writing into somebody's tree owes.
             // Copilot, round 10 on #231.
             write(staging, edit.next, { flag: "wx" });
-            if (mode !== null) fs.chmodSync(staging, mode);
+            const keep = mode ?? edit.mode ?? null;
+            if (keep !== null) fs.chmodSync(staging, keep);
             fs.renameSync(staging, file);
         } catch (error) {
             try {
