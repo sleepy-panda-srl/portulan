@@ -21,6 +21,7 @@ import path from "node:path";
 
 import { BOOT_CARD_LINE, BOOT_CARD_UNIT, GUIDANCE_RULES_DIR, leadsOfText } from "./compile.mjs";
 import { CHANGE_SECTIONS, readChanges, renderChanges } from "./index.mjs";
+import { instructionsState, shellWord, splitCommand } from "./instructions.mjs";
 
 /** Anything that means the form could not be read. Carries no verdict. */
 export class FormError extends Error {}
@@ -707,12 +708,29 @@ export function formOf(workspaceDir, manifest) {
             else if ((readOrNull(path.join(tree, "AGENTS.md")) ?? "").split(/\r?\n/).includes(BOOT_CARD_LINE)) add("card", "new", "a boot card at the head of AGENTS.md, which this host reads");
             else add("card", "today", `a boot card not yet compiled to ${COMPILED_CARD}: run \`portulan compile\``);
         }
+        // A section a team marked in its instruction file waits for `0009` to move it; a moved one is the new
+        // form, and a marker naming a unit that is not there is said, never repaired (2026-09-24). Reported only
+        // where a team marked one, so no other workspace's line grows. A marked file that is a link is named to
+        // make a file of its own by hand, as `0009` names it, since the split does not move a link's sections.
+        const marked = instructionsState(tree, (rel) => readOrNull(path.join(tree, ...rel.split("/"))));
+        if (marked.files.length) {
+            const files = marked.files.join(" and ");
+            const count = (n) => `${n} section${n === 1 ? "" : "s"}`;
+            const gone = marked.gone.length ? `, and ${marked.gone.join(", ")}, named by a marker, ${marked.gone.length === 1 ? "is" : "are"} not there` : "";
+            const pending = `${count(marked.pending)} of ${files} marked to move to on-read units${gone}`;
+            if (marked.linked.length) {
+                const one = marked.linked.length === 1;
+                const links = `${marked.linked.join(" and ")} ${one ? "is a link" : "are links"}`;
+                pieces.push({ id: "instructions", state: "today", hand: true, text: `${pending}, and ${links}, whose sections the split does not move: make ${one ? "it" : "each"} a file of its own, or take the marks out` });
+            } else if (marked.pending) add("instructions", "today", pending);
+            else add("instructions", "new", `${count(marked.moved)} of ${files} moved to on-read units${gone}`);
+        }
     }
     return { tree, pieces };
 }
 
 /** `doctor`'s one line for the form: a report, never a verdict, since today's form boots as it did. */
-export function formLine(workspaceDir, manifest) {
+export function formLine(workspaceDir, manifest, { over = false } = {}) {
     const { tree, pieces } = formOf(workspaceDir, manifest);
     if (tree === null) return "not reported: this workspace declares no tree, so no repository's records or boot are its own";
     const today = pieces.filter((p) => p.state === "today");
@@ -722,8 +740,13 @@ export function formLine(workspaceDir, manifest) {
     const shown = rel === "" ? "." : rel.startsWith("..") ? path.resolve(workspaceDir) : rel;
     // A piece `upgrade` does not place is reported by it and added by hand, and the run moves the rest.
     const moves = today.some((p) => p.hand) ? "moves all but what is named to add by hand" : "moves it";
-    return (
-        `today's form in ${today.length} of ${pieces.length}: ${today.map((p) => p.text).join("; ")} — ` +
-        `\`portulan upgrade --write ${shown}\` ${moves}, and until then it boots as it did`
-    );
+    const said = `today's form in ${today.length} of ${pieces.length}: ${today.map((p) => p.text).join("; ")} — `;
+    // Over a declared budget `doctor` fails and `upgrade` will not run, so sections a team marked are named with
+    // the command that moves them all the same, as the context line names it (2026-09-24).
+    if (over && today.some((p) => p.id === "instructions" && !p.hand)) {
+        const rest = today.filter((p) => p.id !== "instructions");
+        const after = rest.length === 0 ? "" : `, and \`portulan upgrade --write ${shellWord(shown)}\` ${rest.some((p) => p.hand) ? "moves the rest but what is named to add by hand" : "moves the rest"} once it runs`;
+        return `${said}\`${splitCommand(shown)}\` moves the marked sections, since \`portulan upgrade\` does not run over a breached budget${after}, and until then it boots as it did`;
+    }
+    return `${said}\`portulan upgrade --write ${shellWord(shown)}\` ${moves}, and until then it boots as it did`;
 }

@@ -89,6 +89,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { BOOT_CARD_LINE, IMPORT_DEPTH, importPath, importSpans } from "./compile.mjs";
+import { offerText, splitOffers } from "./instructions.mjs";
 import { AGENT_DIR, parseFrontmatter } from "./plugin-lint.mjs";
 import { HOST_SKILL_DEPTH, manifestPath } from "./skills-set.mjs";
 
@@ -884,6 +885,13 @@ export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } 
                 "as Portulan's own card does, a few lines on the card saying who the team is, naming the file and when to open it",
         );
     }
+    // A project instruction file over 0036's offer floor, or any where a declared budget is breached, is
+    // offered the split that moves a section a team marks to an on-read unit (2026-09-24). One clause for them
+    // all, said only where one is large, since the boot closes with this line in every session. Over a budget,
+    // `upgrade` stops on the failing line, so the clause names the command that splits all the same.
+    const over = judged.verdict === "over";
+    const offer = offerText(splitOffers(root, { ratio, floor: OFFER_FLOOR_TOKENS, over }), { over, workspace: path.relative(root, workspaceDir).split(path.sep).join("/") || "." });
+    if (offer !== null) parts.push(offer);
     return said(judged.verdict, parts.join("; "));
 }
 

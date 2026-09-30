@@ -183,6 +183,10 @@ export const ACCOUNTED_DYNAMIC_IMPORTS = {
     "init.mjs": "a literal node builtin (`node:readline/promises`)",
     "upgrade.mjs": "a workspace's migration module, resolved under the workspace and never under `cli/`",
     "mutants.mjs": "a mutant file this tool wrote itself, and the compiler module under test",
+    "instructions.mjs":
+        "`./context.mjs` and `./upgrade.mjs`, loaded when the command runs because each reaches this module " +
+        "statically and an edge back would close a cycle: `upgrade.mjs` is a `SUBCOMMANDS` module, read below, " +
+        "and `context.mjs` is imported statically by `doctor.mjs`, another",
 };
 
 /** The module names a `cli/*.mjs` file imports, by every edge form that reaches one. */
