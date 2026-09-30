@@ -38,6 +38,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { isInside } from "./inside.mjs";
 import { recipeSet } from "./recipe-set.mjs";
 
 // The project root is TOLD to this runner rather than derived from where this file sits — see the same
@@ -608,9 +609,10 @@ function handoffToday(stamp, tree = { root: REPO, workspace: WORKSPACE }) {
     } catch {
         return { own: [], recorded: [] };
     }
-    const dir = path.relative(tree.root, path.join(tree.workspace, "handoffs")).split(path.sep).join("/");
+    const handoffsDir = path.join(tree.workspace, "handoffs");
+    const dir = path.relative(tree.root, handoffsDir).split(path.sep).join("/");
     // A workspace outside the repository holds nothing git records, so each of its handoffs is this tree's.
-    if (dir === "" || dir.startsWith("..") || path.isAbsolute(dir)) return { own: dated, recorded: [] };
+    if (dir === "" || !isInside(tree.root, handoffsDir)) return { own: dated, recorded: [] };
     const git = (args) => execFileSync("git", args, { cwd: tree.root, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
     const own = [];
     const recorded = [];
@@ -691,9 +693,10 @@ function handoffInHistory(stamp, tree = { root: REPO, workspace: WORKSPACE }, he
         // the refusal loses the half that tells a reader their handoff is already recorded, and nothing
         // says why. The same spelling is used wherever this repository hands git a derived path
         // (`./librarian.mjs`, `./compile.mjs`). Copilot, round 3.
-        const dir = path.relative(tree.root, path.join(tree.workspace, "handoffs")).split(path.sep).join("/");
+        const handoffsDir = path.join(tree.workspace, "handoffs");
+        const dir = path.relative(tree.root, handoffsDir).split(path.sep).join("/");
         // A workspace outside the repository is not a question git can answer about this history.
-        if (dir === "" || dir.startsWith("..") || path.isAbsolute(dir)) return null;
+        if (dir === "" || !isInside(tree.root, handoffsDir)) return null;
         const git = (args) => execFileSync("git", args, { cwd: tree.root, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
         // `--all` is every ref already on disk, local and remote-tracking; `--not HEAD` leaves out the
         // commits this tree holds, and each exclusion a handoff it holds, which a rebase or a squash merge

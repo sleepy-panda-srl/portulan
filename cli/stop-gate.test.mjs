@@ -729,7 +729,7 @@ describe("the handoff question names the tree it answered about (#220, second ha
  * A clone whose base branch carries a handoff dated today that another session committed and pushed, and
  * whose tree holds this session's work, staged and uncommitted, with no handoff of its own.
  */
-function mergedHandoff() {
+function mergedHandoff(workspace = ".portulan") {
     const stamp = today();
     const root = scratch();
     const origin = path.join(root, "origin.git");
@@ -737,9 +737,9 @@ function mergedHandoff() {
     execFileSync("git", ["init", "-q", "--bare", origin]);
     execFileSync("git", ["--git-dir", origin, "symbolic-ref", "HEAD", "refs/heads/main"]);
     execFileSync("git", ["clone", "-q", origin, work], { stdio: ["ignore", "pipe", "pipe"] });
-    fs.mkdirSync(path.join(work, ".portulan", "handoffs"), { recursive: true });
-    fs.writeFileSync(path.join(work, ".portulan", "workspace.json"), MANIFEST);
-    fs.writeFileSync(path.join(work, ".portulan", "handoffs", `${stamp}-another-session.md`), "what that session left open\n");
+    fs.mkdirSync(path.join(work, workspace, "handoffs"), { recursive: true });
+    fs.writeFileSync(path.join(work, workspace, "workspace.json"), MANIFEST);
+    fs.writeFileSync(path.join(work, workspace, "handoffs", `${stamp}-another-session.md`), "what that session left open\n");
     fs.writeFileSync(path.join(work, "f.txt"), "base\n");
     git(work, ["add", "-A"]);
     git(work, ["commit", "-m", "another session's change, merged with its handoff"]);
@@ -818,6 +818,14 @@ describe("a handoff answers for the work only while this tree has not pushed it"
         assert.ok(reason.includes(`${stamp}-this-session.md`), `the refusal names the dated file it did not count — got: ${reason}`);
         assert.match(reason, /committed and pushed already/, "and says why it did not count");
         assert.doesNotMatch(reason, /does exist elsewhere/, "the base branch's copy of a handoff this tree holds is not one elsewhere");
+    });
+
+    test("a workspace whose name begins with two dots is still inside the repository", () => {
+        const { work, stamp } = mergedHandoff("..portulan");
+        const { decision, reason } = gate(work, "dotted-workspace", { PORTULAN_WORKSPACE: "..portulan" });
+        assert.equal(decision, "block", "a handoff merged in `..portulan/` is recorded as surely as one in `.portulan/`");
+        assert.ok(reason.includes(`${stamp}-another-session.md`), `the refusal names the dated file it did not count — got: ${reason}`);
+        assert.match(reason, /committed and pushed already/);
     });
 
     test("pushing the work ends the handoff refusals it earned, so the next work meets the whole cap", () => {
