@@ -1,15 +1,6 @@
 // Writes `./ledger/`: synthetic host usage records, and the totals they are known to sum to.
 //
-//   node cli/fixtures/generate-ledger.mjs <dir>
-//
-// The ground truth is the list of distinct requests below. Each is written the way the host writes one —
-// a record per content block, each carrying the whole request's usage — and the known totals in
-// `fixture.json` are summed here, from those requests, never by `../ledger.mjs`, which is what the
-// fixture checks. `../ledger.test.mjs` runs this into a temporary directory and compares what it writes
-// with the committed fixture byte for byte, so the totals are this script's and nobody's edit.
-//
-// It replaces only what it writes under `<dir>` — `projects/`, `claude.json` and `fixture.json` — and
-// nothing else there. Paths, ids and models are invented; no line of any real session is here.
+// The totals are summed here from the requests, never by `../ledger.mjs`, which is what they check.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -36,7 +27,7 @@ const X = "99999999-9999-4999-8999-999999999999";
 let n = 0;
 const nextId = () => `msg_fixture${String(++n).padStart(4, "0")}`;
 
-// A request: its ground truth and the records the host would write for it (one per content block).
+// A request's ground truth, and its records as the host writes them: one per content block, each with the whole usage.
 function request(o) {
     return { id: o.id ?? nextId(), blocks: o.blocks ?? 1, uncached: 0, w1h: 0, w5m: 0, read: 0, output: 0, sidechain: false, agent: null, ...o };
 }
@@ -85,8 +76,8 @@ const user = (session, cwd, branch, at, text) => ({ type: "user", isSidechain: f
 const boundary = (session, cwd, branch, at) => ({ type: "system", subtype: "compact_boundary", isSidechain: false, cwd, sessionId: session, gitBranch: branch, timestamp: iso(at), uuid: `boundary-${at}`, content: "Conversation compacted" });
 const synthetic = (session, cwd, branch, at) => ({ type: "assistant", isSidechain: false, cwd, sessionId: session, gitBranch: branch, timestamp: iso(at), uuid: `synthetic-${at}`, message: { id: `synthetic-${at}`, model: "<synthetic>", role: "assistant", content: [{ type: "text", text: "(synthetic)" }], usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } } });
 
-const files = new Map(); // relative path -> array of line strings
-const truth = []; // { request, file, context: "main"|"sub", session }
+const files = new Map();
+const truth = [];
 const add = (rel, line) => {
     if (!files.has(rel)) files.set(rel, []);
     files.get(rel).push(typeof line === "string" ? line : JSON.stringify(line));

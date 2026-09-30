@@ -1,14 +1,4 @@
-// The mutation-census rail's suite.
-//
-// Two of these cases exist because the naive design is wrong in ways only measurement shows: ESM
-// caches by URL with no invalidation, so a harness reusing one temp path grades mutant 1 forever
-// while reporting on all of them; and a substitution that produces an unimportable module checks
-// nothing about the corpus, so counting it as a kill would be the loudest possible false green in a
-// tool whose entire output is a coverage claim.
-//
-// The rest hold the refusals: an anchor that does not place, an anchor that places twice, a
-// substitution that changes nothing, and a corpus that is already red. Every one is exercised
-// POSITIVELY, because a failure path nobody has run is one nobody has seen work.
+// Tests for `mutants`, the mutation-census rail: its operator table, its imports, its corpus and its refusals.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -20,10 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-// A HERMETIC HOST, the three-line block `pinned-roots.live.test.mjs` sweeps for — asserted WHOLE, so
-// that copying the two lines which neutralise the host and dropping the one that tidies up is caught.
-// This suite reaches `compile.mjs`, which consults the host's installed-plugin record on the unasked
-// path, so without it a verdict would move with what somebody has installed.
+// This suite reaches `compile.mjs`, which can read the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -42,8 +29,7 @@ const sink = () => {
 
 test("every operator's anchor places exactly once in the subject", () => {
     for (const op of OPERATORS) {
-        // `mutate` is the thing under test AND the rail; calling it is the assertion, because it
-        // throws on zero matches and on two.
+        // `mutate` throws unless the anchor places exactly once.
         assert.doesNotThrow(() => mutate(SOURCE, op), `operator ${op.id}`);
     }
 });
@@ -63,8 +49,6 @@ test("operator ids are unique", () => {
 });
 
 test("every matcher-region member carries at least one operator", () => {
-    // The coverage floor, asserted here as well as railed in the runner: `REGION` is what makes
-    // "mutation testing over both matchers" mean the whole region rather than one function.
     assert.deepEqual(census().uncovered, []);
 });
 
@@ -90,12 +74,7 @@ test("relative imports are rewritten to absolute file URLs, and node builtins ar
 });
 
 test("two different mutants imported in one process answer differently", async () => {
-    // **The ESM-cache canary.** `import()` caches by resolved URL and offers no invalidation, so a
-    // harness writing every mutant to one reused path would import the first and then grade it once
-    // per operator — silently, and including while the record is first being written, where the
-    // two-directional rail cannot see it because the record would be built from the same wrong
-    // readings. This is the only case in the suite that would still pass if the runner were correct
-    // and fail if it were not, so it is worth its weight.
+    // `import()` caches by URL with no invalidation: mutants sharing one path would all grade as the first.
     const rule = { id: "r", tier: "gated", action: { shell: "git push --force" }, reason: "x" };
     const input = { command: "bash -c \"ls; git push --force origin main\"" };
     const load = async (op) => {
@@ -131,10 +110,6 @@ test("runCorpus reports the first disagreement, and a throw counts as one", () =
 });
 
 test("a fixture the census cannot grade is refused, never skipped", async () => {
-    // **The silent-thinning defect, asserted in both places it could return.** `runCorpus` skipped an
-    // unknown rule outright, so a renamed or misfiled fixture sat ungraded while the census reported
-    // green on a kill-set smaller than the one it names. Reported as a suppressed note by Copilot,
-    // round 5 on #338.
     const rules = new Map([["known", { id: "known", tier: "gated", action: { shell: "git push --force" }, reason: "x" }]]);
     const corpus = [{ where: "stale.json", doc: { rule: "renamed-away", cases: [{ id: "c", tool: "Bash", input: { command: "x" }, expect: false }] } }];
     assert.throws(
@@ -143,8 +118,6 @@ test("a fixture the census cannot grade is refused, never skipped", async () => 
         "runCorpus skipped a rule it could not find",
     );
 
-    // And end to end: a corpus file naming an unknown rule refuses the whole run at 2, before any
-    // mutant is written, with the file named.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-stalefixture-"));
     try {
         fs.cpSync(REPO, path.join(dir, "repo"), {
@@ -190,21 +163,12 @@ test("--only narrows to one operator, and an unknown id is could-not-run", async
 });
 
 test("--only still validates the WHOLE operator table", async () => {
-    // `--only` narrows what runs; it does not narrow what must be well formed. This validation was
-    // skipped entirely in `--only` mode, so a malformed operator slipped through in exactly the mode
-    // a person reaches for when something is already wrong. Reported by Copilot, round 1 on #338.
-    //
-    // Exercised by mutating the table in a copy of the module rather than by reading the source, so
-    // the test measures the behaviour rather than the spelling of the guard.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-onlyvalid-"));
     try {
         const copy = path.join(dir, "mutants.mjs");
         const src = fs
             .readFileSync(join(REPO, "cli", "mutants.mjs"), "utf8")
             .replace(/from "\.\/([A-Za-z0-9._-]+\.mjs)"/g, (_, name) => `from "${pathToFileURL(join(REPO, "cli", name)).href}"`)
-            // One operator's `outcome` made invalid — the shape the guard exists to refuse. Chosen
-            // over emptying a `why` because the first attempt at that left the REST of the sentence
-            // behind and the field stayed non-empty, so the test passed while asserting nothing.
             .replace('outcome: "killed",', 'outcome: "maybe",', 1);
         fs.writeFileSync(copy, src, "utf8");
         const mod = await import(pathToFileURL(copy).href);
@@ -242,8 +206,7 @@ test("a workspace with no gate policy is could-not-run", async () => {
 });
 
 test("this module reaches no process-spawning API", () => {
-    // The corpus holds `git push --force`, `rm -rf docs` and constitution writes by design. The only
-    // thing this module may execute is `import()` on a file it wrote itself.
+    // The corpus holds destructive commands by design, so this module may execute only `import()` of files it wrote.
     const text = fs.readFileSync(join(REPO, "cli", "mutants.mjs"), "utf8");
     for (const forbidden of ["child_process", "execSync", "execFileSync", "spawnSync", "node:vm"]) {
         assert.ok(!text.includes(forbidden), `cli/mutants.mjs reaches ${forbidden}`);
@@ -251,9 +214,6 @@ test("this module reaches no process-spawning API", () => {
 });
 
 test("the entry guard survives a path containing a space", () => {
-    // The third false green of this shape in this repository: `import.meta.url` percent-encodes and
-    // this working copy lives under a path with spaces, so the naive comparison fails and the tool
-    // exits 0 having run nothing. Pinned by construction rather than by reading the source.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan mutants guard-"));
     try {
         const copy = path.join(dir, "mutants.mjs");

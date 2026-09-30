@@ -1,13 +1,4 @@
 // Tests for `context` — what a boot reads and what the host loads into every context, measured.
-//
-// Zero dependencies, node's own runner, and run by the same recipe as every suite here:
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// Every case but the last group builds its workspace, bundle and repository in a temporary
-// directory, so no figure asserted here moves when a file in this repository is edited. What the
-// suite pins is which files count, in what order, and the exit code each refusal owes. The figures
-// themselves are the recipe's to rail, over the real tree.
 
 import { test, describe, after } from "node:test";
 import assert from "node:assert/strict";
@@ -34,9 +25,7 @@ import {
 } from "./context.mjs";
 import { fenced } from "./form.mjs";
 
-// A HERMETIC HOST. `context` never asks the host where packs are installed, but it imports
-// `./skills-set.mjs`, which can, so this suite neutralises the installed-plugin record the way every
-// suite in that closure does. Swept by `pinned-roots.live.test.mjs`, whose header carries the argument.
+// `context` imports `./skills-set.mjs`, which can read the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -50,7 +39,6 @@ after(() => {
     for (const dir of made) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-/** A directory holding exactly `files`, each path relative to it. */
 function tree(files) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-context-"));
     made.push(dir);
@@ -64,7 +52,6 @@ function tree(files) {
 
 const skill = (description, extra = "") => `---\nname: s\ndescription: ${description}\n${extra}---\n\n# Body\n\nNot listed.\n`;
 
-/** A bundle carrying the engine half, the skill's step files and a plugin manifest, as this repository does. */
 function bundle({ engine = true, plugin = true } = {}) {
     const files = {};
     if (engine) {
@@ -81,7 +68,6 @@ function bundle({ engine = true, plugin = true } = {}) {
     return tree(files);
 }
 
-/** A repository with a workspace in `.portulan/`, the residence `init` drafts. */
 function repository({ manifest = {}, files = {}, cards = ["app"] } = {}) {
     const base = {
         portulan: { spec: "2.8" },
@@ -115,7 +101,6 @@ function repository({ manifest = {}, files = {}, cards = ["app"] } = {}) {
     return tree(all);
 }
 
-/** Run the module in-process, as the recipe would from the repository root. */
 function measured(root, argv = [], { bundleRoot = bundle() } = {}) {
     const lines = [];
     const code = run(["--workspace", ".portulan", ...argv], (line) => lines.push(line), { bundleRoot, cwd: root });
@@ -394,8 +379,7 @@ describe("imports, as the host reads them", () => {
         assert.deepEqual(importsOf(text), ["docs/a.md", "b.md.", "after.md"]);
     });
 
-    // Read in Claude Code 2.1.281: a token runs to the next space no `\` escapes, is cut at `#`, reads `\ `
-    // as a space, and is no import unless it opens as a path can.
+    // The host's import syntax, as Claude Code 2.1.281 reads it.
     test("an import's path is cut at `#`, reads an escaped space as a space, and opens as a path can", () => {
         assert.deepEqual(importsOf("@docs/my\\ file.md and @docs/a.md#part, not @#tag or @(x)\n"), ["docs/my file.md", "docs/a.md"]);
         const root = tree({ "CLAUDE.md": "@docs/my\\ file.md\n\n@docs/a.md#part\n", "docs/my file.md": "m\n", "docs/a.md": "a\n" });
@@ -404,9 +388,7 @@ describe("imports, as the host reads them", () => {
         assert.deepEqual(always.missing, []);
     });
 
-    // Found in the coordinator session's review of #452 after its push, and read in the lexer Claude Code
-    // 2.1.281 bundles: a list item's text reaches the host whole, so a code span or a comment in it hides no
-    // import, in a loose list as in a tight one, while in a paragraph both still do.
+    // Claude Code 2.1.281's lexer hands a list item's text over whole, in a loose list as in a tight one.
     test("in a list item's text a code span or a comment hides no import, and the file it names is counted", () => {
         const text = [
             "Run `cat @docs/para.md now` in a paragraph.",
@@ -457,8 +439,7 @@ describe("the always tier", () => {
         assert.deepEqual(always.missing, ["@docs/a.md. (in CLAUDE.md)"]);
     });
 
-    // Read in Claude Code 2.1.281 and seen on a fixture: a path-scoped rule waits for its path, and what it
-    // imports does not, because an imported file carries no `paths:` of its own.
+    // Claude Code 2.1.281: an imported file carries no `paths:` of its own, so it loads though its rule waits.
     test("a rule's imports load with it, and a path-scoped rule's load everywhere while the rule waits for its path", () => {
         const root = tree({
             ".claude/rules/team.md": "# Team\n\n@../../docs/kernel.md\n",
@@ -689,8 +670,7 @@ describe("a large instruction file is offered the split, in one clause of the li
         const budget = { context: { always: { budget: { tokens: 5 } }, ratio: { bytes_per_token: 3, calibrated_by: "a-host" } } };
         const line = lineOf(repository({ manifest: budget, files: { "CLAUDE.md": small } }));
         assert.equal(line.verdict, "over", line.line);
-        // `doctor` fails over a budget, and `upgrade` will not run on a failing `doctor`, so the clause names the
-        // command that splits all the same.
+        // Not `upgrade`, which will not run while `doctor` fails over a budget.
         assert.match(
             line.line,
             /; CLAUDE\.md is ~\d+ tokens in every context, and a line `<!-- portulan: on-read -->` under a heading moves that section to an on-read unit at the next `node <plugin root>\/cli\/instructions\.mjs --workspace \.portulan --write`: its largest is "Loans" ~\d+ tokens$/,
@@ -711,7 +691,6 @@ describe("over a budget, a card importing the identity whole is told it can beco
     const context = (tokens) => ({ context: { always: { budget: { tokens } }, ratio: { bytes_per_token: 3, calibrated_by: "a-host" } } });
     const carded = (manifest) =>
         repository({ manifest, files: { ".portulan/identity.md": "i".repeat(300), ".claude/rules/portulan/boot.md": "# Portulan boot card\n\n@../../../.portulan/identity.md\n" } });
-    /** `alwaysLine` on the repository's workspace, as `doctor` calls it with the manifest it read. */
     const lineOf = (root) => {
         const ws = path.join(root, ".portulan");
         return alwaysLine(ws, JSON.parse(fs.readFileSync(path.join(ws, "workspace.json"), "utf8")), { bundleRoot: bundle() });
@@ -740,7 +719,6 @@ describe("--brief: the line `doctor` reports and the boot closes with", () => {
         assert.equal(out.split("\n").length, 1, `one line, not ${JSON.stringify(out)}`);
         return { code, out };
     };
-    /** A manifest with its tree removed, the shape of a demo or a portfolio. */
     const treeless = (root) => {
         const file = path.join(root, ".portulan/workspace.json");
         const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -963,21 +941,15 @@ describe("this repository", () => {
         assert.deepEqual(unknown, [], "a boot that reads a new file of the skill needs it in STEPS in context.mjs; one it reads on demand, here");
     });
 
-    // Each word of a `node` command in the Markdown `text` that carries a path and is not one double-quoted
-    // word, as `<line> <word>`. Both directories reach the shell as text, so an unquoted one with a space in
-    // its path is two words there: `node` finds no module, or the CLI refuses the rest (Copilot, #446). A
-    // path the reader fills in, such as `<workspace-dir>`, is one word only when quoted too, and a quote
-    // that does not close is as bad as none (Copilot, #461).
+    // A path in a `node` command reaches the shell as text, so it is one word only when double-quoted.
     const unquotedPaths = (text) => {
         const PATH = /\$\{CLAUDE_(?:PLUGIN_ROOT|PROJECT_DIR)[^}]*\}|<[\w-]+>/;
         const found = [];
-        // A fence is the one `form` reads Markdown by: backticks or tildes, closed by the same character.
         const lines = text.split("\n");
         const inFence = fenced(lines);
         lines.forEach((line, i) => {
             const code = inFence[i] ? [line] : [...line.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
-            // A command starts at `node` after the span's start and any indentation, a `$ ` prompt, a
-            // separator, or the `)` that closes a `case` pattern.
+            // A command starts at `node` after the span's start, a `$ ` prompt, a separator, or a `case` pattern's `)`.
             for (const span of code) {
                 for (const [, command] of span.matchAll(/(?:^\s*|\$\s+|[;&|()]\s*)(node\s[^;&|)]*)/g)) {
                     for (const [word] of command.matchAll(/(?:"[^"]*"|'[^']*'|[^\s"'])+/g)) {
@@ -997,8 +969,6 @@ describe("this repository", () => {
     });
 
     test("that check flags each way a path misses its quotes, and passes a quoted one or a path read, not run", () => {
-        // A check that finds nothing in the skill proves nothing on its own, so each case it names is here
-        // (Copilot, #465).
         const fixture = [
             '`node "${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs" "<workspace-dir>"`',
             "`node ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs`",

@@ -1,18 +1,4 @@
-// The grammar-fuzzer rail's suite — the hermetic half.
-//
-// The other half is ./fuzz-shell.ground.test.mjs, which runs real bash. The split is deliberate: this
-// file must never execute a GENERATED PAYLOAD and must never spawn bash, because the payloads it
-// handles are a gated force-push and a write to the constitution; the ground-truth file spawns bash
-// and only ever runs a NEUTRAL payload.
-//
-// _It said "must never execute anything", which is false of this file: the entry-guard case runs a
-// copy of the module under `execFileSync` with `--help`. A comment describing a stricter rule than
-// the file keeps is the defect this whole pull request is about, met in the file's own header.
-// Reported by Copilot on #338._
-//
-// What is asserted here is the part a green would otherwise let a reader assume: that the generator
-// is deterministic, that its budget is real, that the recorded table is total in both directions, and
-// that a divergence with no record is refused rather than tolerated.
+// Tests for `fuzz-shell` — the hermetic half: its payloads are gated commands, so nothing here spawns bash or runs one.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -24,10 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-// A HERMETIC HOST, the three-line block `pinned-roots.live.test.mjs` sweeps for — asserted WHOLE, so
-// that copying the two lines which neutralise the host and dropping the one that tidies up is caught.
-// This suite reaches `compile.mjs`, which consults the host's installed-plugin record on the unasked
-// path, so without it a verdict would move with what somebody has installed.
+// The imports reach `./compile.mjs`, which can read the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -53,14 +36,6 @@ test("the generator is deterministic for a fixed seed, and different for a diffe
 });
 
 test("no two cells share a random stream, and the rule is asserted rather than the instance", () => {
-    // **The defect this replaces was a claim broader than its code**: the seed mixed in
-    // `position.id.length` and `kind.length`, so most of the grammar shared a stream with another
-    // position while the comment beside it promised each cell its own. Reported by Copilot, round 1
-    // on #338; the figures for that measurement are dated in the session's handoff.
-    //
-    // Asserted as the RULE — every cell's derived seed is distinct — rather than as the two ids that
-    // happened to collide. Patching the spelling that was quoted is the class this repository met
-    // five times on #336 and twice more in this session's own code.
     const seeds = new Map();
     for (const position of POSITIONS) {
         for (const kind of Object.keys(PAYLOADS)) {
@@ -70,8 +45,6 @@ test("no two cells share a random stream, and the rule is asserted rather than t
             seeds.set(derived, key);
         }
     }
-    // And the streams really differ, not just their seeds: two cells drawing from the same position
-    // must not produce the same spellings.
     const draw = (key) => {
         const rand = prng(DEFAULT_SEED ^ hash(key));
         return Array.from({ length: 8 }, () => generate(POSITIONS[0], "shell", rand).command);
@@ -92,23 +65,13 @@ test("the recorded table is total over the grammar, in both directions", () => {
 });
 
 test("every recorded divergence from ground truth names a record", () => {
-    // The rail that stops the table absorbing a new hole silently: an entry may disagree with what
-    // its position's ground truth demands only by citing where that disagreement is written down.
     for (const [key, e] of Object.entries(EXPECT)) {
         const [positionId, kind] = key.split("|");
         const position = POSITIONS.find((p) => p.id === positionId);
-        // **Asserted here rather than left to the totality test.** `node:test` may run tests
-        // concurrently, so leaning on a sibling case to have failed first is leaning on an ordering
-        // nothing guarantees — and the symptom would be a TypeError inside `groundFor` rather than the
-        // sentence a reader needs. The runner has the ordering (its totality check throws before this
-        // one runs); a test file does not, and copying the runner's shape without its ordering is how
-        // this survived. Reported by Copilot, round 1 on #341.
+        // Checked here too: a failing totality test does not stop this one, which would then throw in `groundFor`.
         assert.ok(position, `EXPECT records ${key}, and POSITIONS declares no position \`${positionId}\``);
         assert.ok(Object.keys(PAYLOADS).includes(kind), `EXPECT records ${key}, and PAYLOADS declares no kind \`${kind}\``);
-        // Through `groundFor`, not `position.ground` — one production's truth is per payload kind, and
-        // reading the position's field alone reported a TRUE POSITIVE as an undocumented divergence.
-        // The runner was routed through `groundFor` and this test was not: one carrier corrected and
-        // its sibling left, which is the class this pull request keeps meeting. Caught by the rail.
+        // Through `groundFor`, not `position.ground`, which misses a per-kind override.
         const ground = groundFor(position, kind);
         if (e.answer === correctFor(ground)) {
             assert.equal(e.record, undefined, `${key} agrees with ground truth and cites a record anyway`);
@@ -130,10 +93,7 @@ test("every position id is unique and every payload names a rule", () => {
 });
 
 test("a generated write payload never quotes a line continuation, and always names the path", () => {
-    // The guard lives in `writePayload`, not in `respell`, and this asserts it where it lives. Inside
-    // `\'…\'` a backslash-newline is two literal characters rather than a continuation, so quoting one
-    // would make the generator lie about its own ground truth — the one failure a fuzzer cannot detect
-    // in itself, because its oracle would be wrong in the same direction as its output.
+    // Inside single quotes a backslash-newline is two literal characters, not a continuation.
     const rand = prng(11);
     let sawContinuation = 0;
     for (let i = 0; i < 2000; i += 1) {
@@ -144,21 +104,11 @@ test("a generated write payload never quotes a line continuation, and always nam
             assert.ok(!payload.includes("'"), `a continuation was quoted: ${JSON.stringify(payload)}`);
         }
     }
-    // The rail's own rail: an assertion that never fires because the branch is never generated is an
-    // assertion nobody has run.
     assert.ok(sawContinuation > 0, "no continuation spelling was generated in 2000 draws");
     for (const s of pathSpellings("docs/vision.md")) assert.ok(s.includes("vision.md"), s);
 });
 
 test("every payload kind emits a case goldens' OWN reader accepts, not just the shell one", () => {
-    // **Asserted for all three kinds, because the drill that printed a finding used the shell payload
-    // and the two write payloads were broken.** `asCase` handed `matcherPath` a PAYLOAD kind, which it
-    // does not know, so both write kinds emitted `path: "no-branch"` and `goldens` would have refused
-    // them as a mislabel — the paste-ready promise false for two of three. A check written alongside a
-    // change inheriting the change's blind spot; reported by Copilot on #338.
-    //
-    // Graded against `readCorpus` and `grade` themselves rather than against a re-implementation of
-    // what they accept, which is the whole reason `goldens.mjs` exports them.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-emit-"));
     try {
         const { rules } = yieldedRules(REPO, { packRoots: [join(REPO, "packs")] });
@@ -180,8 +130,7 @@ test("every payload kind emits a case goldens' OWN reader accepts, not just the 
         }
         const corpus = readCorpus(dir, "gates");
         const { findings } = grade(rules, corpus);
-        // Only coverage findings may remain — this scratch corpus deliberately attacks two rules and
-        // not the whole policy. A MISLABEL finding is the defect under test.
+        // Coverage findings are expected: this scratch corpus attacks two rules, not the whole policy.
         const mislabels = findings.filter((f) => /declares path/.test(f.what));
         assert.deepEqual(mislabels, [], "an emitted case carries a path goldens would refuse");
     } finally {
@@ -198,9 +147,6 @@ test("a finding renders as a corpus case the goldens runner would accept", () =>
     assert.equal(typeof body.expect, "boolean");
     assert.ok(body.why.includes("REVIEW THIS BEFORE COMMITTING IT"));
     assert.deepEqual(Object.keys(body.input), ["command"]);
-    // A generated case that disagrees with ground truth must arrive marked as needing a record, not
-    // silently as a `holds` pin — a fixture that records a bypass as normal is how a hole becomes
-    // permanent.
     const escaping = asCase(position, "shell", PAYLOADS.shell.rule, "x", false, 4);
     assert.equal(escaping.class, "documented-hole");
     assert.match(escaping.hole, /UNRECORDED/);
@@ -210,7 +156,6 @@ test("the fuzzer runs green against this repository and prints its seed on the g
     const out = sink();
     const err = sink();
     assert.equal(run(["--workspace", REPO, "--pack-root", join(REPO, "packs"), "--check"], { stdout: out, stderr: err, cwd: REPO }), 0, err.text());
-    // Printed on a GREEN, not only on a red: a green nobody can reproduce is a green nobody can audit.
     assert.match(out.text(), new RegExp(`seed ${DEFAULT_SEED}`));
     assert.match(out.text(), new RegExp(`${DEFAULT_CASES} spelling`));
 });
@@ -222,8 +167,6 @@ test("a bad --seed or --cases is refused rather than coerced", async () => {
         assert.equal(code, 2, `${argv.join(" ")} was not refused`);
         assert.match(err.text(), /needs a non-negative integer|would generate nothing/);
     }
-    // `Number("")` is 0 and `Number("12abc")` is NaN; a fuzzer silently running zero cases and
-    // reporting green is the false green this whole module is written against.
 });
 
 test("a workspace whose policy does not declare a payload's rule is could-not-run", async () => {

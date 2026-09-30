@@ -1,19 +1,4 @@
-// The review-loop meter's suite. Every counting trap this repository has already PAID to discover is
-// a case here, because the whole argument for the tool is that a hand count kept getting them wrong —
-// a suite that only exercised the happy path would be the hand count with more steps.
-//
-// The traps, each traceable to a measurement on this repository rather than to a guess:
-//   * one actor, two logins — a filter on either surface returns zero from the other (#154)
-//   * our own reviews sit on the same endpoint and inflate the count (at merge: #105 is 7 of 15,
-//     #342 is 90 of 102 — and this line carried the MID-LOOP counts, 6 of 15 and 74 of 81, while
-//     `review-meter.mjs` had already been corrected to the at-merge ones. A factual contradiction
-//     between two files of one change, about counts, inside the change built to end hand-counting.
-//     Copilot round 3 on #357, through the suppressed channel; `0020`'s class exactly — the earlier
-//     repair stopped at the site somebody quoted)
-//   * an inline comment belongs to the review that carried it, grouped on `pull_request_review_id`
-//   * the entry guard must survive a path containing a space — this file's subject shipped the broken
-//     spelling and `--fetch` exited 0 having written nothing, the FOURTH time here
-//   * a malformed snapshot is could-not-run, never a review loop measuring zero
+// Tests for `review-meter` — the review-loop meter: arithmetic, snapshot contract, register rail, window and shaping.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -47,10 +32,7 @@ const submission = (over = {}) => ({
     ...over,
 });
 
-// Every fixture is stamped with a DESCENDING `mergedAt` and a `window` matching its own corpus, so a
-// case asserting something else has to say so. Both contracts arrived at the pre-commit checkpoint:
-// the window is by merge date and must prove it, and a window heading that disagrees with the corpus
-// under it is a false heading over true figures.
+// Valid by default: `mergedAt` descends and `window` matches the corpus, so a case breaks only what it tests.
 const snapshotOf = (pullRequests) => ({
     portulan: { reviewSnapshot: SNAPSHOT_VERSION },
     repository: "sleepy-panda-srl/portulan",
@@ -95,9 +77,6 @@ test("a pull request's pushes are its DISTINCT reviewed heads, not its submissio
 });
 
 test("the aggregate reports ratios, and a coincidence between pushes and submissions is FLAGGED", () => {
-    // One head per submission is the shape `review_on_push: true` produces, and it makes
-    // pushes-per-finding-bearing-submission an identity rather than a measurement. Measured on the
-    // 2026-08-26 capture: 140 submissions, 140 pushes, 3.04 = 1/(1 - 0.671).
     const m = meter(
         snapshotOf([
             { number: 1, submissions: [submission({ id: 1, head: "a", inline: 1 }), submission({ id: 2, head: "b", inline: 0 })] },
@@ -109,9 +88,7 @@ test("the aggregate reports ratios, and a coincidence between pushes and submiss
     assert.equal(m.pushesCoincideWithSubmissions, true);
     assert.equal(m.submissionsPerPullRequest, 1.5);
     assert.equal(m.noInline, 2);
-    // The identity, asserted rather than described — within a tolerance, because it is exact in
-    // arithmetic and not in IEEE 754: 3 and 2.9999999999999996 are the same number here and are not
-    // the same double. Asserting equality outright failed on the first run of this suite.
+    // An identity when every submission has its own head: exact in arithmetic, not in IEEE 754.
     assert.ok(Math.abs(m.pushesPerFindingBearingSubmission - 1 / (1 - m.noInlineRate)) < 1e-9);
 });
 
@@ -127,8 +104,6 @@ test("an empty denominator yields null, never zero — an unmeasured loop is not
     assert.equal(m.submissionsPerPullRequest, null);
     assert.equal(m.noInlineRate, null);
     assert.equal(m.pushesPerFindingBearingSubmission, null);
-    // And an unmeasured window is NOT a window below the retirement threshold. Conflating the two is
-    // how a rule gets retired on a corpus nobody captured.
     assert.equal(m.belowRetireThreshold, null);
 });
 
@@ -146,8 +121,6 @@ test("the retirement threshold is reported on the side the record states, not ne
     const at = meter(
         snapshotOf([{ number: 1, submissions: [submission({ id: 1, head: "a" }), submission({ id: 2, head: "b" })] }]),
     );
-    // Exactly AT the threshold is not below it — the record says *below*, and a boundary read the
-    // generous way retires a rule the measurement did not retire.
     assert.equal(at.submissionsPerPullRequest, RETIRE_THRESHOLD);
     assert.equal(at.belowRetireThreshold, false);
 });
@@ -155,11 +128,6 @@ test("the retirement threshold is reported on the side the record states, not ne
 // -------------------------------------------------------------------- the snapshot's own contract
 
 test("a snapshot carrying a NON-REVIEWER review is could-not-judge, not a busy loop", () => {
-    // The trap in one case: our own replies and derived verdicts are submitted as REVIEWS. **At
-    // merge, seven of #105's fifteen review objects are `portulan-agent[bot]`, and ninety of #342's
-    // hundred and two.** Both are stamped *at merge*, because this comment carried the counts as they
-    // stood MID-LOOP and they were stale by the time each pull request landed. A snapshot that let one
-    // through would inflate every figure in the register with our own traffic.
     const problems = validateSnapshot(
         snapshotOf([{ number: 1, submissions: [submission({ login: "portulan-agent[bot]" })] }]),
     );
@@ -168,8 +136,7 @@ test("a snapshot carrying a NON-REVIEWER review is could-not-judge, not a busy l
 });
 
 test("BOTH observed reviewer logins are accepted — a filter on one returns zero from the other", () => {
-    // `copilot-pull-request-reviewer[bot]` on /reviews, plain `Copilot` on /comments. #154 lost a
-    // whole round to an equality test against one spelling.
+    // The reviewer's login differs by endpoint: the `[bot]` form on /reviews, the plain one on /comments.
     const problems = validateSnapshot(
         snapshotOf([
             { number: 1, submissions: [submission({ login: "copilot-pull-request-reviewer[bot]" })] },
@@ -216,12 +183,6 @@ test("the register is byte-compared, so a hand-edit is a red rather than a survi
 
 test("a MISSING register is could-not-run, not a mismatch", () =>
     withTemp((dir) => {
-        // **The snapshot here must be VALID, or this passes for the wrong reason.** It was
-        // `snapshotOf([])`, which `validateSnapshot` refuses on `window.merged < 1` — so the case
-        // returned 2 before ever reaching the register and asserted nothing about a missing one.
-        // Copilot round 1 on #357, and the finding is the sharper one of the two: an assertion that
-        // holds for a reason other than its subject is a test that will keep passing after the code
-        // it names is deleted.
         const snap = join(dir, "snapshot.json");
         writeFileSync(snap, JSON.stringify(snapshotOf([{ number: 1, submissions: [submission()] }])));
         const c = collect();
@@ -287,10 +248,7 @@ test("the run prints its limits on every green, so the exit code cannot imply mo
 
 test("the entry guard survives a path containing a SPACE — the fourth instance of this here", () =>
     withTemp((dir) => {
-        // `file://${argv[1]}` percent-encodes nothing while `import.meta.url` percent-encodes the
-        // space, so the comparison fails and the tool exits 0 having run nothing. This file's subject
-        // shipped exactly that: `--fetch` against the live repository printed nothing and wrote no
-        // snapshot. The assertion is that INVOKING it as a program actually runs it.
+        // `import.meta.url` percent-encodes a space: an entry guard comparing it with `process.argv[1]` never fires.
         const spaced = join(dir, "a directory with spaces");
         mkdirSync(spaced);
         const snap = join(spaced, "s.json");
@@ -301,21 +259,14 @@ test("the entry guard survives a path containing a SPACE — the fourth instance
     }));
 
 test("the tool spawns nothing unless --fetch is given", () => {
-    // The fetch is the ONE mode that talks to anything. A metering run inside a verify recipe must be
-    // answerable on a machine with no token and no network, so this asserts the source carries no
-    // process spawn outside the `gh` helper the fetch path uses — the shape `goldens.test.mjs`
-    // asserts for its own corpus.
     const source = readFileSync(TOOL, "utf8");
     const spawns = source.match(/spawnSync\(/g) ?? [];
     assert.equal(spawns.length, 1, "exactly one spawn site, and it is the gh helper the fetch uses");
 });
 
-// ------------------------------------------------------- the window, and the trap that produced it
+// ---------------------------------------------------------------------- the window, by merge date
 
 test("the window is taken by MERGE DATE, not by pull request number", () => {
-    // The defect this replaced, in one case: `gh pr list` orders by number, and the first capture
-    // taken here carried three inversions — so the corpus sampled was not the corpus the register
-    // named. #346 merged before #345 in real data; the newest two here are 9 and 7, not 10 and 9.
     const listed = [
         { number: 10, mergedAt: "2026-08-20T00:00:00Z" },
         { number: 9, mergedAt: "2026-08-24T00:00:00Z" },
@@ -323,7 +274,6 @@ test("the window is taken by MERGE DATE, not by pull request number", () => {
         { number: 7, mergedAt: "2026-08-23T00:00:00Z" },
     ];
     assert.deepEqual(selectWindow(listed, 2).map((p) => p.number), [9, 7]);
-    // Number order would have answered [10, 9], and both entries would have been wrong.
     assert.notDeepEqual(selectWindow(listed, 2).map((p) => p.number), [10, 9]);
 });
 
@@ -343,8 +293,6 @@ test("a snapshot NOT in descending merge order is refused — it is not the newe
 });
 
 test("a window heading that disagrees with its own corpus is refused", () => {
-    // Measured at the checkpoint: `{merged: 300}` over thirty pull requests rendered "300 most
-    // recently merged" above "| Pull requests | count | 30 |", rail green.
     const wrong = snapshotOf([{ number: 1, submissions: [submission()] }]);
     wrong.window.merged = 300;
     assert.ok(validateSnapshot(wrong).some((p) => /window.merged says 300/.test(p)));
@@ -354,17 +302,11 @@ test("a window heading that disagrees with its own corpus is refused", () => {
 });
 
 test("a submission with no HEAD is refused — pushes are counted from it", () => {
-    // Contracted exactly as `inline` is, and it was not: stripping every head made the tool exit 0
-    // printing `pushes 0` and regenerate a register carrying that zero, which is what meter()'s own
-    // comment forbids one field over.
     const bad = snapshotOf([{ number: 1, submissions: [submission({ head: undefined })] }]);
     assert.ok(validateSnapshot(bad).some((p) => /no head sha/.test(p)));
 });
 
 test("a mergedAt that is not a timestamp is refused, not ordered as text", () => {
-    // It was compared lexicographically, so ANY string ordered against any other and a window stamped
-    // "yesterday" passed while the register claimed it was by merge date. A check that cannot fail on
-    // a malformed input is not checking it. Copilot round 2 on #357.
     const absent = snapshotOf([{ number: 1, submissions: [submission()] }]);
     delete absent.pullRequests[0].mergedAt;
     assert.ok(validateSnapshot(absent).some((p) => /no parsable mergedAt/.test(p)));
@@ -373,8 +315,6 @@ test("a mergedAt that is not a timestamp is refused, not ordered as text", () =>
     prose.pullRequests[0].mergedAt = "yesterday";
     assert.ok(validateSnapshot(prose).some((p) => /no parsable mergedAt/.test(p)));
 
-    // And ordering is on the parsed value: these two are in descending order by DATE and ASCENDING
-    // order as text, so a lexicographic check would report a violation that is not there.
     const ok = snapshotOf([{ number: 2, submissions: [submission()] }, { number: 1, submissions: [submission()] }]);
     ok.pullRequests[0].mergedAt = "2026-08-26T09:00:00.000Z";
     ok.pullRequests[1].mergedAt = "2026-08-26T08:00:00Z";
@@ -382,9 +322,6 @@ test("a mergedAt that is not a timestamp is refused, not ordered as text", () =>
 });
 
 test("an EMPTY window is metered, not refused — a repository with no merged pull requests is a true zero", () => {
-    // The floor was 1, which made this tool reject a snapshot its own `--fetch` can write. `meter()`
-    // already answers an empty corpus correctly with null ratios, so the refusal was the validator
-    // disagreeing with its own producer. Copilot round 2 on #357.
     assert.deepEqual(validateSnapshot(snapshotOf([])), []);
     const text = renderRegister(meter(snapshotOf([])));
     assert.ok(text.includes("| Pull requests | count | 0 |"));
@@ -396,13 +333,11 @@ test("selectWindow orders on the PARSED stamp, so the producer and the validator
         { number: 1, mergedAt: "2026-08-26T08:00:00Z" },
         { number: 2, mergedAt: "2026-08-26T09:00:00.000Z" },
     ];
-    // Text order would put the millisecond form first only by accident of the digit; date order is
-    // what both sides must use, or the fetch writes a window the validator refuses.
     assert.deepEqual(selectWindow(listed, 2).map((p) => p.number), [2, 1]);
     assert.deepEqual(validateSnapshot(snapshotOf(selectWindow(listed, 2).map((p) => ({ ...p, submissions: [submission()] })))), []);
 });
 
-// ------------------------------------------------- the shaping, where two measured traps both live
+// ------------------------------------------------------------------------------------ the shaping
 
 test("shapeSubmissions drops non-reviewer reviews and groups inline comments on their review id", () => {
     const reviews = [
@@ -413,8 +348,6 @@ test("shapeSubmissions drops non-reviewer reviews and groups inline comments on 
     const comments = [
         { user: { login: "Copilot" }, pull_request_review_id: 1 },
         { user: { login: "Copilot" }, pull_request_review_id: 1 },
-        // Ours, on the same review — counted would inflate a finding-bearing submission out of an
-        // empty one, which is the direction that flatters the loop.
         { user: { login: "portulan-agent[bot]" }, pull_request_review_id: 3 },
     ];
     const shaped = shapeSubmissions(reviews, comments);
@@ -424,8 +357,7 @@ test("shapeSubmissions drops non-reviewer reviews and groups inline comments on 
 });
 
 test("shapeSubmissions reads head from the REVIEW, never from a comment", () => {
-    // A review's commit_id is what it judged; an inline comment's drifts onto a later head. The
-    // review's own stability is an assumption with #253 open on it, named in the module header.
+    // An inline comment's `commit_id` drifts onto a later head; a review's is the head it judged.
     const shaped = shapeSubmissions(
         [{ id: 1, user: { login: "Copilot" }, state: "COMMENTED", commit_id: "the-review-head", submitted_at: "t" }],
         [{ user: { login: "Copilot" }, pull_request_review_id: 1, commit_id: "a-drifted-head" }],
@@ -434,12 +366,6 @@ test("shapeSubmissions reads head from the REVIEW, never from a comment", () => 
 });
 
 test("a --pool that cannot exceed the window is refused, and the refusal is REACHED", () => {
-    // **This case used to pass for the wrong reason.** It asserted only the digit 2, and `--pool 30
-    // --limit 30` did not trip the guard — so it fell through into the real `--fetch` path, ran `gh`
-    // against `o/r`, and got its 2 from the fetch failing. Environment-dependent, network-dependent,
-    // and green either way. Copilot round 3 on #357.
-    //
-    // The assertion is now on the message, so it fails if it ever stops reaching the guard.
     for (const pool of ["30", "29", "0"]) {
         const c = collect();
         assert.equal(run(["--fetch", "--repo", "o/r", "--out", "x", "--limit", "30", "--pool", pool], c.io), 2);

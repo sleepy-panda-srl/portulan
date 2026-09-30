@@ -1,17 +1,4 @@
-// `upgrade` against real workspaces rather than against its own fixtures.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// `upgrade.test.mjs` builds `ws` views in memory, which is the honest way to force a step's branches
-// red and is **also** the way a suite ends up agreeing with itself. This file is the other half, and
-// it exists because this repository has measured seven instances of a harness inheriting the blind
-// spot of the change it checks — and because this session found an eighth **by running the step over
-// `.portulan`**: a handoff that documents the marker in a sentence was read as a malformed marked
-// line, and `upgrade` refused the one workspace this repository owns. Every unit test passed. No
-// fixture had ever written about itself.
-//
-// So the rule this file enforces on itself: **nothing here constructs a workspace by hand.** The
-// drafts come from the real `init`, the bundle really goes away, and the rail is really run.
+// `upgrade` against real workspaces, drafted by the real `init`, never against hand-built fixtures.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -24,10 +11,7 @@ import { fileURLToPath } from "node:url";
 import { run } from "./upgrade.mjs";
 import { MARKER } from "../spec/migrations/0002-bundle-fallback-path.mjs";
 
-// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
-// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
-// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
-// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+// The tools read the host's installed-plugin record, so every case gets an empty host unless it passes `env:`.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -36,17 +20,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
 
 const scratches = [];
-/**
- * A scratch directory, **realpathed** — and the realpath is load-bearing here, not tidiness.
- *
- * On macOS `os.tmpdir()` runs through `/var`, which is a symlink to `/private/var`. Node resolves
- * symlinks when it computes `import.meta.url` and does not when it hands over `process.argv[1]`, so
- * every tool in `cli/` that guards its entry point with the bare comparison — which is all of them
- * except `portulan.mjs`, and rightly, since nothing invokes them through a link in production —
- * sees the two disagree and **never runs**. Measured here: `node <tmpdir>/cli/init.mjs …` exited
- * **0**, printed nothing, and drafted nothing. A harness that had not realpathed would have read
- * that as `init` succeeding and then failed somewhere far away from the cause.
- */
+// Realpathed: macOS's tmpdir runs through a symlink, and there a tool's entry guard fails and it silently exits 0.
 function scratch() {
     const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "portulan-upgrade-live-")));
     scratches.push(dir);
@@ -62,21 +36,14 @@ function harness() {
     return { text: () => `${out.join("")}${err.join("")}`, options: { stdout: { write: (s) => out.push(s) }, stderr: { write: (s) => err.push(s) } } };
 }
 
-/**
- * A second bundle — the real `cli/` and `spec/`, at a path that is not this checkout.
- *
- * `cli/init.mjs` bakes `path.resolve(HERE, "..")` into the rail it drafts, so drafting FROM here
- * would bake this checkout and the repair would have nothing to do. The whole subject of the repair
- * is a workspace whose drafting bundle is somewhere else, and the only way to produce one is to
- * really draft it from somewhere else.
- */
+// `init` bakes its bundle's path into the rail it drafts, so a travelled workspace needs a bundle elsewhere.
 function secondBundle() {
     const bundle = scratch();
     for (const dir of ["cli", "spec"]) fs.cpSync(path.join(REPO, dir), path.join(bundle, dir), { recursive: true });
     return bundle;
 }
 
-/** Run a drafted rail the way a pipeline would: no `portulan` on PATH, no `PORTULAN_CLI`. */
+// No `portulan` on PATH and no `PORTULAN_CLI`, as in a pipeline: either would rescue a rail whose bundle is gone.
 function runRail(repoDir) {
     const nodeDir = path.dirname(process.execPath);
     try {
@@ -92,7 +59,6 @@ function runRail(repoDir) {
     }
 }
 
-/** Draft a workspace with the REAL `init`, from `bundle`, into a fresh repository directory. */
 function draft(bundle, args) {
     const repoDir = scratch();
     fs.mkdirSync(path.join(repoDir, ".git"));
@@ -100,7 +66,6 @@ function draft(bundle, args) {
     return repoDir;
 }
 
-// ===========================================================================================
 
 describe("the workspaces this repository actually owns", () => {
     test("`.portulan` owes nothing — and a change that makes it owe something is visible here", async () => {
@@ -110,9 +75,7 @@ describe("the workspaces this repository actually owns", () => {
     });
 
     test("`examples/` owes nothing, and is NOT restamped off 2.4", async () => {
-        // `examples/` sitting four MINORs behind is deliberate compatibility evidence — `spec/README.md`
-        // leans on it across every bump. A chain that restamped MINORs would eat it, so this asserts
-        // both the verdict and the version.
+        // `examples/` stays on 2.4 on purpose, the demonstration that an old workspace survives each spec bump.
         const before = fs.readFileSync(path.join(REPO, "examples", "workspace.json"), "utf8");
         const h = harness();
         assert.equal(await run([path.join(REPO, "examples"), "--check"], h.options), 0, h.text());
@@ -127,30 +90,23 @@ describe("the repair, end to end, on a workspace that really travelled", () => {
         const repoDir = draft(bundle, ["--residence", "in-repo", "--no-cycle"]);
         const rail = path.join(repoDir, ".portulan", "verify", "index.sh");
 
-        // 1. The draft really did bake the other bundle.
         const drafted = fs.readFileSync(rail, "utf8");
         assert.equal(drafted.split("\n").filter((l) => l.includes(MARKER)).length, 2, "init did not draft the marked lines");
         assert.ok(drafted.includes(bundle), "init baked a bundle that is not the one it ran from");
 
-        // 2. The workspace travels: the drafting bundle is gone. This is what a clone, or a
-        //    `vendor --switch` onto another machine, leaves behind.
         fs.rmSync(bundle, { recursive: true, force: true });
 
         const stale = runRail(repoDir);
         assert.equal(stale.code, 2, `a rail whose bundle is gone must be could-not-run, got ${stale.code}:\n${stale.out}`);
         assert.match(stale.out, /NOT checked/);
 
-        // 3. `upgrade` sees it, and says so before it is asked to fix it.
         const checked = harness();
         assert.equal(await run([path.join(repoDir, ".portulan"), "--check"], checked.options), 1, checked.text());
         assert.match(checked.text(), /0002-bundle-fallback-path/);
 
-        // 4. Repaired.
         const written = harness();
         assert.equal(await run([path.join(repoDir, ".portulan"), "--write"], written.options), 0, written.text());
 
-        // 5. And the rail is a rail again — RUN, not read. This is the assertion the whole step
-        //    exists for, and a string comparison on the script would not have made it.
         const repaired = runRail(repoDir);
         assert.notEqual(repaired.code, 2, `the repaired rail still could not run:\n${repaired.out}`);
         assert.equal(repaired.code, 0, `the repaired rail should be green on a freshly drafted workspace:\n${repaired.out}`);
@@ -178,7 +134,6 @@ describe("either residence — the row's own words", () => {
     test("a real `init`-drafted pointer resolves to the workspace that governs it", async () => {
         const bundle = secondBundle();
 
-        // The governing workspace, drafted for real, installed into a host record.
         const govRepo = draft(bundle, ["--residence", "in-repo", "--no-cycle", "--name", "acme-platform"]);
         const config = scratch();
         fs.mkdirSync(path.join(config, "plugins"), { recursive: true });
@@ -191,7 +146,6 @@ describe("either residence — the row's own words", () => {
             )}\n`,
         );
 
-        // And the repository that points at it.
         const pointerRepo = draft(bundle, ["--residence", "pointer", "--governed-by", "acme-platform"]);
 
         const h = harness();
@@ -202,13 +156,9 @@ describe("either residence — the row's own words", () => {
     });
 
     test("the ADVICE for a resolved install does not name the command the tool then refuses", async () => {
-        // Caught by mutation while folding the pre-commit adjustments: the fix for this had no test,
-        // so reverting it stayed green. A resolved install that owes steps used to be told "run with
-        // --write to apply them" — the exact invocation `--write` then refuses with exit 2. Advice
-        // and refusal disagreeing about the same act is the sibling of the refusal itself.
         const bundle = secondBundle();
         const govRepo = draft(bundle, ["--residence", "in-repo", "--no-cycle", "--name", "acme-platform"]);
-        fs.rmSync(bundle, { recursive: true, force: true }); // the install now owes the repair
+        fs.rmSync(bundle, { recursive: true, force: true });
         const config = scratch();
         fs.mkdirSync(path.join(config, "plugins"), { recursive: true });
         fs.writeFileSync(

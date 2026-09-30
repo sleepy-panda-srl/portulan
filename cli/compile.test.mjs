@@ -1,19 +1,6 @@
 // Tests for `compile` — the enforcement compiler.
 //
-// Written before the compiler, per ../core/operating/verification.md: the failing test is the spec.
-// Zero dependencies, node's own runner, same as ./doctor.test.mjs and ./plugin-lint.test.mjs, and
-// run by the same recipe.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// What this suite CANNOT establish, stated first because the milestone before this one was spent
-// learning it the expensive way: **that Claude Code honours what the compiler emits.** A schema-valid
-// settings file that the host ignores looks identical, from in here, to one it enforces — that is
-// exactly ../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md, where three agents
-// shipped, validated green twice, and loaded nowhere. The host behaviours this compiler is built on
-// were measured against a running host and are recorded in ../.portulan/memory/ and in
-// ../.portulan/gate-map/compiler.md. This suite tests emission fidelity only. CI proves the artifact is
-// what the policy says; only a running host proves it holds.
+// Emission only: that Claude Code honours what is emitted, only a running host can show.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -23,10 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
-// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
-// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
-// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+// This suite imports `./compile.mjs`, which can read the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -82,9 +66,7 @@ import { inspect } from "./doctor.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
 
-// One exit handler for every scratch directory, not one per directory — the per-directory form
-// exceeds node's default listener limit partway through a suite this size and prints a warning,
-// which trains a reader to skim warnings from a test run. Inherited from ./plugin-lint.test.mjs.
+// One exit handler for every scratch directory: one each would pass node's default limit of ten listeners.
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
@@ -96,14 +78,6 @@ function scratch() {
     return dir;
 }
 
-/**
- * A minimal well-formed policy, with one rule of each tier. Tests mutate a clone.
- *
- * It declares **no `floor`** on purpose: a workspace that has not declared its platform floor is a
- * legitimate shape, it is the shape every fixture had before the floor backend existed, and the
- * no-floor path is the one that must refuse rather than invent a branch name. Tests that want a
- * floor add one with `withFloor`.
- */
 function policy(overrides = {}) {
     return {
         portulan: { spec: "2.2" },
@@ -118,7 +92,6 @@ function policy(overrides = {}) {
     };
 }
 
-/** The same policy with a complete floor declaration, and the two ref-gated push spellings. */
 function withFloor(overrides = {}) {
     const p = policy();
     p.rules.push(
@@ -135,7 +108,6 @@ function withFloor(overrides = {}) {
     return p;
 }
 
-/** Writes a policy file into a scratch workspace and returns the workspace dir. */
 function workspace(p = policy()) {
     const dir = scratch();
     fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
@@ -157,20 +129,8 @@ function workspace(p = policy()) {
 }
 
 // ===========================================================================================
-// 1. Nothing is dropped on the floor — and the accounting is now PER BACKEND
+// 1. Nothing is dropped on the floor — and the accounting is per backend
 // ===========================================================================================
-//
-// The distinctive failure of a compiler that emits gate machinery is a rule that goes in and
-// nothing comes out: the gate reads as configured and enforces nothing. So the accounting is a
-// test, not a diagnostic — every rule ends in exactly one of {compiled, refused-with-a-reason},
-// and the two counts must add up to the input.
-//
-// **Per backend, since the floor backend arrived.** For one session the tier partition lived in the
-// shared stage: `auto` and `propose` were refused before any backend ran. That is the Claude Code
-// backend's partition, not a property of policy — the floor backend inverts it, compiling exactly
-// the `propose` rules the other one refuses *on the grounds that the floor enforces them*. Left
-// where it was, the second backend could never have compiled anything, and the matrix would have
-// been a column of refusals wearing a compiler's name.
 
 describe("the accounting", () => {
     for (const backend of backends(parse(withFloor()))) {
@@ -210,10 +170,6 @@ describe("the accounting", () => {
 // ===========================================================================================
 // 2. A checker must refuse what it cannot check
 // ===========================================================================================
-//
-// ../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md. Skipping and enforcing are
-// indistinguishable from outside, so an unknown tier or action shape refuses the WHOLE compile
-// rather than dropping one rule. A compiler that half-understands its input emits a half-gate.
 
 describe("refusing what it cannot compile", () => {
     test("an unknown tier refuses the whole compile", () => {
@@ -258,10 +214,6 @@ describe("refusing what it cannot compile", () => {
         ["a newline", "git push\npwd"],
     ]) {
         test(`a shell target containing ${label} refuses the whole compile`, () => {
-            // Targets are interpolated into `Bash(target:*)`. A structural character there emits a rule
-            // the host reads differently from what the policy says, and an ambiguous gate is
-            // indistinguishable from an absent one. Refused rather than escaped: extending the DSL is a
-            // deliberate change, not something a compiler should improvise. Found by review.
             const p = policy();
             p.rules[1].action = { shell: bad };
             assert.throws(() => parse(p), CompileError);
@@ -280,12 +232,6 @@ describe("refusing what it cannot compile", () => {
         assert.doesNotThrow(() => parse(p));
     });
 
-    // #205. The reserved-character check was applied to all four action kinds on one justification —
-    // the value is interpolated into the host's permission DSL. A `none` value never is: it is the
-    // PROSE the policy gives for why no surface exists, which the compiler reports verbatim (see the
-    // `none` arm of the emitter, and the refusal test above). So the DSL reasoning did not reach it,
-    // and the DSL regex forbade parentheses in an English sentence — a gate refusing to compile over
-    // an aside.
     test("a `none` value may contain parentheses — it is prose, not a permission pattern", () => {
         const p = policy();
         p.rules.push({
@@ -294,9 +240,6 @@ describe("refusing what it cannot compile", () => {
             action: { none: "no tool-level surface exists for spending money (the host has no payment tool)" },
             reason: "gated",
         });
-        // Parsed ONCE and reused: the first draft called `parse(p)` twice, once inside `doesNotThrow`
-        // and once to build the backend, so the assertion about the reported reason rode a second
-        // parse that no assertion had checked. Copilot, #256 round 2.
         let parsed;
         assert.doesNotThrow(() => {
             parsed = parse(p);
@@ -305,12 +248,6 @@ describe("refusing what it cannot compile", () => {
         assert.match(refusal.why, /\(the host has no payment tool\)/, "the aside survives into the reported reason");
     });
 
-    // The whitespace refusal carried the SAME over-reach nine lines below the split above: it told
-    // every kind the host "would not match" its value, and nothing about a `none` value is matched by
-    // the host. The refusal is right and the reason was wrong. Round 2 then got the REPLACEMENT reason
-    // wrong too — it blamed the report's padding, which comes from `r.id.padEnd(38)` and cannot be
-    // affected by the sentence — so this asserts the reason that is actually true: leading whitespace
-    // shifts the sentence out of line with every other refusal. Copilot, #256 rounds 1 and 3.
     test("a `none` value with surrounding whitespace refuses, and NOT because the host would not match it", () => {
         const p = policy();
         p.rules.push({ id: "money", tier: "gated", action: { none: " no surface exists " }, reason: "gated" });
@@ -330,10 +267,6 @@ describe("refusing what it cannot compile", () => {
         assert.throws(() => parse(p), (e) => e instanceof CompileError && /the host would not match/.test(e.message));
     });
 
-    // …and the half of the old check that DOES reach `none`, kept for its own reason rather than
-    // folded back into the DSL one. That sentence is printed into a line-based refusal report —
-    // `refused ${id.padEnd(38)} ${why}` — so a newline splits one refusal across two lines and
-    // misaligns every column after it. Same class as `json.sh`'s report, one tool over.
     for (const [label, bad] of [
         ["a newline", "no surface exists\nfor this"],
         ["a tab", "no surface exists\tfor this"],
@@ -345,24 +278,8 @@ describe("refusing what it cannot compile", () => {
         });
     }
 
-    // These arrived on `main` in `f545228` while the floor backend was in flight, written against the
-    // `compile()` name this branch renamed to `parse()` when the tier partition moved into the
-    // backends. Retargeted, not rewritten: the validation is the shared stage's either way, and it is
-    // where they were always aimed.
-    //
-    // Their nine reds on the rebase were **entirely** this rename, and reading them as something else
-    // cost a defect. The first diagnosis was that the merge had dropped the validation itself; it had
-    // not — the block came through untouched — and "restoring" it added a second copy of a
-    // load-bearing validator, which a Copilot round then caught. `git show <commit>:cli/compile.mjs`
-    // would have settled it in one command before any of that. Recorded here rather than only in the
-    // handoff, because this is where the next person meets these tests.
     for (const kind of ["write", "read"]) {
         test(`a ${kind} target climbing out with \`..\` refuses`, () => {
-            // The sibling of the absolute case, one spelling over: `../secrets/` emits
-            // `Edit(./../secrets/**)` — which the host may resolve against the PARENT tree — while
-            // `matchesPath` can never match a `/../`-bearing tail against a resolved path. The
-            // emitter and the matcher disagree about which way it is wrong, and a gate that reads as
-            // present while holding nothing is the worse half. Found by the supervisor on #51.
             const p = policy();
             p.rules[0].action = { [kind]: "../secrets/" };
             assert.throws(() => parse(p), CompileError);
@@ -375,18 +292,12 @@ describe("refusing what it cannot compile", () => {
         });
 
         test(`a ${kind} target merely CONTAINING dots is fine — only a \`..\` segment escapes`, () => {
-            // `..` is a path segment, not a substring: a file legitimately named `a..b.md`, or any
-            // dotfile, must still compile. Refusing on the substring would be a false red.
             const p = policy();
             p.rules[0].action = { [kind]: "docs/a..b.md" };
             assert.doesNotThrow(() => parse(p));
         });
 
         test(`an absolute ${kind} target refuses rather than being silently made relative`, () => {
-            // `pattern()` and `matchesPath()` both strip the leading slash, so `/etc/passwd` compiled
-            // to `Edit(./etc/passwd)` and matched any path ENDING in `/etc/passwd` — a gate enforcing
-            // something both different from and broader than the policy's own words. The same
-            // "refuse rather than escape" reasoning as the reserved-character check. Found by review.
             const p = policy();
             p.rules[0].action = { [kind]: "/etc/passwd" };
             assert.throws(() => parse(p), CompileError);
@@ -407,20 +318,10 @@ describe("refusing what it cannot compile", () => {
 // ===========================================================================================
 // 3. The fail-closed floor
 // ===========================================================================================
-//
-// Seven fail-opens in this repository so far, every one in scaffolding rather than in a check
-// (../.portulan/tasks/0004). The compiler's own version: emitting an artifact with no gates in it
-// while reporting success. The workflow already refuses to report green having run nothing; this is
-// that rule one level down.
 
 describe("fail-closed", () => {
-    // The guard is **per backend** now, and it has to be: what a backend "should have compiled"
-    // differs by backend, so a shared version would either fire on a backend that legitimately
-    // compiles nothing, or never fire at all. Asserted for each backend against the input that
-    // makes that backend's own claim empty.
     test("Claude Code: a policy carrying gate rules that would emit no gate at all refuses", () => {
         const p = policy();
-        // Every gate becomes unreachable, but the rules are still there claiming enforcement.
         p.rules = p.rules.map((r) =>
             r.tier === "gated" || r.tier === "prohibited"
                 ? { ...r, action: { none: "deliberately unreachable for this test" } }
@@ -430,9 +331,6 @@ describe("fail-closed", () => {
     });
 
     test("the floor backend: a declared floor that would emit no ruleset rule at all refuses", () => {
-        // A floor is declared — so the workspace is claiming a platform floor — and nothing in the
-        // policy reaches it. Writing an empty ruleset here would be the same defect: an importable
-        // file, valid, named for a floor, enforcing nothing.
         const p = withFloor();
         p.rules = p.rules.filter((r) => r.tier !== "propose" && !String(r.action?.shell ?? "").startsWith("git push --"));
         assert.throws(() => githubRuleset(parse(p)), CompileError, "a declared floor that compiles to no rule must not report success");
@@ -457,14 +355,7 @@ describe("fail-closed", () => {
 // ===========================================================================================
 // 4. The Claude Code backend — the tier→surface mapping, as measured
 // ===========================================================================================
-//
-// Each assertion below corresponds to a probe run against a live host on 2026-07-27, CLI 2.1.220,
-// EXCEPT where a case carries its own stamp. They are asserted here so that a later edit to the
-// mapping is loud; they are not evidence that the host still behaves this way. Re-measure on upgrade.
-//
-// **A case measured at a different version states its own**, because a later assertion landing inside
-// a block dated once inherits a provenance nobody checked — `.portulan/verify/README.md` records the
-// same convention for the compile measurement, version-stamped because it is a fact about one CLI.
+// Measured on Claude Code 2.1.220, unless a case names its own version.
 
 describe("the Claude Code backend", () => {
     test("gated compiles to `ask` — per-action approval, which is what Gated means", () => {
@@ -476,9 +367,6 @@ describe("the Claude Code backend", () => {
     test("prohibited compiles to `deny` — an action with no approval path", () => {
         const settings = claudeCode(parse(policy())).artifact.value;
         assert.ok(settings.permissions.deny.includes("Edit(./docs/vision.md)"), "expected Edit(./docs/vision.md)");
-        // `Write(./docs/vision.md)` was asserted here too until 2026-08-30. The host DISCARDS that
-        // pattern — see the tool-generality case below — so asserting it pinned an emission that
-        // enforced nothing.
         assert.ok(!(settings.permissions.ask ?? []).includes("Edit(./docs/vision.md)"));
     });
 
@@ -494,23 +382,13 @@ describe("the Claude Code backend", () => {
     });
 
     test("a write action covers every tool that can write — the CLAIM stands, the instrument moved", () => {
-        // **Measured 2026-08-30, CLI 2.1.240** — its own stamp, per the block header above.
-        //
-        // This case asserted all three tool names in `permissions.deny`. The guarantee it names is
-        // still true and is NOT being weakened; what changed is where the guarantee comes from. The
-        // host discards `Write(path)` and `NotebookEdit(path)` outright — *"only Edit(path) rules are
-        // matched by file permission checks"* — and warns on every start. So the emission was reporting
-        // three rules where one enforced, and the coverage was always `Edit(path)` being tool-general.
-        //
-        // Deleting this case would have removed a guarantee while looking like a cleanup. It is
-        // re-pointed at the two things that actually carry it.
+        // Claude Code 2.1.240 discards `Write(path)` and `NotebookEdit(path)` permission rules.
         const settings = claudeCode(parse(policy())).artifact.value;
         const denied = settings.permissions.deny.join(" ");
         assert.match(denied, /\bEdit\(/, "the one pattern the host matches, and it covers every file-editing tool");
         for (const tool of ["Write", "NotebookEdit"]) {
             assert.doesNotMatch(denied, new RegExp(`\\b${tool}\\(`), `${tool}(path) is discarded by the host — emitting it reports a rule that enforces nothing`);
         }
-        // And the hook, which is the consumer that must still see all three.
         assert.deepEqual(
             settings.hooks.PreToolUse.map((h) => h.matcher).sort(),
             ["Bash", "Edit", "NotebookEdit", "Write"],
@@ -519,11 +397,7 @@ describe("the Claude Code backend", () => {
     });
 
     test("a write gate's permission patterns narrow to Edit in the `ask` tier too, not only `deny`", () => {
-        // **Measured 2026-08-30, CLI 2.1.240.** The host prints the same refusal for an `ask` rule as
-        // for a `deny` one, and `cli/compile.mjs` picks the destination array BEFORE the shared
-        // per-tool loop — so a fix scoped to `deny` would have left the defect live for any adopter
-        // with a `gated` + `write` rule. This repository has none, which is exactly why it needs a
-        // fixture rather than an observation.
+        // Claude Code 2.1.240 discards `Write(path)` in `ask` as it does in `deny`.
         const gatedWrite = policy({
             rules: [{ id: "gated-write", tier: "gated", action: { write: "docs/vision.md" }, reason: "a gated write" }],
         });
@@ -533,11 +407,6 @@ describe("the Claude Code backend", () => {
     });
 
     test("the hook matcher set is pinned, because narrowing it with the patterns would open a real hole", () => {
-        // **The invariant the repair turns on, and nothing pinned it before 2026-08-30.** A fix that
-        // narrowed `matchers.add(tool)` alongside the emitted patterns would have passed the whole
-        // suite AND the `compile` recipe — the byte-compare is against the artifact the same change
-        // regenerates, so it agrees with the narrowed output. The `mutants` corpus does not stand in
-        // either: it grades `matchesRule`, never the artifact.
         const onlyAWrite = policy({
             rules: [{ id: "ban", tier: "prohibited", action: { write: "docs/vision.md" }, reason: "constitution" }],
         });
@@ -551,12 +420,7 @@ describe("the Claude Code backend", () => {
     });
 
     test("a write gate wires the Bash hook, or its shell coverage is a matcher nothing reaches", () => {
-        // The load-bearing half of the shell-write fix, and the half with no visible effect in THIS
-        // repository — whose policy already gates shell commands, so `Bash` is a matcher either way.
-        // A policy carrying ONLY a write prohibition is where the omission shows: without this, the
-        // runner is never invoked for a Bash call and `matchesRule`'s shell-write branch is dead
-        // code. A capability that validates and loads nothing is this repository's most expensive
-        // recurring defect, so it is asserted on the shape that would hide it.
+        // Only a write rule: any shell rule would wire the Bash matcher by itself.
         const onlyAWrite = policy({
             rules: [{ id: "ban", tier: "prohibited", action: { write: "docs/vision.md" }, reason: "constitution" }],
         });
@@ -568,18 +432,8 @@ describe("the Claude Code backend", () => {
     });
 
     test("no Bash PERMISSION rule joins it — the shell half is the hook's alone, and the note says so", () => {
-        // `Bash(prefix:*)` matches a literal command prefix while the path sits anywhere in the
-        // command, so the DSL cannot express "any command writing this file". The patterns that would
-        // fit — `Bash(cp:*)` — gate the utility rather than the path, which is a larger rule than the
-        // policy declares. So this coverage fails open with the hook, and that is reported on every
-        // run rather than left for a reader to infer from an absence.
         const result = claudeCode(parse(policy()));
         const permissions = [...result.artifact.value.permissions.deny, ...result.artifact.value.permissions.ask];
-        // Derived from the real tables rather than a hand-listed subset. This read
-        // `/^Bash\((cp|sed|tee|mv|rm)/` until 2026-07-28 — five of the fourteen — so a change that
-        // began emitting `Bash(ln:*)` or `Bash(dd:*)` would have passed while violating exactly the
-        // guarantee this asserts. Found by Copilot review on #60. Deriving it means the next entry
-        // added to either table is covered without anyone remembering to widen a regex.
         const utilities = [...FILE_WRITERS, ...IN_PLACE_EDITORS];
         const leaked = permissions.filter((p) => utilities.some((u) => p.startsWith(`Bash(${u}`)));
         assert.deepEqual(leaked, [], "gating the utility is not gating the path");
@@ -597,9 +451,6 @@ describe("the Claude Code backend", () => {
     });
 
     test("the restart advisory is the PostToolUse and UserPromptSubmit hooks and the status line, all on the third runner", () => {
-        // Proposal 0038, rule 2: one line where the agent is, once — with its next tool result mid-stretch,
-        // or at its next prompt — and the same figure for the human. Compiled whatever the policy says,
-        // because it gates nothing.
         const result = claudeCode(parse(policy()));
         const settings = result.artifact.value;
         assert.equal(HOOK_RUNNERS[2], "advisory.mjs");
@@ -633,9 +484,6 @@ describe("the Claude Code backend", () => {
     });
 
     test("the header names the policy actually read, not a hard-coded default", () => {
-        // It was a literal for one round, so a workspace declaring a non-default policy got an artifact
-        // claiming it came from somewhere it did not — in the field whose only job is saying what
-        // generated the file. Found by review.
         const settings = claudeCode(parse(policy()), { source: ".portulan/policy/rules.json" }).artifact.value;
         assert.equal(settings.$portulan.source, ".portulan/policy/rules.json");
         assert.match(settings.$portulan.warning, /policy\/rules\.json/, "the warning must point at the same file");
@@ -643,15 +491,9 @@ describe("the Claude Code backend", () => {
 });
 
 // ===========================================================================================
-// The session switches — Workspace Definition 2.11's `sessions`, compiled only where declared
+// The session switches — `sessions`, compiled only where declared
 // ===========================================================================================
-//
-// `../core/operating/sessions.md`. Two switches are project settings on Claude Code and ride the settings
-// this backend already writes; the third, the dynamic-sections exclusion, is no setting, so `headless` is
-// never compiled. What these cases cannot establish is the host honouring the emitted keys, which is the
-// A/B run's to show (`../evals/ab/warm.md`), not a test's.
 
-/** A scratch workspace whose manifest declares `sessions`, on the policy `workspace()` writes. */
 function workspaceWithSessions(sessions, p = policy()) {
     const dir = workspace(p);
     const file = path.join(dir, ".portulan", "workspace.json");
@@ -679,7 +521,6 @@ describe("the session switches", () => {
         assert.equal(out.artifact.value.promptCacheTtl, "5m");
         assert.equal(out.artifact.value.$portulan.sessions, ".portulan/workspace.json");
         assert.match(out.artifact.value.$portulan.warning, /`sessions` in \.portulan\/workspace\.json/);
-        // Said on every run, with the way back for one session.
         assert.ok(out.notes.some((n) => /CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=0/.test(n)), out.notes.join("\n"));
         assert.ok(out.notes.some((n) => /compiled as 5m/.test(n) && /CLAUDE_CODE_PROMPT_CACHE_TTL/.test(n)), out.notes.join("\n"));
     });
@@ -736,7 +577,6 @@ describe("the session switches", () => {
         assert.equal(settings.includeGitInstructions, false);
         assert.equal(settings.promptCacheTtl, "1h");
         assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 0);
-        // Dropping the declaration is drift until recompiled, like any other source change.
         const file = path.join(dir, ".portulan", "workspace.json");
         const m = JSON.parse(fs.readFileSync(file, "utf8"));
         delete m.sessions;
@@ -746,16 +586,9 @@ describe("the session switches", () => {
 });
 
 // ===========================================================================================
-// The declared figures — Workspace Definition 2.12's `spend`, written onto the advisory's commands
+// The declared figures — `spend`, written onto the advisory's commands
 // ===========================================================================================
-//
-// Proposal `0038`, ruling 2. The advisory is handed its command and the host's payload and nothing else, so
-// the figures ride both of its commands, where `--check` holds them to the manifest. What these cases cannot
-// establish is that a declared figure is the right one for a workspace's host; that is the declaring
-// workspace's to know, and `../spec/slots.md` says so.
 
-/** A scratch workspace whose manifest declares `spend`, on the policy `workspace()` writes. */
-// By default the version whose validator takes the declaration: `spend` is 2.12's, and `spend.restart` 2.13's.
 function workspaceWithSpend(spend, p = policy(), spec = spend?.restart === undefined ? "2.12" : "2.13") {
     const dir = workspace(p);
     const file = path.join(dir, ".portulan", "workspace.json");
@@ -766,13 +599,11 @@ function workspaceWithSpend(spend, p = policy(), spec = spend?.restart === undef
     return dir;
 }
 
-/** The words after the mode on one of the advisory's commands, which is what the advisory is handed. */
 function afterMode(command, mode) {
     const words = command.split(" ");
     return words.slice(words.indexOf(mode) + 1);
 }
 
-/** The advisory commands of compiled settings, each with its mode: its three, and the block where declared. */
 function advisoryCommands(settings) {
     const block = settings.hooks.Stop[0].hooks[1]?.command;
     return [
@@ -850,7 +681,6 @@ describe("the declared figures", () => {
             "once in a session and again after each compaction, with the line as the reason, beside the Stop-gate. Nothing ends the session, " +
             "and the line still comes with a tool result or at the prompt";
         assert.ok(block.notes.includes(said), block.notes.join("\n"));
-        // Declared alone, the block is the only thing `spend` compiles: no figures, and no note about any.
         const alone = claudeCode(parse(policy()), { spend: { manifest: ".portulan/workspace.json", multipliers: null, horizon: null, restart: "block" } });
         const value = alone.artifact.value;
         assert.equal(value.hooks.Stop[0].hooks[1].command, `node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" stop`);
@@ -859,7 +689,7 @@ describe("the declared figures", () => {
         assert.equal(value.$portulan.warning, "Generated file. Edit .portulan/gates.json, or `spend` in .portulan/workspace.json, and recompile; `verify/compile.sh` fails on drift.");
         assert.ok(alone.notes.includes(said), alone.notes.join("\n"));
         assert.ok(!alone.notes.some((n) => /declared figures/.test(n)), alone.notes.join("\n"));
-        // And the Stop-gate stays first, where the probe of an arm's Stop command reads it.
+        // The Stop-gate stays first: `ab.mjs` wraps an arm's first Stop command in its recorder.
         assert.equal(value.hooks.Stop[0].hooks[0].command, stopGate);
     });
 
@@ -878,11 +708,9 @@ describe("the declared figures", () => {
             apart.warning,
             "Generated file. Edit .portulan/gates.json, or `sessions` in a/workspace.json, or `spend` in b/workspace.json, and recompile; `verify/compile.sh` fails on drift.",
         );
-        // `headless` alone compiles no switch, so `sessions` is not named, and the figures are named alone.
         const headless = header({ sessions: { manifest: ".portulan/workspace.json", headless: { cache_lifetime: "5m" } }, spend: DECLARED });
         assert.equal(headless.warning, header({ spend: DECLARED }).warning);
         assert.equal(headless.sessions, undefined);
-        // And the figures declared with neither half leave the switches' warning as it was.
         assert.equal(
             header({ sessions, spend: { ...DECLARED, multipliers: null, horizon: null } }).warning,
             "Generated file. Edit .portulan/gates.json, or `sessions` in .portulan/workspace.json, and recompile; `verify/compile.sh` fails on drift.",
@@ -890,12 +718,11 @@ describe("the declared figures", () => {
     });
 
     test("the figures on each command read back, through the advisory's own reader, as the declaration", () => {
-        // Compile writes what `spendFlags` reads, or the advisory falls back and the declaration goes unused.
         for (const spend of [
             DECLARED,
             { manifest: "w.json", multipliers: { read: 1, write: { "5m": 1, "1h": 1 } }, horizon: 1 },
             { manifest: "w.json", multipliers: { read: 1e-7, write: { "5m": 1e21, "1h": 12.5 } }, horizon: Number.MAX_SAFE_INTEGER },
-            // A whole number `String` spells with an exponent, which `doctor` passes as a positive integer.
+            // `String(1e21)` is `1e+21`, which `doctor` passes as a positive integer.
             { manifest: "w.json", multipliers: null, horizon: 1e21 },
             { manifest: "w.json", multipliers: null, horizon: 7 },
             { manifest: "w.json", multipliers: { read: 0.25, write: { "5m": 1.25, "1h": 2 } }, horizon: null },
@@ -922,8 +749,7 @@ describe("the declared figures", () => {
         assert.deepEqual(spendDeclaration(dir), DECLARED);
         assert.deepEqual(spendDeclaration(workspaceWithSpend({})), { manifest: ".portulan/workspace.json", multipliers: null, horizon: null, restart: null });
         assert.deepEqual(spendDeclaration(workspaceWithSpend({ restart: "block" })), { manifest: ".portulan/workspace.json", multipliers: null, horizon: null, restart: "block" });
-        // A manifest that is missing or does not parse is not this reader's to judge: `run` stops on the
-        // second before it asks, and `doctor` names both.
+        // A missing or unparseable manifest is `doctor`'s to name: `run` stops on the second before it asks.
         assert.equal(spendDeclaration(scratch()), null);
         const broken = workspace();
         fs.writeFileSync(path.join(broken, ".portulan", "workspace.json"), "{");
@@ -987,16 +813,13 @@ describe("the declared figures", () => {
             change(m);
             fs.writeFileSync(file, JSON.stringify(m, null, 2));
         };
-        // An edited figure is drift until recompiled, because the commands are all the advisory reads.
         edit((m) => (m.spend.horizon.requests = 40));
         assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1);
-        // A figure out of its range gets no drift verdict either way: nothing is compared, and nothing written.
         const before = fs.readFileSync(target, "utf8");
         edit((m) => (m.spend.multipliers.read = 2));
         assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 2);
         assert.equal(run(["--workspace", dir], { quiet: true }), 2);
         assert.equal(fs.readFileSync(target, "utf8"), before);
-        // Dropping the declaration is drift too, and a recompile returns the commands to the undeclared ones.
         edit((m) => delete m.spend);
         assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1);
         assert.equal(run(["--workspace", dir], { quiet: true }), 0);
@@ -1015,7 +838,6 @@ describe("the declared figures", () => {
         const m = JSON.parse(fs.readFileSync(file, "utf8"));
         m.spend.restart = "advise";
         fs.writeFileSync(file, JSON.stringify(m, null, 2));
-        // Taking the block back is drift until recompiled, and the recompile is the settings of no `spend` at all.
         assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1);
         assert.equal(run(["--workspace", dir], { quiet: true }), 0);
         assert.equal(run(["--workspace", without], { quiet: true }), 0);
@@ -1033,27 +855,11 @@ describe("the declared figures", () => {
 });
 
 describe("a path target no path can match — hole 8, closed at the tier that asks", () => {
-    // **Three families, and the predicate is a COMPARISON so that it is the class rather than this
-    // list.** `matchesPath` compares a tail; a host submits an absolute path with no `.` segment, no
-    // empty segment and no backslash — the assumption named below `hostWouldSubmit`. A target whose
-    // comparison form cannot be one of those matches nothing, whatever it says.
-    //
-    //   "./"               -> Edit(./)                   matches nothing
-    //   "."  / "./."       -> Edit(./.)                  matches only a candidate ending `/.`
-    //   "././"             -> Edit(././**)               a REAL subtree glob, needing a `/./`
-    //   ".//"              -> Edit(./)                   matches nothing
-    //   "docs/./vision.md" -> Edit(./docs/./vision.md)   reads like a real path; matches nothing
-    //   "docs//"           -> Edit(./docs//**)           and `docs/` is a REAL target — one slash is meaning
-    //   "docs\\vision.md"  -> Edit(./docs\\vision.md)     the candidate's backslashes are normalised, the target's are not
-    //
-    // **Four cuts, three of them incomplete.** `neverMatches`' docblock is the one carrier of that arc;
-    // this block is where the spellings and the controls are enumerated, once, and measured.
     const REDUCES_TO_NOTHING = ["./", ".", "./.", "././", ".//"];
     const INTERIOR_DOT_OR_EMPTY = ["docs/./vision.md", "docs//vision.md", "docs//", "docs/.", "./docs/./", "docs/vision.md/."];
     const CARRIES_A_BACKSLASH = ["docs\\vision.md", "docs\\"];
     const NEVER = [...REDUCES_TO_NOTHING, ...INTERIOR_DOT_OR_EMPTY, ...CARRIES_A_BACKSLASH];
-    // `docs//` is never-matching and `docs/` is a real subtree target, which is the whole reason the
-    // predicate removes exactly ONE trailing slash: the marker is meaning, not spelling.
+    // The predicate removes exactly one trailing slash: `docs/` is a real subtree target, `docs//` is not.
     const CONTROLS = ["docs/", "./docs/", "docs/vision.md", "core/operating/loop.md", ".portulan/", ".hidden", ".gitignore", "docs/.gitignore", "..hidden"];
 
     const one = (target, tier, kind = "write") => ({
@@ -1065,16 +871,12 @@ describe("a path target no path can match — hole 8, closed at the tier that as
     test("the predicate answers for every never-matching spelling, and for none of the controls", () => {
         for (const t of NEVER) assert.ok(neverMatches(t), `${JSON.stringify(t)} should never match`);
         for (const t of CONTROLS) assert.ok(!neverMatches(t), `${JSON.stringify(t)} is a real target`);
-        // The two `parse` already refuses, kept so the predicate's own answer is pinned rather than
-        // left resting on an upstream guard that could move.
+        // `parse` refuses both, but the predicate must answer for them on its own.
         assert.ok(neverMatches(""));
         assert.ok(neverMatches("/"));
     });
 
     test("the predicate agrees with the matcher it speaks for", () => {
-        // The property itself, asserted rather than described: for a never-matching target there is no
-        // path a host could hand over that `matchesRule` answers true for. The candidates are the
-        // shapes a host actually submits — absolute, normalised, carrying no `.` segment.
         const candidates = ["/repo/x.md", "/repo/docs/vision.md", "/repo/core/operating/loop.md", "/repo/a/b/c"];
         for (const t of NEVER) {
             const rule = parse(one(t, "auto")).rules[0];
@@ -1085,23 +887,10 @@ describe("a path target no path can match — hole 8, closed at the tier that as
     });
 
 
-    // **The assumption this whole block rests on, named rather than left implicit.** The predicate says
-    // *no path a host submits*, not *no string*. `matchesPath("/r/.", ".")` is `true` — a candidate
-    // ending `/.` does match `.` — so the claim is false about arbitrary strings and true about the
-    // paths a host actually hands over: absolute, no `.` segment, no empty segment, no backslash. This
-    // repository does not control what the host sends and has not measured an unnormalised `file_path`
-    // arriving; the refusal is right either way, because a rule matching only `/r/.` gates nothing
-    // anybody meant to gate. Stated because a fold grade found four carriers asserting the normalisation
-    // as a fact about the host.
+    // Assumed, not measured: a host submits an absolute path with no `.` segment, no empty segment and no backslash.
     const hostWouldSubmit = (c) => !c.includes("\\") && !c.includes("//") && !/(^|\/)\.(\/|$)/.test(c);
 
     test("the predicate agrees with `matchesPath` itself, target by target", () => {
-        // **This case calls `matchesPath`.** Its first version did not: it re-implemented the strip and
-        // then asserted things about its own re-implementation, so removing the strip from EITHER
-        // function left it green while two carriers claimed it pinned them together. Caught at a fold
-        // grade. The property is the one that matters — for a target the predicate calls never-matching
-        // there must be no host-shaped candidate `matchesPath` accepts, and for a real one there must be
-        // at least one.
         const derive = (t) => {
             const clean = String(t).replace(/^\.\//, "").replace(/^\/+/, "");
             const body = clean.endsWith("/") ? clean.slice(0, -1) : clean;
@@ -1118,12 +907,6 @@ describe("a path target no path can match — hole 8, closed at the tier that as
                 `${JSON.stringify(t)} is a real target and must match at least one derived candidate`,
             );
         }
-        // **And the equivalence itself, which is what the docblock claims and the two loops above do
-        // not.** They assert the lists, not the predicate: they would pass unchanged if `neverMatches`
-        // were deleted. This line calls both functions on every target and requires them to agree, and
-        // it reds when the strip is removed from EITHER of them — measured both ways, failing on
-        // `./docs/` each time. Before it, the sentence in `compile.mjs` saying a suite case compares the
-        // two was false, which is the same defect this block is about wearing a test's clothes.
         for (const t of [...NEVER, ...CONTROLS]) {
             assert.equal(
                 neverMatches(t),
@@ -1134,11 +917,7 @@ describe("a path target no path can match — hole 8, closed at the tier that as
     });
 
     test("the interior family compiles to a named surface and still matches nothing — the hazard, not a typo", () => {
-        // Why this family is the same defect and not a lesser one: each compiles to a surface that
-        // reads like a real gate on a real path, which is strictly more misleading than `Edit(./)`.
         assert.equal(claudeCode(parse(one("docs/./vision.md", "auto"))).compiled.length, 0, "auto compiles nothing");
-        // The surface itself, because "it compiles to something that reads like a real gate" is the
-        // half that makes this family worse than `Edit(./)` and nothing else asserted it.
         assert.throws(
             () => claudeCode(parse(one("docs/./vision.md", "gated"))),
             (e) => e.message.includes("Edit(./docs/./vision.md)"),
@@ -1168,10 +947,6 @@ describe("a path target no path can match — hole 8, closed at the tier that as
     }
 
     test("the `auto` tier is untouched — the two rules this workspace actually has keep their spelling", () => {
-        // The whole reason the refusal sits with HOST_GATE_TIERS rather than at `parse`: a
-        // never-matching target is harmless at a tier no backend enforces, and `.portulan/gates.json`
-        // carries two of them (`edit-on-a-working-branch`, `read-anything-in-the-repository`). Option 1
-        // of #337 would have taken their spelling; this one does not, and this case is what says so.
         for (const t of NEVER) {
             const out = claudeCode(parse(one(t, "auto")));
             assert.equal(out.compiled.length, 0);
@@ -1181,8 +956,6 @@ describe("a path target no path can match — hole 8, closed at the tier that as
     });
 
     test("a `shell` target is not a path, and is not touched by this", () => {
-        // `shell: "./"` is a command prefix, not a path — a different meaning this predicate has no
-        // business answering for. Pinned so a later reader does not "finish the job" by widening it.
         const out = claudeCode(parse(one("./", "gated", "shell")));
         assert.ok(out.compiled.some((c) => c.surface.includes("Bash(./:*)")));
     });
@@ -1196,21 +969,7 @@ describe("a path target no path can match — hole 8, closed at the tier that as
     });
 
 // ---- the neighbouring family this predicate deliberately does NOT claim
-    //
-    // **A glob metacharacter in a target is unmatchable by the hook and is NOT refused, and the reason
-    // is that the two halves of the gate disagree rather than both being dead.** Measured: `docs/**` at
-    // `gated` emits `Edit(./docs/**)` — byte-identical to the surface a legitimate `docs/` target
-    // produces, since `pathSpec` spells a subtree that way — while `matchesRule` answers false for every
-    // candidate. So the permission layer is doing real work and only the hook half is inert.
-    //
-    // That is the opposite shape from the three families above, where BOTH halves are null, and it is
-    // why widening `neverMatches` to cover globs would be wrong: the refusal would delete a working
-    // permission gate, which is fail-open in the layer `compile` promises cannot fail open. The repair
-    // is to make the matcher read what the emitter writes, and that is a change to `matchesPath` — a
-    // function this change leaves byte-identical on purpose. Raised twice on #408, by the fresh-context
-    // review and by Copilot independently; filed rather than folded.
-    //
-    // These cases pin the divergence as it stands, so whichever way it is settled cannot move quietly.
+    // A known divergence, pinned as it stands: the permission layer gates a glob target and the hook does not.
     test("a glob metacharacter is unmatchable by the hook, is NOT flagged, and says so", () => {
         for (const t of ["docs/**", "docs/*", "docs/?.md"]) {
             assert.equal(neverMatches(t), false, `${JSON.stringify(t)} is deliberately not flagged`);
@@ -1226,14 +985,11 @@ describe("a path target no path can match — hole 8, closed at the tier that as
         const real = claudeCode(parse(one("docs/", "gated"))).compiled[0].surface;
         assert.equal(glob, real);
         assert.ok(glob.startsWith("Edit(./docs/**)"), glob);
-        // The half that differs is the hook, and only the hook.
         assert.equal(matchesRule(parse(one("docs/", "auto")).rules[0], "Write", { file_path: "/repo/docs/a.md" }), true);
         assert.equal(matchesRule(parse(one("docs/**", "auto")).rules[0], "Write", { file_path: "/repo/docs/a.md" }), false);
     });
 
     test("the refusal names the surface it would have emitted, and points at the record", () => {
-        // A refusal that does not say what the rule WOULD have become sends its reader looking for a
-        // permissions problem. Both halves are asserted because both were written for a reader.
         try {
             claudeCode(parse(one("././", "gated")));
             assert.fail("expected a refusal");
@@ -1248,15 +1004,6 @@ describe("a path target no path can match — hole 8, closed at the tier that as
 // ===========================================================================================
 // 4a. The floor backend — a GitHub repository ruleset, compiled from the same policy
 // ===========================================================================================
-//
-// The milestone-4 criterion positions this as **the floor backend**: what every host falls back to,
-// and all that a host with no hook system has. So its refusals matter more than the other backend's,
-// not less — this is the column an adopter reads to learn what their host cannot give them.
-//
-// Two properties are asserted hardest, because both were reachable failures at design time:
-//   1. It never invents policy. No declared floor → no artifact and no invented branch name.
-//   2. It never emits half a mapping. `pull_request` without `required_status_checks` imports
-//      cleanly and reads as a configured floor while letting a red pull request merge.
 
 describe("the floor backend", () => {
     const ruleset = (p = withFloor()) => githubRuleset(parse(p)).artifact.value;
@@ -1270,9 +1017,6 @@ describe("the floor backend", () => {
     });
 
     test("required status checks are STRICT — a branch behind the base cannot merge", () => {
-        // Not optional and not read from the policy: proposal 0011 ruled that a pull request may not
-        // merge from behind `main`, and applied it live. An export that let a policy declare
-        // `strict: false` would be a compiled artifact quietly undoing a ruling the repository took.
         const rule = ruleset().rules.find((r) => r.type === "required_status_checks");
         assert.equal(rule.parameters.strict_required_status_checks_policy, true);
     });
@@ -1283,9 +1027,6 @@ describe("the floor backend", () => {
     });
 
     test("bypass_actors is empty, deliberately and unconditionally", () => {
-        // The gate map's own words: a floor carrying an exemption for the only actor who can act is
-        // not a floor. This is why the org-level ruleset's `OrganizationAdmin` always-bypass is
-        // recorded as the unverified layer rather than copied.
         assert.deepEqual(ruleset().bypass_actors, []);
     });
 
@@ -1294,17 +1035,11 @@ describe("the floor backend", () => {
     });
 
     test("the ruleset name says it is generated, because the format has nowhere else to say it", () => {
-        // JSON has no comments and a GitHub ruleset has no description field. The name is the only
-        // field a human sees in the settings UI, so it carries the warning the `$portulan` header
-        // carries in the other artifact.
         assert.match(ruleset().name, /generated/i);
         assert.match(ruleset().name, /gates\.json/);
     });
 
     test("only the server's input fields are emitted — never an id, a timestamp or a source", () => {
-        // Read from two live rulesets on 2026-07-27: GitHub returns `id`, `node_id`, `source`,
-        // `source_type`, `created_at`, `updated_at`, `_links` and `current_user_can_bypass`. None is
-        // an input. Emitting any of them would be the export asserting a fact it cannot know.
         for (const key of ["id", "node_id", "source", "source_type", "created_at", "updated_at", "_links", "current_user_can_bypass"]) {
             assert.ok(!(key in ruleset()), `${key} is the server's to say, not this compiler's`);
         }
@@ -1316,36 +1051,19 @@ describe("the floor backend", () => {
     });
 
     // ---- the four ways the floor declaration could be believed and be wrong ------------------
-    //
-    // All four found by review on the pull request, and all four share a shape: an input this
-    // compiler accepted and then used in a way that produced an artifact GitHub would take and not
-    // enforce. That is worse than a refusal by exactly the margin that matters here.
 
     test("a `floor.branch` already carrying a ref prefix is refused, not double-prefixed", () => {
-        // `refs/heads/main` passed the branch pattern and the emitter prefixes unconditionally, so
-        // the ruleset would have targeted `refs/heads/refs/heads/main` — a ref no repository has.
-        // Importable, valid, and matching nothing: the exact shape this backend's own fail-closed
-        // guard exists against, arriving through the one field that names what the floor protects.
         for (const branch of ["refs/heads/main", "refs/tags/v1"]) {
             assert.throws(() => parse(withFloor({ branch })), CompileError, `${branch} must be refused`);
         }
-        // And a branch name that merely contains a slash is still fine — `release/2026` is ordinary.
         assert.equal(githubRuleset(parse(withFloor({ branch: "release/2026" }))).artifact.value.conditions.ref_name.include[0], "refs/heads/release/2026");
     });
 
     test("a check context with surrounding whitespace is refused rather than normalised", () => {
-        // `" workspace-verify "` was non-empty after `trim()` and was then stored untrimmed, so the
-        // ruleset would require a context no job can report. Refused rather than quietly fixed, for
-        // the same reason a rule target is: quietly fixing it hides a policy error, and the policy
-        // is the artifact a human reviews.
         assert.throws(() => parse(withFloor({ checks: [{ context: " workspace-verify " }] })), CompileError);
     });
 
     test("an `auto` rule never compiles to a ref rule, whatever it is spelled", () => {
-        // The ref-rule table was consulted before the tier was, so an Auto rule spelled exactly
-        // `git push --force` compiled into `non_fast_forward` — a gate emitted for an action the
-        // policy declares unattended, and `floorRefusal`'s own `auto` branch left unreachable for it.
-        // The tier is the policy's answer; the table is only how this backend spells it.
         const p = withFloor();
         p.rules.find((r) => r.id === "force").tier = "auto";
         const result = githubRuleset(parse(p));
@@ -1371,13 +1089,6 @@ describe("the floor backend", () => {
     });
 
     test("checks declared with NO propose rule emit nothing — the pair is compiled, never assumed", () => {
-        // Found by review, round 3. `pull_request` + `required_status_checks` were emitted whenever
-        // `floor.checks` was non-empty, whether or not any rule said changes go by pull request. Two
-        // things wrong with that, and the second is the worse one. It invents policy: an exported
-        // floor requiring pull requests that nothing in the policy asked for. And it breaks the
-        // accounting — those two ruleset rules would sit in the artifact with no rule credited for
-        // compiling them, so `--matrix` and `doctor` would describe a floor that is missing two of
-        // its rules, which is the failure this backend's whole reporting layer exists to prevent.
         const p = withFloor();
         p.rules = p.rules.filter((r) => r.tier !== "propose");
         const result = githubRuleset(parse(p));
@@ -1386,24 +1097,14 @@ describe("the floor backend", () => {
         assert.ok(!types.includes("required_status_checks"));
         assert.ok(types.includes("non_fast_forward"), "the ref rules that WERE asked for still compile");
 
-        // Every emitted ruleset rule is credited to a policy rule. Asserted directly, because it is
-        // the property that was silently false rather than the symptom that was visible.
         const surfaces = new Set(result.compiled.flatMap((c) => c.surface.split(" · ")));
         for (const type of types) assert.ok(surfaces.has(type), `\`${type}\` is in the artifact and no rule compiled to it`);
 
-        // And the orphaned declaration is reported rather than dropped in silence: a manifest field
-        // that validates and compiles nothing is this repository's most expensive recurring defect.
         assert.ok(result.notes.some((n) => /no `propose` rule/.test(n)), "declared checks nothing compiles must be named");
     });
 
     test("a floor declaring no checks refuses the pull-request rule TOO — the mapping is a pair", () => {
-        // Emitting `pull_request` alone would import cleanly, read as a configured floor, and let a
-        // red pull request merge. Half a mapping is the silent weakening this repository keeps
-        // finding, so the propose rules refuse together and say what is missing.
-        //
-        // Two ref-gated rules survive here, so the ruleset is non-empty and the refusal is visible
-        // rather than fatal — which is the case worth pinning, since a fatal one would be indistinct
-        // from any other refusal to compile.
+        // The two ref-gated rules keep the ruleset non-empty, so the refusal is visible rather than fatal.
         const result = githubRuleset(parse(withFloor({ checks: [] })));
         assert.ok(!result.artifact.value.rules.some((r) => r.type === "pull_request"));
         assert.ok(!result.artifact.value.rules.some((r) => r.type === "required_status_checks"));
@@ -1412,8 +1113,6 @@ describe("the floor backend", () => {
     });
 
     test("a floor declaring no checks and holding no ref rule refuses the whole compile", () => {
-        // The same policy with the ref-gated spellings gone: a declared floor that reaches nothing.
-        // Writing an empty ruleset would be importable, valid, named for a floor, and inert.
         const p = withFloor({ checks: [] });
         p.rules = p.rules.filter((r) => r.id !== "force" && r.id !== "drop");
         assert.throws(() => githubRuleset(parse(p)), CompileError, "nothing in this policy reaches the floor");
@@ -1422,10 +1121,6 @@ describe("the floor backend", () => {
     // ---- the mapping is a table of exact spellings, not a parser -----------------------------
 
     test("the ref-gated spellings compile; a spelling one character off refuses", () => {
-        // The action vocabulary has no `ref` kind — a rule says `{"shell": "git push --force"}` — so
-        // this backend recognises exact command strings and nothing else. `git push -f` is the same
-        // action to a human and is refused, loudly, rather than silently gated. An ambitious matcher
-        // here would buy false confidence with false reds, which is the trade `spec/slots.md` refuses.
         const ok = githubRuleset(parse(withFloor()));
         assert.ok(ok.compiled.some((c) => c.id === "force" && c.surface === "non_fast_forward"));
         assert.ok(ok.compiled.some((c) => c.id === "drop" && c.surface === "deletion"));
@@ -1438,9 +1133,7 @@ describe("the floor backend", () => {
     });
 
     test("the coarseness is stated in BOTH directions in the refusal record", () => {
-        // On the protected ref `non_fast_forward` is STRICTER than the policy — it blocks
-        // `--force-with-lease`, which this policy makes Auto. Off that ref it enforces nothing at
-        // all. A backend that reported only the second half would be flattering itself.
+        // On its one ref, `non_fast_forward` also blocks `--force-with-lease`, which the policy makes Auto.
         const notes = githubRuleset(parse(withFloor())).notes ?? [];
         assert.ok(notes.some((n) => /--force-with-lease/.test(n)), "the stricter-than-policy direction must be recorded");
         assert.ok(notes.some((n) => /only.*refs\/heads\/main|one declared ref/.test(n)), "the narrower-than-policy direction too");
@@ -1449,9 +1142,7 @@ describe("the floor backend", () => {
     // ---- refusals must be true about GitHub, not merely convenient --------------------------
 
     test("a write-scoped rule is refused for SCOPE, never for impossibility", () => {
-        // `CODEOWNERS` and push rulesets do gate paths on GitHub — `core/operating/autonomy.md` names
-        // CODEOWNERS as part of the floor. So "the platform cannot" would be false, and
-        // `a-stated-enforcer-must-be-the-real-one.md` binds every sentence containing *cannot*.
+        // CODEOWNERS and push rulesets do gate paths on GitHub, so "the platform cannot" would be false.
         const refusal = githubRuleset(parse(withFloor())).refused.find((r) => r.id === "ban");
         assert.match(refusal.why, /CODEOWNERS/, "name the mechanism that would, and why this export does not emit it");
         assert.doesNotMatch(refusal.why, /the platform cannot/i);
@@ -1465,11 +1156,6 @@ describe("the floor backend", () => {
     });
 
     test("the merge rule is refused, and the refusal says what the floor DOES constrain", () => {
-        // The honest answer, and the one most easily got wrong: the floor constrains what a merge may
-        // land — green required checks, and strict, so not from behind the base — but with a review
-        // count of 0 it does not require anyone's yes, which is what the Gated tier means. Calling
-        // that "compiled" would overstate the guarantee in the artifact whose whole subject is
-        // guarantees.
         const p = withFloor();
         p.rules.push({ id: "merge", tier: "gated", action: { shell: "gh pr merge" }, reason: "the maintainer decides" });
         const refusal = githubRuleset(parse(p)).refused.find((r) => r.id === "merge");
@@ -1485,12 +1171,6 @@ describe("the floor backend", () => {
     });
 
     test("an artifact a backend NO LONGER owes is red, not quietly ignored", () => {
-        // The eighth fail-open of this repository's series, found at the pre-commit checkpoint.
-        // `--check` handled absent-and-not-owed and not present-and-not-owed: delete `floor` from a
-        // policy that had one, and the orphaned ruleset sat there unexamined while the recipe
-        // reported GREEN — an importable file whose own `name` field claims to be generated from the
-        // policy that no longer produces it. A stale gate artifact is exactly the hand-edit this rail
-        // exists to catch, arriving by deletion instead of by hand.
         const dir = workspace(withFloor());
         assert.equal(run(["--workspace", dir], { quiet: true }), 0);
         const orphan = path.join(dir, ".portulan", "compile", "github-ruleset.json");
@@ -1501,7 +1181,6 @@ describe("the floor backend", () => {
         fs.writeFileSync(path.join(dir, ".portulan", "gates.json"), JSON.stringify(p, null, 2));
         assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1, "the orphan must be a verdict, not a silence");
 
-        // And a plain compile clears it, so the fix is reachable by the command the message names.
         assert.equal(run(["--workspace", dir], { quiet: true }), 0);
         assert.ok(!fs.existsSync(orphan), "compile removes what it no longer owes");
         assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 0);
@@ -1518,10 +1197,6 @@ describe("the floor backend", () => {
 // ===========================================================================================
 // 4a-ii. The per-host backend matrix
 // ===========================================================================================
-//
-// Derived from the backends rather than written beside them. A matrix maintained by hand is a claim
-// about compilers, and this repository has spent two milestones learning what claims about
-// machinery are worth. This one cannot drift from the compilers because it *is* their accounting.
 
 describe("the backend matrix", () => {
     test("every rule appears once per backend, with a verdict", () => {
@@ -1546,11 +1221,6 @@ describe("the backend matrix", () => {
 // ===========================================================================================
 // 4b. The action vocabulary — one definition, used by the emitter and by the runtime hook
 // ===========================================================================================
-//
-// These are the reason the hook is emitted at all. Measured on a live host: when a permission rule
-// matches, the host runs the hook and then **discards its reason** — so a hook that only improved a
-// message would be an inert component reading as an active one. What it does that the permission
-// pattern cannot is see through one shell wrapper, and that is what these assert.
 
 describe("the shared matcher", () => {
     test("the literal command is always a spelling", () => {
@@ -1584,12 +1254,6 @@ describe("the shared matcher", () => {
     });
 
     test("a shell target ending in `/` is a path prefix, and covers what is under it", () => {
-        // The two halves of compile.mjs must agree about what a target covers. They did not: the
-        // emitted `Bash(./.portulan/verify/:*)` prefix-matches the command string on the host, while
-        // this matcher required an exact hit or a space after the target — which a path never has.
-        // No rule was mis-enforced by it: the one target of this shape in ../.portulan/gates.json is
-        // `auto`, so it compiles to nothing and the runtime gate never reads it. The divergence was
-        // the defect, and this test is what keeps the two halves one. Found by review on #31.
         const rule = { tier: "gated", action: { shell: "./.portulan/verify/" } };
         assert.ok(matchesRule(rule, "Bash", { command: "./.portulan/verify/docs.sh" }));
         assert.ok(matchesRule(rule, "Bash", { command: "./.portulan/verify/tests.sh --quiet" }));
@@ -1598,15 +1262,8 @@ describe("the shared matcher", () => {
     });
 
     test("a trailing slash does not loosen an ordinary command prefix", () => {
-        // The subtree reading applies to targets that end in `/` and nothing else: `git push` must
-        // still refuse `git pushall`, or the fix above would have widened every gate in the policy.
         assert.ok(!matchesRule({ action: { shell: "git push" } }, "Bash", { command: "git pushall" }));
     });
-
-    // A SIBLING of the write defect, found by the same supervisor pass and fixed in the same stroke.
-    // The shell matcher prefix-matched the whole command string, so every Gated outward action in
-    // ../.portulan/gates.json was defeated by putting anything at all in front of it. Measured on the
-    // real runner before the fix: `ls && git push --force origin main` reached no gate.
 
     for (const [label, target, command] of [
         ["after `&&`", "git push --force", "ls && git push --force origin main"],
@@ -1616,21 +1273,11 @@ describe("the shared matcher", () => {
         ["a repo delete, mid-line", "gh repo delete", "cd . && gh repo delete foo"],
         ["a publish after a pipe", "npm publish", "echo y | npm publish"],
         ["a path-prefix target, mid-line", "./.portulan/verify/", "ls && ./.portulan/verify/docs.sh"],
-        // ANSI-C and locale quoting of the wrapper payload. `spellings()` stripped a leading `'` or
-        // `"` and nothing else, so the `$` survived and the inner command never matched — a bypass
-        // costing one character. Measured stepping aside before the fix. The mid-line form is the
-        // one that matters most: it composes with the separator gap this block already covers.
         ["a `$'…'` wrapper payload", "git push --force", "bash -c $'git push --force origin main'"],
         ['a `$"…"` wrapper payload', "git push --force", 'bash -c $"git push --force origin main"'],
         ["a `$'…'` wrapper, mid-line", "git push --force", "ls && bash -c $'git push --force origin main'"],
-        // The wider one, found writing the case above: a wrapper that is not the first thing on the
-        // line escaped in EVERY quoting form, plain ones included. Unwrapping was anchored at the
-        // start of the command and segmentation ran separately, so hole 1's "one wrapper, peeled"
-        // and hole 2's mid-line reach each held alone and did not compose. This is the plain-quote
-        // spelling, which is what a session would actually type.
         ["a plain wrapper, mid-line", "git push --force", 'ls && bash -c "git push --force origin main"'],
         ["a wrapper after a `;`", "gh pr merge", 'git status; bash -c "gh pr merge 60"'],
-        // The escaped-quote spelling on the shell side — same defect as the write case, same commit.
         ["after an escaped quote", "git push --force", 'echo "x\\""; git push --force origin main'],
     ]) {
         test(`a gated command is gated wherever it sits on the line: ${label}`, () => {
@@ -1639,9 +1286,6 @@ describe("the shared matcher", () => {
     }
 
     test("splitting the line does not widen any gate — the Auto spellings stay Auto", () => {
-        // The load-bearing control on the fix above. `--force-with-lease` is Auto by the maintainer's
-        // ruling of 2026-07-27, and a segment matcher that re-gated it would be the compiler taking
-        // back an ungating — worse than the hole it closes.
         const force = { tier: "gated", action: { shell: "git push --force" } };
         assert.ok(!matchesRule(force, "Bash", { command: "git push --force-with-lease origin main" }));
         assert.ok(!matchesRule(force, "Bash", { command: "ls && git push --force-with-lease origin main" }), "mid-line too");
@@ -1649,16 +1293,7 @@ describe("the shared matcher", () => {
         assert.ok(!matchesRule(force, "Bash", { command: 'echo "git push --force"' }), "quoted text is not a command");
     });
 
-    // The other half of the segment fix, asserted so the gate map's hole 2 cannot drift back to
-    // claiming "closed" unqualified. Splitting on SEPARATORS reaches a command after `&&`, `;`, `|`
-    // or a newline; it does not reach a word sitting in front of a command INSIDE a segment. These
-    // are ordinary shell, not exotic spellings, and each was measured stepping aside on the runner
-    // while the bare command answers `ask`.
-    //
-    // Left open on purpose. A named table of leaders would close the common ones the way the writer
-    // table does, but that table has no natural edge — `nice`, `time`, `nohup`, `timeout`, `command`,
-    // `stdbuf`, `doas` — and one missing entry buys the false confidence this suite exists to deny.
-    // Found by Copilot review on #60, against the paragraph that had just claimed the hole closed.
+    // Left open on purpose: a table of leading words (`nice`, `time`, `nohup`, `doas`…) has no natural edge.
     for (const [label, command] of [
         ["a leading assignment", "FOO=bar git push --force origin main"],
         ["`env`", "env git push --force origin main"],
@@ -1666,28 +1301,14 @@ describe("the shared matcher", () => {
         ["a `then` branch", "if true; then git push --force origin main; fi"],
         ["a `do` body", "for x in 1; do git push --force origin main; done"],
         ["a brace group", "{ git push --force origin main; }"],
-        // A leading REDIRECTION used to be the fifth row of this table, asserted as escaping. It is
-        // closed as of #71 and its spellings moved to the test below — the one row here whose grammar
-        // was closed rather than open-ended, which is why it could be closed while these six cannot.
     ]) {
         test(`the limit is asserted, not just documented: a leader still escapes — ${label}`, () => {
             const rule = { tier: "gated", action: { shell: "git push --force" } };
             assert.ok(!matchesRule(rule, "Bash", { command }), command);
-            // The control: strip the leader and the same line is gated, so this is the leader
-            // escaping rather than the target being wrong.
             assert.ok(matchesRule(rule, "Bash", { command: "git push --force origin main" }));
         });
     }
 
-    // #71: a leading redirection no longer escapes. The four spellings below were asserted as
-    // ESCAPING until this change — the issue predicted the fix would flip "exactly one assertion",
-    // and it flipped four, because the table above had grown two more redirection rows since the
-    // issue was written. Measured rather than trusted, which is the only reason the figure is right.
-    //
-    // The last two are spellings the issue's own table never named. They reach this test because the
-    // fix had to stop `commandSegments` splitting on the `&` of `>&`/`&>` and the `|` of `>|` before
-    // any strip could see a whole redirection — so closing the four named spellings closed these two
-    // in the same stroke rather than leaving siblings for someone to come back for.
     for (const [label, command] of [
         ["a leading `2>&1`", "2>&1 git push --force origin main"],
         ["a leading `>` to a file", "> /tmp/log git push --force origin main"],
@@ -1696,11 +1317,6 @@ describe("the shared matcher", () => {
         ["a leading `>|`", ">| /tmp/log git push --force origin main"],
         ["a leading `&>`", "&> /tmp/log git push --force origin main"],
         ["two stacked redirections", "> /tmp/out 2>&1 git push --force origin main"],
-        // **A redirection TARGET may contain spaces**, and the first cut of the strip consumed only
-        // `[^\s]+` — so `> "foo bar" git push --force …` stripped `> "foo` and left `bar" git push …`,
-        // head `bar"`, no gate. Five spellings escaped; bash was measured running the command after
-        // each. Reported by Copilot round 1 on the double-quoted case alone; the other four are its
-        // siblings and were closed in the same stroke rather than left for a later round.
         ["a double-quoted target with a space", '> "foo bar" git push --force origin main'],
         ["a single-quoted target with a space", "> 'foo bar' git push --force origin main"],
         ["a backslash-escaped space in the target", "> foo\\ bar git push --force origin main"],
@@ -1715,9 +1331,6 @@ describe("the shared matcher", () => {
         });
     }
 
-    // The controls on that fix, and they are the load-bearing half: stripping a leader must not widen
-    // a gate, must not re-gate an ungated spelling, and must not turn an ordinary separator into a
-    // redirection. `--force-with-lease` is Auto by the maintainer's ruling of 2026-07-27.
     for (const [label, command, gated] of [
         ["a bare redirection is not a command", "> /tmp/log", false],
         ["the lease survives a leading redirection", "2>&1 git push --force-with-lease origin main", false],
@@ -1726,19 +1339,8 @@ describe("the shared matcher", () => {
         ["a pipe still separates", "ls | git push --force origin main", true],
         ["`&>` beside `&&` splits at the `&&` only", "ls &>/dev/null && git push --force origin main", true],
         ["quoted text is still not a command", 'echo "2>&1 git push --force"', false],
-        // The control that keeps the quote-aware target from becoming a false RED. UNQUOTED, `foo` and
-        // `bar` are two words: bash redirects to `foo` and runs `bar`, so `git push --force` is not the
-        // command and must not gate. If this ever answers true the target reader has started swallowing
-        // the command after it.
         ["an unquoted two-word target is a target and a COMMAND", "> foo bar git push --force origin main", false],
         ["the lease survives a quoted target", '> "foo bar" git push --force-with-lease origin main', false],
-        // **The regression the #71 fix introduced and the pre-commit checkpoint caught.** A `>` that a
-        // BACKSLASH turned into data is not a redirection operator, and reading one raw neighbour
-        // cannot tell the two apart — so the non-split un-split a REAL separator and the gated command
-        // after it went invisible. Measured in live bash: `echo \>| tr a-z A-Z` pipes bytes downstream,
-        // and the command after `echo \>&` runs. Both answered `true` before #71 and `false` after it,
-        // until the segmenter was made escape-aware. A narrowing shipped inside the change whose whole
-        // subject is honest hole accounting.
         ["an escaped `>` before a REAL pipe", "echo \\>| git push --force origin main", true],
         ["an escaped `>` before a REAL background separator", "echo \\>& git push --force origin main", true],
         ["an escaped `<` before a real separator", "echo \\<& git push --force origin main", true],
@@ -1750,14 +1352,6 @@ describe("the shared matcher", () => {
         });
     }
 
-    // A heredoc opener is detected on a RAW line, so `<<EOF` inside a quoted string or after a `#`
-    // set the delimiter on text that opened nothing — and everything after it was swallowed looking
-    // for a terminator that never came. That is a fail-open manufactured by a defensive step: worse
-    // than the gap it closes, because a gated command on any later line went invisible.
-    //
-    // Fixed by treating an unterminated opener as no opener. The last two cases are the controls that
-    // stop the fix from degenerating into "keep everything" — a real heredoc's body is data and must
-    // still be stripped. Found by Copilot review on #60.
     const force = { tier: "gated", action: { shell: "git push --force" } };
     for (const [label, command, gated] of [
         ["`<<EOF` inside a quoted string", 'echo "not a heredoc <<EOF"\ngit push --force origin main', true],
@@ -1770,15 +1364,7 @@ describe("the shared matcher", () => {
         });
     }
 
-    // `matchesRule` documents that it never throws, and that promise is load-bearing rather than
-    // tidy: ./gate.mjs catches and steps aside, so an exception here does not
-    // surface as an error — it silently removes whatever gate was being evaluated. For the shell
-    // half of a Gated or Prohibited `write:` rule that is the only layer there is (hole 3), so a throw
-    // is a fail-open wearing a stack trace.
-    //
-    // It threw on all four of these until 2026-07-28, introduced on this branch by the fix that
-    // began passing the raw payload to `commandSegments` instead of an already-stringified spelling.
-    // Found by Copilot review on #60.
+    // `gate.mjs` steps aside on a throw, so a throw here would remove the gate being evaluated.
     for (const input of [{}, { command: undefined }, { command: null }, { command: 123 }, { command: {} }]) {
         test(`the never-throws contract holds for a Bash payload of ${JSON.stringify(input)}`, () => {
             const rule = { tier: "gated", action: { shell: "git push --force" } };
@@ -1790,20 +1376,7 @@ describe("the shared matcher", () => {
     // ---------------------------------------------------------------------------------------------
     // The CLASS rail: the redirection-target reader agrees with `shellWords` about what a word is
     // ---------------------------------------------------------------------------------------------
-    //
-    // **Three review findings in a row were one class**, and each was fixed at the spelling that was
-    // quoted. Round 1 of #336: `[^\s]+` could not hold a quoted target with a space. Round 3: `"[^"]*"`
-    // could not hold a backslash-escaped quote INSIDE a double-quoted span — measured escaping while bash
-    // was measured creating the file and running the command behind it. Two patches, same defect, and the
-    // second was found by a reviewer rather than by this suite.
-    //
-    // So the suite stops asserting spellings and asserts the RULE: whatever `shellWords` calls one word,
-    // the strip consumes whole. `shellWords` is the authority — it is the reader the matcher already uses
-    // for the write half — so a fourth sibling now reds here instead of arriving in a review.
-    //
-    // **What it does not do**, said rather than implied: it cannot invent the spellings. A form neither
-    // this table nor `shellWords` handles is still out of reach of both, and that is a gap a fuzzer
-    // closes (milestone 8 clause (b)) rather than a table.
+    // A limit: it cannot invent spellings, so a form neither this table nor `shellWords` handles escapes both.
     const ONE_WORD_TARGETS = [
         "/dev/null",
         "/tmp/log",
@@ -1822,52 +1395,31 @@ describe("the shared matcher", () => {
     
     for (const target of ONE_WORD_TARGETS) {
         test(`the target reader agrees with shellWords that this is ONE word — ${target}`, () => {
-            // Half one: `shellWords`, the authority, reads it as a single non-operator word.
             const words = shellWords(target).filter((w) => !w.op);
             assert.equal(words.length, 1, `shellWords does not call ${target} one word — the table is wrong, not the matcher`);
     
-            // Half two: the strip consumes it whole, so the command behind it reaches the gate. If the
-            // reader stops short, the leftover becomes the segment head and the gated command escapes —
-            // which is exactly what both findings were.
             const rule = { tier: "gated", action: { shell: "git push --force" } };
             assert.ok(
                 matchesRule(rule, "Bash", { command: `> ${target} git push --force origin main` }),
                 `a leading redirection to ${target} hid the command behind it`,
             );
     
-            // The control, per target: the Auto sibling must not be re-gated by a wider reader.
             assert.ok(!matchesRule(rule, "Bash", { command: `> ${target} git push --force-with-lease origin main` }));
         });
     }
     
     test("an UNQUOTED two-word target is two words to shellWords, and the matcher agrees", () => {
-        // The counterexample that stops the rail above degenerating into "consume everything". Here bash
-        // redirects to `foo` and runs `bar`, so `git push --force` is NOT the command and must not gate.
+        // Bash redirects to `foo` and runs `bar`, so `git push --force` is not the command.
         assert.equal(shellWords("foo bar").filter((w) => !w.op).length, 2);
         const rule = { tier: "gated", action: { shell: "git push --force" } };
         assert.ok(!matchesRule(rule, "Bash", { command: "> foo bar git push --force origin main" }));
     });
     
     test("a single-quoted span has NO escapes, and the reader must not invent them", () => {
-        // POSIX gives `'…'` no escapes at all, so honouring a backslash there would invent a hole rather
-        // than close one — the same asymmetry `commandSegments`'s quote loop and `shellWords` both carry.
         const rule = { tier: "gated", action: { shell: "git push --force" } };
-        // The backslash ENDS nothing here; the quote after it closes the span.
         assert.ok(matchesRule(rule, "Bash", { command: "> 'a\\' git push --force origin main" }));
     });
 
-    // **The strip runs inside `commandSegments`, which BOTH matchers use — and it widened the write
-    // gate rather than narrowing it.** Copilot round 9 on #336 read the shared use and predicted a
-    // bypass: `> docs/vision.md echo ok` would have its redirection stripped and `shellWrites` would
-    // no longer see it. Measured, and it does not happen, because `matchesRule`'s write branch is an
-    // OR whose FIRST arm reads the RAW command through `shellWrites` — which segments with
-    // `shellSegments`, a different reader that keeps redirects. `commandSegments` is only the second
-    // arm, so a strip there cannot remove coverage the first arm already gives.
-    //
-    // What the strip DID do is close four write-gate holes that `origin/main` still has, all of the
-    // same shape: a redirection leading a segment whose wrapper hides the write, reachable only
-    // through the second arm. Measured against `origin/main`'s matcher, which answers false for the
-    // first three below and true for none of them.
     for (const [label, command, gated] of [
         ["a leading redirect before a wrapper", '> /tmp/log bash -c "echo x >> ./docs/vision.md"', true],
         ["the same, after a separator", 'git status; > /tmp/log bash -c "echo x >> ./docs/vision.md"', true],
@@ -1877,7 +1429,6 @@ describe("the shared matcher", () => {
         ["the reported shape inside a wrapper", 'bash -c "> ./docs/vision.md echo ok"', true],
         ["a leading redirect before a writer", "> /tmp/log cp /tmp/x ./docs/vision.md", true],
         ["a leading redirect before a container removal", "> /tmp/log rm -rf docs", true],
-        // The false-red controls. A strip that swallowed the command behind it would gate these.
         ["an unrelated file through the same path", '> /tmp/log bash -c "echo x >> docs/plan.md"', false],
         ["a leading redirect and no write at all", "> /tmp/log echo ok", false],
     ]) {
@@ -1887,14 +1438,6 @@ describe("the shared matcher", () => {
         });
     }
 
-    // #70, first half: an ADMIT case per writer-table entry, GENERATED from the tables rather than
-    // hand-listed. The audit that filed the issue found `shred`, `gsed` and `ruby` exercised by
-    // nothing — the matcher covers all fourteen (both tables are `Set` lookups, so there is no path
-    // by which `shred` behaves differently from `rm`), and the gap was in the assertions alone.
-    //
-    // Generated is the whole repair, and it is the same shape #60's round-5 finding took one table
-    // over: a hand-listed subset passes while a new entry ships unasserted, so the assertion is
-    // derived from the declaring table and a fifteenth entry cannot arrive uncovered.
     for (const writer of FILE_WRITERS) {
         test(`every FILE_WRITERS entry is exercised, not just tabled — ${writer}`, () => {
             const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
@@ -1912,9 +1455,6 @@ describe("the shared matcher", () => {
                 matchesRule(rule, "Bash", { command: `${editor} -i s/a/b/ docs/vision.md` }),
                 `${editor} under an in-place flag writes what it names`,
             );
-            // The control that keeps this table separate from FILE_WRITERS: WITHOUT the in-place
-            // flag these commands READ, and the policy declares reading Auto. A matcher that
-            // contradicts a declared tier is worse than one that admits a gap.
             assert.ok(
                 !matchesRule(rule, "Bash", { command: `${editor} -n 1,5p docs/vision.md` }),
                 `${editor} without an in-place flag is a read`,
@@ -1922,9 +1462,6 @@ describe("the shared matcher", () => {
         });
     }
 
-    // #70, second half: `&>` had no regression test. It already gated — `shellSegments` has always
-    // read it as a write redirection — so this pins working behaviour rather than closing a hole.
-    // Filed because `&>` is a common spelling and the compiled matrix names the others.
     for (const [label, command] of [
         ["`&>`", "echo x &> docs/vision.md"],
         ["`2>`", "echo x 2> docs/vision.md"],
@@ -1937,11 +1474,6 @@ describe("the shared matcher", () => {
         });
     }
 
-    // `#` does not start a comment here, deliberately. Both directions are pinned, because the pair
-    // is the argument: taking the false red away means deciding where a comment begins, and getting
-    // that wrong swallows a real command instead of a commented one. Reported by Copilot on #60 and
-    // declined on the exchange rate `shellWrites`'s docblock states — a false red costs one prompt,
-    // a false green costs the laundering.
     test("a `#` comment is read as code — a false RED, and the safe direction", () => {
         const rule = { tier: "gated", action: { shell: "git push --force" } };
         assert.ok(
@@ -1951,15 +1483,11 @@ describe("the shared matcher", () => {
     });
 
     test("a `#` inside quotes never hides the command after it", () => {
-        // The case a comment-skipping reader would break. If this ever returns false, the matcher has
-        // started treating quoted text as a comment and a gated command has gone invisible.
         const rule = { tier: "gated", action: { shell: "git push --force" } };
         assert.ok(matchesRule(rule, "Bash", { command: 'echo "a#b"; git push --force origin main' }));
     });
 
     test("the limit is asserted, not just documented: two wrappers still escape", () => {
-        // Recorded as a test so that anyone tempted to call this layer a rail meets the counterexample.
-        // The platform floor is what covers this — ../core/operating/autonomy.md.
         const rule = { tier: "gated", action: { shell: "git push" } };
         assert.ok(!matchesRule(rule, "Bash", { command: `bash -c "bash -c 'git push origin HEAD'"` }));
     });
@@ -1972,11 +1500,6 @@ describe("the shared matcher", () => {
         assert.ok(!matchesRule(rule, "Read", { file_path: "/repo/docs/vision.md" }), "reading it is not editing it");
     });
 
-    // A `write:` rule names a PATH, and for one milestone it reached only the three tools carrying a
-    // `file_path` — so `echo x >> docs/vision.md` was gated by neither layer. The permission rule
-    // rejected the tool and the matcher fell through to false. These are the shell spellings that
-    // must now reach the gate, and, below them, the ones that still do not.
-
     for (const [label, command] of [
         ["append", "echo x >> docs/vision.md"],
         ["truncate", "echo x > docs/vision.md"],
@@ -1988,52 +1511,14 @@ describe("the shared matcher", () => {
         ["after a `&&`", "ls && echo x > docs/vision.md"],
         ["inside a subshell", "(cd . && echo x > docs/vision.md)"],
         ["through a shell wrapper", 'bash -c "echo x >> docs/vision.md"'],
-        // A wrapper that is not first on the line. The `shell` branch grew segment composition for
-        // this in an earlier commit on this branch; the `write` branch did not, and the gap it left
-        // was the worse of the two — the CONSTITUTION reachable behind any separator plus one
-        // wrapper, while the same wrapper alone answered `deny`. Measured stepping aside before the
-        // fix. Found by Copilot review on #60, five commits after the sibling was fixed.
         ["a wrapper after a `;`", 'git status; bash -c "echo x >> docs/vision.md"'],
-        // A CRLF line continuation. **Present tense, because an earlier draft of this comment described
-        // a mechanism the matcher no longer has:** `shellWords` and `commandSegments` both consume the
-        // backslash+CRLF **pair**, so the word is joined and both spellings below answer `true`. What
-        // was fixed in 2026-07-28 is what that sentence described — the pair consumed one character at
-        // a time, leaving the `\n` as an operator that flushed the word — and it is history, not
-        // behaviour. Both are asserted so the pair cannot drift apart again. Reported by Copilot,
-        // round 2 on #342.
-        // **The reachability this comment used to claim — "which made the constitution reachable by
-        // editing the file on Windows" — is retired.** Measured 2026-08-25 on bash 3.2.57, 5.2.15 and
-        // 5.2.37, plus zsh 5.9 and the measured host's `/bin/sh` — bash 3.2.57 in POSIX mode there, and
-        // NOT the `dash`/`busybox` families, which were not measured. None joins the pair, so **both**
-        // assertions below pin a
-        // FALSE RED rather than a closed hole. They stay asserted because the matcher still answers
-        // that way, and whether to change it is the question
-        // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md` puts to the maintainer; the
-        // argument and its limits are written once, at `shellWords` in ./compile.mjs.
-        //
-        // **BOTH, including the redirect one — and the near-miss is worth naming, because a reviewer
-        // has already made it.** Copilot read `echo x > \<CRLF>docs/vision.md` as the write-redirect
-        // shape the fuzzer records as a TRUE POSITIVE, and it is not. **Where the pair sits decides
-        // it.** After the operator, as here, the escaped `\r` becomes the redirect's TARGET — bash
-        // writes a file named `\r` and the constitution is untouched: measured, exit 126, target
-        // byte-for-byte unchanged on bash 3.2.57 and 5.2.15. The truncating shape puts the pair
-        // BEFORE the operator, `echo \<CRLF>x > docs/vision.md`, where the surviving fragment carries
-        // a clobbering `>` that a shell applies before it looks the command up — exit 127, target
-        // zero bytes. Two different strings; only the second destroys anything. Refused on that
-        // measurement, Copilot round 1 on #342, and the distinction written down so the reading is
-        // not made a second time.
-        // An escaped quote inside `"…"`. The run closed at the `\"`, the real closing quote opened a
-        // new one, and the `;` was swallowed inside it — so the line never split and the write was
-        // never evaluated. A false GREEN on the constitution, from a spelling that appears whenever a
-        // commit message or JSON blob contains a quote.
         ['an escaped quote before the separator', 'echo "x\\""; cp /tmp/x docs/vision.md'],
+        // Both pin a false red: no shell measured (bash 3.2.57, 5.2.15, 5.2.37, zsh 5.9) continues a line at `\` CRLF.
         ["a CRLF continuation before the path", "cp /tmp/x \\\r\ndocs/vision.md"],
         ["a CRLF continuation after `>`", "echo x > \\\r\ndocs/vision.md"],
         ["an LF continuation, the control", "cp /tmp/x \\\ndocs/vision.md"],
         ["a wrapper after `&&`", 'ls && bash -c "cp /tmp/x docs/vision.md"'],
         ["a `$'…'` wrapper, mid-line", "ls && bash -c $'echo x > docs/vision.md'"],
-        // The same `$'…'` gap on the write side. `shellWords` glued the `$` onto the front, so
-        // `$'docs/vision.md'` tokenised as `$docs/vision.md` and the constitution's gate missed it.
         ["a `$'…'` redirect target", "echo x > $'docs/vision.md'"],
         ["a `$'…'` target to a writer", "cp /tmp/x $'docs/vision.md'"],
         ["cp", "cp /tmp/x docs/vision.md"],
@@ -2060,18 +1545,14 @@ describe("the shared matcher", () => {
     }
 
     for (const [label, command] of [
-        // Reading the file is Auto by this policy, and a matcher that contradicts a declared tier is
-        // worse than one that admits a gap. This is why the in-place editors need their flag.
         ["reading it with cat", "cat docs/vision.md"],
         ["grepping it", "grep -n foo docs/vision.md"],
         ["diffing it", "git diff docs/vision.md"],
         ["sed WITHOUT an in-place flag", "sed -n '1,5p' docs/vision.md"],
         ["sed -E, which is not -i", "sed -E 's/a/b/' docs/vision.md"],
         ["it as a redirected INPUT", "patch /tmp/other.md < docs/vision.md"],
-        // An operator inside quotes is not an operator.
         ["the path named inside a quoted string", "echo 'x > docs/vision.md'"],
         ["a sentence mentioning it", 'echo "writing to docs/vision.md is prohibited"'],
-        // The path boundary is the same one `matchesPath` enforces everywhere else.
         ["a sibling file", "echo x > docs/plan.md"],
         ["a lookalike suffix", "echo x > docs/not-vision.md"],
         ["an ordinary command", "node cli/compile.mjs --check"],
@@ -2082,30 +1563,19 @@ describe("the shared matcher", () => {
         });
     }
 
-    // Everything below was found by the fresh-context supervisor at the pre-merge checkpoint, after
-    // the first round of this change shipped a four-item hole list that was missing five holes. Each
-    // one was a live escape: measured false on the matcher AND confirmed to write the file in a real
-    // shell. They are tests rather than prose because a hole list is a claim, and this repository
-    // grades an overstated coverage as a defect (dod.md, condition 4).
-
     for (const [label, command] of [
-        // The most ordinary spelling there is. `\n` was not a separator, so the whole line folded
-        // into one segment whose head was the FIRST command — never the writer.
         ["a writer on the second line", "git status\ncp /tmp/x docs/vision.md"],
         ["a remover on the second line", "git status\nrm -f docs/vision.md"],
         ["an in-place edit on the third line", "a\nb\nsed -i '' s/x/y/ docs/vision.md"],
         ["a backslash-newline continuation", "cp /tmp/x \\\ndocs/vision.md"],
-        // A leader is not a command: `{`, `then` and `do` sat where the head goes and hid the writer.
         ["inside a brace group", "{ cp /tmp/x docs/vision.md; }"],
         ["inside if/then", "if true; then cp /tmp/x docs/vision.md; fi"],
         ["inside a for loop", "for f in a; do cp /tmp/x docs/vision.md; done"],
         ["inside a piped while loop", "echo a | while read f; do rm -f docs/vision.md; done"],
-        // A tail comparison is not a path normaliser, and neither spelling ends with the literal tail.
         ["a `/./` in the path", "echo x > docs/./vision.md"],
         ["a doubled slash", "echo x > docs//vision.md"],
         ["a `..` climbing back in", "echo x > foo/../docs/vision.md"],
         ["a `/./` in a writer's argument", "cp /tmp/x docs/./vision.md"],
-        // Destroying the container destroys the file, and a trailing slash decided it.
         ["removing the parent directory", "rm -rf docs"],
         ["removing the parent directory, with a slash", "rm -rf docs/"],
         ["moving the parent directory away", "mv docs docs.bak"],
@@ -2124,9 +1594,6 @@ describe("the shared matcher", () => {
     });
 
     test("naming a SIBLING under the protected file's directory is not naming the directory", () => {
-        // The ancestor rule earns `rm -rf docs`, and it must not earn anything else. Spelling the
-        // ancestors as subtree patterns made every file under `docs/` a hit, so an ordinary edit to
-        // `docs/plan.md` — which this policy gates at `propose`, not `prohibited` — was refused.
         const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
         assert.ok(!matchesRule(rule, "Bash", { command: "cp foo docs/plan.md" }));
         assert.ok(!matchesRule(rule, "Bash", { command: "rm -f docs/plan.md" }));
@@ -2134,10 +1601,6 @@ describe("the shared matcher", () => {
     });
 
     test("the shell half of a write gate is a table, and its limits are asserted rather than implied", () => {
-        // Recorded as a test for the same reason two-wrapper nesting is, one block up: anyone tempted
-        // to read the shell coverage as complete meets the counterexamples. `compile.mjs` says so in
-        // prose and ../.portulan/gate-map.md lists them among the honest holes; this is the half that
-        // fails loudly if somebody later widens the claim without widening the matcher.
         const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
         for (const [why, command] of [
             ["an interpolated path", "echo x > $VISION"],
@@ -2145,8 +1608,6 @@ describe("the shared matcher", () => {
             ["a runtime assembling the write itself", `python3 -c "open('docs/vision.md','w').write('x')"`],
             ["a writer outside the table", "ex -sc wq docs/vision.md"],
             ["two shell wrappers", `bash -c "bash -c 'echo x > docs/vision.md'"`],
-            // A program that INVOKES a writer. Parsing THEIR flags to find the real command is the
-            // ambitious parser this design refuses to become, so these are disclosed instead.
             ["find -exec invoking a writer", "find . -name x -exec cp {} docs/vision.md ;"],
             ["xargs invoking a writer", "echo /tmp/x | xargs -I{} cp {} docs/vision.md"],
         ]) {
@@ -2155,11 +1616,6 @@ describe("the shared matcher", () => {
     });
 
     test("a heredoc BODY is data, not commands — and this one was measured the hard way", () => {
-        // Once a newline separated commands, every line of a heredoc body became its own segment. The
-        // commit that fixed the newline hole was itself REFUSED by this gate, because its message
-        // quoted `cp /tmp/x docs/vision.md` as the escape being closed. A matcher that stops you
-        // describing an attack has stopped being cautious and started being wrong: a heredoc body is
-        // text being written, and no shell runs it.
         const write = { tier: "prohibited", action: { write: "docs/vision.md" } };
         const force = { tier: "gated", action: { shell: "git push --force" } };
         assert.ok(!matchesRule(write, "Bash", { command: "git commit -F - <<'MSG'\nfixed: cp /tmp/x docs/vision.md\nMSG" }));
@@ -2169,45 +1625,30 @@ describe("the shared matcher", () => {
     });
 
     test("dropping the body does not drop the line that opens it, nor what follows the terminator", () => {
-        // The half that would turn the fix above into a hole. The redirection lives on the OPENING
-        // line, so it must still gate; and a real command after the terminator is a real command.
         const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
         assert.ok(matchesRule(rule, "Bash", { command: "tee docs/vision.md <<'EOF'\nx\nEOF" }));
         assert.ok(matchesRule(rule, "Bash", { command: "cat <<'EOF' > /tmp/x\nharmless\nEOF\ncp /tmp/x docs/vision.md" }));
     });
 
     test("a heredoc naming the path literally IS covered — the coverage is not understated either", () => {
-        // Filed under limits by an earlier draft, which had it backwards. A heredoc redirects like
-        // anything else; what escapes is the interpolated TARGET, tested above. Understating coverage
-        // is the same defect as overstating it — both make the hole list untrue.
         const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
         assert.ok(matchesRule(rule, "Bash", { command: "cat > docs/vision.md <<'EOF'\nx\nEOF" }));
         assert.ok(matchesRule(rule, "Bash", { command: "cat <<'EOF' > docs/vision.md\nx\nEOF" }));
     });
 
     test("a redirected INPUT is skipped rather than ending the command it feeds", () => {
-        // The `<` branch is load-bearing here and nowhere else: `tee` keeps its head and its real
-        // argument. Asserted because the branch survived a mutation with zero tests red, which means
-        // nothing was checking it — and an unchecked branch in a security matcher is the shape this
-        // repository has a memory entry about.
         const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
         assert.ok(matchesRule(rule, "Bash", { command: "tee < /tmp/in docs/vision.md" }));
         assert.ok(!matchesRule(rule, "Bash", { command: "patch /tmp/other.md < docs/vision.md" }), "and it is still an input");
     });
 
     test("a writer READING the protected path is refused too — the stated coarse direction", () => {
-        // Asserted rather than only claimed in four prose carriers. `cp P /tmp/backup` only reads,
-        // and is refused, because argument grammars differ per command and guessing which word is the
-        // destination is a false GREEN on the file that must not change.
         const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
         assert.ok(matchesRule(rule, "Bash", { command: "cp docs/vision.md /tmp/backup" }));
     });
 
     test("a read rule is NOT given shell coverage — the scope is write, and it says so", () => {
-        // Deliberate rather than forgotten. Reading a path through a shell has no bounded table —
-        // `cat`, `head`, `awk`, `git show`, any language runtime — so a matcher for it would be the
-        // ambitious parser the floor backend's own comment warns against, buying false confidence
-        // with false reds. No `read` rule in this repository's policy is gated in any case.
+        // Deliberate: a shell can read a path through any command or runtime, and that table has no bound.
         const rule = { tier: "gated", action: { read: "docs/vision.md" } };
         assert.ok(!matchesRule(rule, "Bash", { command: "cat docs/vision.md" }));
     });
@@ -2226,12 +1667,6 @@ describe("the shared matcher", () => {
 // ===========================================================================================
 // 4c. The policy location comes from the manifest, not from a constant
 // ===========================================================================================
-//
-// Found by review. `compile` hard-coded `.portulan/gates.json` while spec 2.1 defines the manifest's
-// `gates` key as "a path to a JSON file the enforcement compiler reads" and `doctor` resolves it — so a
-// workspace naming a different file would have had one tool validate a policy the other never compiled,
-// both green. A manifest key that validates and is never consumed is this repository's most expensive
-// recurring defect, and this was it inside the key the milestone had just added.
 
 describe("the policy location", () => {
     test("comes from the manifest's `gates` key when one is declared", () => {
@@ -2254,8 +1689,7 @@ describe("the policy location", () => {
     });
 
     test("an unreadable or malformed manifest falls back rather than throwing", () => {
-        // `doctor` is the tool that judges a manifest. This one only needs to know where the policy is,
-        // and a parse error here must not become a crash in the hook that runs on every tool call.
+        // The hook resolves this on every tool call: a bad manifest is `doctor`'s to judge, never a crash here.
         const dir = scratch();
         fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
         fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), "{ not json");
@@ -2272,9 +1706,7 @@ describe("the policy location", () => {
     });
 
     test("an absolute path is refused and falls back — a hook must not read outside the workspace", () => {
-        // Found by review. This resolves on every tool call, so an unvalidated manifest value is an
-        // arbitrary file-read surface. `doctor` would refuse such a manifest, but there is no ordering
-        // between the two tools: the schema is the contract, not the sequence.
+        // `doctor` refuses such a manifest, but nothing makes it run before the hook reads this one.
         const dir = scratch();
         fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
         fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), JSON.stringify({ gates: "/etc/passwd" }));
@@ -2282,8 +1714,6 @@ describe("the policy location", () => {
     });
 
     test("a `../` escape is refused after resolution, not by pattern alone", () => {
-        // A traversal chain satisfies any reasonable regex and still leaves the directory, so
-        // containment is checked on the resolved path.
         const dir = scratch();
         fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
         fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), JSON.stringify({ gates: "../../../etc/passwd" }));
@@ -2295,14 +1725,6 @@ describe("the policy location", () => {
     });
 });
 
-// An absent gate policy has TWO shapes, and they are not the same answer.
-//
-// `policyPath`'s own note calls a workspace with no `gates` key "a legitimate shape, and refusing it
-// would make the key required, which is a spec change nobody decided" — and then the reader refused it
-// anyway, with `ENOENT` on a file the workspace never claimed to have. Found 2026-08-22 booting the
-// `sleepy-panda` workspace, which declares no key AND composes a pack contributing two gate rules: the
-// refusal mentioned neither fact, so the one consequence worth knowing — two Prohibited rules reaching
-// nothing — was invisible at exactly the moment someone was looking.
 describe("an undeclared gate policy is a state, not an unreadable file", () => {
     const bare = (extra = {}) => {
         const dir = scratch();
@@ -2337,10 +1759,6 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
     });
 
     test("a directory named `..something` is inside the workspace, not an escape", () => {
-        // The containment test read `!path.relative(base, resolved).startsWith("..")`, which is the
-        // spelling `../cli/inside.mjs` exists to replace — it calls an ordinary directory whose name
-        // begins with `..` an escape. The workspace declared a policy, it is inside, and the compiler
-        // fell back anyway and then told the reader there was no `gates` key. Two defects in series.
         const dir = bare({ gates: "..policy/rules.json" });
         const got = policyDeclaration(dir);
         assert.equal(got.declared, true, "`..policy` is a directory name, not a traversal");
@@ -2348,8 +1766,6 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
     });
 
     test("`declared: false` carries WHY — the arm is four situations, not one", () => {
-        // The first cut reported all of them as "no top-level `gates` key". Two of the four are not
-        // that, which is the same two-situations-one-sentence defect this block exists to fix.
         assert.equal(policyDeclaration(bare()).reason, "no-key");
         assert.equal(policyDeclaration(bare({ gates: "/etc/passwd" })).reason, "refused");
         assert.equal(policyDeclaration(bare({ gates: 7 })).reason, "refused", "a wrong type named something");
@@ -2359,9 +1775,6 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
     });
 
     test("a REFUSED value is not reported as a manifest with no `gates` key", (t) => {
-        // The manifest DID name a policy. Telling its author the key is absent sends them to add a key
-        // that is already there, and the advice to "leave it undeclared deliberately" is advice for a
-        // different workspace.
         const { code, said } = stderrOf(t, ["--workspace", bare({ gates: "../../../etc/passwd" })]);
         assert.equal(code, 2);
         assert.match(said, /will not read/);
@@ -2369,8 +1782,6 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
         assert.doesNotMatch(said, /leave it undeclared deliberately/, "wrong advice for a declared-but-bad value");
     });
 
-    // Before this case a refused value fell back to a `gates.json` at the conventional path whenever one was
-    // there, and compiled it: the settings enforced a policy the manifest does not name, and `--check` was green.
     test("a REFUSED value stops the run even where a `gates.json` sits at the conventional path", (t) => {
         for (const gates of [42, "", "../outside.json"]) {
             const dir = bare({ gates });
@@ -2395,9 +1806,6 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
     });
 
     test("a REFUSED path is `declared: false` — it fell back, so the fallback owns the diagnostic", () => {
-        // An absolute path or a `../` escape is refused and falls back. The manifest named something,
-        // but nothing it named is usable, so the compiler is on the conventional path and must say so
-        // rather than claim the workspace declared the file it is about to not find.
         assert.equal(policyDeclaration(bare({ gates: "/etc/passwd" })).declared, false);
         assert.equal(policyDeclaration(bare({ gates: "../../../etc/passwd" })).declared, false);
     });
@@ -2412,17 +1820,12 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
     });
 
     test("a DECLARED policy that is missing still reports the read failure", (t) => {
-        // The regression guard. Something WAS declared and is absent — that is a genuine failure to
-        // read, and collapsing it into the new sentence would trade one indistinguishable pair for
-        // another in the opposite direction.
         const { code, said } = stderrOf(t, ["--workspace", bare({ gates: "policy/rules.json" })]);
         assert.equal(code, 2);
         assert.match(said, /cannot read the gate policy/);
     });
 
     test("the message counts the pack rules the absence strands, and names the pack", (t) => {
-        // The load-bearing half. The old refusal threw before `packContributions` was ever called, so
-        // it could not carry this even in principle.
         const dir = bare({ packs: ["rituals/checkpoints"] });
         const root = path.join(dir, "packs");
         packAt(root, "rituals", "checkpoints", [fragment("a", "prohibited"), fragment("b", "prohibited")]);
@@ -2433,15 +1836,11 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
     });
 
     test("a pack refusal does not replace the answer with a different question", (t) => {
-        // `packContributions` has refusals of its own. Raised from inside this diagnostic they would
-        // report a pack problem to someone whose actual problem is a missing policy, so they are
-        // swallowed HERE and nowhere else — the next run, with a policy declared, surfaces them.
         const dir = bare({ packs: ["rituals/checkpoints"] });
         const root = path.join(dir, "packs");
         const packDir = path.join(root, "rituals", "checkpoints");
         fs.mkdirSync(packDir, { recursive: true });
-        // A malformed pack manifest, which `packContributions` refuses by throwing. An UNRESOLVED pack
-        // would not exercise this: it is collected rather than raised, so it never reaches the catch.
+        // Malformed, not unresolved: `packContributions` collects an unresolved pack rather than throwing.
         fs.writeFileSync(path.join(packDir, "pack.json"), "{ not json");
         const { code, said } = stderrOf(t, ["--workspace", dir, "--pack-root", root]);
         assert.equal(code, 2);
@@ -2476,12 +1875,6 @@ describe("--check", () => {
 // ===========================================================================================
 // 6. This repository's own policy compiles, and its gate map agrees with it
 // ===========================================================================================
-//
-// Anchored to the real tree rather than to a fixture, deliberately. The rejected symlink
-// arrangement in milestone 3 passed every fixture in the repository and was inert at runtime; the
-// lesson recorded then was that some invariants only hold if something asserts them against THIS
-// tree. Two-way membership is one: a rule added to the prose and not the policy, or the reverse, is
-// exactly the claims drift this repository keeps finding.
 
 describe("customer zero", () => {
     const real = JSON.parse(fs.readFileSync(path.join(REPO, ".portulan", "gates.json"), "utf8"));
@@ -2492,9 +1885,6 @@ describe("customer zero", () => {
     });
 
     test("this repository declares a floor, and the export reproduces the checks `main` really requires", () => {
-        // Both contexts, not one. `pr-labeled` joined `workspace-verify` on the live protection after
-        // the labels workflow reached `main`, and an export naming only the first would encode a floor
-        // weaker than the one in force — in the artifact whose entire purpose is being importable.
         const contexts = parse(real).floor.checks.map((c) => c.context).sort();
         assert.deepEqual(contexts, ["pr-labeled", "workspace-verify"]);
         for (const check of parse(real).floor.checks) {
@@ -2503,10 +1893,6 @@ describe("customer zero", () => {
     });
 
     test("every context this repository's floor declares is reported by a job in this repository", () => {
-        // The highest-cost typo the tree can catch: a required context that never reports blocks every
-        // pull request, and `enforce_admins` leaves nobody able to force past it — proposal 0004's
-        // lesson, which cost a three-step rename to work around. Checked here against the workflows
-        // themselves rather than trusted.
         const workflows = fs
             .readdirSync(path.join(REPO, ".github", "workflows"))
             .map((f) => fs.readFileSync(path.join(REPO, ".github", "workflows", f), "utf8"))
@@ -2516,17 +1902,6 @@ describe("customer zero", () => {
         }
     });
 
-    // Both directions below read the policy as *declared plus composed*, and that is the repair rather
-    // than a convenience. They used to read `real.rules` alone — the ids in `.portulan/gates.json` — so
-    // a gate contributed by a composed pack was invisible to them: naming one in the prose failed the
-    // second rail, and leaving one undocumented satisfied the first. Milestone 7's close found the same
-    // blind spot in two other readers of this policy (`compile --matrix` counted composed gates and
-    // reported 4 uncompiled where `doctor` counted only declared ones and reported 3 — `doctor` was
-    // repaired on 2026-08-13 and they now agree), and this file carried two
-    // more — the citation rails here and the tier rail below — making FOUR readers of one policy.
-    // The tier rail was still narrow when the first two were widened, which is this comment's own rule
-    // broken in the change that states it; the pre-commit pass caught it. A rule with several readers is repaired at all of them or at none —
-    // `../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`.
     const composedGates = (JSON.parse(fs.readFileSync(path.join(REPO, ".portulan", "workspace.json"), "utf8")).packs ?? [])
         .flatMap((ref) => JSON.parse(fs.readFileSync(path.join(REPO, "packs", ref, "pack.json"), "utf8")).contributes?.gates ?? []);
 
@@ -2537,11 +1912,7 @@ describe("customer zero", () => {
         }
     });
 
-    // Since 2026-09-23 the gate map is two halves: the index a boot reads, and the on-read files it links
-    // under `gate-map/` — proposal 0036's demotion, applied to the largest file a boot loaded. The citation
-    // rail reads both, because a retired id is as wrong in a moved paragraph as in the index. The membership
-    // and tier rails stay on the index alone: it is the half every session reads, so a rule it does not name,
-    // or names under the wrong tier, is one a boot never sees.
+    // Citations are checked in every half; membership and tiers in the index alone, the half a boot reads.
     const gateMapProse = () => {
         const dir = path.join(REPO, ".portulan", "gate-map");
         const moved = fs.readdirSync(dir).filter((f) => f.endsWith(".md")).sort();
@@ -2551,8 +1922,6 @@ describe("customer zero", () => {
         ];
     };
 
-    // The same demotion, applied the same day to three more files a boot read whole: each keeps what routine
-    // work needs and links the on-read files in the directory beside it. Paths are relative to `.portulan/`.
     const TIERED = [
         ["identity.md", "identity"],
         ["dod.md", "dod"],
@@ -2579,15 +1948,12 @@ describe("customer zero", () => {
     });
 
     test("every on-read file of the gate map is linked from its index", () => {
-        // A file under `gate-map/` that the index does not link is text no session is ever sent to.
         const [[, index], ...moved] = gateMapProse();
         assert.ok(moved.length > 0, "gate-map/ holds no files, so this rail checks nothing");
         for (const [file] of moved) assert.ok(index.includes(`](${file}`), `${file} is linked from nowhere a boot reads`);
     });
 
     test("every on-read file of a tiered boot file is linked from it", () => {
-        // The gate map's rail above, for the three files tiered after it: a file in the directory that its boot
-        // file does not link is text no session is ever sent to.
         for (const pair of TIERED) {
             const [[boot, prose], ...moved] = tieredProse(pair);
             assert.ok(moved.length > 0, `${pair[1]}/ holds no files, so this rail checks nothing`);
@@ -2599,11 +1965,7 @@ describe("customer zero", () => {
     });
 
     test("every section link between a boot file and its on-read files lands on a heading", () => {
-        // `docs.sh` resolves a link's file and drops its fragment, so a heading renamed in one half of a tiered
-        // file would leave the other half's links landing at the top of a file, with nothing red.
-        // Slugged the way GitHub renders a heading: lower-cased, punctuation other than `-` and `_` dropped,
-        // spaces to hyphens, a repeated heading suffixed `-1`, `-2`; a fenced block holds no headings.
-        // (Copilot, round 1 on #437.)
+        // GitHub's slug: lower-cased, punctuation but `-` and `_` dropped, spaces to hyphens, repeats suffixed `-1`.
         const files = new Map([...gateMapProse(), ...TIERED.flatMap(tieredProse)]);
         const slug = (heading) => heading.trim().toLowerCase().replace(/[^\p{L}\p{N} _-]/gu, "").replace(/ /g, "-");
         const anchors = new Map();
@@ -2621,7 +1983,7 @@ describe("customer zero", () => {
         for (const [file, prose] of files) {
             for (const [, target, fragment] of prose.matchAll(/\]\(([^)\s#]*)#([^)\s]+)\)/g)) {
                 const resolved = target === "" ? file : path.posix.normalize(path.posix.join(path.posix.dirname(file), target));
-                if (!anchors.has(resolved)) continue; // a fragment into a file this rail does not read
+                if (!anchors.has(resolved)) continue;
                 checked++;
                 assert.ok(anchors.get(resolved).has(fragment), `${file} links \`${target}#${fragment}\`, and ${resolved} has no such heading`);
             }
@@ -2630,22 +1992,10 @@ describe("customer zero", () => {
     });
 
     test("the composed set is non-empty, so the two rails above are not widened to a no-op", () => {
-        // Without this, a `packs` key that stopped resolving would silently shrink both rails back to
-        // declared-only and they would go on passing — the shape this session's sibling suite calls a
-        // rail losing its most important members and reporting nothing.
-        // `> 0`, matching this test's name, rather than a floor of 2: a hard-coded count would red on a
-        // legitimate change to what the packs contribute. The narrower property — that a SPECIFIC gate is
-        // still composed — is already covered, since the citation rail fails the moment gate-map.md names
-        // an id the composed set no longer carries. (Copilot, round 1 on #240.)
         assert.ok(composedGates.length > 0, "the composed packs contribute no gates, so the rails above check nothing");
     });
 
     test("every rule is cited under the gate map section matching its TIER", () => {
-        // Membership alone only proves a rule is *mentioned*. It does not stop the prose filing a
-        // Gated action under Auto — which is the drift that matters, because the gate map is the
-        // document humans read and the policy is the one that compiles. Headings are structure
-        // rather than prose, so this is a real check and not the ambitious parser `spec/slots.md`
-        // warns against: it asks only which section an id appears in.
         const prose = fs.readFileSync(path.join(REPO, ".portulan", "gate-map.md"), "utf8");
         const HEADING = /^#{2,3} (.+)$/gm;
         const sections = [];
@@ -2655,7 +2005,6 @@ describe("customer zero", () => {
             s.body = prose.slice(s.start, sections[i + 1]?.start ?? prose.length);
         });
 
-        // Which section speaks for which tier, keyed off the headings the file actually carries.
         const owner = {
             auto: sections.find((s) => /^Auto\b/.test(s.title)),
             propose: sections.find((s) => /^Propose\b/.test(s.title)),
@@ -2666,13 +2015,6 @@ describe("customer zero", () => {
             assert.ok(section, `gate-map.md has no section speaking for tier \`${tier}\``);
         }
 
-        // Declared PLUS composed, like the two rails above and for the same reason — this is the third
-        // of the three that read this document against the policy, and it was the one left behind when
-        // the other two were widened. It is also the one that matters most: the other two ask whether an
-        // id is mentioned *somewhere*, while this asks whether it is filed under the tier it actually
-        // carries. Left narrow, a composed Gated action could be enforced on every commit, mentioned
-        // once in a paragraph about the compiler, and never listed among the things that need approval —
-        // which is exactly what `commit-without-the-hooks` was until milestone 7's close.
         for (const rule of [...real.rules, ...composedGates]) {
             const section = owner[rule.tier];
             assert.match(
@@ -2684,12 +2026,8 @@ describe("customer zero", () => {
     });
 
     test("the constitution changes by pull request, and no gate refuses or prompts an edit to it", () => {
-        // Prohibited from milestone 4 until 2026-09-24, when the maintainer lifted the prohibition. The file
-        // stays human-owned: it changes by pull request under his review, which is the Propose tier.
         const rule = real.rules.find((r) => r.action?.write === "docs/vision.md");
         assert.equal(rule.tier, "propose", "the constitution changes by pull request");
-        // The composed policy, packs included: a pack's Gated or Prohibited rule would refuse the edit as
-        // surely as one of the workspace's own.
         const { contributions } = packContributions(REPO, ".portulan", { packRoots: [path.join(REPO, "packs")] });
         const refusing = composeFragments(real, contributions).policy.rules.filter(
             (r) => (r.tier === "gated" || r.tier === "prohibited") && matchesRule(r, "Edit", { file_path: path.join(REPO, "docs", "vision.md") }),
@@ -2698,10 +2036,6 @@ describe("customer zero", () => {
     });
 
     test("the two destructive push spellings are gated; the ordinary one is not", () => {
-        // The policy changed on 2026-07-27: pushing a working branch moved to Auto, because the
-        // guarantee the push gate stood in for lives at the *merge*. What stayed Gated is the pair
-        // that destroys rather than adds — a bare `--force`, and a branch deletion. This test asserted
-        // the old policy and failed the moment the new one landed, which is the test doing its job.
         const tierOf = (shell) => real.rules.find((r) => r.action?.shell === shell)?.tier;
         assert.equal(tierOf("git push"), "auto", "an ordinary working-branch push is unattended");
         assert.equal(tierOf("git push --force"), "gated", "bare --force is not recoverable");
@@ -2709,8 +2043,6 @@ describe("customer zero", () => {
     });
 
     test("the gated push prefixes do not swallow the Auto spelling they sit beside", () => {
-        // `--force` must not match `--force-with-lease`, which is explicitly Auto. A prefix rule that
-        // over-matched here would silently re-gate the thing the maintainer just ungated.
         const force = real.rules.find((r) => r.id === "force-push-without-a-lease");
         assert.ok(matchesRule(force, "Bash", { command: "git push --force origin x" }));
         assert.ok(!matchesRule(force, "Bash", { command: "git push --force-with-lease origin x" }));
@@ -2721,14 +2053,7 @@ describe("customer zero", () => {
 // ===========================================================================================
 // Pack-contributed gate fragments — the cascade's middle layer, tighten-only
 // ===========================================================================================
-//
-// The floor was ruled at milestone 4 and built at milestone 6: a pack may raise a tier or add a
-// prohibition, and may NEVER demote another layer's classification. The refusal is the whole
-// guarantee, and it is the branch nothing exercises naturally — the one real pack contributes pure
-// additions against a core layer that ships no gate policy at all. So it is forced here by fixture,
-// which is the only way a check like this is ever seen to work.
 
-/** A pack on disk at `<root>/<category>/<name>/pack.json`. */
 function packAt(root, category, name, gates) {
     const dir = path.join(root, category, name);
     fs.mkdirSync(dir, { recursive: true });
@@ -2743,9 +2068,7 @@ function packAt(root, category, name, gates) {
     return dir;
 }
 
-// A fragment. `action` defaults to one derived from the id, which is right for ADDED fragments; a
-// fragment tightening an EXISTING id must carry that rule's own action, because changing what a rule
-// matches while raising its tier is refused — see the action-swap tests below.
+// A fragment tightening an existing id must carry that rule's action: changing what it matches is refused.
 const fragment = (id, tier, extra = {}) => ({
     id,
     tier,
@@ -2772,9 +2095,6 @@ describe("resolving a declared pack name", () => {
         assert.equal(resolvePack("rituals/only-in-b", [a]).dir, null);
     });
 
-    // The shape an ADOPTER resolves in: a pack inside an installed plugin, not a `packs/` directory
-    // sitting beside the workspace. Same call, different root — which is the property that makes the
-    // feed case (milestone 6, session 1) the same code path rather than a parallel one.
     test("an installed-plugin root resolves identically to a sibling packs/ directory", () => {
         const home = scratch();
         const installed = path.join(home, ".claude", "plugins", "portulan-internal", "portulan@0.1.0", "packs");
@@ -2809,13 +2129,11 @@ describe("composing pack fragments onto a policy — tighten-only", () => {
         assert.equal(out.added.length, 1);
         assert.equal(out.tightened.length, 0);
         assert.ok(out.policy.rules.some((r) => r.id === "fresh"));
-        // The base policy is not mutated — the caller keeps a policy it can still compare against.
         assert.ok(!policy().rules.some((r) => r.id === "fresh"));
     });
 
     test("a fragment naming an existing id at a STRONGER tier tightens it", () => {
         const out = composeFragments(policy(), [
-            // `pr` is propose in the base; the action must be carried through unchanged.
             { pack: "rituals/r", fragments: [fragment("pr", "gated", { action: { shell: "gh pr create" } })] },
         ]);
         assert.equal(out.tightened.length, 1);
@@ -2834,7 +2152,6 @@ describe("composing pack fragments onto a policy — tighten-only", () => {
         }
     });
 
-    // The refusal. This is the guarantee the whole design exists for.
     test("a fragment that would DEMOTE an existing id throws rather than being dropped", () => {
         for (const [from, to] of [["gated", "propose"], ["prohibited", "gated"], ["prohibited", "propose"]]) {
             const base = { ...policy(), rules: [{ id: "r", tier: from, action: { shell: "x" }, reason: "b" }] };
@@ -2852,11 +2169,6 @@ describe("composing pack fragments onto a policy — tighten-only", () => {
         }
     });
 
-    // The hole a tier-only comparison leaves, found by the pre-commit supervisor and measured against
-    // this repository's LIVE policy before it was closed: raising the tier while replacing the action
-    // passes every rank check, is printed as `tightens gated → prohibited`, and removes the emitted
-    // `Bash(git push --force:*)` gate entirely. Tighten-only that only reads the tier is not
-    // tighten-only — it is a supply-chain hole wearing the guarantee's name.
     test("a fragment may NOT change what a rule matches while raising its tier", () => {
         const base = {
             ...policy(),
@@ -2915,17 +2227,11 @@ describe("composing pack fragments onto a policy — tighten-only", () => {
         );
     });
 
-    // A fail-open found in the suppressed channel: `tierRank` returns -1 for a malformed base tier, so
-    // every fragment outranked it, the refusal never fired, and the fragment REPLACED the bad rule —
-    // meaning a policy `parse` refuses on its own compiled green once a pack named the same id, with
-    // the provenance line claiming `tightens bogus -> gated`. A pack must never be able to make an
-    // invalid policy compile.
     test("a pack may not compose onto a rule whose own tier is not a tier", () => {
         const bad = {
             ...policy(),
             rules: [{ id: "r", tier: "bogus", action: { shell: "git push" }, reason: "malformed base" }],
         };
-        // The control: the base policy is genuinely invalid on its own.
         assert.throws(() => parse(bad), /not one of/);
         assert.throws(
             () => composeFragments(bad, [{ pack: "p/q", fragments: [fragment("r", "gated", { action: { shell: "git push" } })] }]),
@@ -2939,8 +2245,7 @@ describe("composing pack fragments onto a policy — tighten-only", () => {
     });
 
     test("tier `auto` is refused even though the Pack Definition already bars it", () => {
-        // Two layers, and the compiler does not depend on the schema having been applied: `doctor` and
-        // `compile` have no ordering between them.
+        // `doctor` bars it too, but nothing makes `doctor` run before `compile`.
         assert.throws(
             () => composeFragments(policy(), [{ pack: "p/q", fragments: [fragment("fresh", "auto")] }]),
             /only ADD restriction/,
@@ -2959,13 +2264,9 @@ describe("composing pack fragments onto a policy — tighten-only", () => {
         const out = composeFragments(policy(), [
             { pack: "p/q", fragments: [{ id: "no-reason", tier: "gated", action: { shell: "x" } }] },
         ]);
-        // composeFragments places it; parse is what refuses it, which is the point of composing first.
         assert.throws(() => parse(out.policy), /carries no reason/);
     });
 
-    // #111. The ordering above is deliberate and stays — but it cost the diagnostic, because a
-    // malformed id reached `parse` stripped of the one fact the reader needs: which dependency put it
-    // there. Both halves are asserted: the refusal happens, and it NAMES THE PACK.
     test("a fragment whose id is not a slug is refused BY NAME OF THE PACK, not left to `parse`", () => {
         for (const bad of [undefined, null, "", "  ", 7, {}, ["x"], "Not A Slug", "trailing-", "UPPER"]) {
             assert.throws(
@@ -2982,15 +2283,7 @@ describe("composing pack fragments onto a policy — tighten-only", () => {
     });
 
     test("the bare `parse` refusal is what this replaced, and it names no pack — the measurement, kept", () => {
-        // The control, so the fix is not credited with a diagnostic the old path already gave. This is
-        // the sentence an adopter used to get, reproduced from `parse` directly: correct, closed, and
-        // silent about which dependency to go and look at.
-        //
-        // Built from `policy()` rather than hand-rolled, and that is a measurement rather than a
-        // preference: the first draft passed a bare `{ rules: [...] }` and got *"gate policy declares
-        // gate-policy spec undefined"* — `parse` refuses the envelope long before it reaches an id, so
-        // the control was asserting a sentence this tool never emits for this shape. It failed, which
-        // is the only reason it is right now.
+        // Built from `policy()`: `parse` refuses a bare `{ rules }` envelope before it reads any id.
         assert.throws(
             () => parse(policy({ rules: [{ tier: "gated", action: { shell: "x" }, reason: "r" }] })),
             (e) => {
@@ -3002,10 +2295,6 @@ describe("composing pack fragments onto a policy — tighten-only", () => {
     });
 
     test("two id-less fragments are not merged into one another", () => {
-        // Not in the issue, and reachable: `at` is keyed by `rule?.id`, so before the guard the second
-        // id-less fragment found `at.has(undefined)` TRUE and was composed onto the first — two packs'
-        // unrelated fragments merged because both were malformed, then reported as a tightening of a
-        // rule that does not exist. The refusal now lands on the first one, so the path is closed.
         assert.throws(
             () =>
                 composeFragments(policy(), [
@@ -3054,9 +2343,6 @@ describe("what a workspace's declared packs contribute", () => {
         assert.match(unresolved[0].why, /no pack\.json/);
     });
 
-    // `?? []` covers an ABSENT key, not a malformed one — those are different failures and only one
-    // is benign. Without this the value reaches `composeFragments` and surfaces as a bare TypeError
-    // naming neither the pack nor the field. Found by review.
     test("a pack whose `contributes.gates` is not an array is refused, not iterated", () => {
         const dir = workspace();
         const manifestPath = path.join(dir, ".portulan", "workspace.json");
@@ -3090,9 +2376,7 @@ describe("what a workspace's declared packs contribute", () => {
         assert.deepEqual(contributions[0].fragments, []);
     });
 
-    // `compile` reads workspace.json WITHOUT validating it, so `packs` may hold anything. The printer
-    // calls `.padEnd()` on the name, which on a number aborts the whole compile rather than reporting
-    // one unresolvable pack. Found by review, in the suppressed channel.
+    // `compile` does not validate workspace.json, so `packs` may hold anything.
     test("a non-string pack name is reported, not a crash", () => {
         const dir = workspace();
         const manifestPath = path.join(dir, ".portulan", "workspace.json");
@@ -3117,11 +2401,6 @@ describe("what a workspace's declared packs contribute", () => {
 // ===========================================================================================
 // A pack root can be named on the command line
 // ===========================================================================================
-//
-// Adjustment 6 of the milestone-6 session-open checkpoint. `packContributions` has taken an
-// `options.packRoots` since session 0 and `run` never set it, so the parameter shaped for the
-// from-a-feed case was reachable only from a test. "Zero new resolver code" was true; "only a new
-// root" was not — a root needs a caller, and this is it.
 
 describe("--pack-root names a resolution root outside the workspace's tree", () => {
     test("a fragment from a pack in a named root reaches the compiled policy", () => {
@@ -3161,26 +2440,18 @@ describe("--pack-root names a resolution root outside the workspace's tree", () 
 });
 
 describe("named pack roots REPLACE the derived one, and the divergence is pinned", () => {
-    // Found by the pre-commit checkpoint on this change, by attacking the flag rather than reading it.
-    // `compile` appended the derived root after the named ones while `doctor` and `index` replaced it —
-    // three tools, two semantics, and every prose carrier described only one. Demonstrated then: this
-    // workspace with `--pack-root <an empty directory>` compiled GREEN from the copy in its own tree,
-    // which is exactly the thing the flag's stated purpose rules out.
     test("a pack present ONLY in the workspace's tree does not resolve when a root is named", () => {
         const dir = workspace();
-        // The pack ships beside the workspace, under the root `tree` derives.
         packAt(path.join(dir, "packs"), "rituals", "checkpoints", [fragment("commit-without-the-hooks", "gated")]);
         const w = path.join(dir, ".portulan", "workspace.json");
         const manifest = JSON.parse(fs.readFileSync(w, "utf8"));
         manifest.packs = ["rituals/checkpoints"];
         fs.writeFileSync(w, JSON.stringify(manifest, null, 2));
 
-        // Without the flag it resolves from the tree, which is the ordinary case and must keep working.
         assert.equal(run(["--workspace", dir], { quiet: true }), 0);
         const fromTree = JSON.parse(fs.readFileSync(path.join(dir, ".claude", "settings.json"), "utf8"));
         assert.match(JSON.stringify(fromTree), /commit-without-the-hooks/);
 
-        // With an empty root named, the derived one is OUT OF SCOPE: the fragment must be gone.
         const empty = scratch();
         assert.equal(run(["--workspace", dir, "--pack-root", empty], { quiet: true }), 0);
         const fromFeed = JSON.parse(fs.readFileSync(path.join(dir, ".claude", "settings.json"), "utf8"));
@@ -3207,9 +2478,6 @@ describe("named pack roots REPLACE the derived one, and the divergence is pinned
 
 describe("--pack-root fails closed in compile too — the third carrier of one rule", () => {
     test("a root that is a FILE is refused rather than silently ignored", () => {
-        // Copilot, round 7. The dangerous shape here is specific: a file-valued root made pack resolution
-        // fail and produced a MISLEADING GREEN compile that had simply ignored the intended root — which is
-        // worse than the exit 2 the argument deserves, because a green is what a session acts on.
         const dir = workspace();
         assert.equal(run(["--workspace", dir, "--pack-root", path.join(dir, ".portulan", "gates.json")], { quiet: true }), 2);
     });
@@ -3221,23 +2489,9 @@ describe("--pack-root fails closed in compile too — the third carrier of one r
     });
 });
 
-// ---------------------------------------------------------------- where the emitted hook points (M7)
+// ---------------------------------------------------------------- where the emitted hook points
 
-/**
- * A root the runner provably cannot live under, on any platform.
- *
- * **`os.tmpdir()` itself was the spelling here, and it encoded a premise that is not always true: that
- * this repository is not checked out inside the OS temp directory.** Milestone 8 clause (d)'s drill
- * harness makes a legitimate caller that violates it — a `git worktree` under `os.tmpdir()` — and the
- * two cases below then failed **in CI and not locally**, which is the sharper half: on macOS `/var` is a
- * symlink to `/private/var`, so the containment test misses and the case passes by accident of the
- * platform's layout; on `ubuntu-latest` the paths agree and it fails. A test whose verdict turns on a
- * symlink is testing the host.
- *
- * The intent was never `os.tmpdir()` — it was *a root the runner is not under*. Named directly, it
- * holds wherever the checkout sits: a subdirectory of the temp directory cannot contain a sibling of
- * itself.
- */
+// Not `os.tmpdir()` itself, which a checkout can sit under, as a `git worktree` there does.
 const OUTSIDE_ANY_PROJECT = path.join(os.tmpdir(), "portulan-no-project-lives-here");
 
 describe("the emitted runner path — nothing asserted this until the checkpoint said so", () => {
@@ -3250,10 +2504,6 @@ describe("the emitted runner path — nothing asserted this until the checkpoint
     });
 
     test("a runner OUTSIDE the project falls back to absolute AND says so", () => {
-        // The checkpoint's required adjustment 1: the comment promised `refused` would record the
-        // pinning and nothing did. Compiling with a root the runner does not live under is exactly the
-        // global/npx install, and it must not be silent — a hook pinned to one machine stops working
-        // when the package moves, and a missing hook fails open.
         const out = claudeCode(parse(policy()), { root: OUTSIDE_ANY_PROJECT });
         const emitted = JSON.stringify(out.artifact.value);
         assert.doesNotMatch(emitted, /CLAUDE_PROJECT_DIR/, "a runner outside the project cannot have a project-relative spelling");
@@ -3265,9 +2515,6 @@ describe("the emitted runner path — nothing asserted this until the checkpoint
     });
 
     test("`root` is honoured, so cross-compiling cannot name a file the target lacks", () => {
-        // Required adjustment 2: `compile --workspace <other>` wrote that project's settings naming this
-        // project's runner — a hook the target does not have, failing open silently. The plumbing
-        // existed; the caller never used it.
         const a = JSON.stringify(claudeCode(parse(policy()), { root: OUTSIDE_ANY_PROJECT }));
         const b = JSON.stringify(claudeCode(parse(policy()), { root: path.resolve(fileURLToPath(new URL("..", import.meta.url))) }));
         assert.notEqual(a, b, "the emitted path did not change with `root`, so `root` is being ignored");
@@ -3275,16 +2522,6 @@ describe("the emitted runner path — nothing asserted this until the checkpoint
 });
 
 // ---------------------------------------------------------------- parity: a workspace is not a place
-//
-// Proposal 0017: *"every feature keys to a workspace SLOT, never to a residence… A feature that ever
-// dispatches on residence is a parity breach and is refusable on this sentence."* This one dispatched
-// on residence for two milestones, and reading the file never showed it — `--workspace <dir>` was
-// documented as taking a repository root, which is a true sentence about a tool that only works in one
-// of the two residences the ruling says are equal.
-//
-// **Found by running row 7's fourth demonstration**, where `doctor`, `index` and the workspace's own
-// verify recipe all behaved identically at both ends and this exited 2, *could not run*, looking for a
-// gate policy at `<feed>/workspaces/.portulan/gates.json`.
 describe("a workspace named directly, in either residence", () => {
     test("a repository root still resolves to `.portulan` — the default is untouched", () => {
         const dir = scratch();
@@ -3299,8 +2536,6 @@ describe("a workspace named directly, in either residence", () => {
     });
 
     test("a feed-side workspace IS its own root, because that is what ships", () => {
-        // Milestone 6 measured it: an installed plugin's `<marketplace>/<plugin>/<version>/` directory
-        // is the workspace root. So a feed-side workspace's compiled artifacts belong beside it.
         const dir = scratch();
         const ws = path.join(dir, "workspaces", "acme");
         fs.mkdirSync(ws, { recursive: true });
@@ -3309,8 +2544,6 @@ describe("a workspace named directly, in either residence", () => {
     });
 
     test("a `tree` that does not contain its own workspace changes nothing", () => {
-        // A manifest `doctor` refuses. Here it only means the derivation cannot be trusted, and the
-        // safe answer to an untrustworthy input is the one that alters no behaviour.
         const dir = scratch();
         const ws = path.join(dir, "ws");
         fs.mkdirSync(ws, { recursive: true });
@@ -3330,16 +2563,13 @@ describe("a workspace named directly, in either residence", () => {
         assert.ok(fs.existsSync(path.join(ws, "compile", "github-ruleset.json")), "and so does the ruleset — never under a `.portulan` that does not exist here");
         assert.equal(fs.existsSync(path.join(ws, ".portulan")), false, "nothing invents a `.portulan` beside a workspace that is not in one");
 
-        // `--check` has to look in the same place it wrote, or a green means nothing was compared.
         assert.equal(run(["--workspace", ws, "--check"], { quiet: true }), 0);
         fs.rmSync(path.join(ws, "compile", "github-ruleset.json"));
         assert.equal(run(["--workspace", ws, "--check"], { quiet: true }), 1, "a missing artifact is drift in either residence");
     });
 
     test("the same policy compiles to the same rules in both residences", () => {
-        // The parity claim itself, as an assertion rather than as a sentence: identical policy, two
-        // residences, and what compiles must not differ. Only the artifact PATHS may, because where a
-        // file ships is delivery, which 0017 says is exactly what the residences differ in.
+        // The artifact paths differ by residence, as they should, so only the gate and refusal lines are compared.
         const shared = withFloor(policy());
 
         const repo = scratch();
@@ -3351,10 +2581,7 @@ describe("a workspace named directly, in either residence", () => {
         fs.writeFileSync(path.join(feed, "workspace.json"), JSON.stringify({ name: "acme", kind: "portfolio" }));
         fs.writeFileSync(path.join(feed, "gates.json"), JSON.stringify(shared));
 
-        // **Hand-restored on purpose (#254).** `t.mock.method` scopes a mock to the TEST; this one is
-        // scoped to a single CALL of `said`, which runs twice and must return only its own call's
-        // output. The runner cannot express that, so the manual pair is the correct shape here rather
-        // than the unswept one — the sweep converted the sites whose scope the runner does match.
+        // Hand-restored: this mock lives for one call of `said`, which runs twice, and `t.mock.method` lasts the test.
         const said = (argv) => {
             const lines = [];
             const write = process.stdout.write.bind(process.stdout);
@@ -3371,17 +2598,11 @@ describe("a workspace named directly, in either residence", () => {
     });
 
     test("only ENOENT means `this is a repository root` — an unreadable manifest refuses", (t) => {
-        // The only-ENOENT rule, and the first cut of
-        // `resolveWorkspace` broke it in the change whose own header states it three times: ANY failure
-        // reading `workspace.json` fell back to `.portulan`, so a present-but-unreadable manifest sent
-        // `compile` looking for a policy the workspace never named and failed with a confusing secondary
-        // error about a missing file. Copilot, round 1 on #164.
         const dir = scratch();
         fs.writeFileSync(path.join(dir, "workspace.json"), "{ not json");
         assert.throws(() => resolveWorkspace(dir), (e) => e instanceof CompileError && /not valid JSON/.test(e.message));
 
-        // And the read-side sibling, forced with a stub rather than chmod — root ignores chmod, CI often
-        // runs as root, and a check that stops checking where it matters is worse than none.
+        // A stub, not chmod: root ignores modes, and CI often runs as root.
         const dir2 = scratch();
         const original = fs.readFileSync;
         t.mock.method(fs, "readFileSync", (p, ...rest) => {
@@ -3395,7 +2616,6 @@ describe("a workspace named directly, in either residence", () => {
         assert.throws(() => resolveWorkspace(dir2), (e) => e instanceof CompileError && /EACCES/.test(e.message));
         t.mock.restoreAll();
 
-        // A genuinely absent manifest is still the ordinary repository-root case.
         assert.deepEqual(resolveWorkspace(scratch()).workspaceDir, ".portulan");
     });
 });
@@ -3403,29 +2623,13 @@ describe("a workspace named directly, in either residence", () => {
 // -------------------------------------- `auto` beside a named root: refused, not half-honoured
 
 test("compile refuses a named root combined with `--pack-root auto`", () => {
-    // One of five carriers the pre-commit checkpoint could delete without the suite noticing. The
-    // refusal exists because the alternative was a SILENT drop, and a change justified by *never
-    // silently* cannot ship beside one.
-    //
-    // The fixture is a workspace compile can actually compile, and the CONTROL below is what makes
-    // this bind: an earlier version used an incompletable workspace, so it exited 2 whether or not the
-    // refusal fired. Two carriers can produce this 2 — the parse-time check and `packContributions` —
-    // so the control pins that the same fixture is 0 without the pair.
     const dir = workspace();
     assert.equal(run(["--workspace", path.join(dir, ".portulan")], { quiet: true }), 0, "the control: this workspace compiles");
     assert.equal(run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto", "--pack-root", dir], { quiet: true }), 2);
 });
 
 test("compile refuses the pair BEFORE it resolves a workspace or reads a policy", (t) => {
-    // Copilot, round 2 on #233: the refusal sat below `resolveWorkspace` and the policy read, so an
-    // unrelated workspace or policy error masked it — and this tool then disagreed with the four
-    // beside it about *when* the command line is judged. The other tools' tests pinned that property
-    // and this one's did not, which is exactly why the placement could drift here and nowhere else.
-    //
-    // The discriminator is a workspace that does not exist: refusing at parse time never looks at it,
-    // and anything later fails on the missing workspace with a different sentence.
-    // Bound to a name rather than consumed inline, so the scratch root can be swept — the inline form
-    // left one directory behind per run with no handle to remove it by.
+    // An absent workspace: a parse-time refusal never looks at it, and any later refusal says something else.
     const absentRoot = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-absent-"));
     SCRATCH.push(absentRoot);
     const absent = path.join(absentRoot, "nope");
@@ -3437,11 +2641,7 @@ test("compile refuses the pair BEFORE it resolves a workspace or reads a policy"
 });
 
 test("`packContributions` refuses `packRoots` beside `forced`, and returns the uniform plan shape", () => {
-    // The sixth site, found by the pre-commit checkpoint's sibling sweep. It kept a literal plan
-    // object — `{roots, source, why}` — which silently ignored a discovery request and carried neither
-    // `origins` nor `refusal`, breaking one file over the uniform shape `resolutionRoots` guarantees.
-    // Asserted HERE rather than through `run`, because `run` refuses at parse time and would answer
-    // for this function; a test that cannot tell the two apart pins neither.
+    // Called directly: `run` refuses the pair at parse time, before it reaches this function.
     const dir = scratch();
     fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
     const manifest = { portulan: { spec: "2.8" }, name: "w", kind: "repository", tree: "../", packs: ["tools/thing"] };
@@ -3452,7 +2652,6 @@ test("`packContributions` refuses `packRoots` beside `forced`, and returns the u
         /never both/,
     );
 
-    // And the shape a caller may rely on, on the branch that does answer.
     const { plan } = packContributions(dir, ".portulan", { packRoots: [dir] });
     assert.equal(plan.source, "named");
     assert.deepEqual(plan.origins, [{ root: dir, origin: "named" }]);
@@ -3460,23 +2659,11 @@ test("`packContributions` refuses `packRoots` beside `forced`, and returns the u
 });
 
 test("compile prints the union plan line even without `--matrix`", () => {
-    // Normally that line is withheld from a byte-compared run because it moves with what is installed.
-    // A union is the one arrangement where a tree-derived root joined the search unnamed, and the
-    // union's whole contract is that this is never silent — so the line is not optional there.
-    // _(This said "`--check` cannot reach it: it names no root and passes no `auto`", which stopped
-    // being true on 2026-08-13 — a bare `--check` unions unasked and prints the line for exactly this
-    // reason. The REQUIRED check still cannot reach it, because `../.portulan/verify/compile.sh` names a
-    // root and `source` is `named` there.)_
     const home = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-union-host-"));
     SCRATCH.push(home);
     const installPath = path.join(home, "plugins", "cache", "feed", "carrier", "0.1.0");
     fs.mkdirSync(path.join(installPath, "packs"), { recursive: true });
-    // **A REAL pack in the cache, and the first draft of the unasked half omitted it.** `isPackRoot` asks
-    // whether a directory holds `<category>/<name>/pack.json`, so an empty `packs/` is not a root and
-    // discovery finds nothing. The `forced` arm unions anyway — it reports what came back from a search
-    // somebody asked for, including nothing — while the unasked arm returns `derived` and says discovery
-    // found no root in its `why`. That asymmetry is deliberate and it made this fixture pass the asked
-    // half while binding nothing on the unasked one.
+    // A real pack: `isPackRoot` takes an empty `packs/` for no root, and unasked discovery would find nothing.
     const cachePack = path.join(installPath, "packs", "rituals", "checkpoints");
     fs.mkdirSync(cachePack, { recursive: true });
     fs.writeFileSync(
@@ -3500,14 +2687,7 @@ test("compile prints the union plan line even without `--matrix`", () => {
         JSON.stringify({ portulan: { "gate-policy": "2.2" }, tiers: { auto: [], propose: [], gated: [] } }),
     );
 
-    // `run` writes to stdout directly rather than through an injected sink, so the sink is stdout.
-    // **Hand-restored, and the reason is a measurement rather than a preference (#254).** This block
-    // restores TWO things in one `finally`, and one of them cannot be handed to the runner at all:
-    // `t.mock.property` exists on this Node (26.7.0) but throws on `process.env` —
-    // `ERR_INVALID_OBJECT_DEFINE_PROPERTY: 'process.env' does not accept an accessor(getter/setter)
-    // descriptor` — because it installs the mock as a getter/setter pair. So the `finally` stays for the
-    // env half whatever happens to the stdout half, and splitting one restore across two mechanisms
-    // would read as an oversight rather than a choice.
+    // Hand-restored: `t.mock.property` throws on `process.env` in Node 26.7.0, so one `finally` restores both.
     const said = [];
     const write = process.stdout.write.bind(process.stdout);
     const before = process.env.CLAUDE_CONFIG_DIR;
@@ -3516,12 +2696,6 @@ test("compile prints the union plan line even without `--matrix`", () => {
     const unasked = [];
     try {
         run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto"]);
-        // **The unasked path prints it too, and this half was unbound until the pre-commit checkpoint
-        // asked for it.** "Never silently" is the union's whole justification and `--check` reaches the
-        // union now, so the assertion that mattered most was the one nobody had written. The two runs
-        // share one `if`, which is exactly why a reader might assume the second needs no case — and why
-        // it does: the condition is `plan.source === "union"`, and only a run proves the unasked arm
-        // produces that source through this tool rather than only through `resolutionRoots`.
         process.stdout.write = (chunk) => (unasked.push(String(chunk)), true);
         run(["--workspace", path.join(dir, ".portulan"), "--check"]);
     } finally {
@@ -3533,7 +2707,6 @@ test("compile prints the union plan line even without `--matrix`", () => {
     assert.match(unasked.join(""), /resolution root union — discovered in the host plugin cache unasked/);
 });
 
-// A host whose plugin record EXISTS and will not parse — could-not-look, not absence.
 function unreadableHost(scratchDir) {
     const record = path.join(scratchDir, "plugins", "installed_plugins.json");
     fs.mkdirSync(path.dirname(record), { recursive: true });
@@ -3550,12 +2723,7 @@ function withEnv(config, fn) {
 }
 
 test("compile: `auto` against an unreadable record is exit 2, not a green over an unread host", () => {
-    // One of four carriers a pre-commit checkpoint could delete without the suite noticing. The claim
-    // "every caller maps couldNotRun to exit 2" was demonstrated by `doctor` alone.
-    // The workspace must COMPOSE a pack: with none declared, `packContributions` returns before a plan
-    // is built and never reaches the mapping. That short-circuit is correct — there is nothing to
-    // resolve — and it is why the records say the mapping is reached wherever a plan is BUILT rather
-    // than at every invocation.
+    // It must compose a pack: with none, `packContributions` returns before it builds a plan.
     const dir = workspace();
     const manifestPath = path.join(dir, ".portulan", "workspace.json");
     const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
@@ -3565,15 +2733,11 @@ test("compile: `auto` against an unreadable record is exit 2, not a green over a
     const config = unreadableHost(fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-unreadable-")));
     SCRATCH.push(config);
     assert.equal(withEnv(config, () => run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto"], { quiet: true })), 2);
-    // The control: the same flag on a host whose record is merely ABSENT is not a refusal — the run
-    // proceeds and the unresolved pack is reported rather than the command being rejected.
     const empty = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-absent-"));
     SCRATCH.push(empty);
     assert.notEqual(withEnv(empty, () => run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto"], { quiet: true })), 2);
 });
 
-// `--help` is a request that succeeded. Before this, `compile --help` answered
-// `unknown argument "--help"` at exit 2 — a refusal to the one argument every tool should answer.
 describe("--help", () => {
     test("`--help` exits 0 and prints the screen to stdout", (t) => {
         const out = [];
@@ -3588,25 +2752,13 @@ describe("--help", () => {
 
 
 // ===========================================================================================
-// What compiled this — the artifact records the world it was compiled from (#264)
+// What compiled this — the artifact records the world it was compiled from
 // ===========================================================================================
-//
-// Pack resolution is discovered-first and first-match-wins, so an UNPINNED `compile` on a machine
-// with the plugin installed WOULD read the host cache while `verify/compile.sh` reads the tree —
-// it now refuses that arrangement outright (#316), and these cases cover the artifact's own record of
-// which world answered, which is what still catches an artifact emitted before that refusal existed.
-// Until this, a drift RED named a difference no reader could find in the repository, because the deciding
-// input was a directory outside it — and the remedy it prescribed, "Recompile", is the very unpinned
-// act that caused it.
 
 describe("the artifact records what compiled it (#264)", () => {
     const PLAN = (origins) => ({ origins });
 
     test("the resolver's THREE tags collapse to two, or two correct spellings disagree", () => {
-        // This is the control that stops the feature becoming worse than the hole. The pinned rail
-        // spells its root (`named`); a bare run derives the same directory (`derived`). Recorded raw,
-        // those emit different bytes for an identical world and `verify/compile.sh` reds on a tree
-        // nothing is wrong with — a per-machine false red.
         const named = PLAN([{ root: "/repo/packs", origin: "named" }]);
         const derived = PLAN([{ root: "/repo/packs", origin: "derived" }]);
         assert.equal(recordedOrigin("/repo/packs", named, "/repo"), "tree");
@@ -3620,15 +2772,11 @@ describe("the artifact records what compiled it (#264)", () => {
     });
 
     test("a NAMED root outside the repository is not called `tree`", () => {
-        // Flattening it would be this field's first lie: `--pack-root /elsewhere` is not the tree.
         const plan = PLAN([{ root: "/elsewhere/x", origin: "named" }]);
         assert.equal(recordedOrigin("/elsewhere/x", plan, "/repo"), "outside-tree");
     });
 
     test("the artifact carries origin and version, and NEVER a root path", () => {
-        // A discovered root is an absolute path under somebody's home directory. Recording it would
-        // make a tracked artifact machine-dependent and red the recipe everywhere — trading a silent
-        // hazard for a permanent false one.
         const [claude] = backends(parse(policy()), {
             source: ".portulan/gates.json",
             packProvenance: [
@@ -3654,14 +2802,6 @@ describe("the artifact records what compiled it (#264)", () => {
     });
 
     test("pinned and bare emit BYTE-IDENTICAL artifacts on a cache-less host", () => {
-        // **The two runs must actually DIFFER in how they resolve**, or this catches nondeterminism
-        // and nothing else. A first version passed identical options to both calls and claimed to be
-        // the pinned-vs-bare control — the same shape as a test that cannot fail. Copilot.
-        //
-        // Pinned names the root (`--pack-root packs`, tagged `named`); bare derives it from the
-        // manifest's `tree` (tagged `derived`). Same directory, two documented-correct spellings. On a
-        // cache-less host they describe one world and must emit one artifact, byte for byte — if they
-        // do not, `verify/compile.sh` reds on a tree nothing is wrong with.
         const dir = workspace();
         const manifestPath = path.join(dir, ".portulan", "workspace.json");
         const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
@@ -3689,10 +2829,6 @@ describe("the artifact records what compiled it (#264)", () => {
     });
 
     test("a directory literally named `..foo` is inside the tree, not outside it", () => {
-        // `!rel.startsWith("..")` calls it outside. This repository names that trap in
-        // `./index.mjs`'s `isInside` docblock — the ninth fail-open in its scaffolding, and the first
-        // written by the change that cited the class. This was the second; the helper is now used
-        // rather than a fourth spelling written. Copilot.
         const plan = { origins: [{ root: "/repo/..foo/packs", origin: "named" }] };
         assert.equal(recordedOrigin("/repo/..foo/packs", plan, "/repo"), "tree");
         const escape = { origins: [{ root: "/elsewhere", origin: "named" }] };
@@ -3706,7 +2842,6 @@ describe("the artifact records what compiled it (#264)", () => {
     });
 
     test("a workspace with no packs emits the header it always emitted", () => {
-        // Byte-identity for the commonest case: nothing to record must add nothing.
         const [withNone] = backends(parse(policy()), { source: ".portulan/gates.json" });
         assert.equal("packs" in JSON.parse(withNone.artifact.text).$portulan, false);
     });
@@ -3719,7 +2854,6 @@ describe("the drift RED names the origin difference (#264)", () => {
         permissions: { deny: [], ask: [], allow: [] },
     }, null, 2);
 
-    /** A workspace that DECLARES a pack, so the recompiled side records provenance to compare against. */
     const withAPack = () => {
         const dir = workspace();
         const manifestPath = path.join(dir, ".portulan", "workspace.json");
@@ -3730,12 +2864,9 @@ describe("the drift RED names the origin difference (#264)", () => {
         return dir;
     };
 
-    /** Runs `--check` against an artifact planted on disk, and returns everything it said. */
     const checkAgainst = (onDisk, dir = workspace()) => {
         fs.mkdirSync(path.join(dir, ".claude"), { recursive: true });
         fs.writeFileSync(path.join(dir, ".claude", "settings.json"), onDisk);
-        // `run` writes to `process.stdout` directly — there is no injectable sink — so this captures
-        // it the only way available, and restores it even when the call throws.
         let out = "";
         const real = process.stdout.write.bind(process.stdout);
         process.stdout.write = (chunk) => { out += chunk; return true; };
@@ -3749,10 +2880,7 @@ describe("the drift RED names the origin difference (#264)", () => {
     };
 
     test("a drift whose origins differ SAYS so, and gives the pinned spelling", () => {
-        // Without this the sentence can regress to the pre-#264 "Recompile." — the remedy that, typed
-        // bare, is the act that caused the drift — with every other test still green. The workspace must
-        // DECLARE a pack: the why-block compares two worlds, and a pack present in only one of them
-        // falls back to the plain RED by design.
+        // It must declare a pack: one present in only one of the two worlds falls back to the plain RED.
         const { code, out } = checkAgainst(
             artifactWith([{ pack: "rituals/checkpoints", origin: "discovered", version: "0.2.0" }]),
             withAPack(),
@@ -3763,8 +2891,6 @@ describe("the drift RED names the origin difference (#264)", () => {
     });
 
     test("an artifact this compiler cannot parse leaves the plain RED standing", () => {
-        // The artifact on disk is a file a human may have edited. A drift report that crashes on one is
-        // worse than a drift report that says less.
         for (const hostile of ["{ not json", JSON.stringify({ no: "header" }), JSON.stringify({ $portulan: "a string" }), JSON.stringify({ $portulan: { packs: "not an array" } })]) {
             const { code, out } = checkAgainst(hostile);
             assert.equal(code, 1, `still a drift: ${hostile.slice(0, 24)}`);
@@ -3775,24 +2901,17 @@ describe("the drift RED names the origin difference (#264)", () => {
 
 
 // ===========================================================================================
-// Guidance — `slots.context`, compiled to each host's load tiers (proposal 0036)
+// Guidance — `slots.context`, compiled to each host's load tiers
 // ===========================================================================================
-//
-// Workspace Definition 2.10's slot: one unit per file, each declaring its tier. What these cases can
-// establish is emission fidelity, and that the measurement counts what is emitted in the tier it claims;
-// that the host loads an on-path rule when its path is first touched, and not before, is row 12's second
-// demonstration, on a running host, against `fixtures/guidance/`.
 
 const GUIDANCE_FIXTURE = path.join(HERE, "fixtures", "guidance");
 
-/** A scratch copy of the committed guidance fixture, so a test may compile into it. */
 function guidanceCopy() {
     const dir = scratch();
     fs.cpSync(GUIDANCE_FIXTURE, dir, { recursive: true });
     return dir;
 }
 
-/** Run `compile`, capturing what it says. */
 function said(t, argv) {
     const out = [];
     t.mock.method(process.stdout, "write", (chunk) => (out.push(String(chunk)), true));
@@ -3936,8 +3055,6 @@ describe("guidance: written, then byte-compared", () => {
         assert.match(check.out, /GREEN — every compiled guidance file matches its unit/);
     });
 
-    // The figures ride the advisory's commands, which are written only beside a gate policy, so a declaration
-    // with no policy to ride compiles nothing. Said, as the session switches are, rather than dropped unseen.
     test("a declared `spend` beside guidance and no gate policy compiles nothing, and says so", (t) => {
         const dir = guidanceCopy();
         const file = path.join(dir, "workspace.json");
@@ -3949,15 +3066,11 @@ describe("guidance: written, then byte-compared", () => {
         assert.equal(code, 0, out);
         assert.match(out, /note {4}`spend` in workspace\.json compiled nothing: what it declares rides the restart advisory's commands in the settings a gate policy compiles to, and this workspace has none/);
         assert.ok(!fs.existsSync(path.join(dir, ".claude", "settings.json")), "no policy, so no settings");
-        // A refused value stops this run too, before any guidance is written.
         m.spend = { horizon: { requests: -1 } };
         fs.writeFileSync(file, JSON.stringify(m, null, 2));
         assert.equal(said(t, ["--workspace", dir, "--check"]).code, 2);
     });
 
-    // Before this case, guidance compiled past a `gates` key the compiler refuses, and `--check` went green:
-    // the exit 2 such a key had always meant was gone wherever the workspace declared guidance. A `gates.json`
-    // at the conventional path is not the policy such a key names either, so it is no reason to go on.
     test("a `gates` key the compiler refuses stops the run beside guidance too: exit 2, nothing written", (t) => {
         for (const gates of [42, "", "../outside.json"]) {
             for (const conventional of [false, true]) {
@@ -4167,7 +3280,6 @@ describe("guidance: written, then byte-compared", () => {
         fs.writeFileSync(path.join(dir, ".portulan", "context", "history.md"), unitText(["tier: on-read", "description: Why."]));
         fs.writeFileSync(path.join(dir, ".portulan", "context", "release.md"), unitText(["tier: on-invoke", "description: Cut a release."]));
         assert.equal(said(t, ["--workspace", dir]).code, 0);
-        // What compile wrote, moved inside the repository and reached from where it was through a link.
         for (const [from, to] of [[GUIDANCE_RULES_DIR, "kept-rules"], [SKILLS_DIR, "kept-skills"]]) {
             fs.renameSync(path.join(dir, from), path.join(dir, to));
             fs.symlinkSync(path.join(dir, to), path.join(dir, from));
@@ -4220,7 +3332,6 @@ describe("guidance: written, then byte-compared", () => {
         assert.equal(code, 2);
         assert.match(out, /release\/SKILL\.md exists and was not compiled here/);
         assert.equal(fs.readFileSync(owed, "utf8"), quoting);
-        // One no unit compiles to is the team's: left, and no finding of this compiler's.
         fs.rmSync(path.dirname(owed), { recursive: true });
         const mine = path.join(dir, SKILLS_DIR, "mine", "SKILL.md");
         fs.mkdirSync(path.dirname(mine), { recursive: true });
@@ -4369,8 +3480,6 @@ describe("guidance: written, then byte-compared", () => {
         assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
     });
 
-    // Before this case, a workspace with no gate policy stopped before the tidy, and what it had compiled
-    // stayed, an `always` rule loading into every context, until someone deleted it by hand.
     test("so does one with no gate policy, and the run after refuses it as declaring neither", (t) => {
         const dir = guidanceCopy();
         assert.equal(said(t, ["--workspace", dir]).code, 0);
@@ -4388,7 +3497,6 @@ describe("guidance: written, then byte-compared", () => {
         assert.equal(said(t, ["--workspace", dir, "--check"]).code, 2);
     });
 
-    // Every file under `.claude/`, by its path there, so a run can be shown to have written and removed nothing.
     const claudeTree = (dir) => {
         const files = {};
         const walk = (at) => {
@@ -4402,9 +3510,6 @@ describe("guidance: written, then byte-compared", () => {
         return files;
     };
 
-    // Before this case, from the repository root, as `.portulan/verify/compile.sh` runs it, a manifest that did
-    // not parse was read as one declaring nothing: beside a `gates.json` found by convention, a write compiled
-    // that file and removed every rule and skill compiled from guidance, and the marker with them.
     test("a manifest that does not parse stops the run, with a gate policy or without one: nothing written or removed", (t) => {
         for (const policyBeside of [true, false]) {
             for (const [label, broken] of [
@@ -4434,8 +3539,7 @@ describe("guidance: written, then byte-compared", () => {
         }
     });
 
-    // Found by Copilot after the case above: `init`, `vendor` and `upgrade`'s planner reach the guidance through
-    // `compileGuidance` and `guidanceEdits`, not the command line, and read such a manifest as declaring none.
+    // `init`, `vendor` and `upgrade` reach guidance through these functions, not through the command line.
     test("every entry point that compiles or plans guidance stops on a manifest that does not parse", (t) => {
         const dir = scratch();
         fs.cpSync(GUIDANCE_FIXTURE, path.join(dir, ".portulan"), { recursive: true });
@@ -4454,8 +3558,6 @@ describe("guidance: written, then byte-compared", () => {
         }
     });
 
-    // The tidy's own scope: a workspace whose manifest is gone has not been authored, so what it lacks is no
-    // reason to remove what an earlier run compiled. Red when the tidy's `no-key` condition is removed.
     test("a workspace whose manifest is gone, with no gate policy, is no reason to remove anything", (t) => {
         const dir = scratch();
         fs.cpSync(GUIDANCE_FIXTURE, path.join(dir, ".portulan"), { recursive: true });
@@ -4497,29 +3599,24 @@ describe("guidance: written, then byte-compared", () => {
         }
     });
 
-    // The card restates the policy's tiers in every context, and the policy is the one that compiles: a gate
-    // it adds, moves or drops moves on the card in the same change, or the card tells every session otherwise.
     test("this repository's card names each gate under the tier the composed policy gives it, and no other gate", () => {
         const policy = JSON.parse(fs.readFileSync(path.join(REPO, ".portulan", "gates.json"), "utf8"));
         const { contributions } = packContributions(REPO, ".portulan", { packRoots: [path.join(REPO, "packs")] });
         const held = composeFragments(policy, contributions).policy.rules.map((rule) => `${rule.tier} ${rule.id}`);
         const card = fs.readFileSync(path.join(REPO, ".portulan", "context", `${BOOT_CARD_UNIT}.md`), "utf8");
-        const labels = new Set(["agent-driven"]); // named on the Propose line beside its gates
+        const labelsBesideGates = new Set(["agent-driven"]);
         const named = [];
         for (const [, tier, body] of card.matchAll(/^- \*\*(Auto|Propose|Gated|Prohibited)\*\*(.*(?:\n {2}.*)*)/gm)) {
             for (const [, id] of body.matchAll(/`([a-z]+(?:-[a-z]+)+)`/g)) {
-                if (!labels.has(id)) named.push(`${tier.toLowerCase()} ${id}`);
+                if (!labelsBesideGates.has(id)) named.push(`${tier.toLowerCase()} ${id}`);
             }
         }
         assert.deepEqual(named.sort(), held.sort());
     });
 });
 
-// The boot card (records rethink piece 2): the always unit a boot reads in place of the slots. It pulls whole
-// files in by import and the lead sentences of others by a `leads` line, so each fact keeps one source, and
-// `compile` checks every import against what Claude Code 2.1.281 would load before anything is written.
+// Imports are checked against what Claude Code 2.1.281 loads.
 describe("guidance: the boot card, its imports and its lead lines", () => {
-    /** The guidance fixture, with each of `files` written into it at its path from the root. */
     function withFiles(files) {
         const dir = guidanceCopy();
         for (const [rel, text] of Object.entries(files)) {
@@ -4528,7 +3625,6 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         }
         return dir;
     }
-    /** A boot card, its lines under the card's own first line. */
     const card = (...lines) => unitText(["tier: always"], [BOOT_CARD_LINE, "", ...lines].join("\n"));
     const rule = (dir, name) => fs.readFileSync(path.join(dir, GUIDANCE_RULES_DIR, `${name}.md`), "utf8");
 
@@ -4624,10 +3720,7 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         assert.match(rule(dir, "boot"), /^@\.\.\/\.\.\/\.\.\/identity\.md$/m);
     });
 
-    // Found in the coordinator session's review of #452 after its push, and read in the lexer Claude Code
-    // 2.1.281 bundles: a list item's text reaches the host as one raw block, which it reads for imports before
-    // it skips the code spans inside, a loose item's as much as a tight one's. So a code span there hides no
-    // import, and the refusals that sent text into one sent it where the host still reads it.
+    // Claude Code 2.1.281's lexer hands a list item's text over whole, so a code span there hides no import.
     test("in a list item a code span hides no import, tight or loose, and a refusal sends text that is not one elsewhere", (t) => {
         const advice = /text that is not an import (goes )?in a fenced block, or in a code span outside a list/;
         for (const list of [["- Run `cat @../identity.md now` first.", "- Then the rest."], ["- Run `cat @../identity.md now` first.", "", "- Then the rest."]]) {
@@ -4670,9 +3763,7 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         assert.match(check.out, /boot\.md has drifted from context\/boot\.md, whose leads are written from rules\.md\. Edit the unit or those files, then recompile\./);
     });
 
-    // Found in the coordinator session's review of #452 after its push: a line with no indent straight under an
-    // item's text is more of that item to CommonMark, and this reader ended the list there, so a card carried
-    // the lead of one principle in four and `--check` stayed green.
+    // To CommonMark, a line with no indent straight under an item's text is more of that item.
     test("a line with no indent under an item's text is refused, naming its line, and a line that opens a block still ends the list", (t) => {
         const rules = (under) =>
             ["# Rules", "", "1. **Ship small.** A reviewer reads a small change", "   whole.", "2. **Say what is enforced.** And what is not.", under, "3. **Never read.** It is past the list.", ""].join("\n");
@@ -4741,7 +3832,6 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         const check = said(t, ["--workspace", dir, "--check"]);
         assert.equal(check.code, 1);
         assert.match(check.out, /whose leads are written from the engine's core\/operating\/context\.md\./);
-        // Portulan's own card, compiled where the engine is the tree, runs the command from there.
         const own = fs.readFileSync(path.join(REPO, GUIDANCE_RULES_DIR, "boot.md"), "utf8");
         assert.match(own, /`node cli\/symbols\.mjs <file>`/);
         assert.doesNotMatch(own, /<plugin root>/);
@@ -4780,7 +3870,6 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         assert.ok(!fs.existsSync(path.join(link.dir, ".claude")));
     });
 
-    /** A gate policy holding one rule per `[id, tier]`, in that order. */
     const policy = (...rules) => `${JSON.stringify({ portulan: { spec: "2.2" }, rules: rules.map(([id, tier]) => ({ id, tier, action: { write: `${id}.md` }, reason: `Why ${id}.` })) }, null, 2)}\n`;
 
     test("a gates line writes out the policy's gate ids by tier, in its order, a tier with none says so, and an edit to the policy is drift", (t) => {

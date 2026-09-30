@@ -1,16 +1,4 @@
 // `cli/README.md` is exactly what ./roster.mjs renders from this directory, and the render keeps its shape.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// The page is generated from each file's header and from the rosters in code, as ./roster.mjs says, so
-// the byte comparison below is the rail: a file added, removed or re-described without a new render is
-// red here, and `node cli/roster.mjs --write` is the repair. A page nobody writes by hand cannot drift
-// from the files it lists, which is what the hand-kept roster and its counts kept doing (#204).
-//
-// **Why here and not in `docs.sh`.** `docs.sh` needs only `git`, `bash` and the POSIX text utilities,
-// and the render imports real modules. `docs.sh`'s `cli table` check still holds the page's rows to the
-// tracked files in both directions without node, on every Stop, and the shape cases below keep the page
-// in the one-row-per-file form that check reads.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -23,9 +11,7 @@ import { HOOK_RUNNERS } from "./compile.mjs";
 import { SUBCOMMANDS } from "./portulan.mjs";
 import { CannotRun, README, headerOf, render, run, titleOf, trackedFiles } from "./roster.mjs";
 
-// A HERMETIC HOST, the three-line block `pinned-roots.live.test.mjs` sweeps for. The render reads only
-// constants from `./compile.mjs`, but that module can reach the host's installed-plugin record, and the
-// guard belongs to every test file whose imports reach one.
+// `./compile.mjs`, imported for constants, can reach the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -37,8 +23,6 @@ const rowsOf = (page) =>
         .map((line) => /^\| \[`([^`]*)`\]/.exec(line)?.[1])
         .filter(Boolean);
 
-// Built in a temporary repository rather than in this one, so a case about a missing header does not
-// depend on some file here keeping or losing one.
 function scratchRepo(files) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "roster-"));
     fs.mkdirSync(path.join(root, "cli"));
@@ -155,8 +139,7 @@ describe("the render refuses what it cannot quote", () => {
     });
 
     test("a tracked name git would quote is refused by name, never dropped", () => {
-        // Git tracks a name holding a newline, and a list split on newlines C-quotes it even under
-        // `core.quotePath=false`, so the file used to leave the page without a word.
+        // Git tracks a name holding a newline, and C-quotes it in a line-split list even under `core.quotePath=false`.
         const root = scratchRepo({ "a.mjs": "// A tool.\n", "we\nird.mjs": "// Odd.\n" });
         try {
             assert.throws(

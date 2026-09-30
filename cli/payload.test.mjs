@@ -1,14 +1,4 @@
 // Tests for the payload-classification rail.
-//
-// **Every red class is forced** — the seven `findings()` classes below, and both directions of the
-// dynamic-import register. `../.portulan/memory/a-checkers-coverage-is-measured-not-named.md`
-// binds: a rail whose failure paths are never run is a rail nobody has seen work, and this one exists
-// because three modules shipped for three sessions under a green. The green case is measured live
-// against this repository — the only tree whose classification this rail is about — and the findings
-// are forced through `findings()`, which takes a report and so can be handed the exact state each
-// branch is for. **It is not pure** — an earlier draft of this sentence said so and was wrong: the
-// `EXCLUDED` arm asks the filesystem about non-`.mjs` entries, which is why every synthetic report
-// below carries a real `root`.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -17,12 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// **The host's plugin record is neutralised before the tool is imported.** `./payload.mjs` imports
-// `./compile.mjs`, which puts this file inside `./pinned-roots.live.test.mjs`'s derived closure: without
-// this, a case here would read whatever packs happen to be installed on the machine it runs on. The
-// sweep compares this block as LITERAL TEXT and derives membership from imports rather than from what a
-// module currently does — an internal refusal is one edit from being relaxed. Copied from the sibling
-// rather than re-spelled, which is what that file's own header says goes wrong otherwise.
+// `./payload.mjs` imports `./compile.mjs`, which can read the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -31,7 +16,7 @@ import { ACCOUNTED_DYNAMIC_IMPORTS, CannotRun, EXCLUDED, PRODUCT, UNRULED, class
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-/** A report shaped like `classify`'s, so a branch can be handed exactly the state it is for. */
+// `root` is real: `findings()` asks the filesystem about the non-`.mjs` entries of `EXCLUDED`.
 function report(over = {}) {
     const shipped = ["portulan.mjs", ...UNRULED.modules, ...Object.keys(PRODUCT)];
     return {
@@ -111,9 +96,6 @@ describe("payload — every red is forced", () => {
     });
 
     test("an UNRULED module the payload stopped carrying is caught TWICE, from both directions", () => {
-        // Deliberately asserted as two rather than narrowed to one: a module that leaves the payload
-        // while staying tracked is both a stale UNRULED entry and an unexplained absence, and the rail
-        // saying so twice is the totality working rather than a duplicate to be tidied away.
         const r = report();
         r.shipped = r.shipped.filter((n) => n !== "telemetry.mjs");
         r.classes.delete("telemetry.mjs");
@@ -156,9 +138,6 @@ describe("payload — every red is forced", () => {
     });
 
     test("a ROOT the payload does not carry is a finding — a silently dropped seed is a fail-open", () => {
-        // The defect: seeds were filtered to what ships, so excluding the `bin` by accident would have
-        // left the rail green over the remainder while the installed package exposed an entry point
-        // resolving to nothing. Each root kind is asserted, because the repair differs per kind.
         for (const [kind, phrase] of [["the `bin` target", "portulan.mjs"], ["a `SUBCOMMANDS` module", "doctor.mjs"], ["a compiled-hook runner", "gate.mjs"]]) {
             const r = report({ missingRoots: [{ kind, name: phrase }] });
             const red = findings(r);
@@ -168,9 +147,7 @@ describe("payload — every red is forced", () => {
     });
 
     test("a string `bin` seeds the same root as a map — npm allows both spellings", () => {
-        // `Object.values("cli/portulan.mjs")` is a list of CHARACTERS, so the string form would have
-        // seeded no root and mis-classified the entry point. No live defect — this repository's `bin`
-        // is a map — but a rail that reads a manifest should read the manifest's schema.
+        // `Object.values` of a string is its characters, so a string `bin` needs its own branch.
         const asString = (v) => (typeof v === "string" ? [v] : Object.values(v));
         assert.deepEqual(asString("cli/portulan.mjs"), ["cli/portulan.mjs"]);
         assert.deepEqual(asString({ portulan: "cli/portulan.mjs" }), ["cli/portulan.mjs"]);
@@ -217,9 +194,6 @@ describe("payload — PRODUCT is a ruling, and the rail checks it is a live one"
     });
 
     test("UNRULED growing by one is a finding — the freeze is a number the RAIL checks", () => {
-        // Forced at the pre-commit checkpoint before this assertion existed: a fourteenth name produced
-        // no finding at all, while the class comment claimed the rail asserted the enumeration. The
-        // overstated enforcer is the defect; this is the check that makes the sentence true.
         UNRULED.modules.push("a-module-that-did-not-ask.mjs");
         try {
             assert.ok(findings(report()).some((f) => /UNRULED holds 14 module\(s\) and is frozen at 13/.test(f)));
@@ -251,10 +225,6 @@ describe("payload — the edge forms the walk must see", () => {
     });
 
     test("a RE-EXPORT is an edge — carried on the grammar, not on a live example", () => {
-        // `portulan.mjs` both re-exports and plain-imports `manifest.mjs`, so this form catches nothing
-        // the plain one misses TODAY. An earlier draft of this suite said it did; the pre-commit
-        // checkpoint measured that false. The form is here because a module reachable only this way is
-        // one edit away and would arrive silently.
         assert.ok(edgesOf('export { VERSION } from "./manifest.mjs";').has("manifest.mjs"));
     });
 
@@ -315,9 +285,6 @@ describe("payload — dynamic imports are refused, never walked past", () => {
     });
 
     test("a STALE register entry is its own finding, not the unaccounted one wearing its words", () => {
-        // The two are opposite defects. Reported through one message path they render a contradiction —
-        // "carries no dynamic import" inside a sentence beginning "carries a dynamic `import(`" — which
-        // is what the pre-commit checkpoint forced and read back.
         const r = classify(REPO);
         ACCOUNTED_DYNAMIC_IMPORTS["manifest.mjs"] = "a register entry with no import behind it";
         try {
@@ -358,10 +325,6 @@ describe("payload — the frozen class is frozen", () => {
 });
 
 describe("payload — could-not-run is exit 2, from every call that can refuse", () => {
-    // **Three leaks, all found by review rather than by the earlier checkpoint**, whose could-not-run
-    // cases all tripped this file's own `package.json` read first and never reached the calls below.
-    // `../.portulan/memory/verify-preconditions-fail-closed.md` is the contract: a rail that dies on
-    // "npm did not run" reports nothing, and nothing is not a verdict.
     const sink = () => {
         const lines = [];
         return { write: (l) => lines.push(l), lines };
@@ -374,9 +337,7 @@ describe("payload — could-not-run is exit 2, from every call that can refuse",
     });
 
     test("`packedPaths` failing is translated — its CannotRun is a DIFFERENT class than this file's", () => {
-        // The defect: `pack-identity.mjs` declares its own `CannotRun`, so `instanceof` is false across
-        // the two modules and `run()`'s handler missed it entirely — the rail crashed where it contracts
-        // exit 2. Asserted on the class boundary rather than by breaking npm, which a suite must not do.
+        // Shown on the class boundary: making `packedPaths` fail for real would mean breaking npm.
         assert.equal(typeof CannotRun, "function");
         const theirs = class CannotRun extends Error {};
         assert.ok(!(new theirs("x") instanceof CannotRun), "the two CannotRun classes are not interchangeable");

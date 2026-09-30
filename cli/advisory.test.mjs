@@ -1,16 +1,4 @@
-// Tests for `advisory` — the restart advisory's one line with a tool result or at the prompt, and its figure
-// in the status line.
-//
-// Zero dependencies, node's own runner, and run by the same recipe as every suite here:
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// Every case writes its transcript and its told-once directory under a temporary directory, so no case
-// reads a real session or leaves a record beside one. What the suite pins is proposal `0038`'s promise
-// for the line — with the first tool result or at the first prompt whose recorded usage has reached the
-// threshold, once between them, and at no earlier one — the declared block's, once at a stop and at no
-// earlier one, and the runner's own: it exits 0 on every path, because a `UserPromptSubmit` hook that exits
-// 2 erases the person's prompt.
+// Tests for `advisory` — the restart advisory's one line with a tool result or at the prompt, and its figure in the status line.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -23,8 +11,7 @@ import { fileURLToPath } from "node:url";
 import { adviceLine, compact, heldFile, main, onPrompt, onStatus, onStop, onTool, spendFlags, stateFile, statusLine, toldFile } from "./advisory.mjs";
 import { readTranscript } from "./ledger.mjs";
 
-// A HERMETIC HOST: nothing here reads the host's configuration, and the suite says so the way every
-// suite that imports a reader of it does.
+// This suite imports `./ledger.mjs`, which can read the host's configuration home: point it at an empty one.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -106,7 +93,7 @@ describe("the line at the prompt", () => {
             const file = session(dir, [90000]);
             assert.notEqual(onPrompt({ session_id: "one", transcript_path: file }, { dir: state }), null);
             assert.notEqual(onPrompt({ session_id: "two", transcript_path: file }, { dir: state }), null);
-            // Two ids that sanitise to one string stay apart: the defect ./stop-gate.mjs found in its counters.
+            // `a/b` and `ab` sanitise to one string.
             assert.notEqual(toldFile("a/b", 0, state), toldFile("ab", 0, state));
         });
     });
@@ -251,9 +238,7 @@ describe("what a call reads", () => {
             fs.mkdirSync(state);
             const file = session(dir, [60000]);
             assert.equal(onPrompt({ session_id: "s", transcript_path: file }, { dir: state }), null);
-            // Rewrite the fresh context's records in place, at their own length and far from where the
-            // first read ended: a call that read the transcript again from its start would take a fresh
-            // context of 100,000 and a threshold of 200,000, and stay silent.
+            // Edited at the same length, far from where the first read ended: a re-read from the start would take a threshold of 200,000 and stay silent.
             const source = fs.readFileSync(file, "utf8");
             const edited = source.replace(/"cache_creation_input_tokens":39999/g, '"cache_creation_input_tokens":99999').replace(/"ephemeral_1h_input_tokens":39999/g, '"ephemeral_1h_input_tokens":99999');
             assert.notEqual(edited, source);
@@ -266,8 +251,7 @@ describe("what a call reads", () => {
 
     test("cut anywhere, across reads and inside a character, what is kept is what one whole read gives", () => {
         withTemp((dir) => {
-            // Lines longer than the 64 KB a read takes, with characters of two and four bytes, so the cuts
-            // below fall inside lines, inside characters and across reads.
+            // Lines longer than the 64 KB a read takes, of two- and four-byte characters, so cuts fall inside lines and characters.
             const wide = "é🙂".repeat(25000);
             const lines = [];
             let n = 0;
@@ -386,7 +370,6 @@ describe("what a call reads", () => {
             const older = fs.readFileSync(stateFile("race", state));
             grow(file, [boundary, ...record({ w1h: 29999 }), ...record({ read: 30000, w1h: 9999 })]);
             onStatus(call, { dir: state });
-            // The call that read less renames its snapshot last.
             fs.writeFileSync(stateFile("race", state), older);
             assert.equal(onStatus(call, { dir: state }), "4 requests · context 40k of a 60k restart threshold · multipliers undeclared: read 0.1×, write 2×");
             const kept = JSON.parse(fs.readFileSync(stateFile("race", state), "utf8")).figures;
@@ -428,12 +411,9 @@ describe("the status line", () => {
 });
 
 describe("the declared figures on the command", () => {
-    // Workspace Definition 2.12's `spend`, which `compile` writes onto every advisory command as flags. A figure
-    // it cannot use falls back to undeclared for its own half, said once on stderr, and the runner still exits 0.
     const FLAGS = ["--read", "0.05", "--write-5m", "1.25", "--write-1h", "2", "--horizon", "30"];
     const declared = { read: 0.05, write: { "5m": 1.25, "1h": 2 } };
 
-    /** One call of the runner, as the host makes it, with what it printed. */
     const call = (argv, payload, dir) => {
         const written = { out: "", err: "" };
         const code = main(argv, { stdout: { write: (s) => (written.out += s) }, stderr: { write: (s) => (written.err += s) }, payload, dir });
@@ -535,7 +515,6 @@ describe("the runner", () => {
             const result = spawnSync(process.execPath, [TOOL, mode], { input, encoding: "utf8", env: { ...process.env, TMPDIR: HERMETIC_HOST } });
             assert.equal(result.status, 0, `${mode} ${input}: ${result.stderr}`);
         }
-        // And whatever figures its command carries, in any of its modes.
         for (const mode of ["tool", "prompt", "status", "stop"]) {
             for (const flags of [["--read"], ["--read", "x", "--horizon", "-1"], ["--nope", "1"]]) {
                 const result = spawnSync(process.execPath, [TOOL, mode, ...flags], { input: "{}", encoding: "utf8", env: { ...process.env, TMPDIR: HERMETIC_HOST } });

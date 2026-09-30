@@ -1,7 +1,4 @@
-// The warm-start A/B's suite. **No case runs a real agent**: a stub stands in, writing a transcript where the
-// host would and printing the host's JSON result, because a test starting `claude` would put a session and a
-// credential inside a verify recipe. What the stub cannot stand in for is the host honouring a switch; that is
-// the recorded run's to show (`../evals/ab/warm.md`).
+// Tests for the warm-start A/B: pricing, Portulan's share, the child's start, sequences and switches, on a stub agent.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -16,8 +13,7 @@ import {
 } from "./warm.mjs";
 import { readTranscript } from "./ledger.mjs";
 
-// A HERMETIC HOST: the runner reads the ledger's and compile's defaults, which can reach the host's
-// configuration home, so this suite points it at an empty directory that exists; each rig names its own.
+// The ledger's and compile's defaults reach the host's configuration home: point it at none; each rig names its own.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -33,10 +29,7 @@ function scratch() {
     return dir;
 }
 
-/**
- * The stand-in agent. Its first call in a state directory writes the prefix to the cache and every later call
- * reads it, which is what a sequence in one cache looks like; each call logs what it was started with.
- */
+// Stands in for `claude`, whose real run would put a session and a credential inside a verify recipe.
 const STUB = `#!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -71,7 +64,6 @@ console.log(JSON.stringify({ type: "result", subtype: "success", is_error: false
     result: e.WARM_STUB_ANSWER ?? "Propose; every verify recipe ran green first." }));
 `;
 
-/** A committed tree to clone, a stub agent, and an environment whose host home is the scratch directory. */
 function rig({ answer, touch } = {}) {
     const root = scratch();
     const tree = path.join(root, "tree");
@@ -151,7 +143,6 @@ describe("A: Portulan's share of what entered the context", () => {
     const OWN = ["# Notes kept by the workspace", "A session reads this file before it edits anything.", "", "- the first rule of the workspace, long enough to count"];
     const OTHER = "export const answer = 42; // application code, not Portulan's";
 
-    /** A committed tree with one file of Portulan's and one of the application's. */
     const tree = () => {
         const dir = scratch();
         fs.mkdirSync(path.join(dir, ".portulan"));
@@ -192,7 +183,6 @@ describe("A: Portulan's share of what entered the context", () => {
         assert.equal(portulanBytes(`src/app.js:1:${OTHER}`, sources.lines), 0);
     });
 
-    /** A transcript: a prompt, a read of Portulan's file, and three requests; a compaction before the third if asked. */
     const transcript = ({ compact = false } = {}) => {
         const usage = (uncached, written, read, output) => ({
             input_tokens: uncached, cache_creation_input_tokens: written,

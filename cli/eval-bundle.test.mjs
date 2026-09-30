@@ -1,22 +1,4 @@
 // The evaluation-bundle cutter, driven on this repository AND on real fixture repositories.
-//
-// Written with the port (the pre-port bash script had no suite at all — reviewability was the
-// point of bringing it into the tree). What each group pins, and why it is a real property:
-//
-//   - The PARTITION and the CENSUS are asserted with this file's OWN instruments — `git ls-tree`
-//     and `git grep` — never through the module's helpers, because a pin that asks the subject to
-//     measure itself tests agreement, not truth.
-//   - The SELF-EXCLUSION is exercised POSITIVELY on a fixture that plants files at exactly the
-//     excluded paths. At this repository's own HEAD the exclusion can be vacuous (the cutter is
-//     not in HEAD until the first commit that contains it), and an absence assertion that passes
-//     because the thing was never there demonstrates nothing — the session-open checkpoint's
-//     adjustment 2, folded here.
-//   - PLUMBING == ARCHIVE: the materialised tree is compared byte-for-byte (modes included)
-//     against `git archive | tar -x`, because the port swapped the transport and equivalence is a
-//     claim to demonstrate, not to assert. tar is used HERE, in the suite — the verify recipe
-//     deliberately needs none.
-//   - Every REFUSAL is reached on a fixture built to deserve it, and the message is asserted —
-//     a refusal that names the wrong repair is this repository's recurring defect class.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -55,8 +37,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.dirname(HERE);
 const RUNNER = path.join(HERE, "eval-bundle.mjs");
 
-// One exit handler for every scratch directory rather than one each — ./pack-version.test.mjs
-// carries the reason.
+// One exit handler for every scratch directory: one each would pass node's default listener limit and warn.
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
@@ -70,7 +51,6 @@ function scratch() {
 
 const git = (root, ...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 
-/** A writable sink for run()'s streams. */
 function sink() {
     let text = "";
     return {
@@ -82,22 +62,15 @@ function sink() {
     };
 }
 
-// The stamping fixture for issuance-path tests. The login is impossible as a GitHub login (dot)
-// and the name says what it is, so nothing in a public tree can read it as a person.
+// A dot makes the login impossible on GitHub, so nothing in a public tree reads it as a person.
 const FIXTURE = { name: "Example Evaluator (test fixture)", login: "example-evaluator.invalid", date: "2026-01-15" };
 
-/**
- * The index of `root` wrapped as an unreferenced probe commit — the same move `--check` makes,
- * and what lets this suite cut THIS repository strictly from a commit even in the window where
- * the working tree carries files HEAD does not (the template landed exactly that way). Ident
- * pinned for environments that configure none.
- */
+/** The index of `root` as an unreferenced commit, so a cut reads files the working tree has and HEAD lacks. */
 function probeCommit(root) {
     const tree = git(root, "write-tree").trim();
     return git(root, "-c", "user.name=suite", "-c", "user.email=suite@verify-fixture.invalid", "commit-tree", tree, "-p", "HEAD", "-m", "suite probe").trim();
 }
 
-/** Walk every file under a directory, relative paths sorted. */
 function walkFiles(dir, sub = "") {
     const out = [];
     for (const entry of fs.readdirSync(path.join(dir, sub), { withFileTypes: true })) {
@@ -112,9 +85,6 @@ describe("the pinned rosters, measured with this suite's own instruments", () =>
     test("PAYLOAD ∪ EXCLUDED_TOP_LEVEL partitions the top-level tracked set at HEAD, disjointly", () => {
         const actual = git(REPO, "ls-tree", "--name-only", "--full-tree", "HEAD").split("\n").filter(Boolean).sort();
         const classified = [...PAYLOAD, ...Object.keys(EXCLUDED_TOP_LEVEL)].sort();
-        // One message for the whole partition, carrying the menu — the same sentence a maintainer
-        // sees from --check, because the first reader of this red is somebody who just added a
-        // top-level directory for unrelated reasons.
         assert.deepEqual(
             classified,
             actual,
@@ -125,19 +95,12 @@ describe("the pinned rosters, measured with this suite's own instruments", () =>
     });
 
     test("the payload files carrying the machine-read assertion at HEAD are exactly APACHE_MANIFESTS", () => {
-        // `git grep` against HEAD, limited to the payload minus the self-excluded pair — the
-        // independent instrument for the census the cutter re-runs on every cut. `HEAD:` prefixes
-        // are stripped; exit 1 (no match) would surface as a throw and fail loudly, which is the
-        // right failure for a census that found nothing.
+        // `git grep` exits 1 on no match, which throws here: the right failure for a census that found nothing.
         const byteForm = git(REPO, "grep", "-l", "--fixed-strings", APACHE_NEEDLE.toString(), "HEAD", "--", ...PAYLOAD)
             .split("\n")
             .filter(Boolean)
             .map((line) => line.replace(/^HEAD:/, ""));
-        // TWO detectors here as well, mirroring `apacheAssertions`. The byte form alone would miss a
-        // manifest asserting Apache in different whitespace or another spelling — `assertCensus`
-        // would refuse that cut, but this test, whose whole job is to catch roster drift BEFORE a
-        // cut, would have stayed green. One spelling is not a category (0029), and this pin had the
-        // same gap the guard was built against. The suite's own walk, not the module's.
+        // The byte form misses Apache in other whitespace or spelling, so the manifests are also walked as JSON.
         const assertsApache = (value) => {
             if (Array.isArray(value)) return value.some(assertsApache);
             if (value === null || typeof value !== "object") return false;
@@ -172,10 +135,6 @@ describe("the pinned rosters, measured with this suite's own instruments", () =>
 });
 
 describe("a full issuance cut of this repository", () => {
-    // One cut, shared by the assertions below — cutting is the expensive step and every assertion
-    // here reads the same artifact. The commit is an index probe, so the suite exercises the
-    // strict terms-from-the-commit read on the REAL repository whether or not HEAD carries the
-    // template yet.
     const out = scratch();
     const stdout = sink();
     const probeSha = probeCommit(REPO);
@@ -189,8 +148,6 @@ describe("a full issuance cut of this repository", () => {
 
     test("EVAL-LICENSE.md is the COMMIT's template rendered — verified with this suite's own read", () => {
         const text = fs.readFileSync(path.join(cutDir, "EVAL-LICENSE.md"), "utf8");
-        // The suite's own instrument: its own `git show` of the template at the probe, its own
-        // substitution — never the module's render, which would test agreement with itself.
         const independent = git(REPO, "show", `${probeSha}:${TEMPLATE_PATH}`)
             .replaceAll("{{name}}", FIXTURE.name)
             .replaceAll("{{login}}", FIXTURE.login)
@@ -207,14 +164,9 @@ describe("a full issuance cut of this repository", () => {
         assert.equal(fs.readFileSync(path.join(cutDir, "NOTICE"), "utf8"), EVAL_NOTICE);
     });
 
-    // The inversion of #284, in executable form: the cut no longer rewrites licence metadata, so
-    // every declaring manifest must come through the cut still saying what the public tree says.
     test("every declaring manifest still reads Apache-2.0 after the cut — nothing rewrites licence metadata", () => {
         for (const rel of APACHE_MANIFESTS) {
             const manifest = JSON.parse(fs.readFileSync(path.join(cutDir, rel), "utf8"));
-            // `if (manifest.license)` made this vacuous: a manifest that stopped declaring a licence
-            // at all passed, which is the regression the roster exists to catch. Count the fields and
-            // require at least one, then require every one of them to read Apache-2.0.
             const declared = [];
             if ("license" in manifest) declared.push([manifest.license, rel]);
             for (const [i, plugin] of (manifest.plugins ?? []).entries()) {
@@ -235,7 +187,6 @@ describe("a full issuance cut of this repository", () => {
         assert.ok(text.startsWith("> **EVALUATION COPY — issued to"), "the banner is not the first thing an evaluee reads");
         assert.ok(text.includes(FIXTURE.name) && text.includes(FIXTURE.date), "the banner is not stamped");
         assert.ok(text.includes("EVAL-LICENSE.md"), "the banner does not point at the copy's issuance record");
-        // The section is no longer rewritten, and its LICENSE link now resolves because LICENSE ships.
         assert.ok(text.includes("[Apache-2.0](LICENSE)"), "the README's own License section was altered; the cut must not touch it");
     });
 
@@ -247,8 +198,6 @@ describe("a full issuance cut of this repository", () => {
         assert.equal(stamp.source_commit, probeSha);
         assert.ok(!("term_days" in stamp), "the stamp asserts a term nothing tracks or enforces");
         assert.equal(stamp.license, "Apache-2.0");
-        // license_file must point at the TERMS, which the bundle now ships; the issuance record is
-        // its own field so neither is mistaken for the other by a consumer following the metadata.
         assert.equal(stamp.license_file, "LICENSE");
         assert.equal(stamp.issuance_record, "EVAL-LICENSE.md");
         assert.ok(fs.existsSync(path.join(cutDir, stamp.license_file)), "license_file names a file the bundle does not contain");
@@ -256,22 +205,14 @@ describe("a full issuance cut of this repository", () => {
         assert.equal(stamp.content_digest, `sha256:${bundleDigest(cutDir)}`, "the digest in the stamp does not recompute from the cut");
     });
 
-    // "the license file" was in this name while LICENSE was excluded to make room for a proprietary
-    // instrument. It ships now (#284), and is asserted PRESENT in the LICENSE test above.
     test("what must be absent is absent — the excluded top level and the issuer machinery", () => {
         for (const name of [...Object.keys(EXCLUDED_TOP_LEVEL), ...SELF_EXCLUDED]) {
             assert.ok(!fs.existsSync(path.join(cutDir, name)), `${name} is in the cut and must not be`);
         }
     });
 
-    // Inverted with the guard (#284). This read "no file in the cut carries the machine-read
-    // assertion" while a bundle was a differently-licensed copy; the cut now preserves the public
-    // tree's licence, so the assertion must SURVIVE in exactly the declaring manifests.
     test("the machine-read assertion survives the cut — the declaring manifests, plus the stamp", () => {
-        // EVAL-STAMP.json is written BY the cut and now records `"license": "Apache-2.0"` itself, so
-        // it joins the list here while `assertCensus` (which runs before the stamp exists) does not
-        // see it. That the stamp agrees with the payload is the point rather than an artefact: the
-        // guard reads it too, so a stamp that disagreed with what it stamps would be refused.
+        // The cut writes the stamp, licence included, after `assertCensus` ran, so the census never sees it.
         assert.deepEqual(filesCarrying(cutDir, APACHE_NEEDLE).sort(), [...APACHE_MANIFESTS, "EVAL-STAMP.json"].sort());
     });
 
@@ -280,8 +221,6 @@ describe("a full issuance cut of this repository", () => {
         assert.ok(fs.existsSync(tarball));
         const printed = stdout.toString().match(/sha256:([0-9a-f]{64})\s+\S*portulan-eval-.*\.tgz/);
         assert.ok(printed, `no tarball hash in:\n${stdout.toString()}`);
-        // Recomputed with node's own crypto — the suite must not re-import a shasum/sha256sum
-        // platform split the port exists to have removed.
         const actual = crypto.createHash("sha256").update(fs.readFileSync(tarball)).digest("hex");
         assert.equal(printed[1], actual, "the printed hash is not the delivered bytes' — the ledger would record a lie");
     });
@@ -292,18 +231,11 @@ describe("a full issuance cut of this repository", () => {
         assert.equal(code2, 0);
         const first = JSON.parse(fs.readFileSync(path.join(cutDir, "EVAL-STAMP.json"), "utf8")).content_digest;
         const second = JSON.parse(fs.readFileSync(path.join(again, "portulan-eval", "EVAL-STAMP.json"), "utf8")).content_digest;
-        // Deliberately NOT asserted for the tarballs: tar embeds mtimes, so two honest tarballs of
-        // one content differ. The digest is the identity that survives that; the stamp says so.
+        // Not asserted for the tarballs: tar embeds mtimes, so two cuts of one content differ.
         assert.equal(first, second);
     });
 
     test("plumbing == archive: the materialised payload is byte-identical to git archive, modes included", (t) => {
-        // The one test in cli/ that shells a non-git binary, and it SKIPS BY NAME when tar is
-        // absent rather than failing: a missing tar is a fact about the machine, not about the
-        // transport equivalence, and reporting it as a red would be could-not-look wearing a
-        // verdict — the pre-commit checkpoint measured exactly that (4 fails, tests.sh RED) on a
-        // tarless PATH. Everywhere this repository actually runs — the maintainer's machine and
-        // ubuntu-latest — tar exists and this test runs; the skip line names the gap when not.
         try {
             execFileSync("tar", ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
         } catch {
@@ -315,9 +247,7 @@ describe("a full issuance cut of this repository", () => {
         execFileSync("git", ["-C", REPO, "archive", "-o", tarFile, "HEAD", "--", ...PAYLOAD], { stdio: ["ignore", "ignore", "pipe"] });
         execFileSync("tar", ["-xf", tarFile, "-C", viaArchive], { stdio: ["ignore", "ignore", "pipe"] });
         fs.rmSync(tarFile);
-        // The archive route has no self-exclusion, so at a HEAD that contains the cutter the
-        // archive side carries the two extra files — dropped here so the comparison asks about
-        // the transport, which is the property that changed in the port.
+        // `git archive` has no self-exclusion, so the excluded files are dropped from its side first.
         for (const rel of SELF_EXCLUDED) fs.rmSync(path.join(viaArchive, rel), { force: true });
 
         const viaPlumbing = scratch();
@@ -335,7 +265,6 @@ describe("a full issuance cut of this repository", () => {
 });
 
 describe("the guard, fed cuts built to deserve refusal", () => {
-    // A small real cut to mutate — reusing the module against this repository, then planting.
     function freshCut() {
         const dir = path.join(scratch(), "portulan-eval");
         fs.mkdirSync(dir);
@@ -343,8 +272,6 @@ describe("the guard, fed cuts built to deserve refusal", () => {
         return dir;
     }
 
-    // INVERTED with the guard (#284): the refusal is a licence field that is NOT Apache-2.0, and a
-    // self-excluded path is checked directly rather than riding on the old needle side effect.
     test("a manifest declaring a non-Apache licence is refused, named, with the value it saw", () => {
         const dir = freshCut();
         fs.writeFileSync(path.join(dir, "spec", "planted.json"), `{"license": "LicenseRef-Something-Else"}\n`);
@@ -352,8 +279,6 @@ describe("the guard, fed cuts built to deserve refusal", () => {
             assert.ok(error instanceof Refused);
             assert.match(error.message, /spec\/planted\.json/);
             assert.match(error.message, /LicenseRef-Something-Else/);
-            // The menu must name the repair that actually clears the refusal. Rostering alone does not:
-            // the census would then expect an Apache assertion this file still does not make.
             assert.match(error.message, /Change the field to Apache-2\.0 or remove it/);
             assert.match(error.message, /does NOT clear this on its own/);
             return true;
@@ -373,9 +298,6 @@ describe("the guard, fed cuts built to deserve refusal", () => {
         });
     });
 
-    // The backstop that used to be accidental. Under the old presence-guard these files tripped it
-    // because they carry the needle; the inverted guard would not have noticed, so it checks the
-    // paths directly and diagnoses a leak as a failed filter rather than a licensing breach.
     test("a self-excluded file appearing in a cut is diagnosed as a failed filter, and carries no needle to catch it", () => {
         const dir = freshCut();
         fs.mkdirSync(path.join(dir, "cli"), { recursive: true });
@@ -398,9 +320,6 @@ describe("the guard, fed cuts built to deserve refusal", () => {
         assert.throws(() => auditCut(dir), /spec\/worded\.json — declares `Apache License 2\.0`/);
     });
 
-    // The fail-open Copilot found on #288: the walk read only STRING values, so a licence field of
-    // any other JSON type was a declaration the guard never judged. npm's own historic form is an
-    // object, so this is a shape real manifests take rather than a contrived one.
     test("a non-string license value is refused too — the key is judged whatever its type", () => {
         for (const [name, literal] of [
             ["obj", '{"license": {"type": "MIT", "url": "https://example.invalid"}}'],
@@ -427,11 +346,7 @@ describe("the guard, fed cuts built to deserve refusal", () => {
 });
 
 describe("fixture repositories — the filter exercised positively, and every refusal reached", () => {
-    /**
-     * A repository with the full top-level shape the partition demands — every PAYLOAD and
-     * EXCLUDED_TOP_LEVEL entry present — so `cut` runs end to end on it and each refusal below is
-     * reached by ONE mutation from a green baseline, never by an accident of a thin fixture.
-     */
+    /** A repository with every PAYLOAD and EXCLUDED_TOP_LEVEL entry, so each refusal below is one mutation from green. */
     function fixtureRepo() {
         const root = scratch();
         git(root, "init", "-q", "-b", "main");
@@ -441,18 +356,13 @@ describe("fixture repositories — the filter exercised positively, and every re
             fs.mkdirSync(path.join(root, path.dirname(rel)), { recursive: true });
             fs.writeFileSync(path.join(root, rel), text);
         };
-        // Top-level PAYLOAD entries that are FILES in the real tree must be files here too, or the
-        // fixture stops exercising the shape the partition and the cut actually walk. `LICENSE`
-        // joined PAYLOAD with #284 and would otherwise have been built as a directory.
         const TOP_LEVEL_FILES = new Set(["NOTICE", "LICENSE"]);
         for (const top of PAYLOAD) {
             if (top.includes(".md") || TOP_LEVEL_FILES.has(top)) continue;
             file(`${top}/keep.txt`, `${top}\n`);
         }
         for (const top of Object.keys(EXCLUDED_TOP_LEVEL)) {
-            // Neutral content on purpose: a fixture `.gitignore` whose body was its own name
-            // ignored ITSELF, went untracked, and the partition correctly called it stale — a
-            // fixture defect wearing a rail's message.
+            // Neutral content: a `.gitignore` holding its own name would ignore itself and go untracked.
             if (/[.]md$|^[.](git)?ignore$|^CODEOWNERS$|^package[.]json$/.test(top)) file(top, "# fixture\n");
             else file(`${top}/keep.txt`, `${top}\n`);
         }
@@ -460,12 +370,8 @@ describe("fixture repositories — the filter exercised positively, and every re
         file("NOTICE", "fixture notice\n");
         file("LICENSE", "Apache License\nVersion 2.0, January 2004\n");
         file("CHANGELOG.md", "# Changelog\n");
-        // The three census files, each asserting Apache the way the real manifests do — built by
-        // concatenation so the needle appears here exactly once, in the import above.
         const asserting = `{\n  ${APACHE_NEEDLE.toString()}\n}\n`;
         for (const rel of APACHE_MANIFESTS) file(rel, asserting);
-        // Files at exactly the self-excluded paths, plus a sibling that must survive — the
-        // POSITIVE exercise of the filter.
         for (const rel of SELF_EXCLUDED) file(rel, `// planted at ${rel}\n`);
         file("cli/sibling.mjs", "// stays\n");
         file(TEMPLATE_PATH, "# Fixture Eval License\nTERMS-V1 · to {{name}} ({{login}}) on {{date}} from {{shortSha}}\n");
@@ -552,10 +458,7 @@ describe("fixture repositories — the filter exercised positively, and every re
     });
 
     test("a listing entry that resolves outside the cut is refused at the write site", () => {
-        // `materialize` takes the listing as input, so the hostile path is fed directly — git
-        // will not CREATE a `..` tree entry through any porcelain, but a crafted tree carries
-        // one and `ls-tree` faithfully prints it, so the boundary belongs to the writer. The
-        // blob is real; only the path is hostile. Raised by Copilot on the porting pull request.
+        // No porcelain writes a `..` tree entry but a crafted tree can, so the listing goes to `materialize` directly.
         const root = fixtureRepo();
         const oid = execFileSync("git", ["-C", root, "hash-object", "-w", "--stdin"], { input: "escape\n", encoding: "utf8" }).trim();
         const dir = scratch();
@@ -567,22 +470,10 @@ describe("fixture repositories — the filter exercised positively, and every re
             });
             assert.ok(!fs.existsSync(path.join(dir, "..", "escape.txt")), "the refusal came after the write");
         }
-        // The benign shape stays writable: `a/../b` RESOLVES inside, and resolution — not a
-        // pattern — is the rule, so it lands at `b` rather than being refused for its spelling.
         materialize(root, [{ mode: "100644", oid, path: "a/../b.txt" }], dir);
         assert.ok(fs.existsSync(path.join(dir, "b.txt")));
     });
 
-    // Two tests stood here and are RETIRED with `patchReadmeLicense` (#284): one proving the
-    // section was spliced in place when the heading sat at byte 0, one proving a README without
-    // exactly one `## License` heading was could-not-run. The cut no longer touches that section —
-    // the bundle ships the public tree's licence, so the tree's own wording is already correct and
-    // its `LICENSE` link now resolves. The replacement guarantee is asserted positively above, in
-    // "README opens with the banner, and its own License section is left exactly as the tree wrote it".
-
-    // The supervisor's ruling of 2026-08-17: terms ship FROM the payload commit, one sha for
-    // both. The three tests below are the ruling's own demonstrations — the pin holding, the
-    // refusal when a commit cannot supply its terms, and the refusal when the terms lost a field.
     test("THE PIN: cutting an old commit stamps the OLD template, whatever the tree says now", () => {
         const root = fixtureRepo();
         const oldSha = git(root, "rev-parse", "HEAD").trim();
@@ -626,11 +517,7 @@ describe("fixture repositories — the filter exercised positively, and every re
 
 describe("round-2 mechanics — the digest's byte order, the umask, the locale", () => {
     test("bundleDigest orders by UTF-8 bytes, pinned against this suite's own re-implementation", () => {
-        // Two names whose JS-string order and UTF-8-byte order DISAGREE — U+10000 is one
-        // supplementary character (UTF-16: surrogate 0xD800…; UTF-8: F0 90 80 80) and U+FF61 is
-        // a BMP character above it in code units (0xFF61) and below it in bytes (EF BD A1). The
-        // guard assertion proves the fixture exercises the divergence; without it, an ASCII-only
-        // fixture would pin nothing.
+        // JS strings order these two by UTF-16 code unit, and UTF-8 bytes order them the other way round.
         const a = "\u{10000}b.txt";
         const b = "｡a.txt";
         assert.notDeepEqual(
@@ -641,8 +528,6 @@ describe("round-2 mechanics — the digest's byte order, the umask, the locale",
         const dir = scratch();
         fs.writeFileSync(path.join(dir, a), "alpha\n");
         fs.writeFileSync(path.join(dir, b), "beta\n");
-        // The suite's OWN expression of the stamp's scope sentence — an independent instrument,
-        // so the digest definition is re-derivable outside the module that mints it.
         const independent = crypto.createHash("sha256");
         for (const rel of [b, a]) {
             const fileHash = crypto.createHash("sha256").update(fs.readFileSync(path.join(dir, rel))).digest("hex");
@@ -685,8 +570,7 @@ describe("the command line", () => {
     });
 
     test("a --github that could walk the filesystem is refused by content, before anything is read", () => {
-        // The write-site containment class at its second site: the login names the tarball. The
-        // fixture logins' dot survives on purpose — only separators and dot-dot are path-capable.
+        // The login names the tarball: a lone dot is harmless, but separators and `..` could walk the filesystem.
         for (const hostile of ["../../outside", "a/b", "a\\b", "x..y"]) {
             const stderr = sink();
             assert.equal(run(["--to", "x", "--github", hostile, "--commit", "HEAD", "--out", scratch(), REPO], { stdout: sink(), stderr }), 2, hostile);
@@ -730,10 +614,7 @@ describe("the command line", () => {
     });
 
     test("--check leaves no scratch behind — measured on the whole tmpdir name set, not a prefix", () => {
-        // The instrument proposal 0029 records: diff the entire tmpdir listing, which knows no
-        // naming conventions and therefore cannot miss one. The child gets a PRIVATE tmpdir so the
-        // whole-set diff is sound — on a shared /tmp, an unrelated process writing mid-test would
-        // be indistinguishable from a leak, and a rail that flakes is a rail somebody switches off.
+        // A private tmpdir, so another process writing to a shared one cannot pass for a leak.
         const privateTmp = scratch();
         execFileSync(process.execPath, [RUNNER, "--check", REPO], { encoding: "utf8", env: { ...process.env, TMPDIR: privateTmp } });
         assert.deepEqual(fs.readdirSync(privateTmp), [], "--check left scratch behind in its tmpdir");

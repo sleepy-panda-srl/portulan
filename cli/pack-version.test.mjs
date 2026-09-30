@@ -1,13 +1,4 @@
 // The pack-version rail, driven on REAL git repositories rather than an injected history.
-//
-// Written first, against `#265`'s ruling: a change to a pack's `contributes` must move that pack's
-// `portulan.version`, a prose-only edit to a `reason` counts, and the comparison is three-dot.
-//
-// **Every fixture here is an actual `git init`.** The alternative — stubbing `execFileSync` and
-// asserting the arguments — would test that this file agrees with itself about what git does, which is
-// the shape `../.portulan/memory/` keeps finding: a harness that inherits its subject's blind spot. The
-// three-dot property in particular cannot be observed at all without two real branches and a merge-base,
-// and it is the property most likely to be got wrong by someone editing this later.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -22,9 +13,7 @@ import { run, judge, sameValue, packManifests, mergeBase, insideRepo, CannotRun 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const RUNNER = path.join(HERE, "pack-version.mjs");
 
-// One exit handler for every scratch directory rather than one each — the per-directory form exceeds
-// node's default listener limit partway through a suite and prints a warning, which trains a reader to
-// skim warnings from a test run. Inherited from ./compile.test.mjs.
+// One exit handler for every scratch directory: one each would pass node's default listener limit and warn.
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
@@ -38,7 +27,6 @@ function scratch() {
 
 const git = (root, ...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 
-/** A pack manifest. `gates` defaults to one fragment so `contributes` is never trivially empty. */
 function manifest({ version = "0.1.0", reason = "because the pack says so", extra = {} } = {}) {
     return {
         portulan: { pack: "1.0", ...(version === null ? {} : { version }) },
@@ -54,12 +42,7 @@ function writePack(root, m) {
     fs.writeFileSync(path.join(dir, "pack.json"), `${JSON.stringify(m, null, 2)}\n`);
 }
 
-/**
- * A repository with `main` holding one pack, and a `feature` branch checked out.
- *
- * Returns the root. The caller mutates the working tree and commits; nothing is committed on `feature`
- * here, so a test that changes nothing is a real "no change" case rather than a fixture artefact.
- */
+/** A repository with `main` holding one pack and `feature` checked out, with nothing committed on it yet. */
 function repo(initial = manifest()) {
     const root = scratch();
     git(root, "init", "-q", "-b", "main");
@@ -78,7 +61,6 @@ function commit(root, message) {
     git(root, "commit", "-qm", message);
 }
 
-/** Run the checker in-process, capturing both streams. */
 function check(root, argv = []) {
     let out = "";
     let err = "";
@@ -116,10 +98,6 @@ describe("a change to `contributes` must move `portulan.version`", () => {
     });
 
     test("**a PROSE-ONLY edit to a `reason` counts** — the judgement the ruling had to make", () => {
-        // The whole reason this case is its own test: nothing about the matcher, the tier or the id
-        // moves, so an implementation comparing only the "behavioural" parts of a fragment would pass
-        // it. `reason` is the sentence `./gate.mjs` interpolates and the only thing a human being gated
-        // actually reads, so changing it changes what every composing workspace shows its operator.
         const root = repo();
         writePack(root, manifest({ version: "0.1.0", reason: "the very same gate, explained differently" }));
         commit(root, "reword a reason and nothing else");
@@ -141,8 +119,6 @@ describe("a change to `contributes` must move `portulan.version`", () => {
     });
 
     test("REFORMATTING is not a change — the manifests are compared as values, not as bytes", () => {
-        // A rail parsing `git diff` would red this, and it must not: reindenting or reordering keys
-        // changes the bytes and changes nothing a composing workspace yields.
         const root = repo();
         const m = manifest();
         const reordered = { contributes: m.contributes, category: m.category, name: m.name, portulan: m.portulan };
@@ -165,10 +141,7 @@ describe("a change to `contributes` must move `portulan.version`", () => {
 // ===========================================================================================
 
 test("the comparison is THREE-DOT: work that landed on the base is not attributed to this branch", () => {
-    // Built as the counterexample rather than asserted. The base branch independently changes the SAME
-    // pack — bumping it properly — while the feature branch touches only an unrelated file. Under
-    // two-dot (`main..feature`) the feature branch appears to REVERT main's change, so a two-dot rail
-    // reds a pull request for somebody else's commit. Under three-dot it is correctly silent.
+    // Main bumps the pack after the fork; under two-dot, this branch would appear to revert that bump.
     const root = repo();
     fs.writeFileSync(path.join(root, "other.txt"), "feature touched only this\n");
     commit(root, "feature: unrelated change");
@@ -190,10 +163,7 @@ test("the comparison is THREE-DOT: work that landed on the base is not attribute
 });
 
 test("content is read at the MERGE-BASE, not at the base ref's tip — the false-green the enumeration hides", () => {
-    // Named by the session-open checkpoint, and it is the subtler half of three-dot. A checker can
-    // enumerate three-dot and still read blobs from the base ref's *tip*; then, when main independently
-    // bumps the same pack after the fork, the branch's unbumped `contributes` change compares against
-    // main's NEW version, the two differ, and the rail reports a green for a bump this branch never made.
+    // Main bumps the same pack after the fork, so a read at its tip would credit this branch with that bump.
     const root = repo();
     writePack(root, manifest({ version: "0.1.0", reason: "the branch changes a gate and does NOT bump" }));
     commit(root, "feature: change contributes, no bump");
@@ -209,8 +179,6 @@ test("content is read at the MERGE-BASE, not at the base ref's tip — the false
 });
 
 test("BASE == HEAD is GREEN — every push to main runs this recipe", () => {
-    // `verify.yml` triggers on push as well as pull_request, so on main the merge-base is HEAD and the
-    // changed set is empty. A recipe that 2s or reds there would block the Stop-gate for every session.
     const root = repo();
     git(root, "checkout", "-q", "main");
     const { code, out } = check(root, ["--base", "main"]);
@@ -219,7 +187,7 @@ test("BASE == HEAD is GREEN — every push to main runs this recipe", () => {
 });
 
 // ===========================================================================================
-// 3. The edges, each ruled on #265 rather than invented here
+// 3. The edges
 // ===========================================================================================
 
 describe("the edges", () => {
@@ -234,10 +202,7 @@ describe("the edges", () => {
     });
 
     test("an ADDED pack is GREEN — it has no prior state to bump from", () => {
-        // Deliberately narrowed on #265: whether a NEW pack must declare a version at all is a Pack
-        // Definition question, and `spec/pack.schema.json` makes the field optional. The consequence is
-        // named in the issue rather than hidden — a pack can arrive unversioned and not trip this until
-        // it changes.
+        // The schema makes `version` optional, so a pack can arrive unversioned and trip this only once it changes.
         const root = repo();
         const dir = path.join(root, "packs", "rituals", "fresh");
         fs.mkdirSync(dir, { recursive: true });
@@ -257,8 +222,6 @@ describe("the edges", () => {
         commit(root, "remove the pack");
         const { code, out } = check(root, ["--base", "main"]);
         assert.equal(code, 0);
-        // Green by having been considered, not green by never being looked at — the union of tree and
-        // merge-base is what makes the deleted pack appear in the report at all.
         assert.match(out, /deleted {2,}packs\/tools\/contributor/);
     });
 
@@ -279,15 +242,12 @@ describe("the edges", () => {
     });
 
     test("an UNREADABLE packs directory is could-not-run, never an empty-set green", () => {
-        // The fail-open the checkpoint asked about: a bare catch turning any readdir failure into `[]`
-        // reports "no packs changed" for a directory nobody could read.
         const root = repo();
         const packs = path.join(root, "packs");
         fs.chmodSync(packs, 0o000);
         try {
             const { code, err } = check(root, ["--base", "main"]);
-            // Root ignores mode bits, so this case cannot be forced when the suite runs as root — skip
-            // rather than assert a property the environment refuses to produce, and say which it was.
+            // Root ignores mode bits, so this case cannot be forced when the suite runs as root.
             if (code === 0) {
                 assert.ok(process.getuid?.() === 0, "a non-root run must not report green on an unreadable packs/");
                 return;
@@ -300,13 +260,7 @@ describe("the edges", () => {
     });
 
     test("an UNREADABLE manifest is could-not-run, NEVER reported as deleted", () => {
-        // The sibling of the readdir guard, one function down, and it shipped broken: `chmod 000` on a
-        // tracked `pack.json` made the checker report the pack **deleted** at exit **0**, so a
-        // permissions accident read as an intentional removal and the rail went quiet. Absence is now a
-        // fact from the merge-base listing and from ENOENT, never an inference from a read that failed.
-        // No commit on the branch: the checker reads the WORKING TREE against the merge-base, so an
-        // unreadable file is visible without one — and `git commit` with nothing staged fails, which is
-        // how the first draft of this test died.
+        // No commit: the checker reads the working tree, and a chmod 000 leaves git nothing to commit.
         const root = repo();
         const file = path.join(root, "packs", "tools", "contributor", "pack.json");
         fs.chmodSync(file, 0o000);
@@ -325,10 +279,7 @@ describe("the edges", () => {
     });
 
     test("a DANGLING SYMLINK is could-not-run, not a deletion — the third site of one class", () => {
-        // The sharpest of the three: `readFileSync` on a dangling link throws **ENOENT**, so an
-        // ENOENT-only carve-out called a present-but-unreadable manifest a deleted pack, at exit 0.
-        // `lstat` succeeds on the link itself and settles it. `./control-chars.mjs`'s `bytesOf` already
-        // uses this pattern for this reason; this test pins that the sibling's lesson landed here too.
+        // `readFileSync` throws ENOENT on a dangling link as on a missing file; only `lstat` tells them apart.
         const root = repo();
         const file = path.join(root, "packs", "tools", "contributor", "pack.json");
         fs.rmSync(file);
@@ -343,10 +294,6 @@ describe("the edges", () => {
     });
 
     test("a NEW pack whose manifest is a dangling link is SEEN and refused, not silently skipped", () => {
-        // Found by sweeping rather than by a review round — the sibling `0020` asks for at the first fix.
-        // The listing used `fs.existsSync`, which FOLLOWS links and so answered false for a dangling one,
-        // dropping the entry from the report entirely. With the pack present at the merge-base the union
-        // still caught it; a pack that exists only in the working tree vanished without a row.
         const root = repo();
         const dir = path.join(root, "packs", "rituals", "fresh");
         fs.mkdirSync(dir, { recursive: true });
@@ -375,10 +322,6 @@ describe("the edges", () => {
     });
 
     test("a CRASH in the checker is could-not-run (2), never a RED verdict", () => {
-        // `#208`'s class, and this file's own header rules it: a defect in the checker is not a finding
-        // about the work. An uncaught throw left node exiting 1, which the recipe printed as
-        // "RED — verify recipe failed". Reached through the public API rather than by stubbing: a
-        // `stdout` whose `write` throws is a genuine unexpected error inside `run`.
         const root = repo();
         let err = "";
         const code = run(["--base", "main", root], {
@@ -397,8 +340,6 @@ describe("the edges", () => {
     });
 
     test("a manifest that will not parse is COULD-NOT-RUN (2), never a red verdict", () => {
-        // #208's doctrine on the sibling scanner: a red is a claim about the work, and "I could not
-        // look" is a claim about the check. `json` and `doctor` own manifest validity.
         const root = repo();
         fs.writeFileSync(path.join(root, "packs", "tools", "contributor", "pack.json"), "{ not json\n");
         commit(root, "break the manifest");
@@ -413,9 +354,6 @@ describe("the edges", () => {
 // ===========================================================================================
 
 describe("it refuses rather than guessing", () => {
-    // **A shallow clone reaches the refusal by two different routes**, and the first draft of these tests
-    // knew about only one — it asserted the no-merge-base message and got the unknown-ref one. Measured
-    // and split, because they are different fixtures and a reader landing on either needs `fetch-depth`.
     for (const [label, cloneArgs, expected] of [
         ["single-branch (the common CI shape) — the ref is never fetched", ["--depth", "1"], /could not resolve base ref/],
         ["--no-single-branch — the ref resolves, its history does not", ["--depth", "1", "--no-single-branch"], /no merge-base/],
@@ -439,9 +377,6 @@ describe("it refuses rather than guessing", () => {
     }
 
     test("...and the same repository at FULL depth reaches the red — so the 2 above is the depth, not the fixture", () => {
-        // The instrument guard. Without this, the shallow test passes for any reason at all — a broken
-        // fixture, a pack that was never written, a checker that always exits 2 — and a rail that cannot
-        // distinguish its own failure from its subject's is the defect this session already shipped once.
         const origin = repo();
         writePack(origin, manifest({ version: "0.1.0", reason: "a change with no bump" }));
         commit(origin, "a red-worthy change");
@@ -459,24 +394,16 @@ describe("it refuses rather than guessing", () => {
         const { code, err } = check(root, ["--base", "no-such-ref"]);
         assert.equal(code, 2);
         assert.match(err, /could not resolve base ref/);
-        // Both refusals mention shallow clones — measured, both shapes produce one of them — so the
-        // discriminator is the CLAUSE, not the word. Asserting the absence of "SHALLOW" here would pin a
-        // property the messages deliberately do not have.
+        // Both refusals mention shallow clones, so the clause, not the word, tells them apart.
         assert.doesNotMatch(err, /no merge-base/);
     });
 
     test("a NAMED packs directory that exists nowhere is a refusal; the DEFAULT one being absent is an answer", () => {
-        // The distinction is the whole finding. `--packs paks` — a typo — found nothing at head and
-        // nothing at the merge-base and reported "nothing to check" at exit 0: a false green, and a
-        // bypass reachable by accident. But a workspace with no `packs/` at all genuinely composes
-        // nothing, and must stay green. So absence is an answer only when nobody named the directory.
         const root = repo();
         assert.equal(check(root, ["--base", "main", "--packs", "paks"]).code, 2);
         assert.match(check(root, ["--base", "main", "--packs", "paks"]).err, /exists neither in the working tree nor at the merge-base/);
-        // Named AND real stays green.
         assert.equal(check(root, ["--base", "main", "--packs", "packs"]).code, 0);
 
-        // The default, in a repository that has no `packs/` at all: an answer, not a refusal.
         const bare = scratch();
         git(bare, "init", "-q", "-b", "main");
         git(bare, "config", "user.email", "t@example.com");
@@ -490,10 +417,6 @@ describe("it refuses rather than guessing", () => {
     });
 
     test("a refusal carries GIT's own words, not only this file's guess at the cause", () => {
-        // A bare `catch {}` reported every failure of the ref lookup as an unknown ref — so a corrupt
-        // object store, a permissions failure or a git that would not start all arrived wearing the one
-        // explanation this file could think of, while the stderr `git()` had already captured was thrown
-        // away. Guidance and cause both, rather than guidance instead of cause.
         const { code, err } = check(repo(), ["--base", "no-such-ref"]);
         assert.equal(code, 2);
         assert.match(err, /fetch-depth: 0/, "the guidance survives");
@@ -508,30 +431,16 @@ describe("it refuses rather than guessing", () => {
     });
 
     test("an option-shaped base ref is refused as a REF, never obeyed as a flag", () => {
-        // `base` is user-supplied — `PORTULAN_BASE_REF` or `--base` — and git reads a leading `-` as a
-        // flag. Measured on git 2.50.1: unguarded, `git merge-base --is-ancestor HEAD` is parsed as the
-        // option and exits 129, so the command stops being a merge-base lookup and becomes an ancestry
-        // test — the precondition silently answering a different question. `--end-of-options` is the
-        // guard; `--` is NOT (measured: it is rev-parse's PATH separator and breaks it at 128).
         const root = repo();
         for (const hostile of ["--is-ancestor", "--git-dir=/tmp", "-n"]) {
             const { code } = check(root, ["--base", `${hostile}`]);
-            // Refused at the argument parser (leading `-`) or by git as an unknown ref — never 0 or 1.
             assert.equal(code, 2, hostile);
         }
-        // `--help` ANYWHERE outranks the rest of the command line — the contract `./portulan.mjs` states
-        // and this file follows — so `--base --help` prints help and exits 0 rather than refusing. Noted
-        // as behaviour rather than smoothed over: it is harmless (help writes nothing and judges nothing)
-        // and it is the reason this loop does not include it. A draft of this test did, and went red.
+        // `--help` anywhere outranks the rest of the command line, which is why the loop above leaves it out.
         assert.equal(check(root, ["--base", "--help"]).code, 0);
     });
 
     test("the guard is not vacuous: unguarded, git obeys an option-shaped ref", () => {
-        // The instrument check. Without this, the case above passes for any reason at all — including a
-        // parser that happens to refuse everything. Measured directly on git: `merge-base --is-ancestor`
-        // is consumed as the OPTION (exit 129, an arity complaint about an ancestry test), and with
-        // `--end-of-options` it is refused as a ref (128). Two different failures, and only the second
-        // is git being asked the question this rail means to ask.
         const root = repo();
         const status = (args) => {
             try {
@@ -546,9 +455,6 @@ describe("it refuses rather than guessing", () => {
     });
 
     test("`--packs` may not escape the repository", () => {
-        // `path.join("/repo", "../../etc")` is `/etc`, so the filesystem scan left the repository while
-        // the failure that surfaced named `git ls-tree` instead. Containment is checked after resolution,
-        // because a `..` chain satisfies any pattern and still escapes.
         assert.throws(() => insideRepo("../.."), /not a directory inside the repository/);
         assert.throws(() => insideRepo("packs/../../.."), /not a directory inside the repository/);
         assert.throws(() => insideRepo("/etc"), /absolute path/);
@@ -558,10 +464,6 @@ describe("it refuses rather than guessing", () => {
     });
 
     test("`--packs` is CANONICALISED, or the two halves of the comparison disagree about a pack's name", () => {
-        // Not tidiness — a false green, measured. `packs/../packs` validates (it resolves inside), and
-        // then the filesystem scan joins the raw spelling while `git ls-tree` canonicalises its pathspec.
-        // Every pack was reported TWICE: `added` under the uncanonical name and `unchanged` under git's.
-        // `added` is exempt, so a real unbumped change would have passed.
         assert.equal(insideRepo("packs/../packs"), "packs");
         assert.equal(insideRepo("./packs"), "packs");
         assert.equal(insideRepo("packs/"), "packs");

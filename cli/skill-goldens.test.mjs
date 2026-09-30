@@ -1,15 +1,4 @@
-// The core-skill corpus's suite. Every refusal is exercised POSITIVELY, because a failure path nobody
-// has run is one nobody has seen work — and three of these exist only because this session's own
-// opening passes produced the defect they now pin.
-//
-//   * the denominator must not go quietly empty — three `## The pass` spellings exist and an exact
-//     match finds one skill of three, giving the other two a vacuous green
-//   * a mandate quote must place exactly once, or a reworded skill drifts instead of reddening
-//   * `unbindable` is adjudicated, not asserted: the reason is a closed vocabulary and a
-//     `judgement-only` step may name no artifacts
-//   * an accepted drift that starts COMPLYING is a finding too — it caught three filenames the author
-//     had written from a number prefix rather than read off disk
-//   * the entry guard must survive a path containing a space
+// Tests for `skill-goldens`, the core-skill golden corpus: every refusal exercised on a fixture that trips it.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -22,15 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-// A HERMETIC HOST, the three-line block `pinned-roots.live.test.mjs` sweeps for — asserted WHOLE, so
-// that copying the two lines which neutralise the host and dropping the one that tidies up is caught.
-// This suite imports `doctor.mjs`, which consults the host's installed-plugin record, so without it a
-// verdict here would move with what somebody happens to have installed.
-//
-// **The sweep derives membership from IMPORTS rather than from what a module currently does**, and it
-// caught this file on its first full run: the corpus never asks `doctor` to resolve anything, but an
-// internal refusal is one edit from being relaxed and the containment should not have to be re-added
-// on that day. Spelled with namespace imports because the sweep compares it as literal text.
+// `doctor.mjs`, imported here, consults the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -68,7 +49,6 @@ const withTemp = (fn) => {
         rmSync(dir, { recursive: true, force: true });
     }
 };
-// A minimal repo: one skill with N numbered steps under a `## The pass` heading of a given spelling.
 const fakeRepo = (dir, { skill = "demo", heading = "## The pass", steps = 2, extra = "" } = {}) => {
     const sdir = join(dir, "core/skills", skill);
     mkdirSync(sdir, { recursive: true });
@@ -80,7 +60,6 @@ const fakeRepo = (dir, { skill = "demo", heading = "## The pass", steps = 2, ext
 // ------------------------------------------------------------------ the derived denominator
 
 test("the three real `## The pass` spellings all yield steps — an exact match would find one of three", () => {
-    // Measured on the tree: "## The pass", "## The pass (bounded)", "## The pass, in order".
     for (const skill of skillSet(REPO)) {
         assert.ok(passSteps(REPO, skill).length > 0, `${skill} yielded no steps`);
     }
@@ -89,9 +68,6 @@ test("the three real `## The pass` spellings all yield steps — an exact match 
 
 test("an empty step list is could-not-run, never a vacuous green", () =>
     withTemp((dir) => {
-        // "Every step is bound or unbindable" is satisfied by zero steps, so a denominator that can go
-        // empty is the exact failure clause (d) names: a check whose enumeration went empty reports
-        // green and has stopped being a rail.
         fakeRepo(dir, { heading: "## Something else", steps: 3 });
         assert.throws(() => passSteps(dir, "demo"), CouldNotRun);
     }));
@@ -177,7 +153,7 @@ test("a case naming a step the pass does not have is a finding, and step 0 is ex
             { repoRoot: dir },
         );
         assert.ok(bad.findings.some((f) => /step 9, which the pass does not have/.test(f)));
-        // Step 0 carries a mandate outside `## The pass` — consolidate's routing sentence.
+        // Step 0 is reserved for a mandate outside `## The pass`.
         const ok = gradeSkill(
             "demo",
             { cases: [{ step: 1, state: "unbindable", reason: "no-artifact", why: "a".repeat(60) }, { step: 0, state: "unbindable", reason: "no-artifact", why: "a".repeat(60) }] },
@@ -198,7 +174,6 @@ test("the EARS predicate reads the mandate's shape, not the section's presence",
     );
     assert.equal(shaped.ok, true);
 
-    // The two live cases: a bullet with neither word, and one with `shall` and no trigger.
     assert.equal(isEars("The root README's layout table documents things."), false);
     assert.equal(isEars("The two-reason interaction shall be tested directly."), false);
     assert.equal(isEars("When the recipe runs, the system shall name every entry."), true);
@@ -212,8 +187,6 @@ test("a wrapped criterion is ONE criterion, not a bullet and an orphan line", ()
 });
 
 test("the provenance predicate is shape-TOLERANT, because the tree carries two spellings", () => {
-    // 14 files use `**Provenance.**` and 13 use `## Provenance`. A literal predicate would report the
-    // thirteen as absent — the false red this session produced once against the task corpus.
     assert.equal(PREDICATES["provenance-present"]("**Provenance.** `form=link` `href=x`").ok, true);
     assert.equal(PREDICATES["provenance-present"]("## Provenance\n\nsomething").ok, true);
     assert.equal(PREDICATES["provenance-present"]("# A proposal\n\nno such field").ok, false);
@@ -232,7 +205,6 @@ test("the two-form predicate is scoped to `type: rule`, which is the scope docto
 
 test("the retire-when predicate uses doctor's own exported regex, anchored at line start", () => {
     assert.equal(PREDICATES["retire-when-present"]("**Retire when:** the thing goes away").ok, true);
-    // Prose merely discussing retirement must not match — doctor's own stated caution.
     assert.equal(PREDICATES["retire-when-present"]("we should think about when to retire this").ok, false);
 });
 
@@ -252,8 +224,6 @@ test("the budget ids come from the schema, so a new budget key reddens the conta
 
 test("an accepted drift that starts COMPLYING is a finding — it caught three of the author's own", () =>
     withTemp((dir) => {
-        // Three filenames in the shipped corpus were written from a number prefix rather than read off
-        // disk, and this direction reported all three before any reviewer saw them.
         fakeRepo(dir, { steps: 1 });
         mkdirSync(join(dir, ".portulan/tasks"), { recursive: true });
         writeFileSync(join(dir, ".portulan/tasks/0001-fine.md"), "**Acceptance criteria.**\n- When x, the system shall y.\n");
@@ -309,12 +279,10 @@ test("the entry guard survives a path containing a SPACE — the fifth instance 
         assert.ok(out.stdout.includes("mandate(s) bound"), `ran nothing: ${JSON.stringify(out.stdout.slice(0, 200))}`);
     }));
 
-// ---------------------------------------------- the guards the pre-commit checkpoint had to force
+// ------------------------------------------------- the guards against a green that proves nothing
 
 test("an unbindable step with no ARGUMENT is a finding — the reason is a label, the why is the adjudication", () =>
     withTemp((dir) => {
-        // The checkpoint stripped every `why` from all ten unbindable cases and watched the corpus stay
-        // green. `mutants.mjs` refuses an operator with no `why`; this had no equivalent.
         fakeRepo(dir, { steps: 1 });
         const g = gradeSkill("demo", { cases: [{ step: 1, state: "unbindable", reason: "no-artifact" }] }, { repoRoot: dir });
         assert.ok(g.findings.some((f) => /carries no argument/.test(f)));
@@ -322,8 +290,6 @@ test("an unbindable step with no ARGUMENT is a finding — the reason is a label
 
 test("an accepted-drift entry with no argument is a finding — the bigger dodge, and it was unguarded", () =>
     withTemp((dir) => {
-        // The checkpoint appended a bare filename to `expect.accepted` and silenced eighteen findings
-        // at exit 0. The both-directions rule stops a STALE entry; this stops an UNJUSTIFIED one.
         fakeRepo(dir, { steps: 1 });
         mkdirSync(join(dir, ".portulan/tasks"), { recursive: true });
         writeFileSync(join(dir, ".portulan/tasks/0001-bad.md"), "# no criteria at all\n");
@@ -340,8 +306,6 @@ test("an accepted-drift entry with no argument is a finding — the bigger dodge
 
 test("an UNBOLDED numbered step is still a step — additions were invisible before", () =>
     withTemp((dir) => {
-        // The checkpoint added `5. A brand new fifth mandate, not bolded` to a pass and the corpus
-        // stayed green. Deletions were always caught; additions, the realistic case, were not.
         const sdir = join(dir, "core/skills/demo");
         mkdirSync(sdir, { recursive: true });
         writeFileSync(join(sdir, "SKILL.md"), "# S\n\n## The pass\n\n1. **Bolded** step.\n2. Unbolded step, no asterisks.\n");
@@ -351,8 +315,6 @@ test("an UNBOLDED numbered step is still a step — additions were invisible bef
     }));
 
 test("`already-carried` exists because a row named a carrier the runner never reads", () => {
-    // consolidate step 5 shipped as `bound` with carrier `index`; deleting .portulan/verify/index.sh
-    // left the corpus green, because `carrier` is display-only. The vocabulary had no honest term.
     assert.ok(UNBINDABLE_REASONS.includes("already-carried"));
 });
 
@@ -366,9 +328,6 @@ test("the printed limits say `carrier` is DECLARED, not verified", () => {
 });
 
 test("an option with no value is exit 2, never a silently different repo root", () => {
-    // `argv[++i]` on a trailing `--repo-root` yields undefined, and on `--repo-root --workspace x`
-    // yields "--workspace" — so the tool would grade a directory nobody named and say nothing.
-    // `rule-carriers.mjs` treats a missing value as exit 2 and this now matches. Copilot round 1 on #360.
     for (const argv of [["--repo-root"], ["--workspace"], ["--repo-root", "--workspace", "x"]]) {
         const c = collect();
         assert.equal(run(argv, c.io), 2, `${argv.join(" ")} should refuse`);

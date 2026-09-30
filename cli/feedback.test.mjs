@@ -1,18 +1,4 @@
-// `portulan feedback` — the suite, written before the sender.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// The acceptance criteria are `.portulan/tasks/0012-a-feedback-pipe-points-out-of-the-seam.md`'s
-// *Done when* list, and each group below cites the line it discharges. That is not bookkeeping: the
-// task was written at the session-open checkpoint before any of this existed, so a test here that
-// answers to nothing in that list is scope this session did not have graded.
-//
-// **What this file does NOT do is reach the network.** Every `gh` invocation arrives through an
-// injected `exec`, because a suite that filed real issues to prove it can file issues would be a
-// suite nobody could run twice. The one thing an injected `exec` cannot prove — that the bytes a user
-// approved are the bytes GitHub received — is not proven here by comparison but held by construction:
-// `preview` and `send` call the same `payload()`, and the test below asserts the printed body IS that
-// call's return value rather than a second rendering that happens to match today.
+// Tests for `portulan feedback`: draft, preview, send, the seam scan and the payload; `gh` is injected, never run.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -33,29 +19,11 @@ import {
     COOLDOWN_SECONDS,
 } from "./feedback.mjs";
 
-// ===========================================================================================
-// Harness
-// ===========================================================================================
+// ---------------------------------------------------------------- the harness
 
 const AT = new Date("2026-08-10T09:15:00Z");
 
-// One exit handler for all scratch directories rather than one each — the per-directory form exceeds
-// node's default ten-listener limit and prints a MaxListenersExceededWarning (`./doctor.test.mjs`,
-// which carries the same block for the same reason). This suite had no sweeper at all until now: it
-// leaked 46 directories per run, the largest single share of the suite's 78.
-//
-// The per-directory `try` is not defensive habit: the unreadable-workspace case chmods the scratch
-// ROOT ITSELF to `0o000` while it holds 2 entries, and restores it in `finally` — so a case dying
-// before its `finally` leaves a directory `rmSync` cannot enter, as EACCES. `force: true` suppresses
-// ENOENT, not EACCES. Naked, that throw aborts the loop inside an `exit` handler and abandons every
-// directory after it: one locked case would cost the other 45. (The `0o500` `feedback/` case is
-// deliberately not cited — it is empty when locked, and an empty readable directory still removes.)
-//
-// Which locks actually bite was measured, not assumed, because a hazard claimed where none exists
-// is the same defect as one missed: an EMPTY directory still removes if it is READABLE, so only an
-// unreadable one blocks while empty; a NON-EMPTY one additionally needs write and search. The errno
-// follows readability, not position: an UNREADABLE root gives EACCES, while everything else — a
-// locked child, or a readable-but-unwritable root — gives ENOTEMPTY.
+// One `exit` handler for every scratch directory: one each would pass node's ten-listener limit and warn.
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) {
@@ -67,7 +35,6 @@ process.on("exit", () => {
     }
 });
 
-/** A workspace directory with a manifest, plus whatever extra files a case plants. */
 function workspace(extra = {}) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-feedback-"));
     SCRATCH.push(dir);
@@ -83,7 +50,6 @@ function workspace(extra = {}) {
     return dir;
 }
 
-/** Collects a run's output and its exit code, with every impure edge injected. */
 function invoke(argv, options = {}) {
     const out = [];
     const err = [];
@@ -93,7 +59,6 @@ function invoke(argv, options = {}) {
         warn: (line = "") => err.push(line),
         now: () => AT,
         env: options.env ?? {},
-        // Default: `gh` is present, authenticated, and files successfully.
         exec:
             options.exec ??
             ((cmd, args, spawn = {}) => {
@@ -107,11 +72,7 @@ function invoke(argv, options = {}) {
     return { code, out: out.join("\n"), err: err.join("\n"), calls };
 }
 
-/**
- * Draft a report and fill it the way a user would, so the later verbs have something real to read.
- * The title varies by kind because a report's filename is derived from it, and two kinds drafted into
- * one directory under one title collide — which is the tool behaving correctly and the harness not.
- */
+// The title differs by kind because the filename derives from it: two kinds in one directory must not collide.
 function drafted(dir, kind = "feedback", fill = {}) {
     const title = kind === "feedback" ? "The boot said nothing" : `The ${kind} report`;
     const at = invoke(["draft", kind, "--title", title, "--into", dir]);
@@ -120,19 +81,14 @@ function drafted(dir, kind = "feedback", fill = {}) {
 
     let text = fs.readFileSync(file, "utf8");
     for (const [label, value] of Object.entries(fill)) {
-        // Replace the placeholder body of one `### <label>` section.
-        const re = new RegExp(`(### ${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\n\\n)([\\s\\S]*?)(?=\\n### |$)`);
-        text = text.replace(re, `$1${value}\n\n`);
+        const sectionBody = new RegExp(`(### ${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\n\\n)([\\s\\S]*?)(?=\\n### |$)`);
+        text = text.replace(sectionBody, `$1${value}\n\n`);
     }
     text = text.replace(/^- \[ \]/gm, "- [x]");
     fs.writeFileSync(file, text);
     return file;
 }
 
-/**
- * A report that has been read: drafted, filled, and previewed. `send` refuses anything else, so this
- * is the flow every send case has to go through — which is the mechanism, not a harness convenience.
- */
 function previewed(dir, kind = "feedback", fill = {}, options = {}) {
     const file = drafted(dir, kind, fill);
     const seen = invoke(["preview", file], options);
@@ -140,7 +96,6 @@ function previewed(dir, kind = "feedback", fill = {}, options = {}) {
     return file;
 }
 
-/** The three required-section fills for each kind, so a case can reach the payload. */
 const FILLED = {
     feedback: {
         "What kind of feedback": "Something was confusing or hard to follow",
@@ -158,9 +113,7 @@ const FILLED = {
     },
 };
 
-// ===========================================================================================
-// The report is a file before it is a request — Done when 1, 2
-// ===========================================================================================
+// ---------------------------------------------------------------- the report is a file before it is a request
 
 describe("draft — the report is a file before it is a request", () => {
     test("writes <workspace>/feedback/<date>-<slug>.md with the form's sections and unticked acknowledgements", () => {
@@ -179,8 +132,6 @@ describe("draft — the report is a file before it is a request", () => {
         for (const section of form("feedback").sections.filter((s) => !s.filled)) {
             assert.ok(text.includes(`### ${section.label}`), `missing section: ${section.label}`);
         }
-        // Unticked, because the acknowledgements are the user's to make and a scaffold that
-        // pre-ticks them has made them on their behalf.
         assert.ok(text.includes("- [ ] "), "acknowledgements should scaffold unticked");
         assert.ok(!text.includes("- [x]"), "nothing should arrive pre-ticked");
     });
@@ -212,10 +163,6 @@ describe("draft — the report is a file before it is a request", () => {
         "an unreadable workspace and an unreadable report are could-not-read, not absent",
         { skip: process.getuid?.() === 0 },
         () => {
-            // The same rule the term list holds, at the two path probes `draft` makes. Both were
-            // `existsSync`, which answers false for `EACCES` — so an unreadable workspace was reported
-            // as *no workspace.json*, sending the reader to fix the wrong thing.
-            // A place this tool cannot see into is not a place with no workspace in it.
             const outer = workspace();
             const nested = path.join(outer, "inner");
             fs.mkdirSync(nested);
@@ -230,8 +177,6 @@ describe("draft — the report is a file before it is a request", () => {
                 fs.chmodSync(outer, 0o700);
             }
 
-            // And a file at mode 0000 is still a file that is there — the collision probe asks whether
-            // something is already at this path, never whether it can be read.
             const dir = workspace();
             const at = drafted(dir, "feedback", FILLED.feedback);
             fs.chmodSync(at, 0o000);
@@ -256,8 +201,6 @@ describe("draft — the report is a file before it is a request", () => {
         assert.match(text, /\nfailed-recipe: docs\n/);
         assert.match(text, /\nfailed-exit: 1\n/);
 
-        // A recipe id is a slug and an exit code is an integer — anything else is refused rather
-        // than carried into a public issue unexamined.
         const bad = invoke([
             "draft", "bug", "--title", "Red on green two", "--into", dir,
             "--failed-recipe", "docs; rm -rf /", "--failed-exit", "1",
@@ -280,9 +223,7 @@ describe("draft — the report is a file before it is a request", () => {
     });
 });
 
-// ===========================================================================================
-// The preview and the send are the same bytes — Done when 3, 4
-// ===========================================================================================
+// ---------------------------------------------------------------- the preview and the send are the same bytes
 
 describe("preview — the bytes the user sees", () => {
     test("prints the repository, the title and the body between markers, and the body IS payload()'s", () => {
@@ -308,8 +249,6 @@ describe("preview — the bytes the user sees", () => {
         const file = drafted(dir, "feedback", FILLED.feedback);
         const { out } = invoke(["preview", file]);
         assert.ok(out.includes("[feedback] The boot said nothing"));
-        // Proposal 0014: "No issue triage, labelling or routing from the client. The repository owns
-        // its own labels." The prefix is the kind marker; a label the client sets is not.
         assert.match(out, /label/i);
         assert.match(out, /repository owns its own labels|no labels/i);
     });
@@ -332,7 +271,7 @@ describe("preview — the bytes the user sees", () => {
             const re = new RegExp(`(### ${label}\\n\\n)([\\s\\S]*?)(?=\\n### |$)`);
             text = text.replace(re, `$1${value}\n\n`);
         }
-        fs.writeFileSync(file, text); // acknowledgements left unticked
+        fs.writeFileSync(file, text);
         const { code, err, out } = invoke(["preview", file]);
         assert.equal(code, 2);
         assert.match(err + out, /confidential|acknowledge/i);
@@ -361,9 +300,7 @@ describe("preview — the bytes the user sees", () => {
     });
 });
 
-// ===========================================================================================
-// Gated means per action — Done when 5, 6, 7, 8
-// ===========================================================================================
+// ---------------------------------------------------------------- gated means per action
 
 describe("send — Gated, per action", () => {
     test("without --approve it exits 2 and prints the preview instead of filing", () => {
@@ -388,7 +325,6 @@ describe("send — Gated, per action", () => {
         assert.ok(create, "expected a `gh issue create`");
         assert.deepEqual(create.args.slice(0, 2), ["issue", "create"]);
         assert.equal(create.input, seen, "the filed body must be the previewed body, byte for byte");
-        // 0014: the repository owns its own labels.
         assert.ok(!create.args.includes("--label"), "the client sets no labels");
 
         const after = fs.readFileSync(file, "utf8");
@@ -399,7 +335,7 @@ describe("send — Gated, per action", () => {
 
     test("a report nobody previewed is refused — the approval is bound to bytes, not to an intention", () => {
         const dir = workspace();
-        const file = drafted(dir, "feedback", FILLED.feedback); // deliberately NOT previewed
+        const file = drafted(dir, "feedback", FILLED.feedback);
         const { code, err, calls } = invoke(["send", file, "--approve"]);
         assert.equal(code, 2);
         assert.equal(calls.length, 0, "nothing may be filed sight-unseen");
@@ -424,7 +360,6 @@ describe("send — Gated, per action", () => {
     test("a machine fact changing between preview and send is caught too — the facts are in the payload", () => {
         const dir = workspace();
         const file = previewed(dir, "feedback", FILLED.feedback);
-        // Previewed without --host, sent with one: different bytes, so a different digest.
         const { code, err } = invoke(["send", file, "--approve", "--host", "Claude Code 2.1.226"]);
         assert.equal(code, 2);
         assert.match(err, /changed since it was previewed/i);
@@ -440,7 +375,6 @@ describe("send — Gated, per action", () => {
     });
 
     test("a blanked title is refused rather than filed as a bare prefix", () => {
-        // `draft` refuses an absent title, but the report is a file a human edits afterwards.
         const dir = workspace();
         const file = drafted(dir, "feedback", FILLED.feedback);
         fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/^title: .*$/m, "title:"));
@@ -470,7 +404,6 @@ describe("send — Gated, per action", () => {
         assert.equal(soon.calls.length, 0);
         assert.match(soon.err + soon.out, /cooldown|seconds/i);
 
-        // Past the window, the same send goes through — the guard catches a loop, not a user.
         const out = [];
         const later = run(["send", second, "--approve"], {
             say: (l = "") => out.push(l),
@@ -494,9 +427,7 @@ describe("send — Gated, per action", () => {
         });
         assert.equal(missing.code, 2);
         assert.match(missing.err, /issues\/new\/choose/);
-        // NOT a `--body-file <the report>` suggestion: the report is not the payload, so following it
-        // would publish frontmatter, guidance comments and raw sections nobody previewed — out of the
-        // one verb whose subject is that they cannot be. Asserted, because it was shipped once.
+        // Never `--body-file <the report>`: the report is not the payload, and would publish bytes nobody previewed.
         assert.doesNotMatch(missing.err, new RegExp(`--body-file\\s+${file.replace(/[/\\^$*+?.()|[\]{}]/g, "\\$&")}`));
 
         const dir2 = workspace();
@@ -537,9 +468,7 @@ describe("send — Gated, per action", () => {
     });
 });
 
-// ===========================================================================================
-// The seam scan — Done when 9, 10, 11, 12, 13
-// ===========================================================================================
+// ---------------------------------------------------------------- the seam scan
 
 describe("the seam scan, and where fail-closed sits", () => {
     test("a hit exits 1, names the term and the section, and sends nothing", () => {
@@ -663,9 +592,7 @@ describe("the seam scan, and where fail-closed sits", () => {
     });
 });
 
-// ===========================================================================================
-// The payload carries what it says and nothing else — Done when 14, 15
-// ===========================================================================================
+// ---------------------------------------------------------------- the payload carries what it says and nothing else
 
 describe("the payload is assembled from a closed list", () => {
     test("a workspace stuffed with identifying material yields a payload carrying none of it", () => {
@@ -704,20 +631,12 @@ describe("the payload is assembled from a closed list", () => {
         assert.match(built.body, /darwin 25\.6\.0 arm64/);
         assert.match(built.body, /v22\.0\.0/);
         assert.match(built.body, /docs.*exit 1|exit 1.*docs/);
-        // `bug.yml` declares its own `Version or commit` field, so the environment block does not
-        // repeat it — one fact, one place, inside a single payload.
         assert.match(built.body, /### Version or commit/);
         const block = built.body.slice(built.body.indexOf("### Environment"));
         assert.ok(!/Portulan: /.test(block), "the version belongs to the field that asks for it");
     });
 
     test("with nothing injected, every fact falls back to the real machine — none silently empty", () => {
-        // The suite injects all four facts, which is right for determinism and is exactly why it could
-        // not see that the un-injected `release` fell back to `""`: the shipped tool printed
-        // `System: darwin arm64`, one fact short of what the block claims to carry, and no test failed.
-        // Found by reading the demonstration's own output. So this case injects NOTHING and asserts the
-        // shape rather than the values, which is the only assertion that can be made about a real
-        // machine and the only one that would have caught it.
         const dir = workspace();
         const file = previewed(dir, "feedback", FILLED.feedback);
         const built = payload(parseReport(fs.readFileSync(file, "utf8")), { spec: "2.7" });
@@ -734,9 +653,7 @@ describe("the payload is assembled from a closed list", () => {
     });
 });
 
-// ===========================================================================================
-// The map, the slug, and the shapes the other groups lean on
-// ===========================================================================================
+// ---------------------------------------------------------------- the map, the slug, and the shapes the other groups lean on
 
 describe("the pieces", () => {
     test("slug is lowercase, hyphenated, and refuses to invent a name out of punctuation", () => {
@@ -775,9 +692,6 @@ describe("the pieces", () => {
     });
 
     test("every write refuses in one line rather than in a stack trace", { skip: process.getuid?.() === 0 }, () => {
-        // A bare `writeFileSync` on a read-only directory reached the top-level catch, which prints
-        // `unanticipated failure` and a stack. The code was already 2, so this was never a fail-open —
-        // it is the other half of that discipline: could-not-run has to say what could not run.
         const dir = workspace();
         fs.mkdirSync(path.join(dir, "feedback"));
         fs.chmodSync(path.join(dir, "feedback"), 0o500);
@@ -792,9 +706,6 @@ describe("the pieces", () => {
     });
 
     test("a send that files but cannot record the URL says so, and exits 1 rather than 0 or 2", (t) => {
-        // The one write that cannot be a refusal: the issue exists by then. Reporting could-not-run
-        // would deny a send that happened and send the reader back to repeat it — and the guard that
-        // makes a second send a no-op is precisely what failed to land.
         const dir = workspace();
         const file = previewed(dir, "feedback", FILLED.feedback);
         const real = fs.writeFileSync;
@@ -815,9 +726,6 @@ describe("the pieces", () => {
     });
 
     test("a title carrying a line break is refused at the door", () => {
-        // The title is written verbatim into `title: …`, and frontmatter is one key per line. A break
-        // would split it and everything after would read as another key, or as body. Refused beside the
-        // failure pair, on the same door, for the same reason.
         const dir = workspace();
         for (const bad of ["Two\nlines", "Carriage\rreturn", "Both\r\nof them"]) {
             const { code, err } = invoke(["draft", "feedback", "--title", bad, "--into", dir]);
@@ -827,9 +735,6 @@ describe("the pieces", () => {
     });
 
     test("a symlink at the report path is something that is there, dangling or not", () => {
-        // `statSync` follows links, so a DANGLING symlink threw ENOENT and read as *absent* — and the
-        // write that followed would have resolved the link and landed outside the workspace, which is
-        // how a scaffold leaves the tree it was meant to stay inside. `lstat` describes the link.
         const dir = workspace();
         fs.mkdirSync(path.join(dir, "feedback"));
         const outside = path.join(dir, "..", "escaped.md");
@@ -845,10 +750,7 @@ describe("the pieces", () => {
     });
 
     test("a report outside a workspace's feedback/ directory is could-not-run, never an unscanned send", () => {
-        // The workspace — and therefore where the seam term list is looked for — is derived from the
-        // report's path. Move the report and the derivation still yields *a* directory, one with no
-        // term list in it, and the scan would say `nothing was scanned` about the wrong place while a
-        // list sat in the workspace the report belongs to. That is a seam fail-open, so it is refused.
+        // The workspace, and so its term list, is derived from the report's path.
         const dir = workspace();
         const file = previewed(dir, "feedback", FILLED.feedback);
         fs.writeFileSync(path.join(dir, "seam-terms.txt"), "zzzz\n");
@@ -862,7 +764,6 @@ describe("the pieces", () => {
         assert.equal(calls.length, 0);
         assert.match(err, /feedback\/` directory|not inside a workspace/);
 
-        // And a `feedback/` directory whose parent carries no manifest is refused for the same reason.
         const orphan = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-orphan-"));
         SCRATCH.push(orphan);
         fs.mkdirSync(path.join(orphan, "feedback"));
@@ -880,15 +781,7 @@ describe("the pieces", () => {
     });
 });
 
-/**
- * The body between the preview's markers — the bytes the user is shown.
- *
- * **The opening marker is checked first, and that is the whole point.** Written as
- * `out.indexOf("\n", out.indexOf("--- body"))`, a missing marker gives `indexOf(-1)`, which JavaScript
- * treats as a search from 0 — so `start` is not `-1`, and the helper quietly returns unrelated output.
- * Every assertion that leans on this would keep passing while the preview's markers regressed: the
- * harness agreeing with the bug, in the helper that carries D3's own claim. Found by review.
- */
+// The opening marker is checked first: `indexOf("\n", -1)` searches from 0 and returns unrelated output.
 function between(out) {
     const opens = out.indexOf("--- body");
     const end = out.indexOf("--- end of body ---");

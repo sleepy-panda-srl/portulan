@@ -1,6 +1,4 @@
-// `instructions`: the sections a team marks in its own instruction file, moved to on-read units and proved.
-// The marks, the split and its proof, what it refuses, the join, the offer `doctor` and `init` print, and the
-// invented consumer of `fixtures/consumer/`, split by the command line and measured.
+// Tests for `instructions`: the sections a team marks, moved to on-read units and proved, and the join back.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -51,7 +49,6 @@ process.on("exit", () => {
     for (const dir of scratches) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-/** A repository holding `files`, and its split planned as the command line plans it. */
 function split(files, { context = SLOT, taken = [] } = {}) {
     const tree = scratch();
     for (const [rel, text] of Object.entries(files)) {
@@ -62,7 +59,6 @@ function split(files, { context = SLOT, taken = [] } = {}) {
     return { tree, read, ...planSplit({ tree, context, taken, read }) };
 }
 
-/** `text` with a mark on the line under each heading named. */
 const mark = (text, ...headings) => text.split("\n").flatMap((line) => (headings.includes(line) ? [line, ON_READ_MARK] : [line])).join("\n");
 
 const FILE = [
@@ -260,13 +256,12 @@ describe("a mark is refused, and nothing moves, where moving it would change wha
 });
 
 describe("the join puts each moved section back where its marker is", () => {
-    /** The file split, then the units as `edit` leaves them, planned for the join. */
     const joinAfter = (edit = (u) => u.text, file = FILE) => {
         const planned = split({ "CLAUDE.md": file });
         const back = split({ "CLAUDE.md": planned.files[0].after, ...Object.fromEntries(planned.units.map((u) => [u.source, edit(u)]).filter(([, text]) => text !== null)) });
         return { planned, back, joined: planJoin({ tree: back.tree, context: SLOT, read: back.read }) };
     };
-    /** The bytes of the section a unit holds, as the join puts it back: the unit less its frontmatter. */
+    // A unit's bytes less its frontmatter, as the join puts the section back.
     const section = (text) => Buffer.byteLength(text.slice(text.indexOf("\n---\n\n") + 6));
 
     test("a join after a split gives back the file less its marks, each unit is removed, and each says it goes back as the move left it", () => {
@@ -298,8 +293,7 @@ describe("the join puts each moved section back where its marker is", () => {
         const lf = joinAfter((u) => u.text.replaceAll("\n", "\r\n"));
         assert.equal(lf.joined.files[0].after, FILE.replace(`${ON_READ_MARK}\n\n`, "").replace(`${ON_READ_MARK}\n`, ""), "a unit a checkout made CRLF goes back into an LF file as LF lines");
         assert.match(joinLine(lf.joined.units[0], "CLAUDE.md"), /, as the move left it$/, "and is no edit");
-        // A CRLF file whose marked section ends it with no line end: the marker ends as that line did, and so
-        // does the section put back.
+        // A CRLF file whose last line, in a marked section, has no line end.
         const crlf = FILE.replaceAll("\n", "\r\n").replace(/\r\n$/, "");
         const unended = joinAfter(undefined, crlf);
         assert.match(unended.planned.files[0].after, / -->$/, "the marker takes no line end the section's last line did not have");
@@ -315,8 +309,7 @@ describe("the join puts each moved section back where its marker is", () => {
         const mixed = lines.map((l, i) => (i === lines.length - 1 || (i >= build && i < style) ? l : `${l}\r`)).join("\n");
         const both = joinAfter(undefined, mixed);
         assert.equal(both.joined.files[0].after, mixed.replace(`${ON_READ_MARK}\n\n`, "").replace(`${ON_READ_MARK}\r\n`, ""));
-        // An LF file whose Build section is CRLF but for its last line, as a block pasted from elsewhere: no
-        // checkout turned it, and it goes back as it was.
+        // An LF file whose Build section is CRLF but for its last line, as a pasted block that goes back as it was.
         const fetch = lines.indexOf("- Fetch every dependency before the first build.");
         const pasted = lines.map((l, i) => (i >= build && i < fetch ? `${l}\r` : l)).join("\n");
         const kept = joinAfter(undefined, pasted);
@@ -421,7 +414,6 @@ describe("the offer `doctor`, the boot and `init` print, and the state `form` re
 const git = (repo, ...args) => execFileSync("git", ["-C", repo, ...args], { encoding: "utf8" });
 const MARKED = ["## Catalogue records", "## Room bookings", "## Releases"];
 
-/** A consumer drafted by the real `init`, its instruction file the fixture with three sections marked, committed. */
 function consumer() {
     const repo = scratch();
     git(repo, "init", "-q");
@@ -471,7 +463,6 @@ describe("the invented consumer of fixtures/consumer/, split and measured", () =
         const after = alwaysBytes(repo);
         assert.equal(after, Number(planned), "the figure the plan printed is the one measured after");
 
-        // The fixture's figures, held: the instruction file before and after, the units, the index.
         const now = fs.readFileSync(path.join(repo, "CLAUDE.md"), "utf8");
         const units = ["catalogue-records", "room-bookings", "releases"].map((n) => fs.readFileSync(path.join(ws, "context", `${n}.md`), "utf8"));
         const index = fs.readFileSync(path.join(repo, ".claude", "rules", "portulan", "on-read.md"), "utf8");

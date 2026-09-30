@@ -1,12 +1,4 @@
 // `form` — the one definition of a consumer's new form, which `init`, `vendor`, `upgrade` and `doctor` read.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// The pieces, each against texts and trees built here: what a retired Session log keeps, how the
-// changelog's Unreleased entries become fragments and are proved to print back, which `.gitignore` lines
-// let git see the compiled card, what a drafted card imports and what it names, and what `doctor`'s
-// report reads from disk. What the tools do with them, on trees `init` really drafted, is in
-// `init.test.mjs`, `vendor.test.mjs` and `upgrade.test.mjs`.
 
 import { test, describe, after } from "node:test";
 import assert from "node:assert/strict";
@@ -44,9 +36,7 @@ import {
 } from "./form.mjs";
 import { renderChanges } from "./index.mjs";
 
-// A HERMETIC HOST. `form` never asks the host where packs are installed, but it imports `./compile.mjs`
-// and `./index.mjs`, which can, so this suite neutralises the installed-plugin record the way every suite
-// in that closure does. Swept by `pinned-roots.live.test.mjs`, whose header carries the argument.
+// `form` imports `./compile.mjs` and `./index.mjs`, which can read the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -58,7 +48,6 @@ after(() => {
     for (const dir of made) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-/** A directory holding each of `files` at its path. */
 function tree(files = {}) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-form-"));
     made.push(dir);
@@ -69,7 +58,6 @@ function tree(files = {}) {
     return dir;
 }
 
-/** `tree`, as a git work tree with nothing committed. */
 function repo(files = {}) {
     const dir = tree(files);
     execFileSync("git", ["-C", dir, "init", "-q"]);
@@ -433,7 +421,6 @@ describe("which form a consumer is in, read from disk", () => {
         }
     });
 
-    /** A card source carrying the section on reading and the cache, as `init` drafts one. */
     const carded = `---\ntier: always\n---\n\n# Portulan boot card\n\n## Reading\n\n${READING_LINE}\n`;
 
     test("a card drafted and not compiled is today's, and compiled it is the new form", () => {

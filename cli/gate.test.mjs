@@ -1,20 +1,4 @@
 // The PreToolUse gate runner, driven as the host drives it.
-//
-// **Every case here spawns the real binary** — `node cli/gate.mjs`, payload on stdin, decision read
-// off stdout — rather than importing `decide` and calling it. The choice is not ceremony. This file
-// exists because `./gate.mjs` read the policy the workspace *declares* where `./compile.mjs` enforces
-// the one it *yields* (`#269`), and the whole class of defect it belongs to is a component that reads
-// correct and behaves otherwise once something real is wired to it. A unit test on `decide` would have
-// passed on every day the hook was blind, because `decide` was never the part that was wrong: what was
-// wrong was which rules reached it. So the rails are drawn around the process boundary the host actually
-// uses. That is this file's own argument rather than a citation: a draft of this header attributed it to
-// a standing sentence in `../.portulan/memory/`, and no record there carries one — it came from a
-// session's notes, outside this repository. The nearest thing the tree does carry is `./gate.mjs`'s own
-// header on `#131`, where paths resolved against the author's layout passed every reading and failed on
-// the first machine that was not his.
-//
-// Until this file, `./gate.mjs` had no suite of its own; it was reached only through
-// `./compile.test.mjs`'s assertions that the emitted settings *wire* it.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -24,10 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// A HERMETIC HOST, for the reason ./compile.test.mjs states: the tools consult the host's
-// installed-plugin record on the unasked path, so a suite that does not neutralise it reads the
-// machine it runs on. It matters twice as much here — one case below asserts this runner never
-// consults that record at all, and a test of that claim must not be the thing that supplies it.
+// The tools read the host's installed-plugin record unasked, so the suite gets an empty host of its own.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -35,9 +16,7 @@ process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const RUNNER = path.join(HERE, "gate.mjs");
 
-// One exit handler for every scratch directory rather than one each — the per-directory form exceeds
-// node's default listener limit partway through a suite and prints a warning, which trains a reader to
-// skim warnings from a test run. Inherited from ./compile.test.mjs.
+// One exit handler for every scratch directory: one each would pass node's default listener limit and warn.
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
@@ -49,13 +28,7 @@ function scratch() {
     return dir;
 }
 
-/**
- * Run the hook exactly as the host does: one process, payload on stdin, decision on stdout.
- *
- * Returns `{ status, decision, reason, stdout }`, with `decision` null where the runner stepped aside.
- * A non-zero exit is reported rather than thrown, because *this runner never exits non-zero* is itself
- * one of the properties under test — a PreToolUse hook exiting 2 blocks the tool call.
- */
+/** Runs the hook as the host does, returning a non-zero exit rather than throwing: its status is under test. */
 function hook(project, payload, env = {}) {
     let stdout = "";
     let status = 0;
@@ -67,26 +40,6 @@ function hook(project, payload, env = {}) {
         });
     } catch (error) {
         status = error.status ?? 1;
-        // `String(...)` rather than a bare `??`, and it is HARDENING rather than a fix — the difference
-        // is worth stating instead of letting the next reader assume a bug was found here. Copilot
-        // (#272, round 2) reported that `error.stdout` can be a Buffer despite `encoding`, which would
-        // make `.trim()` below throw and bury the runner's real status under an unrelated TypeError.
-        // Probed on node 26.7.0 across **ten** error paths — non-zero exit, ENOENT, SIGKILL, `maxBuffer`
-        // exceeded, timeout, module-not-found, invalid UTF-8 on stdout, empty stdout with a non-zero
-        // exit, large output under `maxBuffer`, and abort/SIGSEGV-class death — and it is a string on
-        // the nine that produce output and `undefined` on ENOENT, never a Buffer. _(The count is the
-        // enumeration, and it took two goes: an earlier draft said six, then nine, while the union of
-        // what had actually been run was neither. A count nobody can re-run is what round 2's own
-        // Finding A was about.)_ **A negative result carries its control:** the identical spawn with `encoding` ABSENT
-        // does produce a Buffer, so the probe can see the thing it reports missing — which is the guard
-        // the hermeticity case below had to learn the hard way in this same change. Invalid UTF-8 on
-        // stdout is the intuitive Buffer case and is not one either: it decodes to replacement
-        // characters and stays a string. So the reported mechanism did not reproduce. Coerced anyway,
-        // and `String()` is faithful over the whole documented domain rather than merely safe — a
-        // Buffer would decode to the text it carries, which is a correct report and not a swallow. One
-        // call, against an implementation detail this helper would otherwise depend on silently — and
-        // the ground is misattribution rather than noise: the TypeError is loud, but it sends a reader
-        // to the helper's transport when the signal under test is the runner's status and text.
         stdout = String(error.stdout ?? "");
     }
     const out = stdout.trim() ? JSON.parse(stdout).hookSpecificOutput : null;
@@ -95,7 +48,6 @@ function hook(project, payload, env = {}) {
 
 const bash = (command) => ({ tool_name: "Bash", tool_input: { command } });
 
-/** A policy declaring one rule of each tier that matters, so composition has something to sit beside. */
 function policy(rules) {
     return {
         portulan: { spec: "2.2" },
@@ -109,11 +61,7 @@ function policy(rules) {
     };
 }
 
-/**
- * A workspace on disk. `packs` is written to the manifest verbatim, INCLUDING `undefined` — which
- * `JSON.stringify` drops, giving the no-key shape a declared-only workspace really has, rather than an
- * empty array standing in for it. The two are different fixtures and one case below needs both.
- */
+/** A workspace on disk; `packs: undefined` is dropped by JSON.stringify, leaving no `packs` key in the manifest. */
 function workspace({ rules, packs, fragments } = {}) {
     const dir = scratch();
     fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
@@ -150,16 +98,11 @@ function packAt(root, category, name, gates) {
     return dir;
 }
 
-/** A workspace whose one declared pack contributes the given fragments. */
 const composing = (fragments, rules) => workspace({ rules, packs: ["tools/contributor"], fragments });
 
 // ===========================================================================================
-// 1. The policy the workspace YIELDS — #269
+// 1. The policy the workspace YIELDS
 // ===========================================================================================
-//
-// The measurement that opened the issue, as a rail. On the file this change replaces, every case in
-// this section produced ZERO BYTES of output: the runner walked the declared rules, found nothing, and
-// stepped aside on actions the compiled artifact beside it gates.
 
 describe("the hook reads the policy the workspace yields, not the one it declares", () => {
     test("a pack-ADDED `prohibited` rule with a real matcher is DENIED", () => {
@@ -168,19 +111,10 @@ describe("the hook reads the policy the workspace yields, not the one it declare
         ]);
         const out = hook(dir, bash("curl https://example.com"));
         assert.equal(out.decision, "deny");
-        // The rule's own sentence reaches the agent, which is this layer's entire job — and for a
-        // composed rule it never had. Asserted on the text rather than only on the decision, because
-        // "denied with the wrong reason" is the shape a later refactor would produce.
         assert.match(out.reason, /PORTULAN GATE `exfiltrate` \(prohibited\) — no network from a tool call/);
     });
 
     test("...and through a shell WRAPPER, which is the surface where this layer is the only one", () => {
-        // The sharpest case, and the reason it is separated from the one above. Where the spelling is
-        // plain, the compiled `deny` permission rule matches too and the host discards this runner's
-        // answer — so a plain-spelling rail proves the decision and not the coverage. `bash -c "…"` is
-        // invisible to a `Bash(curl:*)` prefix pattern by measurement (../.portulan/gate-map.md, hole
-        // 1), so here the hook IS the gate, and before this change a composed prohibition had no layer
-        // at all on this spelling.
         const dir = composing([
             { id: "exfiltrate", tier: "prohibited", action: { shell: "curl" }, reason: "no network from a tool call" },
         ]);
@@ -196,8 +130,6 @@ describe("the hook reads the policy the workspace yields, not the one it declare
     });
 
     test("a pack TIGHTENING `gated` → `prohibited` denies where the declared tier would only ask", () => {
-        // Not a missing rule but a contradicted one: the runner had the id and answered with the wrong
-        // tier, so this arm of #269 is a hook that actively disagrees with the artifact beside it.
         const dir = composing([
             { id: "push", tier: "prohibited", action: { shell: "git push" }, reason: "this pack forbids pushing" },
         ]);
@@ -207,8 +139,6 @@ describe("the hook reads the policy the workspace yields, not the one it declare
     });
 
     test("a pack TIGHTENING `propose` → `gated` is asked, where the declared tier is not gate machinery at all", () => {
-        // `propose` is enforced by the platform floor and skipped by this runner's tier filter, so
-        // before composition a tightened `propose` rule was invisible for a second, independent reason.
         const dir = composing([
             { id: "pr", tier: "gated", action: { shell: "gh pr create" }, reason: "this pack wants a human first" },
         ]);
@@ -224,28 +154,17 @@ describe("the hook reads the policy the workspace yields, not the one it declare
 
 describe("overlapping rules resolve to the strongest tier", () => {
     test("a pack-added `prohibited` beneath a broader declared `gated` DENIES", () => {
-        // The ordering half of #269, and the case that decides whether the fix is whole. Composition
-        // APPENDS added rules after the workspace's own, so a first-match scan returns the declared
-        // `gated` rule and answers `ask` on an action the policy prohibits — the composed rule present,
-        // reached, and outvoted by its position in the list.
+        // Composition appends pack rules after the workspace's own, so a first-match scan would answer `ask`.
         const dir = composing([
             { id: "mirror", tier: "prohibited", action: { shell: "git push --mirror" }, reason: "rewrites every ref" },
         ]);
         const out = hook(dir, bash("git push --mirror origin"));
         assert.equal(out.decision, "deny");
         assert.match(out.reason, /`mirror` \(prohibited\) — rewrites every ref/);
-        // The broader rule still answers for the spellings only it covers.
         assert.equal(hook(dir, bash("git push origin main")).decision, "ask");
     });
 
     test("a DECLARED-ONLY policy diverges too, where the weaker rule is listed first", () => {
-        // The behaviour change this carries, pinned rather than buried. First-match was never the same
-        // thing as strongest — a single-file policy listing `git push` gated before `git push --mirror`
-        // prohibited answered `ask` on the prohibited spelling, with no pack anywhere. Composition makes
-        // the divergence systematic (added rules are appended, so a contributed rule always loses the
-        // tie-break) rather than causing it. A draft of `./gate.mjs`'s docblock claimed the opposite and
-        // called the old scan indistinguishable from this one for a single-file policy; the pre-commit
-        // supervisor built this counterexample, so it is a rail now instead of a sentence.
         const dir = workspace({
             packs: undefined,
             rules: [
@@ -258,8 +177,6 @@ describe("overlapping rules resolve to the strongest tier", () => {
     });
 
     test("a tie at the same tier keeps the FIRST rule listed, which is what the old scan did", () => {
-        // The stability half. "Strongest, ties to the first" is only byte-identical to the old
-        // behaviour if ties are actually left alone, and nothing but this case says so.
         const dir = composing(
             [{ id: "second", tier: "gated", action: { shell: "git push" }, reason: "the pack's sentence" }],
             [{ id: "first", tier: "gated", action: { shell: "git push" }, reason: "the workspace's sentence" }],
@@ -273,9 +190,7 @@ describe("overlapping rules resolve to the strongest tier", () => {
 // ===========================================================================================
 
 describe("a workspace that composes nothing behaves exactly as before", () => {
-    // The property that made this change safe to land first, so it is asserted rather than argued: a
-    // declared-only workspace must not take a different branch. Both shapes, because a missing `packs`
-    // key and an empty one leave `packContributions` at different early returns.
+    // Both shapes: a missing `packs` key and an empty one leave `packContributions` at different early returns.
     for (const [label, packs] of [
         ["no `packs` key at all", undefined],
         ["`packs: []`", []],
@@ -285,20 +200,13 @@ describe("a workspace that composes nothing behaves exactly as before", () => {
             assert.equal(hook(dir, bash("git push origin main")).decision, "ask");
             assert.match(hook(dir, bash("git push origin main")).reason, /`push` \(gated\) — ask first/);
             assert.equal(hook(dir, { tool_name: "Edit", tool_input: { file_path: "/x/docs/vision.md" } }).decision, "deny");
-            // Stepping aside is still silence on stdout, not an empty JSON object.
             assert.equal(hook(dir, bash("echo hi")).stdout, "");
             assert.equal(hook(dir, bash("echo hi")).status, 0);
         });
     }
 
     test("a composed `action: none` fragment composes cleanly and matches nothing", () => {
-        // **The live shape on this repository**, which no other case here uses: both fragments
-        // `rituals/checkpoints` contributes carry `action: {none: …}`, the form the ruling in
-        // `../.portulan/proposals/0029-a-constraint-names-a-category-not-a-list.md` Q3 settled on for a
-        // category whose spellings are unbounded. `matchesRule` answers `shell`/`write`/`read` and
-        // returns false for anything else, so such a rule reaches `decide` and matches nothing — the
-        // reason #269 was latent here rather than live. Pinned so that a later matcher change cannot
-        // quietly give a `none` rule reach, and so that composing one is known not to throw.
+        // Both `rituals/checkpoints` fragments take this shape.
         const dir = composing([
             { id: "self-certify", tier: "prohibited", action: { none: "no tool-level surface" }, reason: "fresh context" },
         ]);
@@ -316,10 +224,7 @@ describe("a workspace that composes nothing behaves exactly as before", () => {
 
 describe("it degrades rather than disappearing, and never blocks", () => {
     test("a composition REFUSAL falls back to the declared policy instead of stepping aside", () => {
-        // A pack demoting a rule is refused by `composeFragments`, which throws. Were that throw to
-        // reach the top of `main()`, this runner would step aside — and a malformed or hostile
-        // `pack.json` would switch off the gates the workspace declares in its own file. The composed
-        // half is lost; the declared half must not be.
+        // A step-aside would let a malformed or hostile `pack.json` switch off the gates the workspace declares.
         const dir = composing([
             { id: "push", tier: "gated", action: { shell: "git push" }, reason: "a demotion the compiler refuses" },
             { id: "ban", tier: "propose", action: { write: "docs/vision.md" }, reason: "and so is this" },
@@ -332,30 +237,18 @@ describe("it degrades rather than disappearing, and never blocks", () => {
     });
 
     test("a fragment that composes but is not a valid RULE falls back, rather than denying with `— undefined`", () => {
-        // `composeFragments` checks a fragment's tier, and the action shape only when tightening — so an
-        // ADDED fragment with no `reason` composed cleanly, and this hook denied with the literal
-        // sentence `— undefined` while `compile` refused the same input at exit 2. Measured on the
-        // runner; raised by Copilot on #272. The layer whose whole job is the sentence must not invent
-        // one, so the composed policy now goes through the compiler's own `parse` before it is used.
         const dir = composing([{ id: "no-reason", tier: "prohibited", action: { shell: "curl" } }]);
         const out = hook(dir, bash("curl https://example.com"));
         assert.equal(out.decision, null);
         assert.equal(out.stdout, "");
-        // The declared rules are untouched by one pack's malformed fragment — fallback, not step-aside.
-        // This half is what separates the two, and `decision === null` above cannot: a step-aside and a
-        // fallback-that-matches-nothing look identical on the payload above and differ here.
+        // Only this half tells a fallback from a step-aside: both answer `null` on the payload above.
         const still = hook(dir, bash("git push origin main"));
         assert.equal(still.decision, "ask");
         assert.doesNotMatch(still.reason, /undefined/);
     });
 
     test("the DECLARED arm keeps its `— undefined`, which is the limit of that fix rather than an oversight", () => {
-        // The composed arm is validated; the declared one is not, and a rule missing its `reason` in the
-        // workspace's own file still denies with `— undefined` — byte-identically with every predecessor,
-        // measured. That is the right answer and not a gap to close here: the fallback for an inadmissible
-        // declared policy IS the declared policy, and stepping aside would drop a live prohibition over a
-        // missing string. `compile` refuses the shape at build time, which is where a refusal belongs.
-        // Pinned so a later "improvement" cannot convert this arm to a step-aside without saying so.
+        // Stepping aside would drop a live prohibition over a missing string; `compile` refuses the shape instead.
         const dir = workspace({
             packs: undefined,
             rules: [
@@ -377,10 +270,7 @@ describe("it degrades rather than disappearing, and never blocks", () => {
     });
 
     test("an unreadable POLICY still steps aside silently — the fail-open this change does not touch", () => {
-        // `./gate.mjs`'s header argues this from a measurement: on CLI 2.1.220 a PreToolUse hook that
-        // crashes fails open anyway, and a runner that blocked on a malformed policy would make the
-        // session undriveable — repairable only inside the repository it can no longer edit.
-        // `./stop-gate.mjs` is the runner that blocks loudly; these two genuinely differ.
+        // Fail-open on purpose: a hook that blocked on a bad policy would stop the session from repairing it.
         const dir = workspace();
         fs.writeFileSync(path.join(dir, ".portulan", "gates.json"), "{ not json");
         const out = hook(dir, bash("git push origin main"));
@@ -400,22 +290,7 @@ describe("it degrades rather than disappearing, and never blocks", () => {
 // ===========================================================================================
 
 test("the hook never consults the host plugin cache — its roots come from the manifest's `tree`", () => {
-    // Composition enters a path that runs on EVERY tool call, and `packContributions` can be wired to
-    // discovery. It is not wired here, and this is the rail on that: a host record naming a root that
-    // WOULD contribute a matching prohibition must change no decision. Two things ride on it — a gate
-    // whose answer moved with what is installed on the machine could not be reviewed from the
-    // repository, and `#264` (an unpinned compile reads the host plugin cache while the rail reads the
-    // tree) stays out of this runner by construction rather than by nobody having tried.
-    // **The poison has to be shaped like the real record, and the first draft of this test was not.**
-    // It wrote `plugins/installs.json` at `version: 1` with an `installs` ARRAY — three independent
-    // mismatches against `./discover.mjs`, which reads `plugins/installed_plugins.json` (`RECORD`),
-    // refuses any version outside `RECORD_VERSIONS` (`{2}`), and wants a `plugins` OBJECT keyed
-    // `<plugin>@<marketplace>` whose entries carry `installPath`. So the record was unreadable and the
-    // test passed on a fixture that could not have been picked up even by a runner that went looking —
-    // a rail green because its own bait was inert. Caught by the pre-commit supervisor, which wired
-    // discovery into the runner and watched this suite stay 14/14 green: the exact regression this
-    // case names itself the rail against, undetected. Guarding the instrument before trusting it is
-    // this repository's standing rule about its own tests, and this is what it looks like when skipped.
+    // The bait is a record `discover.mjs` would read, so a runner that went looking would find it.
     const host = scratch();
     const cache = path.join(host, "plugins");
     const installPath = path.join(cache, "feed", "impostor", "1.0.0");
@@ -430,8 +305,7 @@ test("the hook never consults the host plugin cache — its roots come from the 
             2,
         ),
     );
-    // The workspace declares the pack and has NO copy of it in its own tree, so the host cache is the
-    // only place it could come from. It must stay unresolved.
+    // Declared with no copy in the tree, so the host cache is the only place it could resolve from.
     const dir = workspace({ packs: ["tools/contributor"] });
     const out = hook(dir, bash("curl https://example.com"), { CLAUDE_CONFIG_DIR: host });
     assert.equal(out.decision, null);

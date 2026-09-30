@@ -1,18 +1,4 @@
-// The outline against THIS repository: every tracked code file outlines, and each span is whole; every
-// tracked Markdown file outlines, and each link to one of its headings finds it.
-//
-//   node --test cli/symbols.live.test.mjs
-//
-// A session reads a span in place of the file, so a span that stops one line short hides the line that
-// mattered, and nothing in the outline would show it. The fixtures in `symbols.test.mjs` pin each
-// construct; this holds the parser to the code sessions actually read. **Every tracked JavaScript or
-// shell file must outline**, since a refusal there sends every session back to whole reads of it; and
-// **every span it prints must compile on its own**, checked by node's own parser for JavaScript and by
-// `bash -n` for a shell function: each declaration, statement and test, and each class member inside a
-// class of its own. A span that ends early is then a syntax error here rather than a silent loss in a
-// session, bar a method chain cut before its last call, which the fixtures' continuation case holds. A
-// span that ends late still compiles; the fixtures' statement ends are what hold that. Sections, the
-// file's header, its imports and its export lists are not code a session edits alone, and are skipped.
+// `symbols` against this repository: every tracked file outlines, every span compiles alone, every heading link lands.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -41,10 +27,7 @@ test("the tracked code is found, and every file of it outlines", () => {
     assert.deepEqual(refused, []);
 });
 
-// The first line of the error a span raises on its own, or null when it compiles. JavaScript is wrapped so
-// `await` and a bare declaration both parse; `import.meta` parses only in a module, so it is renamed, and
-// `export` is taken off the one line that opens with it. A class member parses only in a class body, one
-// that declares the private names the member uses and does not declare itself.
+// A script parses no `import.meta`, top-level `await` or lone class member, so each span is adapted to parse alone.
 function compileError(language, text, member, own) {
     try {
         if (language !== "js") {
@@ -64,6 +47,7 @@ function compileError(language, text, member, own) {
     }
 }
 
+// Compiling misses a span that ends late or cuts a method chain short; the fixtures in `symbols.test.mjs` hold those.
 test("every span compiles on its own", () => {
     const broken = [];
     for (const file of FILES) {
@@ -82,9 +66,7 @@ test("every span compiles on its own", () => {
     assert.deepEqual(broken, []);
 });
 
-// A section is found by the anchor a link to it carries, so the anchors are GitHub's or a link a session
-// follows reads the wrong section, or none. Every link to a heading in this repository's Markdown is the
-// sample: each must name an anchor its file's outline gives.
+// The outline's anchors must be GitHub's, or a link a session follows reads the wrong section.
 test("every tracked Markdown file outlines, and every link to one of its headings finds it", () => {
     const docs = execFileSync("git", ["ls-files", "-z", "--", "*.md"], { cwd: REPO_ROOT, encoding: "utf8" }).split("\0").filter(Boolean);
     assert.ok(docs.length > 100, `only ${docs.length} tracked Markdown files found`);
