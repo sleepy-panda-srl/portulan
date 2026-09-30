@@ -941,7 +941,7 @@ describe("this repository", () => {
         assert.deepEqual(unknown, [], "a boot that reads a new file of the skill needs it in STEPS in context.mjs; one it reads on demand, here");
     });
 
-    // A path in a `node` command reaches the shell as text, so it is one word only when double-quoted.
+    // A path in a `node` command reaches the shell as text, where a space splits it; this wants double quotes.
     const unquotedPaths = (text) => {
         const PATH = /\$\{CLAUDE_(?:PLUGIN_ROOT|PROJECT_DIR)[^}]*\}|<[\w-]+>/;
         const found = [];
