@@ -38,6 +38,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { isInside } from "./inside.mjs";
 import { recipeSet } from "./recipe-set.mjs";
 
 // The project root is TOLD to this runner rather than derived from where this file sits — see the same
@@ -592,13 +593,47 @@ function didWork(root = REPO) {
     }
 }
 
-/** Is there a handoff dated today? The doctrine's checkable form: existence and a date, never length. */
-function handoffToday(stamp, workspace = WORKSPACE) {
+/**
+ * The handoffs dated today in this tree, as `{ own, recorded }`. The doctrine's checkable form is existence
+ * and a date, never length, but only a handoff this tree has not yet committed and pushed answers for its
+ * work: untracked, changed, or committed with content no remote has held at its path. Content rather than
+ * a commit, because a rebase or a squash merge pushes the handoff in a commit of its own, and the branch
+ * that carried the first one may be gone from the remote. One committed and pushed already, as a handoff
+ * merged on the base branch is, records recorded work, and counting it released every tree that carried it
+ * on the day it landed.
+ */
+function handoffToday(stamp, tree = { root: REPO, workspace: WORKSPACE }) {
+    let dated;
     try {
-        return fs.readdirSync(path.join(workspace, "handoffs")).some((f) => f.startsWith(stamp) && f.endsWith(".md"));
+        dated = fs.readdirSync(path.join(tree.workspace, "handoffs")).filter((f) => f.startsWith(stamp) && f.endsWith(".md"));
     } catch {
-        return false;
+        return { own: [], recorded: [] };
     }
+    const handoffsDir = path.join(tree.workspace, "handoffs");
+    const dir = path.relative(tree.root, handoffsDir).split(path.sep).join("/");
+    // A workspace outside the repository holds nothing git records, so each of its handoffs is this tree's.
+    if (dir === "" || !isInside(tree.root, handoffsDir)) return { own: dated, recorded: [] };
+    const git = (args) => execFileSync("git", args, { cwd: tree.root, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
+    const own = [];
+    const recorded = [];
+    for (const name of dated) {
+        const file = `:(literal)${dir}/${name}`;
+        let unrecorded;
+        try {
+            unrecorded = git(["status", "--porcelain", "--untracked-files=all", "--ignored", "--", file]).trim() !== "";
+            if (!unrecorded) {
+                // Clean, so HEAD's blob is the content. `--root`, or `log.showRoot=false` skips a root commit.
+                const blob = git(["rev-parse", `HEAD:./${dir}/${name}`]).trim();
+                unrecorded = git(["log", "-1", "--root", "--format=%h", "--remotes", `--find-object=${blob}`, "--", file]).trim() === "";
+            }
+        } catch {
+            // Git cannot say, so the plain form stands, and says so, as `didWork()` does when it cannot tell.
+            process.stderr.write(`portulan stop-gate: could not tell whether ${name} is committed and pushed, so it counts as this tree's own.\n`);
+            unrecorded = true;
+        }
+        (unrecorded ? own : recorded).push(name);
+    }
+    return { own, recorded };
 }
 
 /**
@@ -639,7 +674,8 @@ function treeIdentity(root = REPO) {
 }
 
 /**
- * A handoff dated today somewhere in this repository's history — every ref already on disk — or null.
+ * A handoff dated today that this tree does not hold, in a commit its HEAD does not hold, on any ref already
+ * on disk, or null. `held` names the dated handoffs this tree holds, which `handoffToday()` has judged.
  *
  * **No network, deliberately.** A Stop hook runs on every attempt to end a turn, and a fetch would
  * put a remote round trip — and an offline host's timeout — inside the gate. So this reads refs that
@@ -647,7 +683,7 @@ function treeIdentity(root = REPO) {
  * remote-tracking ones. The sentence it feeds must not overclaim: *absent from this working tree* is
  * always true when it fires; *present at `<ref>`* is claimed only where some ref on disk shows one.
  */
-function handoffInHistory(stamp, tree = { root: REPO, workspace: WORKSPACE }) {
+function handoffInHistory(stamp, tree = { root: REPO, workspace: WORKSPACE }, held = []) {
     // **Root and workspace arrive as ONE pair, never mixed.** A told root beside a session workspace
     // makes the relative path below start with `..`, the guard returns null, and the elsewhere arm
     // dies in silence — the same both-must-move-together rule the caller obeys, inside this function.
@@ -657,12 +693,15 @@ function handoffInHistory(stamp, tree = { root: REPO, workspace: WORKSPACE }) {
         // the refusal loses the half that tells a reader their handoff is already recorded, and nothing
         // says why. The same spelling is used wherever this repository hands git a derived path
         // (`./librarian.mjs`, `./compile.mjs`). Copilot, round 3.
-        const dir = path.relative(tree.root, path.join(tree.workspace, "handoffs")).split(path.sep).join("/");
+        const handoffsDir = path.join(tree.workspace, "handoffs");
+        const dir = path.relative(tree.root, handoffsDir).split(path.sep).join("/");
         // A workspace outside the repository is not a question git can answer about this history.
-        if (dir === "" || dir.startsWith("..") || path.isAbsolute(dir)) return null;
+        if (dir === "" || !isInside(tree.root, handoffsDir)) return null;
         const git = (args) => execFileSync("git", args, { cwd: tree.root, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
-        // `--all` is every ref already on disk, local and remote-tracking. `-1` because existence is
-        // the whole question — this is the doctrine's checkable form, not a census.
+        // `--all` is every ref already on disk, local and remote-tracking; `--not HEAD` leaves out the
+        // commits this tree holds, and each exclusion a handoff it holds, which a rebase or a squash merge
+        // puts in a commit HEAD lacks. `-1` because existence is the whole question — this is the
+        // doctrine's checkable form, not a census.
         // **`:(glob)` magic, because a bare `*` is not reliably a glob.** With `GIT_NOGLOB_PATHSPECS`
         // set, git reads `*` literally, this matches nothing, and the function returns null — silently
         // reintroducing the exact "a handoff exists elsewhere and the gate does not say so" gap this
@@ -671,7 +710,8 @@ function handoffInHistory(stamp, tree = { root: REPO, workspace: WORKSPACE }) {
         // `core.globPathspec=false` does NOT reproduce it — measured — so the magic is what makes this
         // deterministic, not a config default.)_ Explicit pathspec magic is the same discipline
         // `../.portulan/verify/plugin.sh` documents. Copilot, round 3.
-        const commit = git(["log", "--all", "-1", "--format=%H", "--", `:(glob)${dir}/${stamp}*`]).trim();
+        const commit = git(["log", "-1", "--format=%H", "--all", "--not", "HEAD", "--", `:(glob)${dir}/${stamp}*`,
+            ...held.map((name) => `:(exclude,literal)${dir}/${name}`)]).trim();
         if (!commit) return null;
         const refs = git(["branch", "--all", "--contains", commit, "--format=%(refname:short)"])
             .split("\n").map((r) => r.trim()).filter(Boolean);
@@ -686,8 +726,8 @@ function handoffInHistory(stamp, tree = { root: REPO, workspace: WORKSPACE }) {
 
 /**
  * Everything this gate refuses a stop for, plus whether the governing recipe was observed GREEN.
- * The two are reported separately because the consecutive-cap reset keys off the recipe alone, while
- * whether to block keys off the whole set.
+ * The two are reported separately because the recipe's consecutive-cap reset keys off an observed green
+ * alone, while whether to block keys off the whole set.
  */
 function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "told", note: null }) {
     /** Every problem carries the REASON it belongs to — the key its own counter is kept under. */
@@ -752,7 +792,8 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
     // `today()`'s own header records that this file has already produced one false red from a date
     // disagreement; two dates inside a single verdict is the same class. Copilot, round 3.
     const stamp = today();
-    const handoffPresent = handoffToday(stamp, tree.workspace);
+    const handoffs = handoffToday(stamp, tree);
+    const handoffPresent = handoffs.own.length > 0;
     // **`!handoffPresent` first, and the order is load-bearing rather than stylistic.** `didWork()`
     // shells out to git several times and can print the could-not-compare sentence; ordered the other
     // way, a session that HAS written its handoff still paid that cost on every Stop event and could
@@ -783,24 +824,29 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
         const answeredElsewhere = tree.origin === "session" && real(tree.root) !== real(REPO)
             ? ` — the tree this session worked in, not the one this hook was told (${REPO})`
             : "";
-        const elsewhere = handoffInHistory(stamp, tree);
+        const { recorded } = handoffs;
+        const elsewhere = handoffInHistory(stamp, tree, recorded);
         const found = elsewhere
             ? ` One dated ${stamp} does exist elsewhere in this repository's refs, at ` +
               `${elsewhere.commit}${elsewhere.ref ? ` on \`${elsewhere.ref}\`` : ""} — so this working tree may not be ` +
               "the tree that did the work. Check before writing a second one."
             : "";
+        const notCounted = recorded.length
+            ? `${recorded.map((f) => `\`${f}\``).join(", ")} ${recorded.length === 1 ? "is" : "are"} committed and pushed already, ` +
+              `so ${recorded.length === 1 ? "it records" : "they record"} work already recorded. `
+            : "";
         problems.push({
             reason: "handoff",
             text:
-                `no handoff dated ${stamp} in ${path.join(tree.workspace, "handoffs")}, read from ` +
-                `${treeIdentity(tree.root)}${answeredElsewhere}. ` +
+                `no handoff dated ${stamp}${recorded.length ? " of this tree's own" : ""} in ${path.join(tree.workspace, "handoffs")}, read from ` +
+                `${treeIdentity(tree.root)}${answeredElsewhere}. ${notCounted}` +
                 "This tree holds work that is not committed and pushed. Commit and push it, its why in the commit " +
                 "message, or end with a dated handoff naming what is open: where things stand, the open questions " +
                 `and the next action. Five lines is enough; absent is not.${found}`,
         });
     }
 
-    return { problems, recipeGreen, handoffPresent };
+    return { problems, recipeGreen };
 }
 
 /**
@@ -889,13 +935,14 @@ function main() {
     // removed-worktree case permanently blocking — the false red the first arm was built to remove.
     if (tree.note) process.stderr.write(`portulan stop-gate: ${tree.note}; answering about ${REPO} instead.\n`);
 
-    const { problems, recipeGreen, handoffPresent } = collectProblems(tree);
+    const { problems, recipeGreen } = collectProblems(tree);
 
     // A reason's condition clearing ends THAT reason's futile-retry episode, whether or not the stop
     // is allowed, and never any other reason's. Done before the bump so a cleared reason cannot be
-    // charged a consecutive refusal on the same turn it cleared.
+    // charged a consecutive refusal on the same turn it cleared. The handoff's clears with its own
+    // handoff or with nothing left unrecorded, and a push records a handoff too.
     if (recipeGreen) clearReason(sessionId, "recipe");
-    if (handoffPresent) clearReason(sessionId, "handoff");
+    if (!problems.some((p) => p.reason === "handoff")) clearReason(sessionId, "handoff");
 
     // Charged only when this gate is actually about to refuse. A green stop costs nothing.
     const state = problems.length === 0
