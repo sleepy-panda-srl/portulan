@@ -1713,6 +1713,21 @@ describe("0010 — a `comments` recipe, offered where `init` drafted none", () =
         assert.match(again.text(), /owes nothing/);
     });
 
+    test("a `comments` recipe running another command is named, not taken for the rail", async () => {
+        const { repo, ws } = draftedBeforeGit();
+        const file = path.join(ws, "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+        manifest.verify.recipes.push({ id: "comments", run: "npm run lint:comments", requires: ["npm"] });
+        fs.writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
+        git(repo, "add", "-A");
+        git(repo, "commit", "-qm", "a comments recipe of our own");
+        assert.match(await form(ws), /the `comments` recipe runs npm run lint:comments, not a `verify\/comments\.sh`/);
+        const h = harness();
+        assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 2, h.text());
+        assert.match(h.text(), /the `comments` recipe runs npm run lint:comments, not a `verify\/comments\.sh`: rename it, then upgrade/);
+        assert.equal(git(repo, "status", "--porcelain"), "");
+    });
+
     test("a `verify/comments.sh` no recipe declares is refused, and nothing is written", async () => {
         const { repo, ws } = draftedBeforeGit();
         fs.writeFileSync(path.join(ws, "verify", "comments.sh"), "#!/usr/bin/env bash\nexit 0\n");

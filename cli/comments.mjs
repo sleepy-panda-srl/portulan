@@ -77,7 +77,9 @@ const HASH_MARKERS = (raw) => raw.replace(/^\s*(#+|\/\/+)/, "");
 const HTML_MARKERS = (raw) => raw.replace(/^\s*<!--/, "").replace(/-->\s*$/, "");
 
 const REGEX_AFTER_WORD = new Set(["return", "typeof", "instanceof", "in", "of", "new", "delete", "void", "throw", "case", "do", "else", "yield", "await"]);
-const REGEX_AFTER_PUNCTUATOR = new Set([..."(,=:[!&|?{};+-*%<>~^}"]);
+const REGEX_AFTER_PUNCTUATOR = new Set([..."(,=:[!&|?{};+-*%<>~^}", "=>"]);
+/** What a `{` follows when it opens an object literal, so the `}` closing it ends a value rather than a block. */
+const OBJECT_AFTER = new Set([..."(,=:[!&|?+-*%<>~^", ...[...REGEX_AFTER_WORD].filter((word) => word !== "do" && word !== "else")]);
 const WORD_START = /[\p{L}_$#]/u;
 const WORD_PART = /[\p{L}\p{N}_$]/u;
 
@@ -119,6 +121,7 @@ function skipTemplate(source, i) {
 function jsSpans(source) {
     const spans = [];
     const resumeAt = [];
+    const objects = [];
     let depth = 0;
     let last = "";
     let i = source.startsWith("#!") ? source.indexOf("\n") : 0;
@@ -154,6 +157,7 @@ function jsSpans(source) {
             i = regex ? skipRegex(source, i) : i + 1;
             last = regex ? "value" : "/";
         } else if (c === "{") {
+            objects.push(OBJECT_AFTER.has(last));
             depth++;
             last = c;
             i++;
@@ -163,7 +167,7 @@ function jsSpans(source) {
             if (resumeAt.length && resumeAt.at(-1) === depth) {
                 resumeAt.pop();
                 i = enterTemplate(i);
-            } else last = c;
+            } else last = objects.pop() ? "value" : c;
         } else if (WORD_START.test(c) || /\d/.test(c)) {
             let j = i + 1;
             while (j < source.length && (WORD_PART.test(source[j]) || (/\d/.test(c) && source[j] === "."))) j++;
@@ -174,7 +178,7 @@ function jsSpans(source) {
             last = "value";
             i += 2;
         } else {
-            last = c === ")" || c === "]" ? "value" : c;
+            last = c === ")" || c === "]" ? "value" : c === ">" && source[i - 1] === "=" ? "=>" : c;
             i++;
         }
     }
@@ -287,14 +291,28 @@ function shellSpans(source) {
         }
         return at;
     };
-    const doubleQuoted = (i) => {
+    /** A double-quoted word: `$( )` and backticks in it are shell, and a program it holds is read as the shell passes it on. */
+    const doubleQuoted = (i, program) => {
+        const text = [];
+        const at = [];
+        const keep = (from, to, blank) => {
+            for (let k = from; k < to; k++) {
+                text.push(blank && source[k] !== "\n" ? " " : source[k]);
+                at.push(k);
+            }
+        };
         let j = i + 1;
         while (j < source.length && source[j] !== '"') {
-            if (source[j] === "\\") j += 2;
-            else if (source[j] === "`") j = lex(j + 1, "`");
-            else if (source[j] === "$" && source[j + 1] === "(" && source[j + 2] !== "(") j = lex(j + 2, ")");
-            else j++;
+            if (source[j] === "\\") {
+                keep('$`"\\\n'.includes(source[j + 1]) ? j + 1 : j, Math.min(j + 2, source.length), false);
+                j += 2;
+            } else if (source[j] === "`" || (source[j] === "$" && source[j + 1] === "(" && source[j + 2] !== "(")) {
+                const from = j;
+                j = source[j] === "`" ? lex(j + 1, "`") : lex(j + 2, ")");
+                keep(from, j, true);
+            } else keep(j, ++j, false);
         }
+        if (program) spans.push(...program.spans(text.join("")).map(([a, b, strip]) => [at[a], at[b - 1] + 1, strip]));
         return j + 1;
     };
     /** Shell from `from` to its closing `)` or backtick, or the end: the offset after the close. */
@@ -352,7 +370,7 @@ function shellSpans(source) {
                 i++;
             } else {
                 if (start === -1) start = i;
-                if (c === '"') i = doubleQuoted(i);
+                if (c === '"') i = doubleQuoted(i, programOf(words, start === i ? (words.at(-1) ?? "") : source.slice(start, i).replace(/=$/, "")));
                 else if (c === "$" && source[i + 1] === "(" && source[i + 2] !== "(") i = lex(i + 2, ")");
                 else if (c === "`" || (c === "$" && source[i + 1] === "'")) {
                     const quote = c === "$" ? "'" : c;
@@ -389,7 +407,7 @@ export function yamlComments(source) {
         if (hash !== -1) {
             const raw = text.slice(hash);
             const alone = !text.slice(0, hash).trim();
-            comments.push({ line: index + 1, text: HASH_MARKERS(raw).trim(), bytes: Buffer.byteLength(alone ? `${text}\n` : raw) });
+            comments.push({ line: index + 1, text: HASH_MARKERS(raw).trim(), bytes: Buffer.byteLength(alone ? `${text}${index < lines.length - 1 ? "\n" : ""}` : raw) });
         }
         if (inScalar) continue;
         const block = BLOCK_SCALAR.exec(text);
@@ -402,8 +420,9 @@ export function yamlComments(source) {
             const margin = Math.min(...body.filter((l) => l.trim()).map((l) => l.search(/\S/)));
             const shift = Number.isFinite(margin) ? margin : 0;
             const script = body.map((l) => l.slice(shift));
-            for (const comment of shellComments(`${script.join("\n")}\n`)) {
-                const alone = comment.bytes === Buffer.byteLength(`${script[comment.line - 1]}\n`);
+            const ended = (line) => (line < script.length || end < lines.length ? "\n" : "");
+            for (const comment of shellComments(`${script.join("\n")}${ended(script.length)}`)) {
+                const alone = comment.bytes === Buffer.byteLength(`${script[comment.line - 1]}${ended(comment.line)}`);
                 comments.push({ ...comment, line: comment.line + index + 1, bytes: comment.bytes + (alone ? shift : 0) });
             }
         }

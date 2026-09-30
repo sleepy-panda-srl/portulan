@@ -529,6 +529,13 @@ describe("the scan drafts what it observed and says what it could not determine"
         assert.equal(observed.build, null);
     });
 
+    test("the comments are counted only where the draft uses the count, which a pointer's does not", () => {
+        const dir = scratch({ "a.js": "// Added 2026-09-01.\nexport const a = 1;\n" });
+        execFileSync("git", ["init", "-q", dir]);
+        assert.equal(scan(dir).commentHistory, 1);
+        assert.equal(scan(dir, { comments: false }).commentHistory, null);
+    });
+
     test("what the scan could not determine is written down as unknown, not omitted", async () => {
         const dir = scratch({ "notes.txt": "hello" });
         await run(["--residence", "in-repo", dir], harness().options);

@@ -463,7 +463,7 @@ export function validateAnswers(answers) {
  * that lies about them on the day it was created. Every field here is either read out of a file that
  * exists or left `null`, and `null` is written into the draft as *not determined* rather than dropped.
  */
-export function scan(dir) {
+export function scan(dir, { comments = true } = {}) {
     const observed = { stack: [], build: null, test: null, run: null, name: null, vcs: null, evidence: [], commentHistory: null, uncounted: null };
     const has = (rel) => fs.existsSync(path.join(dir, rel));
     const read = (rel) => {
@@ -517,10 +517,12 @@ export function scan(dir) {
         }
     }
 
-    try {
-        observed.commentHistory = historyCount(dir);
-    } catch (error) {
-        observed.uncounted = error.message;
+    if (comments) {
+        try {
+            observed.commentHistory = historyCount(dir);
+        } catch (error) {
+            observed.uncounted = error.message;
+        }
     }
 
     return observed;
@@ -1788,7 +1790,7 @@ export async function run(argv, options = {}) {
             packAdvice = { resolved, why: expanded.why, inTree: resolvedAt !== null && resolvedAt === path.join(target, "packs") };
         }
 
-        const observed = scan(target);
+        const observed = scan(target, { comments: answers.residence !== "pointer" });
         const files = draft(answers, observed);
 
         // Where the repository's `.gitignore` hides `.claude/`, the compiled card would never reach a

@@ -149,10 +149,15 @@ export function withIgnoreLines(text, lines) {
 
 export const COMMENTS_RECIPE = "comments";
 
-/** Whether the workspace declares that recipe itself: a pack's recipes are namespaced apart from it. */
-export function declaresCommentsRecipe(manifest) {
+/**
+ * The workspace's own `comments` recipe, a pack's being namespaced apart from it: `null` where there is none,
+ * `drafted` where it runs a `verify/comments.sh`, and otherwise the other command holding its name.
+ */
+export function commentsRecipeOf(manifest) {
     const own = recipeSet(manifest, { packs: [] });
-    return own.ok && own.recipes.some((recipe) => recipe.id === COMMENTS_RECIPE);
+    const recipe = own.ok ? own.recipes.find((entry) => entry.id === COMMENTS_RECIPE) : undefined;
+    if (!recipe) return null;
+    return /(?:^|\/)verify\/comments\.sh'?$/.test(recipe.run) ? { drafted: true } : { drafted: false, run: recipe.run };
 }
 
 export function commentsRecipeEntry(workspaceRel) {
@@ -795,7 +800,9 @@ export function formOf(workspaceDir, manifest) {
             else add("instructions", "new", `${count(marked.moved)} of ${files} moved to on-read units${gone}`);
         }
         if (gitIn(tree) !== null) {
-            if (declaresCommentsRecipe(manifest)) add("comments", "new", "a `comments` recipe holding the comments that record a change's history");
+            const recipe = commentsRecipeOf(manifest);
+            if (recipe?.drafted) add("comments", "new", "a `comments` recipe holding the comments that record a change's history");
+            else if (recipe) pieces.push({ id: "comments", state: "today", hand: true, text: `the \`comments\` recipe runs ${recipe.run}, not a \`verify/comments.sh\`: rename it, so \`upgrade\` can draft the one that counts the comments recording a change's history` });
             else add("comments", "today", "no `comments` recipe: nothing counts the comments that record a change's history");
         }
     }

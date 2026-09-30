@@ -111,6 +111,15 @@ describe("jsComments", () => {
         ]);
     });
 
+    test("a slash after an object literal divides, and one after a block opens a regular expression", () => {
+        const source = ["const n = { a: 1 } / 2; // Added 2026-09-24", "if (ok) {} /re/.test(s); // two", "const f = () => {}", "/x/.test(s); // three"].join("\n");
+        assert.deepEqual(texts(jsComments(source)), [
+            [1, "Added 2026-09-24"],
+            [2, "two"],
+            [4, "three"],
+        ]);
+    });
+
     test("two comments on one line are one comment line, with both texts and both costs", () => {
         const [line, ...rest] = jsComments("f(); /* Added 2026-09-24 */ g(); /* see #12 */\n");
         assert.deepEqual(rest, []);
@@ -193,6 +202,15 @@ describe("shellComments", () => {
             [10, "two"],
             [12, "three"],
             [16, "four"],
+        ]);
+    });
+
+    test("a program in double quotes is read as the shell passes it on, and its substitutions stay shell", () => {
+        const source = ['node -e "', "// one", 'console.log(\\"// no\\") // two', "$(echo x # three", ')"', 'echo "', '// data"'].join("\n");
+        assert.deepEqual(texts(shellComments(source)), [
+            [2, "one"],
+            [3, "two"],
+            [4, "three"],
         ]);
     });
 
@@ -286,6 +304,11 @@ describe("yamlComments", () => {
         const [alone, trailing] = yamlComments(["steps:", "  - run: |", "      # alone", "      echo hi # end", ""].join("\n"));
         assert.equal(alone.bytes, Buffer.byteLength("      # alone\n"));
         assert.equal(trailing.bytes, Buffer.byteLength("# end"));
+    });
+
+    test("a comment on a file's last line costs no newline the file does not have", () => {
+        assert.equal(yamlComments("a: 1\n# last").at(-1).bytes, Buffer.byteLength("# last"));
+        assert.equal(yamlComments("steps:\n  - run: |\n      # last").at(-1).bytes, Buffer.byteLength("      # last"));
     });
 
     test("a quoted scalar across lines holds no comment, and one after its close is read", () => {

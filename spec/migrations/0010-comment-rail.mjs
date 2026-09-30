@@ -7,7 +7,7 @@
 import path from "node:path";
 
 import { historyCount } from "../../cli/comments.mjs";
-import { COMMENTS_RECIPE, commentsRecipe, commentsRecipeEntry, declaresCommentsRecipe, notYetForm } from "../../cli/form.mjs";
+import { COMMENTS_RECIPE, commentsRecipe, commentsRecipeEntry, commentsRecipeOf, notYetForm } from "../../cli/form.mjs";
 
 const RECIPE_FILE = "verify/comments.sh";
 
@@ -30,7 +30,9 @@ export const step = {
         if (ws.manifest?.kind !== "repository") return { owed: false, because: `a \`${ws.manifest?.kind}\` workspace has no repository of its own to count` };
         if (!ws.repository) return { owed: false, because: "this workspace declares no tree to count" };
         if (ws.repository.git === null) return { owed: false, because: "no git work tree answers here, so no files are listed to count" };
-        if (declaresCommentsRecipe(ws.manifest)) return { owed: false, because: "a `comments` recipe is declared" };
+        const recipe = commentsRecipeOf(ws.manifest);
+        if (recipe?.drafted) return { owed: false, because: "a `comments` recipe is declared" };
+        if (recipe) return { owed: null, because: `the \`${COMMENTS_RECIPE}\` recipe runs ${recipe.run}, not a \`${RECIPE_FILE}\`: rename it, then upgrade` };
         return { owed: true, because: "no `comments` recipe counts the comment lines that record a change's history: one is drafted at the tree's count" };
     },
 
