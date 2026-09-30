@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'sleepy-panda-srl/portulan'
     steps:
-      # Full history: the pack-version and pack-identity rails it drills cannot run in a shallow clone.
+      # Full history: the pack-version rail it drills needs the merge-base, which a shallow clone lacks.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
