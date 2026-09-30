@@ -1,116 +1,27 @@
 #!/usr/bin/env node
 // `init` — the subcommand that drafts a workspace for a repository that has none.
 //
-// `docs/plan.md` row 7: *"`init` asks where this repository's workspace resides — in the repository,
-// or in a workspace that names it — and writes a full workspace or a pointer accordingly."* That verb
-// is the design. This tool has **no default residence**: the one thing the row says it asks is the one
-// thing it may not decide, and the wrong guess is the dual-management shape
-// `../.portulan/proposals/0017-one-repository-one-governing-workspace.md` exists to refuse.
-//
-// ## What it writes, and what it refuses to write
-//
-// It drafts, and humans accept: a binding non-goal, `docs/vision.md` § *No auto-generated curated
-// context*. So every file here is a starting point with the questions left visible in it — never a
-// filled-in workspace that reads as finished. The two hard refusals:
-//
-// **It never overwrites a residence.** A repository already carrying a workspace or a pointer is
-// governed, and replacing that is not onboarding — it is the switch, which `cli/vendor.mjs` carries as
-// of 2026-08-03, when the maintainer widened `vendor`'s gloss and settled the verb he had deliberately
-// left unassigned on 2026-07-31. So `init` stops, says which residence it found, and names the tool
-// whose job the switch is.
-//
-// **It refuses rather than emitting a manifest a validator would misread.** A governor or a name that
-// is not a slug is caught here, at the boundary, because `doctor`'s cross-repository check still
-// mis-reports an empty governor as a *conflicting* one
-// ([#141](https://github.com/sleepy-panda-srl/portulan/issues/141)). That bug is `doctor`'s to fix;
-// what this tool owes is that it can never be the thing that produced the input.
-//
-// ## Two capabilities this draft deliberately does not claim
-//
-// **The session-end gate is drafted as a binding, not as a wire — and the reason has CHANGED, so the
-// paragraph is rewritten rather than left standing.** It used to be that `cli/compile.mjs` emitted a
-// `Stop` hook naming `.portulan/compile/stop.mjs`, which was customer zero's own file and shipped in no
-// published artifact, so a drafted workspace's compiled hook would have pointed at a file the adopter
-// does not have — a gate existing only as a sentence, since a missing hook **fails open** (measured,
-// CLI 2.1.220). That was the state the maintainer's 2026-07-31 ruling waited on: decide the runner's
-// residence when there is a concrete mechanism to point at.
-//
-// **The mechanism now exists.** Both runners live in `cli/`, ship in the published package, and
-// `compile` emits a path that resolves from a checkout and from a project-local install. What `init`
-// still does not do is *run* `compile` over what it drafts — so a drafted workspace has the binding and
-// no compiled hooks until its human runs `compile` themselves, which is the honest remaining gap and is
-// what `cli/init.test.mjs` asserts.
-//
-// **The drafted README said the opposite for one pull request.** It told every adopter the runner "is not
-// shipped in any artifact you have received" and that "nothing here compiles to a working Stop hook" —
-// true before the runners moved, false the moment they did, and it survived a fourteen-carrier sweep
-// because it describes the mechanism without naming the files the sweep was grepping for. The worst
-// shape available: a false claim emitted into somebody else's tree, telling them a rail they now have is
-// one they do not.
-//
-// **The interview asks where somebody is there to answer — milestone 7 session 7.** `docs/vision.md`
-// § *Delivery tiers* glosses `init` as an interview plus a codebase scan, and until this session the
-// second half shipped and the first did not: the substrate — every question modelled as an answer, with
-// a validator each — was built first precisely because a prompt loop cannot be run by CI, by a test, or
-// by a headless host. It now drives a loop, under two conditions that keep both halves honest: the
-// interview runs only where **stdin and stdout are both TTYs**, so every non-interactive invocation is
-// byte-for-byte what it was before; and it decides nothing the flags path could not decide, so the two
-// are one tool with two front doors rather than two tools. `--no-interview` is the escape for a
-// terminal that wants the refusals. _(This paragraph read "there is no interactive interview yet" and
-// left whether flags satisfy the gloss to the maintainer at milestone 7's close. The question is
-// retired rather than answered: the loop exists, so nobody has to rule on whether its absence was
-// acceptable.)_
-//
-// ## Exit codes
-//
-// `0` it wrote · `2` it wrote nothing. There is deliberately **no 1**: this tool renders no verdict
-// about anybody's workspace, so it has no red to report. `compile` documents the same asymmetry from
-// the other side — writing never returns 1, because a run that rewrites an artifact has nothing to
-// disagree with.
-//
-// _The second code read "it could not run" until the interview arrived, and the interview introduced a
-// way to write nothing that is not a failure at all: a human declining at the confirmation, or ending
-// the input. Widening the sentence is the honest repair — `0` must keep meaning *it wrote*, since
-// callers chain on it, and a decline is nobody's verdict. So the code is the same and the gloss now
-// covers every way of reaching it._
+// Before any write it refuses a residence already there, a file in the way and a link on a drafted path, treating only ENOENT as absent.
+// Exit 0 wrote · 2 refused, declined or could not run; never 1, since it renders no verdict on a workspace.
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-// Host plugin-cache discovery (#123). `init` composes a checkpoints pack by default — row 7 clause (a)
-// — so it is the tool that most needed a root it did not have to be told.
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
-
-// The new form's texts and the card's draft, from the one module that says what the new form is, so a
-// drafted workspace and a migrated one read alike. `compile` writes the card's guidance half here, and
-// `context` measures the always tier the offer of a budget is made on. None of them imports from here.
-// _(The handoff index's generator was imported here until 2026-09-24, when a drafted workspace stopped
-// keeping a copy of the index: `index` renders it, and nothing here writes one.)_
 import { historyCount } from "./comments.mjs";
 import { CACHE_LIFETIMES, compileGuidance } from "./compile.mjs";
 import { alwaysTier, ESTIMATED_BYTES_PER_TOKEN, OFFER_FLOOR_TOKENS, tokensOf } from "./context.mjs";
 import { cardIgnored, changesReadme, claudeRulesUnignore, commentsRecipe, commentsRecipeEntry, COMPILED_CARD, draftCard, handoffIndexIgnore, handoffsReadme, withIgnoreLines } from "./form.mjs";
 import { offerText, splitOffers } from "./instructions.mjs";
-// The cache lifetime's offer, from the one module `upgrade` prints the same offer from, so the two cannot
-// word it differently (proposal `0038`, item 4, 2026-09-24).
 import { offerLines } from "./sessions.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-/** Every refusal in this file. Carrying a class rather than a string lets `run` map all of them to 2. */
+/** A refusal, thrown only before the first write: `run` exits 2 on it. */
 export class InitError extends Error {}
 
-// ONE definition of a slug, read from the contract that publishes it rather than written out again.
-//
-// A second copy here would be free to drift from `spec/workspace.schema.json`, and this tool's whole
-// job at the boundary is to refuse exactly what that schema refuses. The read works in both layouts —
-// from a checkout `spec/` is one level up from `cli/`, and the published package keeps that shape
-// because `files` ships both under the package root.
-//
-// Unreadable is not fatal at import time, because a module that throws while loading gives the entry
-// point nothing better than a stack trace. It becomes a could-not-run inside `run`, which is where a
-// user can be told what is missing.
+// The schema's `$defs/slug`; unreadable, it is null for `run` to refuse, since a throw at import leaves only a stack trace.
 let SCHEMA_ERROR = null;
 export const SLUG = (() => {
     try {
@@ -122,41 +33,24 @@ export const SLUG = (() => {
     }
 })();
 
-/** The Workspace Definition this tool writes against. A pointer needs 2.7 — the version that added it. */
+/** A pointer's Workspace Definition: 2.7 is the first with pointers. */
 const SPEC = "2.7";
 
-/** A drafted workspace carries its boot card in `slots.context`, which 2.10 added, so it declares 2.10. */
+/** 2.10 is the first with `slots.context`, which holds the drafted boot card. */
 const WORKSPACE_SPEC = "2.10";
 
-/**
- * A drafted workspace that declares a cache lifetime carries `sessions`, which 2.11 added, so it declares
- * 2.11: a manifest declares the version its content needs, and `doctor` refuses the key under an earlier one.
- * One that declares none stays at 2.10, byte for byte what it was.
- */
+/** Declared only with a cache lifetime: 2.11 is the first with `sessions`, which `doctor` refuses under an earlier one. */
 const SESSIONS_SPEC = "2.11";
 
-/** The gate-policy spec `cli/compile.mjs` reads. Checked by its own suite, not guessed at here. */
-// Exported so `cli/new.test.mjs` can assert that the OTHER policy-generating carrier —
-// `core/templates/gate-policy.md`, which `new gate-policy` emits — declares the same version.
-// #329 was precisely these two disagreeing, with only this one exercised.
 export const GATE_POLICY_SPEC = "2.2";
 
 const RESIDENCES = new Set(["in-repo", "pointer"]);
 
-/** The pack composed by default when the cycle is scaffolded. The workspace names it; core names none. */
 const DEFAULT_CHECKPOINTS = "rituals/checkpoints";
 
-// Every key an answers file may carry, and the flag each corresponds to. Declared as data because the
-// file reader and the flag parser must agree about what an answer IS — two lists is how a `residnce`
-// gets silently dropped and the tool then asks for something the adopter believes they supplied.
 const ANSWER_KEYS = new Set(["residence", "name", "summary", "governed-by", "feed", "checkpoints", "cycle", "pack-root", "cache-lifetime"]);
 
-/**
- * A directory name, or any string, reduced to the schema's slug shape.
- *
- * Returns `null` rather than a fallback when nothing survives: a workspace called `workspace` because
- * the directory was `---` is a name nobody chose, and `init` asks instead.
- */
+/** `text` as a slug, or null where nothing survives: `init` asks rather than name a workspace nobody chose. */
 export function slugify(text) {
     const slug = String(text ?? "")
         .toLowerCase()
@@ -167,13 +61,6 @@ export function slugify(text) {
 
 // ------------------------------------------------------------------------- the command line
 
-/**
- * Splits argv into flags and the single target directory.
- *
- * Throws rather than returning a half-parsed shape: a flag whose value is missing must not silently
- * consume the next flag, which is the parsing bug that turns `--name --residence in-repo` into a
- * workspace named `--residence`.
- */
 export function parseArgs(argv) {
     const flags = {};
     const targets = [];
@@ -188,20 +75,9 @@ export function parseArgs(argv) {
         } else if (arg === "--no-cycle") {
             flags.cycle = false;
         } else if (arg === "--no-interview") {
-            // Not an answer, so it is deliberately outside ANSWER_KEYS and cannot arrive in an answers
-            // file: it governs how the answers are collected, and a file of answers has already
-            // collected them.
             flags.noInterview = true;
         } else if (VALUED.has(arg)) {
             const value = argv[i + 1];
-            // ANY leading `-` is a missing value, not `--` only. `cli/doctor.mjs` already guards this
-            // way and `init` was the outlier: `init --residence -h <dir>` consumed `-h` as the
-            // residence and then complained that `-h` is not one, which blames the user for a token
-            // they typed as a flag. A help request is the likeliest thing to land here, and it was
-            // the likeliest thing to be eaten. Found by review on the pull request.
-            //
-            // A value that genuinely begins with `-` is not lost: `--answers` carries it, where the
-            // shape is a JSON string and nothing has to guess where a flag ends.
             if (value === undefined || value.startsWith("-")) {
                 throw new InitError(
                     `\`${arg}\` needs a value and the next argument is \`${value ?? "(nothing)"}\` — refusing to read a ` +
@@ -209,11 +85,6 @@ export function parseArgs(argv) {
                         `is a JSON string and nothing has to guess.`,
                 );
             }
-            // An EMPTY value is given-but-invalid, and it is refused here for every flag rather than
-            // per-field. `--summary ""` used to pass straight through `??` into the manifest, where
-            // the schema's `minLength: 1` made `doctor` red on a workspace `init` had just reported
-            // writing successfully — the one outcome this tool exists to make impossible. No flag
-            // here has a meaningful empty value, so one rule covers all of them.
             if (value.trim() === "") {
                 throw new InitError(
                     `\`${arg}\` was given an empty value. Every answer this tool writes into a manifest has to be ` +
@@ -225,12 +96,6 @@ export function parseArgs(argv) {
             else flags[key] = value;
             i++;
         } else if (arg.startsWith("-")) {
-            // #155: this said "run `init --help`", which is not a command anybody can run. The tool is
-            // genuinely reachable two ways and the honest string differs per invocation, so both are
-            // named rather than one being derived — deriving it would mean the entry point telling the
-            // subcommand what name it was invoked under, and that entry point deliberately passes argv
-            // and nothing else, so the tool behaves identically either way. A better sentence is not
-            // worth trading that property for. The same fix is applied to `usage()` below.
             throw new InitError(
                 `unknown option \`${arg}\` — run \`portulan init --help\` for the ones this understands, ` +
                     `or \`node cli/init.mjs --help\` from a checkout`,
@@ -250,12 +115,6 @@ export function parseArgs(argv) {
     return { help, flags, target: targets[0] ?? null };
 }
 
-/**
- * Merges an `--answers` file under the flags, and refuses anything it does not recognise.
- *
- * The nearer answer wins: a flag typed on the command line overrides the same key in the file, which
- * is the resolution cascade's own direction — more specific beats more general.
- */
 export function resolveAnswers(flags) {
     let fromFile = {};
     if (flags.answers) {
@@ -273,9 +132,6 @@ export function resolveAnswers(flags) {
         if (!fromFile || typeof fromFile !== "object" || Array.isArray(fromFile)) {
             throw new InitError(`the answers file \`${flags.answers}\` must hold a JSON object of answers`);
         }
-        // Refused rather than ignored, on the schema's own `additionalProperties: false` reasoning: the
-        // common case is a typo, and a silently-dropped answer leaves the tool asking for something the
-        // adopter believes they gave.
         const unknown = Object.keys(fromFile).filter((key) => !ANSWER_KEYS.has(key));
         if (unknown.length) {
             throw new InitError(
@@ -283,10 +139,6 @@ export function resolveAnswers(flags) {
                     `(it asks: ${[...ANSWER_KEYS].join(", ")}). A misspelt key is an answer nobody receives.`,
             );
         }
-        // The VALUES are checked too, not only the keys. Lecturing about a misspelt key while
-        // accepting `"cycle": "false"` — a truthy string that composes the pack the adopter was
-        // trying to switch off — checks the half that is easy to check and lets the half that
-        // changes behaviour through.
         for (const [key, value] of Object.entries(fromFile)) {
             const expected = key === "cycle" ? "boolean" : "string";
             const actual = Array.isArray(value) ? "array" : typeof value;
@@ -307,17 +159,10 @@ export function resolveAnswers(flags) {
 
     const merged = { ...fromFile };
     for (const [key, value] of Object.entries(flags)) {
-        // Neither is an answer. `--answers` names where answers come from and `--no-interview` says
-        // how they are collected, and letting either into `given` would put a flag nobody answered
-        // into the set the misplaced-option refusal reads.
         if (key === "answers" || key === "noInterview") continue;
         merged[key] = value;
     }
 
-    // WHICH keys were actually supplied, kept apart from what they resolved to. `cycle` and
-    // `checkpoints` have defaults, so their values cannot tell a caller who typed them from a caller
-    // who did not — and the residence check below must refuse only what somebody asked for. A
-    // default that triggered a refusal would be the tool objecting to its own choice.
     const given = new Set(Object.keys(merged));
 
     return {
@@ -329,33 +174,13 @@ export function resolveAnswers(flags) {
         feed: merged.feed ?? null,
         checkpoints: merged.checkpoints ?? DEFAULT_CHECKPOINTS,
         cycle: merged.cycle !== false,
-        // NORMALISED to an array, because the two sources disagree about shape. The flag is
-        // repeatable and accumulates into one; an answers file may reasonably give a single string,
-        // which the value check above accepts as a string like every other key. Everything
-        // downstream — `.length`, `.map`, `packResolves`'s `.some` — is array-shaped, so a string
-        // reaching here turned a perfectly valid answers file into `roots.some is not a function`:
-        // a real answer, refused with a message about somebody else's bug. Found by review on the
-        // pull request. Normalising here rather than at each use keeps one shape after this line.
+        // An answers file may give a string, the repeatable flag an array.
         packRoots: [merged["pack-root"] ?? []].flat(),
-        // Null where nobody chose one, which is the host's own default: `init` never picks a lifetime, it
-        // offers one (proposal `0038`, item 4).
         cacheLifetime: merged["cache-lifetime"] ?? null,
     };
 }
 
-/** Everything that must be true before a single byte is written. Each refusal names what to type. */
 export function validateAnswers(answers) {
-    // The named+auto pair, refused for EVERY path rather than inside the one branch that resolves a
-    // pack. It lived in the `residence === "in-repo" && cycle && packRoots.length` arm until Copilot's
-    // round 3, so `--no-cycle` with both flags was accepted and one of them silently ignored —
-    // breaking the *refused in all five tools* claim that change made, in the fifth tool. _(Five was the
-    // set on #233; it is seven since `recipe-set` and this file joined. Kept as the round's own words
-    // rather than re-typed, and dated so it does not read as a present count.)_
-    //
-    // Third time this session that a correct refusal was placed where something could skip it: below a
-    // workspace read in `compile`, below a manifest read in `skills-set`, and inside a conditional
-    // here. The rule the three share is that a judgement about the COMMAND LINE belongs where the
-    // command line is assembled, not where its subject is used.
     const bothAsked = namedWithAuto(
         (answers.packRoots ?? []).filter((r) => r !== AUTO),
         (answers.packRoots ?? []).includes(AUTO),
@@ -378,16 +203,6 @@ export function validateAnswers(answers) {
                 `(${SLUG.source}). A workspace ships as a plugin through a feed, so its name is an identifier rather than a title.`,
         );
     }
-    // ACCEPTED-BUT-IGNORED is refused, because this file's header claims it refuses what it cannot
-    // act on and that claim has to be true. `--feed` and `--governed-by` mean nothing to a full
-    // workspace; `--pack-root`, `--checkpoints` and `--no-cycle` mean nothing to a pointer, which
-    // composes nothing. Silently dropping them lets a caller — or an answers file nobody re-reads —
-    // believe an option had an effect it never had, which is the same defect as `--summary ""`
-    // reaching a manifest: an answer accepted and then not honoured. Found by review on the pull
-    // request. Keyed on what was GIVEN, never on the resolved value, so a default never trips it.
-    //
-    // `--cache-lifetime` joined the pointer's list on 2026-09-24, with its own reason: a pointer drafts no
-    // repository whose settings `compile` writes, so a lifetime given to one would reach no session.
     const misplaced = {
         "in-repo": ["feed", "governed-by"],
         pointer: ["pack-root", "checkpoints", "cycle", "cache-lifetime"],
@@ -407,9 +222,6 @@ export function validateAnswers(answers) {
                 "Refused rather than ignored: an option accepted and then dropped is one you will believe had an effect.",
         );
     }
-    // A lifetime the host does not take is refused rather than written, because `compile` refuses the
-    // manifest that carries it and the adopter's first compile would stop on a value this tool accepted.
-    // The two it takes are `compile`'s own list, read rather than written out again.
     const lifetime = answers.cacheLifetime ?? null;
     if (lifetime !== null && !CACHE_LIFETIMES.includes(lifetime)) {
         throw new InitError(
@@ -419,12 +231,6 @@ export function validateAnswers(answers) {
     }
 
     if (answers.residence === "pointer") {
-        // Absent and invalid are different answers and take different refusals: telling an adopter
-        // who typed a malformed governor to pass the flag they just passed sends them to the wrong
-        // place. The EMPTY spelling never reaches here — the command line refuses it earlier, where
-        // the clearer sentence lives — so this branch is the omission and the one below is the
-        // malformation. Both matter because an empty or non-string governor is exactly the value
-        // `doctor` still mis-reports as a *conflicting* one (#141).
         if (answers.governedBy === null) {
             throw new InitError(
                 "a pointer must name the workspace that governs this repository — pass `--governed-by <workspace>`. " +
@@ -454,15 +260,7 @@ export function validateAnswers(answers) {
 
 // ------------------------------------------------------------------------- the codebase scan
 
-/**
- * Reads what the repository actually says about itself. **Observations only.**
- *
- * The failure an onboarding tool is most likely to commit is the confident default: emitting
- * `make test` because most repositories have one. `doctor` lints repo-card build and test claims
- * against the tree, so an invented claim is a red the adopter did not cause — and, worse, a workspace
- * that lies about them on the day it was created. Every field here is either read out of a file that
- * exists or left `null`, and `null` is written into the draft as *not determined* rather than dropped.
- */
+/** What the repository says of itself, observed only: a field nothing states stays null, never a likely default. */
 export function scan(dir, { comments = true } = {}) {
     const observed = { stack: [], build: null, test: null, run: null, name: null, vcs: null, evidence: [], commentHistory: null, uncounted: null };
     const has = (rel) => fs.existsSync(path.join(dir, rel));
@@ -486,9 +284,7 @@ export function scan(dir, { comments = true } = {}) {
         try {
             manifest = JSON.parse(read("package.json"));
         } catch {
-            // A package.json that does not parse is evidence of node and evidence of nothing else. It
-            // is not this tool's business to fix it, and reading scripts out of a guess would be the
-            // invented claim this whole function exists to avoid.
+            // Unparsed, it is evidence of node and of nothing else.
         }
         if (manifest && typeof manifest === "object") {
             if (typeof manifest.name === "string") observed.name = manifest.name;
@@ -503,8 +299,6 @@ export function scan(dir, { comments = true } = {}) {
     if (makefile !== null) {
         observed.stack.push("make");
         observed.evidence.push("Makefile");
-        // A target that exists is an observation; `make test` on a Makefile with no `test:` target is
-        // a guess, and would fail for the adopter the first time they ran it.
         for (const [target, key] of [["test", "test"], ["build", "build"], ["run", "run"]]) {
             if (observed[key] === null && new RegExp(`^${target}\\s*:`, "m").test(makefile)) observed[key] = `make ${target}`;
         }
@@ -530,15 +324,7 @@ export function scan(dir, { comments = true } = {}) {
 
 // ------------------------------------------------------------------------- the draft
 
-/**
- * Decides the whole file set and returns it. **Writes nothing.**
- *
- * The split from writing is what keeps every refusal ahead of the first byte on disk: a tool that
- * decides while writing has no state left in which it can still refuse. It also makes the shape
- * testable without a filesystem, which is why almost every assertion in the suite is cheap.
- *
- * @returns {Map<string, {contents: string, mode?: number}>} keyed by path relative to the target
- */
+/** Every drafted file, by path from the target: its `contents` and `mode`, `ifAbsent` to leave one already there, or `append` lines. */
 export function draft(answers, observed) {
     return answers.residence === "pointer" ? draftPointer(answers) : draftWorkspace(answers, observed);
 }
@@ -550,8 +336,7 @@ function json(value) {
 function draftPointer(answers) {
     const files = new Map();
 
-    // Exactly the five keys `doctor` permits a pointer, and no others. Anything more is not a
-    // cosmetic defect here — it is the dual-management refusal, and the adopter's first run is red.
+    // Exactly the keys `doctor` permits a pointer: any other is its dual-management refusal.
     const manifest = {
         portulan: { spec: SPEC },
         name: answers.name ?? "workspace",
@@ -619,10 +404,7 @@ function draftWorkspace(answers, observed) {
         name,
         summary: answers.summary ?? `The ${name} workspace — drafted by \`init\`, and not yet curated.`,
         kind: "repository",
-        // A `repository` workspace must declare `tree`: it is the policy layer of a repository that is
-        // present, so it has an answer, and without one every repo-card and gate-map claim silently
-        // degrades from checked to unverifiable. The constraint is `doctor`'s rather than the schema's,
-        // which makes it exactly the kind a generator forgets.
+        // `doctor`, not the schema, requires `tree` of a `repository` workspace.
         tree: "../",
         gates: "gates.json",
         slots: {
@@ -631,7 +413,6 @@ function draftWorkspace(answers, observed) {
             gates: "gate-map.md",
             dod: "dod.md",
             handoffs: "handoffs/",
-            // The boot card and any guidance beside it, compiled by `compile` into what the host loads.
             context: "context/",
         },
         verify: {
@@ -643,12 +424,6 @@ function draftWorkspace(answers, observed) {
                     requires: ["bash"],
                     doc: "verify/README.md",
                 },
-                // The records rail — row 7 clause (a)'s third record convention, beside the handoffs
-                // directory and the session-end binding. A generated index nothing compares is a file
-                // that is current until the first person forgets, which is the reminder this project
-                // trades for a rail wherever it can. It is NOT the default: the default is what the
-                // Stop-gate runs at every session end, and that slot belongs to the recipe saying
-                // whether the repository works.
                 {
                     id: "index",
                     run: "./.portulan/verify/index.sh",
@@ -658,15 +433,10 @@ function draftWorkspace(answers, observed) {
                 ...(observed.commentHistory === null ? [] : [{ ...commentsRecipeEntry(".portulan"), doc: "verify/README.md" }]),
             ],
         },
-        // Sited OUTSIDE the series it indexes: an index living in `handoffs/` would be counted as a
-        // handoff by everything that walks the directory. Declared, and not kept: `index --handoffs`
-        // prints it, and the `index` recipe renders it to prove every handoff yields a line.
+        // Outside `handoffs/`, where whatever walks the series would count it as a handoff.
         handoffs: { index: { path: "handoffs-index.md" } },
     };
     if (answers.cycle) manifest.packs = [answers.checkpoints];
-    // Only where a person chose a lifetime, by a flag, an answers file or a yes at the question: the key is
-    // written and the settings are not, since `compile` is their one writer and the closing report says to
-    // run it. Unchosen, the manifest is the one drafted before the offer existed.
     if (lifetime !== null) manifest.sessions = { cache_lifetime: lifetime };
     const commented = observed.commentHistory !== null;
 
@@ -684,23 +454,10 @@ function draftWorkspace(answers, observed) {
         const bundle = path.resolve(HERE, "..");
         files.set(".portulan/verify/comments.sh", { contents: commentsRecipe({ bundle, limit: observed.commentHistory, toTree: "../.." }), mode: 0o755 });
     }
-    // **The index is not kept** (2026-09-23): a committed copy conflicted on every merge that added a
-    // handoff and carried nothing the series does not, so none is written, and its path is git-ignored
-    // so none is committed by accident. `index --check` renders the series with no copy on disk, which
-    // proves every handoff yields a line: the rail keeps a subject from the first day.
-    //
-    // A Map of files cannot express an empty directory and git does not track one, so the slot's
-    // directory is created by its README, which is the handoff template: written for open work only.
     files.set(".portulan/handoffs/README.md", { contents: handoffsReadme() });
     files.set(".gitignore", { append: handoffIndexIgnore(`.portulan/${manifest.handoffs.index.path}`, ".portulan") });
-    // A change's changelog entry is a fragment, so the directory a release cut assembles is drafted
-    // with the rule it keeps. At the repository's root, like the changelog it feeds; where the
-    // repository already has one, it is the repository's, and it is left as it is rather than refused.
     files.set("changes/README.md", { contents: changesReadme(), ifAbsent: true });
 
-    // **The boot card**, drafted from the files above and compiled by `run` once they are on disk: the
-    // identity imported whole, the leads of the principles and the definition of done, and the gates of
-    // the policy, so a session reads no slot to boot and the card says no less than the files it stands for.
     const read = (rel) => files.get(`.portulan/${rel}`)?.contents ?? null;
     files.set(".portulan/context/boot.md", { contents: draftCard(manifest, read, { workspace: ".portulan", inTree: (rel) => !path.posix.normalize(rel).startsWith("..") }) });
 
@@ -711,10 +468,7 @@ function draftPolicy() {
     return {
         portulan: { spec: GATE_POLICY_SPEC },
         why: "gate-map.md",
-        // A floor is drafted with no required checks, deliberately. `doctor` FAILS a floor requiring a
-        // status check no workflow job in the tree reports — so a draft naming the checks this
-        // repository has not written yet would put a red in the adopter's first run and teach them the
-        // tool guesses. The branch is the answer nearly every repository shares; the checks are theirs.
+        // No required checks: `doctor` fails a floor requiring one that no workflow in the tree reports.
         floor: {
             branch: "main",
             checks: [],
@@ -722,12 +476,7 @@ function draftPolicy() {
             resolve_conversations: true,
         },
         rules: [
-            // The two rules below are the ones the FLOOR backend can actually compile — a policy
-            // whose floor no rule reaches is refused outright, so a starter policy that declared a
-            // floor and gated only `gh pr merge` would put a hard red in the adopter's very first
-            // run. Found by running the real validator against a real draft rather than by reading
-            // the compiler. They are also the right two to start with: both destroy a ref rather
-            // than adding one, which is the property that puts them above the line.
+            // Rules the floor backend compiles: `compile` refuses a policy whose floor no rule reaches.
             {
                 id: "force-push-without-a-lease",
                 tier: "gated",
@@ -1063,35 +812,7 @@ exit 2
 `;
 }
 
-/**
- * The records rail, drafted with its own honest first state.
- *
- * Unlike `workspace.sh` this one is **finished** — it checks a real thing on the day it is written,
- * because the index it holds current is written beside it. What it cannot promise is that the tool is
- * reachable: the package is published, but a drafted workspace does not install it, so on an adopter's
- * CI none of the three locations may answer and the recipe's expected first state there is **exit 2**.
- * Publication widened the ways it CAN be reachable; it did not make it reachable by default. That is the honest code and it is
- * said in `verify/README.md` as well, rather than discovered when a pipeline goes amber.
- *
- * The third location is the bundle this workspace was drafted from, and it is written in as a
- * MACHINE-LOCAL convenience for the person who ran `init` — an absolute path on one machine, which
- * git cannot carry anywhere (`.portulan/memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md`).
- * The script says so where a reader meets it, so nobody reads it as a portable location.
- *
- * **Both lines carrying it are marked `# portulan:bundle-fallback`, and the marker is the point.** A
- * workspace is not fixed where it was drafted: `vendor --switch` copies these files byte for byte into
- * another residence — so this path travels to machines it was never true on, and it does so silently,
- * because a stale absolute path exits 2 rather than failing loudly. A comment asking the next
- * implementer to notice is the reminder this project trades away wherever it can; a fixed token is
- * something a rewriter can **find**.
- *
- * **The rewriter arrived at milestone 7 session 9**, and this sentence read "`upgrade` *will* rewrite
- * them" until it did: `spec/migrations/0002-bundle-fallback-path.mjs`, run by `portulan upgrade`,
- * re-derives every marked line for the bundle it is running from — wherever the line is, since the
- * marker rather than the filename is the contract. `cli/vendor.mjs` and that step both cite the token
- * and `init.test.mjs` asserts they do, so the marker cannot be dropped by an edit to this recipe that
- * forgets why it was there.
- */
+/** The records rail; its `portulan:bundle-fallback` lines hold a machine-local path, which `spec/migrations/0002` re-derives. */
 function draftIndexRecipe() {
     const bundle = path.resolve(HERE, "..");
     return `#!/usr/bin/env bash
@@ -1162,19 +883,7 @@ exit "\$code"
 `;
 }
 
-/**
- * Compile the drafted card, and say what the always tier then costs, with `0036`'s offer of a budget.
- *
- * **After everything is written, and never a reason to report writing nothing.** `init` compiles only the
- * guidance half, through `compile`'s own planner and emitter (2026-09-24): the rules the host loads, never
- * `.claude/settings.json`, which stays the output of a
- * `compile` a human runs, as the README says. A refusal there, a rule written by hand where the card would
- * go, is reported and leaves the workspace booting as it did until it is cleared.
- *
- * **The offer is printed and not written.** `0036` rules the budget is declared, never defaulted, and
- * counted at a ratio the host's exact count measured on this repository; the schema has no way to record a
- * ratio nobody measured, so a budget written here would claim a calibration no one ran (2026-09-24).
- */
+/** After the write, so a failed compile only warns; the guidance half only, since `.claude/settings.json` comes from a `compile` a person runs. */
 function reportCard(target, say, warn) {
     try {
         compileGuidance(target);
@@ -1199,21 +908,10 @@ function reportCard(target, say, warn) {
             `A budget is yours to declare: 0036 offers the larger of ${OFFER_FLOOR_TOKENS.toLocaleString("en-US")} tokens and that, ` +
             `${Math.max(OFFER_FLOOR_TOKENS, tokens).toLocaleString("en-US")}, as \`context.always.budget.tokens\`, beside a \`context.ratio\` Claude Code's exact count measured here`,
     );
-    // A large instruction file is offered the split, printed and never made: which sections may leave every
-    // context is the team's to mark (2026-09-24).
     const offer = offerText(splitOffers(target, { ratio: ESTIMATED_BYTES_PER_TOKEN, floor: OFFER_FLOOR_TOKENS }));
     if (offer !== null) say(`init: ${offer}`);
 }
 
-/**
- * Say what the draft declares of the cache lifetime, beside `0036`'s offer of a budget: the offer of
- * five-minute writes where nobody chose, one line where a person declined it at the question, and where a
- * lifetime was chosen, that `portulan compile` is what writes it into the settings the host reads.
- *
- * **Printed and not written, like the budget.** The offer carries its trade-off, because five minutes is the
- * dearer lifetime for a session that pauses, and it names the key and the version it needs, since the drafted
- * manifest stays at 2.10 unless a lifetime was chosen (proposal `0038`, item 4, 2026-09-24).
- */
 function reportLifetime(answers, say) {
     const lifetime = answers.cacheLifetime ?? null;
     if (lifetime !== null) {
@@ -1233,25 +931,8 @@ function reportLifetime(answers, say) {
 
 // ------------------------------------------------------------------------- writing
 
-/**
- * The residence already present in a target, if any.
- *
- * An unreadable manifest returns `unreadable` rather than `none`, and the distinction is the whole
- * point: reading a parse failure as "no workspace here" would make a corrupt manifest the one case
- * where this tool overwrites — the case where it knows least and where overwriting costs most.
- */
 export function residenceAt(target) {
-    // The path to the manifest is walked with `lstatSync` BEFORE anything is read, and that order is
-    // the whole of it. This function used `existsSync`/`readFileSync`, which follow symlinks — so a
-    // repository with a `.portulan` symlink pointing at somebody else's workspace made `init` read a
-    // manifest OUTSIDE the target and announce *"this repository already carries a `repository`
-    // workspace"*, naming a workspace that is not in this repository at all. Two failures in one
-    // sentence: an out-of-repo read, and a refusal that misdescribed what it found.
-    //
-    // It also ran ahead of the symlink-aware collision check, so the containment guarantee that check
-    // exists to give was reachable only when this function happened not to fire first. A guarantee
-    // that depends on which check runs first is not a guarantee. Found by review on the pull request,
-    // as the follow-up to the escape it is the other half of.
+    // `lstat` down the path before any read: `readFileSync` follows a `.portulan` link out of the repository.
     let here = target;
     for (const segment of [".portulan", "workspace.json"]) {
         here = path.join(here, segment);
@@ -1259,16 +940,7 @@ export function residenceAt(target) {
         try {
             stat = fs.lstatSync(here);
         } catch (error) {
-            // ONLY `ENOENT` means "nothing here". Every other error — EACCES above all — means the
-            // question could not be answered, and answering "no residence" to a question that could
-            // not be answered is the fail-open that `a-checker-must-refuse-what-it-cannot-check.md` governs:
-            // "nothing looked" reported as "nothing wrong". A permission error here would have let
-            // `init` proceed to write into a directory it could not even stat.
             if (error.code === "ENOENT") return { state: "none" };
-            // `kind` is carried because the two ways of being unreadable need DIFFERENT sentences.
-            // Telling somebody with a permissions problem to "repair the JSON" is a refusal that
-            // misdescribes what it found — the defect the read-side symlink fix was about, arriving
-            // one round later in the message rather than in the check.
             return { state: "unreadable", kind: "io", why: error.message };
         }
         if (stat.isSymbolicLink()) return { state: "symlink", where: path.relative(target, here) };
@@ -1282,70 +954,12 @@ export function residenceAt(target) {
     return { state: "present", kind: parsed?.kind ?? "unknown", name: parsed?.name ?? null };
 }
 
-/**
- * The FIRST root that carries the pack, or null.
- *
- * It returned a boolean until 2026-08-13, and the root is needed now rather than merely convenient: the
- * unasked path resolves from **either** the host's plugin cache or the workspace's own `<target>/packs`,
- * and the closing advice was written claiming the cache for both. A sentence naming the wrong residence
- * is worse than one naming none — it sends an adopter to uninstall a plugin that had nothing to do with
- * it. Found by trying to write the test for the degrade, which is the half reading never catches.
- *
- * First-match-wins, matching `resolvePack`, so the order `expandRoots` returns is the order that decides.
- */
+/** The first of `roots` carrying `packId`, or null: first match wins, as in `resolvePack`. */
 function packResolvedAt(roots, packId) {
     return roots.find((root) => fs.existsSync(path.join(root, packId, "pack.json"))) ?? null;
 }
 
-/**
- * The roots `init` checks a composed pack against, resolving `auto` the way the other four tools do.
- *
- * `auto` is kept VERBATIM in the answers file rather than expanded into the path it resolved to today:
- * a persisted answer naming a machine-specific cache path is exactly what an answers file exists to
- * avoid, and `auto` replays correctly on another machine while a path does not.
- *
- * **Two unions, and only one of them is law — do not collapse them.**
- *
- * - **Named ∪ discovered is still REFUSED.** The first version of this appended discovered roots
- *   beside named ones, which made `init` the odd tool out with union semantics: the divergence
- *   `../cli/compile.mjs`'s `namedRootsOption` records, re-committed inside the change that cites it.
- *   Since 2026-08-12 asking for both is a refusal rather than a silent drop, which is stricter than
- *   what that incident produced and in the same direction. _(This said "the only tool of **five**",
- *   a figure that was seven by the time `recipe-set` and `init` joined the refusal — see
- *   `NAMED_WITH_AUTO`, which derives nothing and has now been wrong twice. The count is dropped rather
- *   than corrected, because nothing in the sentence needs it.)_
- * - **Discovered ∪ derived IS law**, as of the same date, in `discover.mjs`'s `resolutionRoots`. A
- *   later reader must not "fix" this arm by citing the incident above: that incident is about the
- *   first pair, and this arm implements the second.
- *
- * The derived root here is the one the workspace **being drafted** would have — `<target>/packs` —
- * because this check exists to predict the `doctor` run that follows the draft. Mirroring the shared
- * rule is what stops `init` refusing a composition that `doctor` then resolves happily: a false red
- * against the very tool it is predicting. _(That read "`doctor --pack-root auto`" until 2026-08-13,
- * when the bare invocation started resolving the same way — which is precisely why this arm had to
- * gain its own unasked branch below rather than staying a named-roots check.)_
- *
- * ## The UNASKED arm, added 2026-08-13 with the disposal, and its one hard rule
- *
- * `doctor` consults discovery unasked as of that date, so this check must too or it stops predicting
- * the run it exists to predict — and the prediction is the whole reason it is here. But `init` **WRITES
- * FILES**, and that makes one arm of the disposal non-negotiable here:
- *
- * **On the unasked path, a pack that does not resolve is ADVICE and never a refusal.** A refusal would
- * mean `init` drafts a workspace on a host where the pack is installed and refuses to draft one where
- * it is not — host-dependence deciding whether files exist, which is worse than any verdict moving.
- * `--pack-root <dir>` and `--pack-root auto` keep their refusals: a caller who said where to look and
- * was wrong is owed one. Nobody who said nothing is.
- *
- * **And the DRAFT ITSELF is byte-identical on every host.** Discovery reaches the advice and the
- * resolvability answer, never `draft()`. That is `../docs/vision.md`'s *no auto-generated curated
- * context* at the one tool that could break it, and `init.test.mjs` hashes the drafted files on a host
- * with a record and on one without to keep it that way.
- *
- * Returns `{ roots, why, refusal, asked }`. `why` is non-null only when discovery **could not look**,
- * which a caller must be able to tell from *looked and found nothing*; `asked` is what lets the caller
- * choose between a refusal and a sentence for the same answer.
- */
+/** The roots a composed pack is checked against, predicting the `doctor` run after the draft; `why` is set only where discovery could not look. */
 function expandRoots(roots, target, env) {
     const named = roots.filter((root) => root !== AUTO);
     const forced = roots.includes(AUTO);
@@ -1353,41 +967,14 @@ function expandRoots(roots, target, env) {
     const refusal = namedWithAuto(named, forced);
     if (refusal) return { roots: [], why: null, refusal, asked: true };
     if (named.length) return { roots: named, why: null, refusal: null, asked: true };
-    // `env` is the injection seam — see `index.mjs`'s `readScopes`.
     const found = discoverPackRoots({ env });
-    // Could not look. Asked, that is a refusal at the call site; unasked, the derived root carries on
-    // alone and the sentence says why the other half is missing — the same degrade
-    // `../cli/discover.mjs`'s `resolutionRoots` makes, for the same reason.
     if (!found.ok) return { roots: forced ? [] : [derived], why: found.why, refusal: null, asked: forced };
     return { roots: [...found.roots, derived], why: null, refusal: null, asked: forced };
 }
 
-/**
- * Every path in the draft that cannot be written without destroying or being blocked by something.
- *
- * The residence check above keys on the MANIFEST, which is right for "is this repository governed?"
- * and wrong for "is it safe to write here?". A `.portulan/` holding a hand-written `gate-map.md` and
- * no manifest is not a residence — and the first version of this tool silently replaced that file.
- * The two questions are separate and both have to be asked.
- *
- * Blocked ancestors are the same check from the other side: a `verify` that is a *file* makes
- * `verify/README.md` unwritable, and finding that out halfway through the write loop is how a run
- * leaves a torso behind.
- */
 export function collisions(target, files) {
     const found = [];
     for (const rel of files.keys()) {
-        // Walked from the target DOWN, one segment at a time, with `lstatSync` — never `statSync`,
-        // and never `existsSync`. Both of those FOLLOW symlinks, which is how the first version of
-        // this check let a `.portulan` symlink carry the whole drafted workspace out of the
-        // repository: `init` wrote nine files somewhere else entirely and reported success.
-        // Demonstrated on the pull request. `doctor` and `plugin-lint` already treat a symlink escape
-        // as significant; this is the same rule arriving at the tool that WRITES, where it matters
-        // more than at the tools that read.
-        //
-        // A symlink anywhere on the chain is a collision rather than something to resolve and permit.
-        // Resolving it would mean deciding whether the destination is "really" inside the repository,
-        // which is a containment judgement with a bad failure mode; refusing is a judgement with none.
         const segments = rel.split("/");
         let here = target;
         for (let i = 0; i < segments.length; i++) {
@@ -1397,14 +984,9 @@ export function collisions(target, files) {
                 stat = fs.lstatSync(here);
             } catch (error) {
                 if (error.code === "ENOENT") {
-                    // Absent — and nothing below an absent directory can exist either, so this path
-                    // is clear and the walk stops.
+                    // Nothing can exist below an absent path, so the rest of the chain is clear.
                     break;
                 }
-                // Anything else — EACCES above all — means this path's state is UNKNOWN, and an
-                // unknown is not a clear. Declaring it clear would let the write loop start on the
-                // strength of a question nobody could answer, which is precisely the guarantee this
-                // function exists to give. Reported as a collision so the run refuses.
                 found.push({ rel, why: `\`${path.relative(target, here)}\` could not be examined (${error.code})` });
                 break;
             }
@@ -1414,9 +996,6 @@ export function collisions(target, files) {
                 break;
             }
             if (i === segments.length - 1) {
-                // A file drafted as lines to append, the `.gitignore`, is merged into rather than
-                // replaced, and one drafted only where absent, `changes/README.md`, is left as it is, so
-                // neither being there is a collision; being something other than a file is.
                 if (files.get(rel)?.append === undefined && !files.get(rel)?.ifAbsent) found.push({ rel, why: "already exists" });
                 else if (!stat.isFile()) found.push({ rel, why: `\`${where}\` is in the way and is not a file` });
                 break;
@@ -1432,18 +1011,8 @@ export function collisions(target, files) {
 
 // ------------------------------------------------------------------------- the interview
 
-/**
- * Every refusal owed to a repository that is already governed, in one place.
- *
- * Extracted from `run` when the interview arrived, because it is now asked at two moments — before a
- * human is made to answer five questions, and at the point in the sequence it has always occupied —
- * and a second spelling of three refusals is three chances for them to drift apart.
- */
 export function refuseIfGoverned(existing, spelling) {
     if (existing.state === "symlink") {
-        // Handled here rather than left to the collision check, so the containment refusal does not
-        // depend on which check happens to run first — and so nothing outside the repository was read
-        // in order to produce it.
         throw new InitError(
             `\`${existing.where}\` is a symlink, and \`init\` will not follow one out of the repository — not to write ` +
                 `through it, and not to read a workspace manifest through it either. A manifest reached that way ` +
@@ -1480,14 +1049,6 @@ export function refuseIfGoverned(existing, spelling) {
     }
 }
 
-/**
- * The default reader: a real terminal, and only where there is one at BOTH ends.
- *
- * `interactive` is the whole gate on the interview, and it is two questions rather than one. A pipe
- * on stdin is a script; a redirected stdout is a log — and prompting into either produces a run that
- * hangs waiting for an answer nobody is there to give, which on CI is a job that burns its timeout
- * instead of printing the refusal that names the flag to pass.
- */
 function terminal() {
     return {
         interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
@@ -1497,8 +1058,7 @@ function terminal() {
             try {
                 return await rl.question(question);
             } catch {
-                // A closed stdin rejects rather than returning. Both are "no answer is coming", and
-                // the caller's EOF handling is where that becomes a refusal.
+                // A closed stdin rejects rather than returning: no answer is coming, which the caller refuses.
                 return null;
             } finally {
                 rl.close();
@@ -1510,30 +1070,11 @@ function terminal() {
     };
 }
 
-/**
- * Ask for what the flags did not supply, and fill `answers` in place.
- *
- * **What the gloss asked for and what this closes.** `docs/vision.md` § *Delivery tiers* glosses `init`
- * as an interview plus a codebase scan that drafts a workspace, which humans curate. The scan has
- * shipped since session 1 and the substrate — every question modelled as an answer, with one validator
- * each — since then; the prompt loop was the open half, and this is it. Nothing here decides anything
- * the flags path could not decide, which is the property that keeps the two paths one tool.
- *
- * **A question is re-asked, never fatal.** The flags path refuses a bad value because there is nobody
- * to ask again; here there is, and aborting an interview on a typo would make the interactive path the
- * unforgiving one. The validators are the same functions, so the two paths cannot drift into
- * disagreeing about what a valid answer is.
- *
- * Every answer supplied by a flag or an answers file is skipped: being asked to confirm something you
- * just typed on the command line reads as the tool not having listened.
- */
+/** Asks for what the flags and the answers file did not give, and fills `answers` in place. */
 export async function interview(answers, { io, target, derivedName }) {
     const ask = async (prompt, { fallback = null, validate = () => null } = {}) => {
         for (;;) {
             const raw = await io.ask(fallback === null ? `${prompt}: ` : `${prompt} [${fallback}]: `);
-            // EOF — Ctrl-D, or a stream that closed — is not an empty answer. An empty LINE accepts
-            // the offered default; end-of-input means no answer is coming, and the run stops with
-            // nothing written rather than proceeding on defaults nobody confirmed.
             if (raw === null) throw new InitError("no answer — the interview ended before it finished, and nothing was written");
             const value = raw.trim() === "" ? fallback : raw.trim();
             if (value === null || value === "") {
@@ -1582,8 +1123,6 @@ export async function interview(answers, { io, target, derivedName }) {
             answers.given.add("governed-by");
         }
         if (answers.feed === null) {
-            // `none` rather than an empty line, because an empty line means *take the default* at
-            // every other prompt and a second meaning for it here is how an answer gets misread.
             const feed = await ask("the feed it ships through", { fallback: "none" });
             if (feed !== "none") {
                 answers.feed = feed;
@@ -1603,11 +1142,6 @@ export async function interview(answers, { io, target, derivedName }) {
         }
     }
 
-    // **The cache lifetime, after every other question and only of a workspace that lives here**: a pointer
-    // drafts no repository whose settings `compile` writes. The offer's three texts come first, the trade-off
-    // among them, so a yes is given knowing what a pause costs; yes is five minutes, and anything else leaves
-    // the host's default, the answer `init` gave before it asked (proposal `0038`, item 4, 2026-09-24). An
-    // end of input is no answer, as at every other prompt, and stops the run with nothing written.
     if (answers.residence === "in-repo" && !answers.given.has("cache-lifetime")) {
         io.say("");
         for (const line of offerLines({ asking: true })) io.say(line);
@@ -1621,8 +1155,6 @@ export async function interview(answers, { io, target, derivedName }) {
         }
     }
 
-    // The last question, and the one that makes every answer above reversible: everything is echoed
-    // and nothing has been written. A confirmation printed AFTER the write would be a receipt.
     io.say("");
     io.say("init: about to draft");
     io.say(`  residence   ${answers.residence}`);
@@ -1642,8 +1174,6 @@ export async function interview(answers, { io, target, derivedName }) {
     io.say("");
     const confirm = await io.ask("Write these files? [y/N]: ");
     if (confirm === null || !/^y(es)?$/i.test(confirm.trim())) {
-        // Exit 2, because this file has exactly two codes and 0 means *it wrote*. A decline is not a
-        // verdict about anybody's workspace either, so 1 stays as absent as it has always been.
         throw new InitError("nothing written — you declined at the confirmation. Run this again when the answers are right.");
     }
 }
@@ -1654,8 +1184,6 @@ export function usage() {
     return [
         "portulan init — draft a workspace for a repository that has none",
         "",
-        // Both spellings, for #155's reason: the tool is reachable through the entry point and from a
-        // checkout, and a usage line naming only one of them is wrong for whoever arrived the other way.
         "  portulan init [options] <repository-directory>",
         "  node cli/init.mjs [options] <repository-directory>      (from a checkout)",
         "",
@@ -1722,18 +1250,10 @@ export async function run(argv, options = {}) {
         const answers = resolveAnswers(parsed.flags);
         const derivedName = slugify(path.basename(target));
 
-        // The interview, and the two conditions on it. A prompt loop cannot be run by CI, by a test or
-        // by a headless host, so **everything below happens only where somebody is at both ends** —
-        // stdin and stdout are both TTYs — and a non-interactive run is byte-for-byte what it was
-        // before this existed. `--no-interview` is the escape for a TTY that wants the old refusals.
-        //
-        // The governance question is asked FIRST and by the machine, not the human: being made to
-        // answer five questions and then told this repository already has a workspace is the shape of
-        // a tool that asks before it looks. The same refusal stands where it always did, for callers
-        // that never reach this branch — running it twice is two reads and no writes.
         const io = options.io ?? terminal();
         const interviewing = io.interactive && !parsed.flags.noInterview;
         if (interviewing) {
+            // Asked before the questions too, so nobody answers them to be told the repository is already governed.
             refuseIfGoverned(residenceAt(target), parsed.target);
             await interview(answers, { io, target, derivedName });
         }
@@ -1747,20 +1267,11 @@ export async function run(argv, options = {}) {
         }
         validateAnswers(answers);
 
-        // Before a byte: is this repository already governed? A repository is governed by exactly one
-        // workspace, so finding one here is a refusal rather than a prompt to replace it.
         refuseIfGoverned(residenceAt(target), parsed.target);
 
-        // **`answers.packRoots.length` was the gate, and dropping it is what makes the unasked arm
-        // live.** With it, `expandRoots`' new branch was unreachable from the command line — the exact
-        // shape of dead plumbing `skills-set` and `recipe-set` were each caught with, a capability that
-        // reads as wired and is none. Every `in-repo` run that composes a pack now asks the question;
-        // what differs is whether the answer can refuse.
         let packAdvice = null;
         if (answers.residence === "in-repo" && answers.cycle) {
             const expanded = expandRoots(answers.packRoots, target, options.env);
-            // Belt and braces: `validateAnswers` has already refused this pair on every path. Kept
-            // because `expandRoots` is reachable on its own and must not answer with an empty set.
             if (expanded.refusal) throw new InitError(expanded.refusal);
             const resolvedAt = packResolvedAt(expanded.roots, answers.checkpoints);
             const resolved = resolvedAt !== null;
@@ -1780,36 +1291,20 @@ export async function run(argv, options = {}) {
                     );
                 }
             }
-            // **Unasked: an answer, never a refusal.** Carried to the closing advice rather than thrown,
-            // because a run that refuses to draft on one host and drafts on another has made the
-            // existence of files a function of the machine. The three answers are kept apart — resolved,
-            // looked-and-absent, could-not-look — because "the pack is not here" and "I could not tell"
-            // send a reader to different places.
-            // `inTree` is what keeps the advice from naming the wrong residence: the unasked path
-            // searches the host cache AND `<target>/packs`, and only the second is the repository's own.
+            // Unasked, an unresolved pack is advice, never a refusal: whether files are written must not depend on the host.
             packAdvice = { resolved, why: expanded.why, inTree: resolvedAt !== null && resolvedAt === path.join(target, "packs") };
         }
 
         const observed = scan(target, { comments: answers.residence !== "pointer" });
         const files = draft(answers, observed);
 
-        // Where the repository's `.gitignore` hides `.claude/`, the compiled card would never reach a
-        // review or a fresh checkout: the exceptions that let git see it join the lines drafted for the
-        // file, as git answers for this repository. No git, no ignore rules, nothing to add.
         if (files.has(".gitignore")) {
             const { lines } = claudeRulesUnignore(target);
             if (lines.length) files.get(".gitignore").append.push("", ...lines);
         }
 
-        // The second safety question, and it is not the one above. "Is this repository governed?"
-        // keys on the manifest; "may I write here?" keys on every path the draft touches. A
-        // `.portulan/` with a hand-written file and no manifest answers no to the first and must
-        // still stop the second.
         const clash = collisions(target, files);
         if (clash.length) {
-            // Grouped by CAUSE, not listed per path. One symlinked `.portulan` blocks every drafted
-            // file, and naming it ten times buries the single fact the reader needs under nine
-            // copies of it — a refusal nobody finishes reading is a refusal that failed to explain.
             const byCause = new Map();
             for (const { rel, why } of clash) (byCause.get(why) ?? byCause.set(why, []).get(why)).push(rel);
             const summary = [...byCause]
@@ -1827,12 +1322,7 @@ export async function run(argv, options = {}) {
             );
         }
 
-        // Every refusal is ahead of this line, so a run that reaches here has nothing left to
-        // discover — but I/O can still fail for reasons no check can see, and the ORDER decides what
-        // a failure leaves behind. `workspace.json` is written LAST: written first, a half-completed
-        // run leaves a torso that the residence check above then reads as a governed repository,
-        // and the retry is refused with a sentence that is false. Last, the same failure leaves
-        // files and no manifest — which the collision check reports plainly and a person can clear.
+        // The manifest last: a run failing midway leaves no torso that `residenceAt` would read as a governed repository.
         const manifest = ".portulan/workspace.json";
         const left = [];
         for (const [rel, file] of [...files].filter(([rel]) => rel !== manifest).concat([[manifest, files.get(manifest)]])) {
@@ -1874,20 +1364,6 @@ export async function run(argv, options = {}) {
             say("init: the verify recipe exits 2 until you say what green means here — that is deliberate.");
             if (observed.commentHistory === null) say(`init: drafted no \`comments\` recipe, since its count could not be taken: ${observed.uncounted}; \`portulan upgrade\` offers one once it can be.`);
             if (answers.cycle) {
-                // Said at the surface rather than only in a file, because the alternative is that the
-                // adopter's very next command is `doctor`, it is RED on a pack nothing can find, and
-                // the tool that put it there said nothing about it.
-                //
-                // **It used to say that unconditionally**, in the words "nothing resolves a pack for
-                // you … name where it lives" — which stopped being true when `--pack-root auto`
-                // landed at milestone 7 session 4, and read as advice to go and find a cache path by
-                // hand immediately after `auto` had found one. Worse than merely stale: this tool has
-                // ALREADY checked resolvability above, so it knew. Found by running `init` on a real
-                // never-seen repository for D1, which is the half of this class no reading catches.
-                // **The invocation printed is the one that WORKS, and since 2026-08-13 that is usually
-                // the bare one.** `doctor` consults discovery unasked, so a host carrying the pack needs
-                // no flag at all — and printing `--pack-root auto` there would be the same defect this
-                // branch was already fixed for once, advice to type something the tool no longer needs.
                 const workspaceArg = path.join(parsed.target, ".portulan");
                 if (answers.packRoots.length) {
                     const rootArgs = answers.packRoots.map((r) => `--pack-root ${r}`).join(" ");
@@ -1897,10 +1373,6 @@ export async function run(argv, options = {}) {
                     const where = packAdvice.inTree ? "from `packs/` in this repository" : "from this host's plugin cache";
                     say(`init: this workspace composes \`${answers.checkpoints}\`, and it resolved ${where} — validate with:`);
                     say(`init:   doctor ${workspaceArg}`);
-                    // Said out loud because it is the one thing the green does not certify — and only
-                    // where it is TRUE. A pack found on this machine is not in the repository, so a CI
-                    // runner with nothing installed derives `<repo>/packs` alone and reports it
-                    // unresolved; a pack found in the tree travels with the tree and needs no warning.
                     if (!packAdvice.inTree) {
                         say("init: that root is this machine's, not the repository's — pin `--pack-root <dir>` in CI.");
                     }
@@ -1932,12 +1404,7 @@ export async function run(argv, options = {}) {
     }
 }
 
-// The `?? ""` is not decoration and every sibling tool here carries it: `process.argv[1]` is absent
-// when this module is imported by something that is not a script — `node -e "import('./init.mjs')"`,
-// which is how a suite or a REPL reaches it — and `pathToFileURL(undefined)` throws at module load.
-// This file argued two hundred lines up that an unreadable schema must not throw while loading,
-// because the entry point can only turn that into a stack trace; it then omitted the guard that makes
-// the same promise here. Found at the pre-commit checkpoint.
+// `?? ""`: `process.argv[1]` is absent when a non-script imports this, and `pathToFileURL(undefined)` throws.
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     process.exitCode = await run(process.argv.slice(2));
 }

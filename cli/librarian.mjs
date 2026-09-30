@@ -3,79 +3,17 @@
 //
 //   node cli/librarian.mjs [--as-of YYYY-MM-DD] [--since YYYY-MM-DD] [--write] [--report <path>] [--reviews <path>] <workspace-dir> [...]
 //
-// `--write` regenerates an index that has drifted, which is the pass's only write to the tree. `--report`
-// writes what the pass found, as Markdown, to a path its scheduler names outside the tree (one inside a
-// named workspace, or inside the tree one declares, is refused), and the scheduler files it: with the
-// pull request when the tree changed. The pass writes no handoff, since
-// a handoff carries a session's open work and a scheduled pass leaves none (the coordinator session's
-// delegated call of 2026-09-24), and no Session log entry, since the log retired on 2026-09-23.
+// `--write` regenerates a drifted index, the pass's only write to the tree; `--report` writes the report as
+// Markdown, never inside a workspace named or a tree one declares.
 //
-// Exit 0 the pass ran and recorded what it found · 2 it could not run. **There is no 1**, and that is
-// the design rather than an omission: `doctor`, `index` and `compile` are checkers, where 1 means red
-// and a red blocks. This is not a checker. A stale record is not a broken build, and a tool that
-// exited 1 on one would turn every nag into a failing job until somebody switched the job off — which
-// is what ../.portulan/verify/README.md says happens to checks that cry wolf.
+// Exit 0 the pass ran and recorded what it found · 2 it could not run. No 1: a stale record is a nag, not a red.
 //
-// ## What this is, and the one thing it can do that `doctor` cannot
+// Everything it emits is a literal in this file or derived from the tree, never prose composed at run time:
+// that is what makes its report safe to file unattended.
 //
-// ../core/operating/memory.md gives the store four states and the fourth is **Retire**. `doctor`
-// reports the store's count and size and says, in its own output, why it stops there: "ages live in
-// git, which doctor does not read, so staleness is the librarian's (milestone 5)". That is this file.
-// Reading history is the affordance a scheduled job has and a verify recipe must not take — a check
-// that reads history is a false-red generator in a shallow CI checkout, so the rule is that the
-// *recipe* never asks and this *pass* always may.
-//
-// The four passes are the ones ../docs/plan.md's milestone-5 row names:
-//
-//   reindex     regenerate the memory index, so a drift on `main` becomes a diff someone reviews
-//   staleness   every record's last-touched date from git, plus the sealed-stamp re-validation nag
-//   proposals   which rule changes are still waiting on the human gate, and for how long
-//   demotions   a draft per record the human might retire — evidence assembled, nothing decided
-//
-// ## It drafts. It decides nothing.
-//
-// ../docs/vision.md § thesis 4: the librarian retires rules whose incidents can no longer occur, and
-// cannot judge a sealed rule, so it nags the owner to re-validate it instead. Read exactly: **it cannot
-// evaluate a retirement condition at all.** `Retire when: the generated client is deleted` is a
-// sentence about a world this process cannot see. So a demotion draft carries the condition verbatim,
-// the evidence a machine can gather (an age, and whether anything the condition names still exists),
-// and a recommendation addressed to a human — never a verdict. A draft that said *this has fired*
-// would be the tool exceeding its charter inside the artifact the maintainer trusts it with.
-//
-// ## Why it composes no new prose at run time, and what that buys
-//
-// Precisely: every string this pass emits is either a **literal in this file** — reviewed and
-// seam-scanned in the change that added it, like any other source — or **derived** from the tree: a
-// filename, a date git recorded, a count, a condition quoted from a record that passed the scan when
-// it landed. Nothing is composed about the work at run time. A rearrangement of already-scanned atoms
-// cannot carry a term the scan has not already seen, which is what makes the output safe to file
-// automatically.
-//
-// The claim is worded that way rather than as *authors no prose*, which a pre-commit checkpoint
-// pointed out is false on its face — the report below is full of sentences. The distinction between
-// *written by a reviewed change* and *written by an unattended run* is the one that matters, and it is
-// the difference between this and having the pass write a summary in its own words, which would put an
-// unreviewed sentence into a permanent history on a cron.
-//
-// That premise used to read "into a public repository". Corrected 2026-08-10 when the repository went
-// private, and true again since 2026-08-17: it was public 2026-07-27 to 2026-08-03, private after that,
-// and is public again. The hazard is unchanged and does not depend on the adjective — an unreviewed
-// sentence committed unattended is unrecallable either way, the visibility setting has now moved three
-// times, and clones taken in a public window cannot be recalled.
-//
-// Zero dependencies, no network, no install step — same constraints as ./doctor.mjs, ./compile.mjs and
-// ./index.mjs. It is **not** one of the six subcommands ../docs/vision.md names for the milestone-7
-// CLI; like ./plugin-lint.mjs it is a tool on no such list, and ./README.md says so.
-//
-// ## Its observation procedure, which `0007` binds to a watcher
-//
-// Run the pass twice on an unchanged store with the same `--as-of`: the two reports are byte-identical,
-// because a report carries dates and never *N days ago*, so it moves only when the store or a
-// threshold does. Lower every threshold to 1 day and all three nags fire together; at the real
-// thresholds a young store reports nothing stale, and every section says so. It refuses with exit 2 a
-// shallow clone, a threshold of `0` and a directory git has never seen, and it reports an uncommitted
-// record as undated and never stale, with the count, rather than refusing it. The run recorded when
-// the pass landed is at `git show 8a33f9b:.portulan/verify/README.md`.
+// Observation procedure: two runs on an unchanged store with one `--as-of` give byte-identical reports; at
+// 1-day thresholds all three nags fire; a shallow clone, a `0` threshold and a directory git never saw exit 2;
+// an uncommitted record is reported undated and never stale.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -93,62 +31,36 @@ export class LibrarianError extends Error {
     }
 }
 
-// The `librarian` object arrives at 2.4. Earlier manifests are read correctly — they simply declare
-// no pass, which is the shape every workspace had yesterday. Same reasoning and same refusal as
-// ./index.mjs's KNOWN_SPECS: a tool that reads a manifest it does not understand reports about a
-// workspace it may have misread.
 const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9", "2.10", "2.11", "2.12", "2.13"]);
 
-// The store's own signpost, not a record — the one name ./index.mjs and ./doctor.mjs both exclude.
-// Three tools now share this judgement and none of them shares the code, which is issue #74; this
-// file is the third and says so rather than pretending it is the first.
 const NOT_A_RECORD = new Set(["README.md"]);
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-// ===========================================================================================
-// Dates
-// ===========================================================================================
+// ---------------------------------------------------------------- Dates
 
-/** Parse `YYYY-MM-DD` strictly, or throw. `2026-13-45` is not a date this pass will guess about. */
 function parseDate(value, where) {
     if (typeof value !== "string" || !ISO.test(value)) {
         throw new LibrarianError(`${where} is ${JSON.stringify(value)}, which is not a YYYY-MM-DD date`);
     }
     const ms = Date.parse(`${value}T00:00:00Z`);
-    // Round-tripping is what rejects a well-shaped impossibility: `Date.parse` accepts some of them
-    // and rolls them forward, so `2026-02-31` would silently become March.
+    // Round-tripped: `Date.parse` rolls some impossible dates forward, `2026-02-31` into March.
     if (Number.isNaN(ms) || new Date(ms).toISOString().slice(0, 10) !== value) {
         throw new LibrarianError(`${where} is ${JSON.stringify(value)}, which is not a real date`);
     }
     return ms;
 }
 
-/**
- * Whole days from `from` to `to`. Negative when `from` is later — a record dated after the pass is a
- * clock problem or a fabricated date, and reading it as "0 days old" would hide exactly that.
- */
+/** Whole days from `from` to `to`, negative when `from` is later: never clamped, so a future date shows. */
 export function daysBetween(from, to) {
     const a = parseDate(from, "the earlier date");
     const b = parseDate(to, "the later date");
     return Math.round((b - a) / 86_400_000);
 }
 
-// ===========================================================================================
-// Reading a record
-// ===========================================================================================
+// ---------------------------------------------------------------- Reading a record
 
-/**
- * The sealed stamp on a **rule**, as `{ owner, date }` — or null when there is nobody to nag.
- *
- * Null covers three different situations on purpose: a linked rule (its incident is readable, so it
- * can be retired on evidence rather than by asking), a record that is not a rule (thesis 4 and every
- * mandate behind it are rule-scoped, and `doctor` binds provenance the same way), and prose
- * provenance (already a `doctor` failure — this pass does not fail a second time for one defect).
- *
- * A sealed stamp with no `date` is **refused**, not skipped. Skipping would drop the one record that
- * most needs the nag, silently, and silence is the failure this whole pass exists to end.
- */
+/** A rule's sealed stamp as `{ owner, date }`, or null where there is nobody to nag. */
 export function sealedStamp(source) {
     if (recordType(source) !== "rule") return null;
     const { fields } = parseProvenance(source);
@@ -163,14 +75,6 @@ export function sealedStamp(source) {
     return { owner: fields.owner ?? "", date: fields.date };
 }
 
-/**
- * The record's retirement condition, verbatim and whitespace-joined — or null when it states none.
- *
- * Anchored to the bolded field at line start, exactly as `doctor`'s `RETIRE_WHEN` is, so prose that
- * merely discusses retiring never matches. The unit is the paragraph rather than the line, the way
- * `parseProvenance` reads a stamp: conditions wrap, and half a condition is worse than none because a
- * reader cannot tell it is half.
- */
 export function retireWhen(source) {
     const lines = source.split("\n");
     const start = lines.findIndex((l) => /^\s*\*\*retire when:\*\*/i.test(l));
@@ -185,21 +89,7 @@ export function retireWhen(source) {
         .trim();
 }
 
-/**
- * Is this proposal still waiting on the human gate?
- *
- * Deliberately generous toward *pending*, and the asymmetry is the point: this classification feeds a
- * nag, never a gate. Calling a settled proposal pending costs one line in a report a human skims;
- * calling a pending one settled drops it out of the only mechanism that would have chased it. So an
- * absent decision is pending — absence is not consent — a placeholder is pending, and the word
- * *pending* anywhere in the field wins over any verdict beside it.
- *
- * Both field spellings are read. The template says `**Decision.**`; two of this repository's fourteen
- * proposals record the outcome under `**Status.**` instead, which is a real shape in a real store and
- * not one to fail over. What a rail may demand — that the field exists at all — is `docs.sh`'s
- * `proposal` check; what it deliberately does not demand is which word appears in it, because a
- * grep that classified prose would red on a proposal whose only fault is a maintainer's phrasing.
- */
+/** Whether a proposal still waits on the human gate: anything short of a stated verdict does, as this feeds a nag, never a gate. */
 export function proposalPending(source) {
     const lines = source.split("\n");
     const parts = [];
@@ -217,14 +107,7 @@ export function proposalPending(source) {
     return !/\b(accepted|rejected|revised|applied|withdrawn|superseded)\b/i.test(text);
 }
 
-// ===========================================================================================
-// Reading history
-// ===========================================================================================
-//
-// One `git log` per file. For twenty-odd records across two workspaces that is a few hundred
-// milliseconds on a job that runs weekly, and the obvious optimisation — one `git log --name-only`
-// walk over all of history — is slower here and harder to read. Noted so the next person does not
-// rediscover the trade as a defect.
+// ---------------------------------------------------------------- Reading history
 
 function git(root, args, what) {
     try {
@@ -234,17 +117,9 @@ function git(root, args, what) {
     }
 }
 
-/**
- * The repository this workspace lives in, refusing anything that would make a date a guess.
- *
- * **Shallow is refused.** In a shallow clone `git log -1 -- <path>` returns nothing for a file whose
- * only commit was truncated away, so every record reads as undated — and a staleness pass over
- * undated records either flags everything or nothing, describing the checkout rather than the store.
- * `actions/checkout` is shallow by default, so this is not a theoretical clone; it is the *normal*
- * one, and the workflow that runs this pass sets `fetch-depth: 0` because of this paragraph.
- */
 function historyRoot(dir) {
     const root = git(dir, ["rev-parse", "--show-toplevel"], `find a git repository at ${dir}`);
+    // `actions/checkout` clones shallow by default: this is the normal clone, not a theoretical one.
     if (git(root, ["rev-parse", "--is-shallow-repository"], "test for a shallow repository") === "true") {
         throw new LibrarianError(
             "this is a shallow clone, where a file's history may be truncated away entirely — every record " +
@@ -255,44 +130,12 @@ function historyRoot(dir) {
     return root;
 }
 
-/**
- * When a tracked file was last **authored**, `YYYY-MM-DD`.
- *
- * Author date, not committer date, and the difference is load-bearing in this repository: every branch
- * is rebase-merged, which rewrites committer dates wholesale, so a committer-dated pass would report
- * that the entire store was touched on the day of the last rebase. Author date survives a rebase,
- * which is the property that makes it the honest answer to *when was this written*.
- *
- * Returns `null` for a path that is **not in `HEAD`** — untracked, or staged and not yet committed.
- * That is not a refusal and not a fail-open: such a file is *new*, and nothing in the history this
- * pass reads is older than a file's absence from that history, so age 0 is the precise answer. A path
- * that **is** in `HEAD` and still has no date is refused, because that is a fact about the checkout
- * rather than about the store. The reasoning for the split, and the two defects that produced it, are
- * at the call site below rather than repeated here.
- */
+/** `relative`'s last author date, or null where HEAD lacks it, staged or not: a new file, age 0. */
 function lastTouched(root, relative) {
+    // The author date: a rebase rewrites committer dates and keeps author dates.
     const out = git(root, ["log", "-1", "--format=%as", "--", relative], `date ${relative}`);
     if (ISO.test(out)) return out;
 
-    // No dated commit. Two very different situations arrive here and collapsing them is a defect
-    // either way round, which this pass learned twice in one session by shipping the collapse and
-    // then shipping the wrong seam between the halves.
-    //
-    //   not in HEAD   the committed tree does not contain this path. It is not undatable, it is NEW:
-    //                 nothing in the history this pass reads is older than a file's absence from that
-    //                 history, so age 0 is the precise answer rather than a guess. Reported as
-    //                 `uncommitted`, so a reader is never told git dated something it did not.
-    //   in HEAD       git has the path committed and still returned no date, which should be
-    //                 unreachable now that a shallow clone is refused outright. Refused, loudly:
-    //                 whatever produces it is a fact about the checkout, and this pass would be
-    //                 reporting it as a fact about the store.
-    //
-    // **`HEAD`, not `git ls-files`** — and that is the second lesson, measured rather than reasoned.
-    // The obvious test is whether git *tracks* the file, and it is wrong for one state in between:
-    // a file that has been `git add`ed and not yet committed is tracked, has no commit, and is new.
-    // Testing tracking refused exactly those, so a session that staged its work before running the
-    // pass got the same red the first draft gave for uncommitted work — the same defect, one state
-    // further in, found the same way: by running it rather than by reading it.
     try {
         git(root, ["cat-file", "-e", `HEAD:${relative}`], `look ${relative} up in HEAD`);
     } catch {
@@ -304,27 +147,8 @@ function lastTouched(root, relative) {
     );
 }
 
-// ===========================================================================================
-// The pass
-// ===========================================================================================
+// ---------------------------------------------------------------- The pass
 
-/**
- * A declared threshold must be a positive integer — ./index.mjs's rule, for ./index.mjs's reason.
- *
- * **Also the memory budgets, as of 2.8.** They were fed to `budgetHeadroom` raw, so a **schema-legal**
- * `0` or `1.5` printed `Infinity%` or a plausible-looking percentage in the weekly report rather than
- * refusing — the subset has no `minimum` and cannot say `integer`, so both pass validation. A `"8"`
- * reaches the same place by a different route: the schema WOULD refuse it on `type: number`, and this
- * tool never validates against the schema, so an unvalidated manifest carries it straight through.
- * Meanwhile `./index.mjs` and `./doctor.mjs` both refused every one of them outright. A third
- * consumer reading the same key with a different answer is how two checkers start disagreeing about
- * one manifest, and the report is the one place nobody is watching when it runs. Raised by Copilot on
- * #215, suppressed half; the hole predates the per-record rail and is repaired for all three budgets
- * rather than only the key that surfaced it — `0020`'s rule, at the site the finding pointed to.
- *
- * `noun`/`off` keep each caller's sentence true: a staleness value switches a **nag** off, a budget
- * switches a **rail** off. Defaulted so the three existing messages stay byte-identical.
- */
 function threshold(value, where, noun = "threshold", off = "nag") {
     if (value === undefined) return undefined;
     if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
@@ -336,13 +160,6 @@ function threshold(value, where, noun = "threshold", off = "nag") {
     return value;
 }
 
-/**
- * One declared memory budget, refused unless it is a positive integer.
- *
- * The `where` it reports is the manifest path a reader would grep for — `memory.store.budget.kilobytes`,
- * not the two arguments this function took to build it. A refusal naming a key that does not appear in
- * the file is a refusal the author cannot act on.
- */
 const budget = (workspace, group, key) =>
     threshold(workspace.memory?.[group]?.budget?.[key], `memory.${group}.budget.${key}`, "budget", "rail");
 
@@ -356,20 +173,7 @@ const listMarkdown = (dir) => {
     return names.filter((n) => n.endsWith(".md") && !NOT_A_RECORD.has(n)).sort();
 };
 
-/**
- * Run the pass over one workspace.
- *
- * `asOf` is the date every age is measured against, and it is a parameter rather than a call to the
- * clock so that a test asserting "90 days" does not start failing on a date nobody chose. The command
- * defaults it to today.
- *
- * **This function never writes.** It reads the tree and returns what it found; `run` does the writing,
- * and does it in an order this function cannot get wrong — see the reindex block below.
- *
- * `reviews` is the pull-request review corpus, or `undefined` for *not asked*. It is passed in rather
- * than fetched because this file makes no network call: the workflow fetches, and every line of the
- * reading is then exercised by the suite against a fixture instead of at 06:00 on a Monday.
- */
+/** One workspace's pass, which never writes: `run` does, after it. */
 export function passWorkspace(dir, { asOf, reviews, since } = {}) {
     parseDate(asOf, "--as-of");
     if (since !== undefined) parseDate(since, "--since");
@@ -409,29 +213,11 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
     }
 
     const root = historyRoot(dir);
-    // `realpathSync` on both sides, and it is not defensive programming. `git rev-parse
-    // --show-toplevel` answers with the resolved path, while the directory this pass was handed may
-    // reach the same place through a symlink — which is the ordinary case on macOS, where `/var` is a
-    // link to `/private/var` and every temporary directory is under it. Without this the relative
-    // path comes out as a stack of `..` segments and git refuses every file as *outside repository*:
-    // a refusal that names the right rule for the wrong reason, on a store that is perfectly fine.
+    // `--show-toplevel` answers a resolved path, so this one is resolved too: on macOS every temporary directory is under the link `/var`.
     const rel = (p) => path.relative(root, fs.realpathSync(p)).split(path.sep).join("/");
 
-    // ---- reindex: READ ONLY, always
-    //
-    // **This pass reads; the command writes.** Reading drift here and writing later makes an earlier
-    // fix structural instead of careful.
-    // `inspect` in write mode regenerates and *then* compares, so it never reports drift — it has
-    // just removed it — and reading `drifted` off that result said "current" about an index the pass
-    // had regenerated a line earlier, putting "no index drift" into a machine-written record of the
-    // one thing the run had changed (Copilot, #81, suppressed half, three sites at once). With no
-    // write on this path there is no ordering left to get wrong.
-    // **Per series, and that is not tidiness.** `declared` here means *this series has an index file*
-    // — `path !== null`, so a workspace declaring budgets and no index is correctly *none declared*.
-    // The pair-wide flag was what both report sites branched on, and a workspace declaring only one of
-    // the two indexes then had "current" printed about an index that does not exist: the exact
-    // sentence `./index.mjs`'s `run` was fixed for on #72, reproduced in the record the pass files.
-    // Raised on #85 round one in both channels at once, which is what a two-site defect looks like.
+    // ---- reindex, read only
+    // `inspect` in write mode regenerates before it compares, so it would never report drift.
     let index = { declared: false, drifted: false, series: {}, findings: [], notes: [] };
     try {
         const result = inspectIndex(dir, { write: false });
@@ -443,37 +229,23 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
             declared: result.declared,
             drifted: result.findings.some((f) => f.check === "index"),
             series: { memory: of("memory"), handoffs: of("handoffs") },
-            // The store index as the store renders it *now* — not the bytes on disk. Consolidation's
-            // headroom is a pressure signal, and reading the committed file gets the direction wrong
-            // exactly when it matters: a store that just grew has a committed index one line short, so
-            // pressure would be under-reported at the moment it rose. `null` when a title disagreement
-            // stopped the render, which `index.sh` is red for anyway.
             expected: result.series.memory.expected,
             findings: result.findings.map((f) => f.message),
-            // What a forward-only cap leaves unbound (Workspace Definition 2.11): reported, never red.
             notes: result.notes.map((n) => n.message),
         };
     } catch (cause) {
         if (!(cause instanceof IndexError)) throw cause;
-        // The index tool's refusals are this pass's refusals: it is the same store, and a pass that
-        // reported staleness over a store `index` would not read has judged half a thing.
         throw new LibrarianError(`the reindex could not run — ${cause.message}`);
     }
 
     // ---- the store, dated
     const storeDir = path.resolve(dir, memorySlot);
-    // `largest` is the widest record seen, for the per-record rail's distance report. Seeded at zero
-    // bytes and no name so an EMPTY store reports honestly instead of throwing: a workspace with no
-    // records yet is valid, and `budgetHeadroom` renders 0 of N as 0%.
     const counts = { records: 0, rules: 0, sealed: 0, bytes: 0, uncommitted: 0, largest: { file: null, bytes: 0 } };
     const records = [];
     const seals = [];
     const drafts = [];
-    // Every curated-layer document's text, kept for the link scan mining runs below. The curated
-    // layer is the memory store and the proposal series and nothing else: a handoff referenced from
-    // another handoff is one session mentioning another, not a rule tracing its incident.
+    // The store and the proposals, never the handoffs: one handoff naming another traces no rule to its incident.
     const curated = [];
-    // Records grouped by the incident they cite, for consolidation's step-2 question.
     const byIncident = new Map();
 
     for (const file of listMarkdown(storeDir)) {
@@ -489,8 +261,6 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
         if (incident) byIncident.set(incident, [...(byIncident.get(incident) ?? []), file]);
 
         const touched = lastTouched(root, rel(full));
-        // An uncommitted record has no age and is never stale: it cannot have gone untouched for
-        // longer than it has existed in the history this pass reads.
         const days = touched === null ? 0 : daysBetween(touched, asOf);
         const type = recordType(source) || "untyped";
         const condition = retireWhen(source);
@@ -498,10 +268,6 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
         counts.records += 1;
         const recordBytes = Buffer.byteLength(source);
         counts.bytes += recordBytes;
-        // `file === null` is the seed, never a size comparison: a store whose records are all ZERO
-        // bytes never satisfies `recordBytes > 0`, so a strict comparison alone left the seed standing
-        // and the report said "no records yet" over a store that held one. An empty `.md` is reachable —
-        // `doctor` reports it as a record with no provenance, and this pass counts it either way.
         if (counts.largest.file === null || recordBytes > counts.largest.bytes) {
             counts.largest = { file, bytes: recordBytes };
         }
@@ -541,7 +307,7 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
 
     const stale = thresholds.record_days === undefined ? [] : records.filter((r) => r.days >= thresholds.record_days);
 
-    // ---- proposals. `null` is *not asked*, which is not the same answer as *none pending*.
+    // ---- proposals
     let proposals = null;
     if (workspace.slots?.proposals) {
         const proposalDir = path.resolve(dir, workspace.slots.proposals);
@@ -563,17 +329,9 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
         }
     }
 
-    // Read from the slot rather than assuming the directory name, which is the whole reason slots exist.
     const handoffsDir = workspace.slots?.handoffs ? path.resolve(dir, workspace.slots.handoffs) : null;
 
-    // ---- the handoff series: aged and reported, never railed
-    //
-    // The milestone-5 row scopes staleness to this series as well as the store, and the same row bars
-    // a budget on it — an append-only series has no consolidation to offer, so every remedy a budget
-    // could ask for is barred. A staleness THRESHOLD carries that problem one layer down:
-    // `record_days` exists to draft a demotion, and a demotion draft here recommends deleting the
-    // record the series exists to keep, weekly, forever. So the ages are read and reported — count,
-    // oldest, size — and no threshold reaches them.
+    // ---- the handoff series, aged and never railed
     const series = { declared: false, count: null, oldest: null, bytes: 0, files: [] };
     if (handoffsDir) {
         series.declared = true;
@@ -603,28 +361,12 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
     };
 
     const consolidation = {
-        // Step 2 of core/skills/consolidate/SKILL.md, as a question rather than a verdict — see
-        // `sharedIncidents`.
         shared: sharedIncidents(byIncident),
-        // Step 5's rail, read as a distance rather than a verdict. `index.sh` answers over/under at
-        // pull-request time; what it cannot say is *how close*, and a scheduled pass that reports
-        // pressure is the difference between consolidating on a calendar and consolidating on a red.
-        // Every budget goes through `threshold` first. Reading them raw let a schema-legal `0` print
-        // `Infinity%` and a `1.5` print a plausible percentage — and a `"8"`, which the schema refuses
-        // but this tool never asks the schema about, do the same — in a weekly artifact nobody is
-        // watching when it runs, while the two tools that judge the same keys refused them outright.
         headroom: {
             store: budgetHeadroom(counts.bytes / 1024, budget(workspace, "store", "kilobytes")),
             index: budgetHeadroom(renderedLines(index.expected), budget(workspace, "index", "lines")),
-            // The per-record rail of Workspace Definition 2.8, measured at the record CLOSEST to it —
-            // the only record whose distance means anything, and the one a split would target. Without
-            // this the pass reported `Store: no budget declared` over a store that is fully railed, just
-            // railed per record: a weekly report going quietly silent about a live rail, which is the
-            // failure ../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md names.
             record: budgetHeadroom(counts.largest.bytes / 1024, budget(workspace, "store", "record_kilobytes")),
         },
-        // Carried beside the figure so the report can say WHICH record is closest. A percentage with
-        // no name sends a reader to sort the store by hand to find out what to repair.
         largest: counts.largest,
     };
 
@@ -646,46 +388,12 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
     };
 }
 
-// ===========================================================================================
-// Mining — the half of the librarian that reads incidents rather than the store
-// ===========================================================================================
-//
-// `core/skills/codify/SKILL.md` is the on-demand form and the pass is the batch one: same ritual,
-// same output shape. What the pass does NOT do is author the proposal, and the reason is mechanical
-// as well as principled. `.portulan/verify/docs.sh`'s `proposal` check requires every proposal to
-// name the pull request that filed it; this pass writes its files BEFORE the pull request exists and
-// has no update path by design, so a generated proposal could never carry that pointer and would red
-// the librarian's own pull request on the recipe that shipped one session earlier. And a template
-// filled from derived fields is a stub with the argument missing — the part a human has to write is
-// exactly the part that makes it a proposal rather than a row in a report.
-//
-// So mining names CANDIDATES, in the shape the demotion drafts already established: a file, a fact
-// about it, and a fixed recommendation. The maintainer's ruling of 2026-07-29.
+// ---------------------------------------------------------------- Mining
 
-/** The records passes wrote into the series until 2026-09-24, named as `run` wrote them — not a guess at a shape. */
+/** A pass record in the handoff series, named as older passes wrote it. */
 const PASS_RECORD = /-librarian-pass\.md$/;
 
-/**
- * Incidents the curated layer does not point back to.
- *
- * **The claim is the narrow one, and getting it right is the whole design.** This does not establish
- * that an incident taught no rule — measured on the real tree, one unlinked handoff had in fact
- * minted a rule whose provenance cited the *proposal* that session filed rather than the session. It
- * establishes that **nothing in the curated layer points back to this incident**, which is true in
- * that case too, and is itself the thing thesis 4 asks for: a rule links its incident so a later
- * reader can judge whether it still applies. Read the wider way it would be a query with a known
- * false positive; read this way it has none.
- *
- * **The ratio is the trend; the LIST is windowed.** 25 of this repository's 35 handoffs are unlinked,
- * and a pass that listed all 25 would print the same 25 lines every week over a series that only
- * grows — a nag nobody can finish, which is how a whole report gets skimmed. So the totals are always
- * stated and the candidates are those since the last pass. The window's anchor is never remembered:
- * this pass keeps no state. Its scheduler owns the cadence, so it names the previous pass's date with
- * `--since`; with none named, the newest pass record an earlier pass left in the series stands in, as
- * it did while every pass wrote one (until 2026-09-24). With neither, the window is the newest date in
- * the series — the last session's incidents, which is small, real, and does not pretend the backlog is
- * not there.
- */
+/** Handoffs nothing in the curated layer points back to: every one counted, those since the last pass listed. */
 export function mineIncidents(series, curated, { since: named } = {}) {
     if (!series.declared) return { declared: false, total: null, linked: 0, since: null, candidates: [] };
 
@@ -697,13 +405,7 @@ export function mineIncidents(series, curated, { since: named } = {}) {
     const linked = incidents.filter((i) => isLinked(i.file)).length;
 
     const newest = incidents.reduce((a, b) => (a === null || (b.date && b.date > a) ? b.date : a), null);
-    // `>=`, and the boundary is worth a sentence because the strict version loses work permanently.
-    // A pass runs in the morning and a session writes its handoff that afternoon; with `>` that
-    // handoff is outside this window — the pass had not seen it — and outside every later one too,
-    // because `since` only ever moves forward. It would survive nowhere but the unlinked ratio. The
-    // cost of `>=` is the opposite and is bounded: an incident dated the same day as a pass can be
-    // listed by that pass and by the next one, once. Dates are the granularity the series carries, so
-    // one repeat is the price of never dropping a day, and that is the direction to err in.
+    // `>=`: a handoff written on a pass's own day, after it ran, is listed by the next pass rather than by none.
     const inWindow = since
         ? (i) => i.date !== null && i.date >= since
         : (i) => i.date !== null && i.date === newest;
@@ -721,34 +423,8 @@ export function mineIncidents(series, curated, { since: named } = {}) {
     return { declared: true, total: incidents.length, linked, since, window: since ? "since the last pass" : "the newest date in the series", candidates };
 }
 
-/**
- * Paths pull-request reviewers keep leaving findings on.
- *
- * `codify/SKILL.md` triggers on "a review comment keeps reappearing across PRs — a pattern, not a
- * one-off", and **two distinct pull requests is what *recurring* means** rather than a number someone
- * chose. That is why there is no threshold in the manifest to declare: a tuning knob would be policy
- * and policy belongs there, but a definition is not a knob.
- *
- * **A finding is a comment that OPENS a thread.** Measured on this repository rather than assumed,
- * and the partition is exact: of 376 inline review comments, all 189 from the reviewer open threads
- * and all 187 replies — 162 from the agent identity, 25 from the maintainer — carry
- * `in_reply_to_id`. Filtering by login would have been the obvious spelling and is wrong here in the
- * worst direction, because the reviewer is itself a bot: excluding bots excludes the findings.
- * Counting replies would invert the signal outright — every reply is one more comment on a path we
- * were answering about, so the harder a finding was argued the more it would look like a place
- * reviewers keep finding things.
- *
- * **What this cannot see, stated because it is the larger half.** These are *inline* comments. The
- * low-confidence notes GitHub collapses into a review body carry no path and never appear here — and
- * on [#81](https://github.com/sleepy-panda-srl/portulan/pull/81) that channel produced nine of
- * eleven findings, eight of them real. So this mines the smaller channel, and the standing argument
- * for [#66](https://github.com/sleepy-panda-srl/portulan/issues/66) — promoting those notes into
- * real threads — is now also an argument about what a scheduled pass can measure at all.
- */
+/** Paths still in the tree with findings on two or more pull requests, or null when not asked. */
 export function mineReviews(reviews, { treeRoot }) {
-    // *Not asked* and *none found* must not print the same way — the rule the proposals pass already
-    // follows. A workspace with no `tree` makes claims about no repository, so it has nowhere to
-    // resolve a reviewed path against and its reviews are not a thing this pass can read.
     if (reviews === undefined || reviews === null || !treeRoot) return null;
     if (!Array.isArray(reviews)) {
         throw new LibrarianError(
@@ -757,15 +433,6 @@ export function mineReviews(reviews, { treeRoot }) {
         );
     }
 
-    // **Every element must be comment-shaped, and an element that is not is a refusal.** The version
-    // this was built against emits one flat array from `--paginate` — measured on gh 2.96.0 over four
-    // pages: 385 objects, one array — but a shape surprise here fails in the worst possible direction.
-    // Fed the array-of-pages `--slurp` produces, the earlier reading counted each inner array as a
-    // finding (an array carries no `in_reply_to_id`) and then skipped it for having no `path`, and
-    // reported *no path has drawn findings on two or more distinct pull requests* over a corpus it had
-    // entirely misread. Refusing on shape closes that whatever any `gh` does, which is the version this
-    // check should be written against. Raised by Copilot on #85 round two, whose stated mechanism does
-    // not hold here and whose hazard does.
     for (const c of reviews) {
         if (!c || typeof c !== "object" || Array.isArray(c) || typeof c.pull_request_url !== "string") {
             throw new LibrarianError(
@@ -788,21 +455,7 @@ export function mineReviews(reviews, { treeRoot }) {
         pulls.get(c.path).add(pull);
     }
 
-    // **A path the tree no longer holds is dropped.** Found by running this against the real corpus
-    // rather than by reading it: `cli/mode.mjs` came back recurring on two pull requests, and that
-    // file does not exist — the mode axis was ruled dead and both its pull requests closed unmerged.
-    // Review history is append-only, so without this the pass nags weekly and forever about a file
-    // nobody can open, and no action anyone takes will ever clear it. The count of what was dropped
-    // rides along, because *some were ignored* and *there were none* must not print the same way.
-    //
-    // **Contained before it is probed**, and the containment is not belt-and-braces: a review comment's
-    // `path` is external data, and `path.resolve` walks straight out of the tree on an absolute path or
-    // a `../` chain. Measured on #85 round seven before it was closed — `/etc/hosts` came back as *still
-    // in the tree*, because it resolves to itself and exists; the `../` spellings were dropped only by
-    // the accident of their targets not existing on that machine. So the pass would have stat'd the
-    // runner's filesystem on a corpus it does not author, unattended, weekly. `isInside` is this
-    // repository's one implementation of the question, extracted after two copies of it drifted into the
-    // identical fail-open — a third copy here would have been that mistake a third time.
+    // A reviewed path is external data: contained before it is probed, or an absolute or `../` path stats the runner's disk.
     const inTree = (p) => {
         const full = path.resolve(treeRoot, p);
         return isInside(treeRoot, full) && fs.existsSync(full);
@@ -815,29 +468,12 @@ export function mineReviews(reviews, { treeRoot }) {
     return { comments: reviews.length, findings: findings.length, replies, gone: recurring.length - paths.length, paths };
 }
 
-// ===========================================================================================
-// Consolidation — the mechanical half, and an honest account of the rest
-// ===========================================================================================
+// ---------------------------------------------------------------- Consolidation
 
-/** A rule's provenance link, or null — the `href=` of a `form=link` stamp. */
 export function provenanceHref(source) {
     return source.match(/^\s*\*\*provenance:\*\*.*?href=([^\s`]+)/im)?.[1] ?? null;
 }
 
-/**
- * Records citing one incident, raised as a **question** and never as a merge.
- *
- * `core/skills/consolidate/SKILL.md` step 2 merges records that are one **mechanism**. Sharing an
- * incident is not that, and this repository is the counter-example: all three of its shared-incident
- * groups are deliberately distinct facts, because one incident teaches several mechanisms — the
- * enforcement compiler alone minted three. So the pass surfaces the group and states the question a
- * human answers; a pass that concluded *merge these* would be making the policy decision step 3
- * forbids it from making about contradictions, one step earlier.
- *
- * Expected standing yield on this repository: **three groups**, all already judged separate. That is
- * said out loud so a reader of the first real pass does not read three known answers as three open
- * ones.
- */
 export function sharedIncidents(byIncident) {
     return [...byIncident.entries()]
         .filter(([, files]) => files.length > 1)
@@ -851,57 +487,22 @@ export function sharedIncidents(byIncident) {
         .sort((a, b) => a.incident.localeCompare(b.incident));
 }
 
-/** How close a measured figure is to its budget — `null` when nothing declared one to be close to. */
 export function budgetHeadroom(actual, budget) {
     if (budget === undefined) return null;
     return { actual: Number(actual.toFixed(1)), budget, percent: Math.round((actual / budget) * 100) };
 }
 
-/**
- * Lines in the index a store renders **now** — the number the `lines` budget is denominated in.
- *
- * The rendered text, never the committed file. Reading the committed bytes was the first cut and got
- * the direction wrong exactly where a pressure signal must not: a store that has just grown carries a
- * committed index one line short, so the headroom would look *larger* the moment it got smaller. Two
- * of Copilot's rounds on #85 walked into this from opposite ends — one caught a comment describing the
- * trade backwards, the next caught that the trade should not have been taken at all.
- *
- * `null` in, `0` out, and it means *nothing to measure*: either the workspace declares no index, or a
- * title disagreement stopped the render — and that is `index`'s red on every pull request, not a
- * number for this report to invent.
- */
+/** Lines in the index the store renders now: the committed one runs a line short just after the store grows. */
 const renderedLines = (expected) =>
     expected === null || expected === undefined ? 0 : expected.split("\n").length - (expected.endsWith("\n") ? 1 : 0);
 
-// ===========================================================================================
-// The report the pass renders
-// ===========================================================================================
-//
-// A pass was a session (the maintainer's ruling of 2026-07-28), so it ended as every session did: a
-// dated handoff and a Session log entry. Since 2026-09-23 a handoff carries only open work and the log
-// is retired, so the pass writes neither into the tree (the coordinator session's delegated call of
-// 2026-09-24). Its findings are a report addressed to the maintainer, rendered as Markdown because
-// its scheduler files it as the description of the pull request the pass opens when the tree changed.
+// ---------------------------------------------------------------- The report
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-/**
- * One series' index, in a sentence — and *none declared* is a state, never a synonym for *current*.
- *
- * One function rather than the expression written twice, because it was written twice and both copies
- * branched on the pair-wide flag. A workspace declaring only one of the two indexes then read
- * "current" about the other, which does not exist.
- *
- * **It reports drift, never a repair, and the tense is the whole of it.** The report is composed
- * before `run` regenerates anything, and the regeneration can still fail. *Has been regenerated* is
- * therefore a sentence the report cannot know to be true when it is written, and in a local run or a
- * partial failure it asserts work that did not happen. What is true when this is
- * written is that the index was out of date **when the pass arrived**, so that is what it says. Raised
- * by Copilot on #85 round two, in the suppressed channel, against three sites at once.
- */
+/** Drift, never a repair: the report is composed before `run` regenerates an index, which can still fail. */
 const indexState = (s) => (s.declared ? (s.drifted ? "**was out of date when this pass arrived**" : "current") : "none declared");
 
-/** The pass's report: what it looked at, what it found, and the date all of that is true as of. */
 export function renderReport(results, { asOf }) {
     const out = [
         "# The librarian's scheduled pass",
@@ -1082,12 +683,6 @@ export function renderReport(results, { asOf }) {
         const c = r.consolidation;
         const head = (label, h, unit) =>
             h === null ? `${label}: no budget declared` : `${label}: ${h.actual} of ${h.budget} ${unit} (${h.percent}%)`;
-        // The per-record line names the record it measured. `head` alone would print a bare percentage,
-        // and the whole point of this rail is that a breach is LOCAL — a distance with no name would
-        // make the reader sort the store by hand to find out which file the number is about.
-        // An empty store declares the rail and has no record to name. Printing the seeded `null` as
-        // though it were a filename would be the report inventing a record — worse than the silence
-        // this line exists to end, and it is the fresh-adopter path: a scope is "empty until earned".
         const widest =
             c.headroom.record === null
                 ? head("Largest record", null)
@@ -1137,37 +732,14 @@ const oldest = (records) => {
     return o ? `\`${o.file}\` at ${plural(o.days, "day")}` : "none — the store is empty";
 };
 
-// ===========================================================================================
-// The command
-// ===========================================================================================
+// ---------------------------------------------------------------- The command
 
 const USAGE =
     "usage: node cli/librarian.mjs [--as-of YYYY-MM-DD] [--since YYYY-MM-DD] [--write] [--report <path>] [--reviews <path>] <workspace-dir> [...]";
 
-/**
- * Parse `argv` strictly, or throw `LibrarianError`.
- *
- * **Strictly**, because the permissive version fails silently in both directions and this tool runs
- * unattended. An unknown flag was dropped, so `--wrtie` produced a run that reported everything it
- * found and wrote nothing — a success message over work that did not happen. And a value-bearing flag
- * with no value ate the next argument, so `--log .portulan` (a flag since retired with the Session log)
- * set the log path to a *workspace* and then
- * passed over no workspaces at all: a green having examined nothing, which is the enumeration
- * fail-open this repository has now found five of in its own scaffolding. Raised by Copilot on #81.
- *
- * The residual limit, stated rather than left to be found: `--report .portulan` is *not* detectable here.
- * `.portulan` is a perfectly good value and any `--flag value` grammar consumes it. What catches that
- * caller is the layer above — no workspaces left, so `run` prints the usage and exits 2 rather than
- * reporting a green over an empty list. That check is now the only thing standing between the typo and
- * a pass that examined nothing, which is why it is asserted in the suite rather than assumed.
- *
- * `cli/compile.mjs` parses explicitly for the same reason; this now matches it.
- */
 export function parseArgs(argv) {
     const opts = { asOf: undefined, since: undefined, reportPath: undefined, reviewsPath: undefined, write: false, dirs: [] };
     const value = (flag, next) => {
-        // A flag's value may not be another flag. Without this, `--report --write .portulan` sets the
-        // report path to `--write` and silently drops the mode the caller asked for.
         if (next === undefined || next.startsWith("--")) {
             throw new LibrarianError(`${flag} needs a value.\n${USAGE}`);
         }
@@ -1200,13 +772,7 @@ export function parseArgs(argv) {
     return opts;
 }
 
-/**
- * Where a write to `p` lands, links resolved: the nearest existing ancestor through `realpathSync`, the
- * rest appended, and a dangling link followed to its target, which a write through it would create. A
- * report path need not exist yet, and no link from outside into a tree, dangling or not, may carry a
- * write past the containment check `run` makes. Copilot, #457: `realpathSync` alone refuses a dangling
- * link, so the walk stopped at the link's own name, outside the tree, and the write followed it in.
- */
+/** Where a write to `p` lands, every link resolved, a dangling one too, which `realpathSync` alone refuses. */
 function realish(p) {
     const rest = [];
     let at = p;
@@ -1214,15 +780,14 @@ function realish(p) {
         try {
             return path.join(fs.realpathSync(at), ...rest);
         } catch {
-            // A dangling link resolves against its real parent, as the kernel resolves it; forty hops is
-            // Linux's own limit on a chain, past which the write fails rather than lands.
+            // A link's target resolves against its real parent, as the kernel's does; past Linux's forty hops the write fails.
             let target = null;
             try {
                 if (fs.lstatSync(at).isSymbolicLink()) {
                     target = path.resolve(fs.realpathSync(path.dirname(at)), fs.readlinkSync(at));
                 }
             } catch {
-                // Not there at all, or unreadable: an ancestor is resolved instead, below.
+                // Missing or unreadable: an ancestor resolves instead.
             }
             if (target !== null && hops++ < 40) {
                 at = target;
@@ -1236,7 +801,7 @@ function realish(p) {
     }
 }
 
-/** The tree a workspace declares, read from its manifest, so a pass that failed still names it. */
+/** The tree a workspace declares, read from its manifest, so the report stays out of it even where the pass failed. */
 function declaredTree(dir) {
     try {
         const { tree } = JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8"));
@@ -1272,9 +837,6 @@ export function run(argv, say = console.log) {
 
     let reviews;
     if (reviewsPath !== undefined) {
-        // Read here rather than inside the pass so a corpus that cannot be read is a refusal about a
-        // file, not a verdict about a workspace — and so `passWorkspace` keeps its property of
-        // touching nothing but the tree it was pointed at.
         try {
             reviews = JSON.parse(fs.readFileSync(reviewsPath, "utf8"));
         } catch (cause) {
@@ -1298,28 +860,17 @@ export function run(argv, say = console.log) {
                     `${result.seals.filter((s) => s.due).length} seal(s) due, ` +
                     `${result.proposals?.filter((p) => p.due).length ?? 0} proposal(s) nagged, ` +
                     `${result.mining.incidents.candidates.length} incident(s) to codify` +
-                    // The regeneration is the last thing this command does, so at this point drift is
-                    // all that is known. The line that says it was regenerated is printed below, after.
                     (result.index.drifted ? ", index drift found" : ""),
             );
         } catch (error) {
             if (!(error instanceof LibrarianError)) throw error;
             say(`  ✗ ${dir}: ${error.message}`);
-            // Exit 2 wins, and every workspace is still passed first: a run that could not read one
-            // target has not done what it was asked, and must not hide what it did manage to find.
             worst = 2;
         }
     }
 
-    // The report is composed before any index is regenerated, so it says what the pass found rather
-    // than what it repaired (`indexState`). It goes where the scheduler names, never into a series,
-    // and never into a tree it reported on: a report written there is a file the next commit carries,
-    // which the workflow's `git add -A` would, and in a store it is read as a record. So a path inside
-    // any named workspace, or inside the tree one declares (read from the manifest, so a workspace
-    // whose pass failed still counts), is refused, links resolved first; and the write goes to the
-    // resolved path, so the file written is the file judged, and is renamed into place rather than
-    // written through an existing file, which may be a hard link into the tree.
     if (reportPath !== undefined) {
+        // Written to the resolved path, so the file written is the file judged.
         const target = realish(path.resolve(reportPath));
         const roots = dirs.flatMap((dir) => [path.resolve(dir), declaredTree(dir)]).filter(Boolean);
         const inside = roots.find((root) => isInside(realish(root), target));
@@ -1329,10 +880,7 @@ export function run(argv, say = console.log) {
         } else {
             try {
                 fs.mkdirSync(path.dirname(target), { recursive: true });
-                // Written beside the target and renamed over it, never in place: a name can be a hard
-                // link to a file in the tree, which no path resolution sees, and a rename replaces the
-                // name without touching the file behind it. Copilot, #457. `wx` refuses to open through
-                // anything already standing at the temporary name.
+                // Renamed into place, never written through: a name may be a hard link into the tree, and `wx` opens nothing already there.
                 const fresh = `${target}.${process.pid}.tmp`;
                 fs.writeFileSync(fresh, renderReport(results, { asOf }), { flag: "wx" });
                 try {
@@ -1349,9 +897,7 @@ export function run(argv, say = console.log) {
         }
     }
 
-    // ---- the indexes, LAST, in write mode only, and only when the run did everything else it was
-    // asked: a pass that could not read a workspace or write its report files nothing, so it changes
-    // nothing either.
+    // ---- the indexes, last
     if (write && worst < 2) {
         for (const r of results) {
             if (!r.declared) continue;

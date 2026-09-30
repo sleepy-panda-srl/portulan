@@ -197,7 +197,6 @@ const HEREDOC = /^<<(-?)[ \t]*((?:'[^'\n]*'|"[^"\n]*"|\\.|[^\s;&|<>()'"\\])+)/;
 
 const unquoted = (word) => word.replace(/["'\\]/g, "");
 
-/** Where the line holding `i` ends. */
 const endOfLine = (source, i) => (source.includes("\n", i) ? source.indexOf("\n", i) : source.length);
 
 const AWK_WORD = /[\p{L}\p{N}_.]/u;
@@ -295,10 +294,7 @@ function jqSpans(program) {
 const AWKS = ["awk", "gawk", "mawk", "nawk"];
 const SHELLS = ["bash", "sh", "zsh", "dash", "ksh"];
 
-/**
- * The interpreters whose quoted program is read: the flags taking it, and the lexer reading it. Python,
- * Perl and Ruby strings run across lines, and no lexer here follows them, so their programs are data.
- */
+/** Python, Perl and Ruby programs stay data: their strings run across lines, and no lexer here follows them. */
 const INTERPRETERS = new Map([
     ["node", { flags: ["-e", "-p", "--eval", "--print"], spans: (program) => jsSpans(program).map(([from, to]) => [from, to, JS_MARKERS]) }],
     ...SHELLS.map((shell) => [shell, { flags: ["-c"], spans: shellSpans }]),
@@ -570,7 +566,6 @@ const FENCE_OPEN = /^[ \t]*(`{3,}(?!.*`)|~{3,})/;
 const LIST_ITEM = /^[ \t]*([-+*]|\d{1,9}[.)])([ \t]+|\r?$)/;
 const HEADING = /^[ \t]*#{1,6}(?:[ \t]|\r?$)/;
 
-/** The columns a line's leading blanks fill, a tab reaching the next multiple of four. */
 function indentOf(line) {
     let columns = 0;
     for (const c of line) {
