@@ -1,24 +1,10 @@
 #!/usr/bin/env bash
-# Portulan workspace — verify recipe for the machine-readable files.
+# Portulan workspace — verify recipe: every .json file in the tree parses; doctor checks the schema.
 #
-# One check. It exists because milestone 2 introduces the first JSON this repository *depends* on
-# rather than merely carries: the Workspace Definition schema and the manifest instantiating it.
-#   parse   every tracked .json file parses            (a manifest that does not parse gates nothing)
-#
-# This checks well-formedness and NOTHING ELSE. It does not validate the manifest against the
-# schema, and it does not check that the paths a manifest names exist — that is `doctor`, which
-# arrives in the second milestone-2 session. Saying so matters: a recipe that implies more coverage
-# than it has makes every later green worth less (see ./README.md).
-#
-# Exit 0 green · 1 red · 2 could not run. Unlike ./docs.sh this recipe needs `node`, because
-# well-formedness is a parser's judgement and there is no honest way to ask bash for it.
-# See ./README.md for why that dependency was accepted and what it costs.
+# Exit 0 green · 1 red · 2 could not run.
 
 set -uo pipefail
 
-# Every external command this recipe runs — see ./docs.sh for the measurement behind the shape.
-# `git` and `node` were guarded and the rest were not, so with `grep`, `sed`, `tr` or `wc` absent
-# this recipe exited GREEN over a file list that had gone empty on the way here.
 for need in dirname git grep mktemp node rm sed tr wc; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
@@ -36,24 +22,7 @@ status=0
 fail() { status=1; printf 'FAIL  %s\n' "$1"; }
 pass() { printf 'ok    %s\n' "$1"; }
 
-# Tracked plus new-and-not-ignored, so a malformed file is caught before it is committed,
-# not after — the same manifest rule ./docs.sh uses, for the same reason.
-#
-# And the same precondition check, for the same reason: an unchecked failure here yields an
-# empty list, zero files scanned, and a GREEN report from a recipe that examined nothing.
-# See ./README.md, Provenance.
-# `-z` rather than the newline-separated form, and the reason is #209 — but NOT the reason #209 gives,
-# nor the one this comment gave until it was measured. **A newline is never mis-split, because it never
-# arrives raw.** Without `-z`, git C-quotes any pathname holding a byte outside printable ASCII, and it
-# C-quotes a control character **regardless of `core.quotePath`** — measured both ways — so `we<LF>ird.md`
-# comes back as the single line `"we\nird.md"`, quotes and backslash-n included. One line, never two.
-#
-# What `-z` actually buys is the **spelling**, not the split: that quoted form is not the path, so
-# `existsSync` misses it and the file is skipped as "tracked but deleted" two screens down — green over
-# a file nothing parsed. The outcome the old wording named is real; the mechanism it named is not, and
-# the true one is strictly wider, covering non-ASCII and control bytes and not only the newline.
-# `-z` is the shape ./control-chars.sh already models, and it recorded this file as the sibling it had
-# not fixed.
+# -z: git C-quotes a non-ASCII name otherwise, and that file would go unparsed without a word.
 manifest="$tmp/manifest"
 if ! git ls-files --cached --others --exclude-standard -z >"$manifest"; then
     printf 'verify: git ls-files failed — cannot enumerate the tree\n' >&2
@@ -61,24 +30,6 @@ if ! git ls-files --cached --others --exclude-standard -z >"$manifest"; then
 fi
 
 # ---------------------------------------------------------------------- 1. parse
-# The file list goes to node on stdin rather than as arguments. `node -e` shifts argv in a way
-# that is easy to get wrong — the first draft of this check indexed it wrongly and reported a
-# perfectly good file as malformed. A false red is the one outcome ./README.md says to avoid at
-# any cost, so the argument handling is gone rather than fixed.
-# Filtered in node rather than by `grep -E` into a second file: the list is NUL-delimited now, and a
-# `grep`/`wc -l` pair over NUL records would count lines rather than paths — an instrument reporting a
-# number about a shape it is not reading. node splits on NUL, filters, and reports the count it used.
-#
-# THE SPLIT AND THE DECODE ARE TWO DIFFERENT FAIL-OPENS, and the first version of this change closed
-# only the first. `-z` above stops a pathname being mis-SPELLED (see the header — not mis-split, which
-# git's own quoting already prevented); reading the list back with
-# `readFileSync(0, "utf8")` left it mis-DECODED, and git allows a pathname to be any bytes except NUL
-# and `/`. An invalid sequence comes back U+FFFD-substituted — a DIFFERENT name — so `existsSync` finds
-# nothing, the file is skipped as "tracked but deleted" two lines down, and a malformed JSON file passes
-# unparsed under a green. That is the same silent skip this recipe's own header cites `-z` to prevent,
-# one layer in. `../../cli/control-chars.mjs`'s `splitList` is the model, and this now copies BOTH of
-# its halves rather than one: split as bytes, and keep a name only if it round-trips through UTF-8.
-# Found by Copilot on #251 round 1, in the same place its sibling had already been fixed.
 node -e '
     const fs = require("fs");
     const buf = fs.readFileSync(0);
@@ -90,26 +41,15 @@ node -e '
         if (i > start) {
             const chunk = buf.subarray(start, i);
             const text = chunk.toString("utf8");
-            // The round trip is the test, not a search for U+FFFD: a filename may legitimately
-            // CONTAIN U+FFFD, and rejecting that would be a false red on a name git stores as given.
-            // Re-encoding answers the only question that matters — did anything change on the way in.
+            // A round trip, not a search for U+FFFD, which a name may legitimately contain.
             if (Buffer.from(text, "utf8").equals(chunk)) names.push(text);
             else undecodable.push(chunk);
         }
         start = i + 1;
     }
-    // A pathname as it may be PRINTED, and every message below that names a path goes through here —
-    // `../../cli/control-chars.mjs`s `escapeBytes`/`displayPath` pair, same rule for the same reason.
-    // THE BACKSLASH IS ESCAPED FIRST and that is the load-bearing half: a filename literally holding
-    // the characters \, x, f, f would otherwise render exactly like the byte 0xff, so the message meant
-    // to remove an ambiguity would carry one. The first version of this helper skipped that step —
-    // copied the models shape and not its rule, which is the same half-copy this whole change exists
-    // to correct, one turn later and in my own hand.
+    // The backslash is escaped too, so a name holding the text \xff prints unlike the byte 0xff.
     const show = (c) => Array.from(c).map((b) => (b === 0x5c ? "\\\\" : b >= 0x20 && b < 0x7f ? String.fromCharCode(b) : "\\x" + b.toString(16).padStart(2, "0"))).join("");
     const displayPath = (f) => show(Buffer.from(f, "utf8"));
-    // Refused before anything is parsed, and refused rather than skipped: the tree may be perfectly
-    // clean and this run cannot say so, which is the difference between a verdict and a failure to
-    // reach one. No count is written, so the guard below routes it to exit 2.
     if (undecodable.length) {
         for (const chunk of undecodable) process.stderr.write("a tracked pathname is not valid UTF-8: " + show(chunk) + "\n");
         process.stderr.write("refusing to report on " + names.length + " file(s) beside " + undecodable.length + " pathname(s) this recipe cannot name\n");
@@ -122,20 +62,13 @@ node -e '
         try {
             JSON.parse(fs.readFileSync(file, "utf8"));
         } catch (e) {
-            // The pathname is ESCAPED into this report, not interpolated raw. It is a line-based
-            // report — the shell counts it with `wc -l` and indents it with `sed` — and a tracked
-            // `.json` filename may legally contain a newline, which is the exact class this change
-            // exists to support. Raw, one malformed file became TWO lines: the count overcounted and
-            // the diagnostic was cut in half. Demonstrated on a real file named `two<LF>lines.json`,
-            // 1 file reported as 2, then 1 again once escaped. Copilot, #251 round 2, suppressed and
-            // promoted — the same class as the round-1 finding, one layer further out.
+            // Escaped: the shell counts this report in lines, and a name may hold a newline.
             process.stdout.write(displayPath(file) + " -> " + String(e.message).split("\n")[0] + "\n");
         }
     }
 ' <"$manifest" >"$tmp/bad" 2>"$tmp/count"
 
-# The count arrives on stderr and is the only thing written there on success, so a non-numeric stderr
-# is node itself having failed — which stays exit 2, never a verdict about the tree.
+# On success stderr holds the count alone, so anything else there is node failing: exit 2.
 count=$(cat "$tmp/count")
 case "$count" in
     '' | *[!0-9]*)

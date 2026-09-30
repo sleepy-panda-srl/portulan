@@ -1,14 +1,4 @@
 // A form step — the handoff index is printed on demand, and not kept.
-//
-// Portulan stopped keeping its own handoff index on 2026-09-23: a committed copy conflicted on every
-// merge that added a handoff, and carried nothing the series does not. `portulan index --handoffs`
-// prints it on demand, and `index --check` still renders the series with no copy on disk, so the rail
-// keeps its subject. This step moves a consumer the same way: a kept copy is deleted, and its path is
-// git-ignored so none is committed again. The declaration stays, since it names where a copy would go.
-//
-// **Owed by git's answer, never by the disk's alone.** A copy on disk that git ignores and does not
-// track is one machine's own, written by `index --write` for a reader there, and it is left alone: the
-// step is owed where the path is not ignored, or where a copy is still tracked.
 
 import path from "node:path";
 
@@ -16,7 +6,6 @@ import { handoffIndexIgnore, notYetForm, withIgnoreLines } from "../../cli/form.
 
 const posix = (p) => p.split(path.sep).join("/");
 
-/** Where the index sits in the tree, or why this step has nothing to decide here. */
 function located(ws) {
     const declared = ws.manifest?.handoffs?.index?.path;
     if (typeof declared !== "string") return { skip: "this workspace declares no handoff index" };
@@ -28,7 +17,7 @@ function located(ws) {
     return { rel: posix(rel), workspace: posix(path.relative(ws.repository.dir, ws.dir)) || ".", git };
 }
 
-/** Whether git ignores the index's path by the rules alone, tracked or not; null where git cannot say. */
+/** `--no-index` asks the ignore rules alone, so a tracked path answers too. */
 function ignoredBy(at) {
     const out = at.git("check-ignore", "-q", "--no-index", "--", at.rel);
     if (out.status === 0) return { ignored: true };

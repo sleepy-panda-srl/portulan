@@ -1,73 +1,5 @@
 # Publish the package to GitHub Packages, under the name that registry forces.
-#
-# ## Why this workflow exists at all, and what it costs
-#
-# The package's real home is npmjs, as `@sleepy_panda_srl/portulan` — that is the name `README.md`
-# documents, the name `npx` resolves, and the one `.portulan/identity.md`'s same-bytes claim is about.
-# GitHub Packages is a SECOND registry, and its npm half requires the scope to equal the repository
-# owner. The owner is `sleepy-panda-srl` with hyphens; the npm organisation is `sleepy_panda_srl` with
-# underscores. There is no name that satisfies both, so this workflow publishes the same tree under a
-# DIFFERENT name, `@sleepy-panda-srl/portulan`.
-#
-# Two consequences, stated here rather than discovered later:
-#
-#   1. **The two tarballs are not byte-identical, and must never be claimed to be.** They differ in
-#      `package.json`'s `name` field, by construction. `pack-identity` compares a pack against the
-#      TREE and is unaffected; what would be false is any sentence saying the two registries serve the
-#      same bytes. They serve the same tree under two names.
-#   2. **GitHub Packages requires a token to install, even for a public package.** So this path does
-#      NOT have the property the npmjs path has and that `README.md` makes a point of — that
-#      installing needs no account of ours. It is an additional route for people who are already
-#      inside GitHub's auth, never the documented one. _(`CONTRIBUTING.md` was named here and in the
-#      CHANGELOG too, and does not carry that claim: its "no account of ours" is about the
-#      contribution paths and about filing feedback, never about installing. Copilot round 2 caught
-#      the CHANGELOG site; this one is its sibling.)_
-#
-# Ruled by the maintainer on 2026-08-18, with both costs above put to him first.
-#
-# ## A third cost, learned by running this and not predicted by anything above
-#
-# **GitHub Packages creates an npm package PRIVATE, and `--access public` does not change that.**
-# Measured on this workflow's first fire, 2026-08-18: npm sent the flag and said so — *"Publishing to
-# https://npm.pkg.github.com with tag latest and public access"* — the publish succeeded, and the
-# package's `visibility` came back **`private`** anyway. The repository was already public. So on this
-# registry the flag is accepted and does not govern.
-#
-# Making it public took two manual steps, and **neither has an API**:
-#
-#   1. An ORGANISATION policy change. Until it was made, the package's own settings page showed
-#      *"Public — Setting is disabled by organization administrators"*. It is under the org's
-#      Settings → Packages, and it applies to every package the organisation will ever publish, which
-#      is why it is a wider decision than one package.
-#   2. A per-package visibility flip, in that package's settings page.
-#
-# There is no endpoint for either: `PATCH /orgs/{org}/packages/npm/{name}` answers **404**, the
-# GraphQL schema's only package mutation is `deletePackageVersion`, and `/orgs/{org}/settings/packages`
-# does not exist. Both steps are UI-only and the maintainer's.
-#
-# **Those two steps are per PACKAGE, not per RELEASE — measured on the third fire, 2026-08-20.**
-# Publishing `0.1.2` of the same package reported `visibility: public` with no manual step in between
-# (run 32337456931), and the API agrees: `/orgs/sleepy-panda-srl/packages/npm/portulan` returns
-# `public` with both `0.1.1` and `0.1.2` under it. So a visibility flip is paid once for a package's
-# lifetime and every later version inherits it. That is the practical answer a reader of the block
-# above needs and could not get from it: the cost is real and it is NOT recurring.
-#
-# **What this fire did NOT establish, stated because the block above reads as if it had.** The package
-# was ALREADY public when this ran, so nothing here tests a FIRST publish under a NEW package name now
-# that the organisation policy has been changed — whether such a package is created public, or is
-# created private and still needs its own flip, is untested and is the half that would matter to
-# anyone adding a second package. And for the same reason this fire cannot re-test `--access public`:
-# a flag cannot be shown to govern nothing on a package that was already public. The inertness recorded
-# above stands on the 2026-08-18 measurement alone and is neither confirmed nor refuted here.
-#
-# **`--access public` is kept regardless.** It costs nothing, it is required on npmjs where the same
-# tree also publishes, and a flag that is correct on one registry and inert on another is better than
-# one that is absent on both. What it is NOT is the thing that makes the package public here — which
-# is exactly why the visibility report below exists, and why it prints what the registry SAYS rather
-# than what this file asked for.
-#
-# Triggered by a published release so the registry entry and the release cannot drift, plus a manual
-# dispatch for a tag whose release predates this workflow.
+
 name: publish-github-packages
 
 on:
@@ -80,19 +12,10 @@ on:
         required: true
         type: string
 
-# `packages: write` is the only elevated grant, and `contents: read` is narrower than the default.
 permissions:
   contents: read
   packages: write
 
-# Both expressions below read `github.event.inputs.ref` rather than `inputs.ref`. The two are
-# equivalent for this input — no default, string type — and the spelling was changed on Copilot's
-# round 1. Its stated reason is not the reason: the `inputs` context IS recognised here, because this
-# workflow declares `workflow_dispatch.inputs`, and a missing property in a GitHub expression yields
-# empty rather than raising. The real reason is that this workflow HAS NEVER FIRED and its expressions
-# cannot be evaluated from a checkout — GitHub registers a workflow only once it is on the default
-# branch — so between two spellings that behave identically, the one with no dispute attached is the
-# one to ship on an unexercised path where the failure mode is checking out the wrong ref.
 concurrency:
   group: publish-github-packages-${{ github.event.release.tag_name || github.event.inputs.ref }}
   cancel-in-progress: false
@@ -106,82 +29,28 @@ jobs:
           ref: ${{ github.event.release.tag_name || github.event.inputs.ref }}
           persist-credentials: false
 
-      # Milestone 8's ninth clause — *a release carries an eval result* — at the ONE moment a check can
-      # see a release rather than a tree. Every other rail here grades a pull request, and a pull
-      # request is not a release: the heading rename that makes a tree a cut happens "in a change
-      # merged before the tag is created", which is human-owned prose in `CHANGELOG.md`, in a file
-      # that says of its neighbouring rule "nothing checks this". A maintainer who tags a commit whose
-      # accumulator was never renamed produces a release no tree state ever flagged. This step reads
-      # the TAG's own checkout and asks only its own question.
-      #
-      # It runs BEFORE the publish, deliberately: refusing after the registry entry exists would leave
-      # the thing it was protecting already shipped.
-      #
-      # **The grader is checked out SEPARATELY, from this workflow's own ref, and running it out of the
-      # tagged tree was a crash rather than a carve-out.** `cli/release-eval.mjs` exists in no tag
-      # before `v0.1.3` — measured, `git ls-tree v0.1.1 --name-only cli/release-eval.mjs` is empty for
-      # all three — so on the manual-dispatch path this workflow documents *for exactly those tags*
-      # (its input's example is `v0.1.1`), `node cli/release-eval.mjs` would hit MODULE_NOT_FOUND, exit
-      # 1 under `set -euo pipefail`, and block a publish it was supposed to wave through. That is the
-      # fifth appearance of the defect `.portulan/verify/release-eval.sh` guards against by name —
-      # node on a missing file exits 1 and reads as a finding — and the recipe had the guard while the
-      # step did not. Checking the grader out beside the subject fixes it at the root: the grader is
-      # always current, the subject is always the tag, and the version carve-out stays in one carrier
-      # instead of being re-derived in shell.
-      # **One thing this step cannot cover, and it is inherent rather than a gap to close.** A
-      # `workflow_dispatch` runs the YAML of the ref it is dispatched *from* — so dispatching from a ref
-      # that predates this step runs a workflow with no eval check in it at all, and the step is
-      # therefore skippable by choosing an old ref rather than by anything in this file. It is named
-      # rather than defended against: the actor is the maintainer, `publish-a-release` is Gated to him,
-      # and a check cannot bind a version of itself that does not exist. Raised by a second opinion.
+      # Tags before v0.1.3 carry no cli/release-eval.mjs, so the grader comes from the default branch.
       - name: Check out the grader from the default branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # **`ref` is REQUIRED here and its absence was the same defect twice at this step.**
-          # `actions/checkout` defaults `ref` to "the reference or SHA for that event" — which on the
-          # `release: published` path is the TAG. So a grader checkout with no `ref` fetches the tagged
-          # tree, the very tree that has no `cli/release-eval.mjs` for `v0.1.0`–`v0.1.2`, and the
-          # `MODULE_NOT_FOUND` crash this second checkout exists to prevent comes straight back. The step
-          # was added one commit earlier to fix that crash and reintroduced it in its own repair. Raised
-          # by Copilot, round 2 on [#381](https://github.com/sleepy-panda-srl/portulan/pull/381).
-          #
-          # The default branch is named rather than `github.workflow_sha`, and the difference matters on
-          # the two paths this workflow has: on `release: published` GitHub runs the workflow file from
-          # the default branch, so the default branch IS this workflow's own ref there; on
-          # `workflow_dispatch` from an older ref, taking the grader from the default branch is the
-          # better answer anyway, since the grader should be current even when the subject is not.
           ref: ${{ github.event.repository.default_branch }}
           path: .release-eval-grader
           persist-credentials: false
 
+      # Must run before the publish: a refusal after it would leave the release already shipped.
       - name: The tagged tree carries its own eval result
         run: |
           set -euo pipefail
-          # **The TAG is passed, never `package.json`'s version, and that was a real hole rather than a
-          # preference.** This step's motivating scenario is a tag created from a tree whose
-          # `## Unreleased` accumulator was never renamed — and in exactly that tree `package.json`
-          # still declares the PREVIOUS version. A first cut read the version from the payload and
-          # passed it, so the step asked about `0.1.2`, was told it predates the clause, and published:
-          # green in every reachable variant of the one case it exists for. `release-eval --tagged`
-          # strips the `v`, and refuses a tag whose version the payload does not declare — which IS
-          # that scenario, reported as a finding rather than as a note beside a publish that proceeds.
+          # The tag, never package.json's version, which an uncut tree leaves at the previous release.
           node .release-eval-grader/cli/release-eval.mjs \
             --tagged "${{ github.event.release.tag_name || github.event.inputs.ref }}" \
             --repo-root .
 
-      # The grader is not part of the payload and must not become one. `files` would exclude it anyway,
-      # and deleting it is the carrier that does not depend on that staying true.
       - name: Remove the grader before anything is packed
         run: rm -rf .release-eval-grader
 
-      # No `actions/setup-node`: the runner's node is preinstalled and every other workflow here
-      # relies on that. The `.npmrc` that step would generate is three lines, written below where it
-      # can be read, rather than produced by an action whose output nobody sees.
       - name: Publish under the owner-scoped name GitHub Packages requires
         env:
-          # Both here, in ONE block. A second `env:` mapping on the same step is a duplicate key and
-          # YAML keeps the last one — which silently deleted NODE_AUTH_TOKEN when this was first
-          # written, leaving a publish with no npm credential and no parse error to show for it.
           NODE_AUTH_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -190,9 +59,6 @@ jobs:
           SCOPE='@sleepy-panda-srl'
           TARGET="$SCOPE/portulan"
 
-          # Rewrite `name` in the working copy only — never committed, and the rewrite is VERIFIED
-          # before anything is published. A publish that silently kept the npmjs name would either
-          # fail on a scope mismatch or, worse, succeed against the wrong registry entry.
           node -e '
             const fs = require("fs");
             const target = process.argv[1];
@@ -207,63 +73,23 @@ jobs:
 
           VERSION="$(node -p 'require("./package.json").version')"
 
-          # Two lines, not three. `always-auth` was removed in npm 9 and this runner is on 11 —
-          # measured: `always-auth is not a valid npm option`. A dead setting in a generated file is
-          # the kind of thing that reads as configuration and is noise.
-          # The token is written as a literal `${NODE_AUTH_TOKEN}` reference, single-quoted so the
-          # SHELL does not expand it; npm expands it at request time, so the secret is never bytes
-          # on disk. `.npmrc` is not in `files`, so it cannot reach the tarball either.
+          # Single-quoted so npm, not the shell, expands `${NODE_AUTH_TOKEN}`: the token never reaches disk.
           printf '%s:registry=https://npm.pkg.github.com\n' "$SCOPE" > .npmrc
           printf '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}\n' >> .npmrc
 
-          # Idempotent by design: a re-run of a published release must not fail the workflow. npm
-          # refuses to overwrite a version, and that refusal is correct rather than an error here.
-          #
-          # It says nothing to PUBLISH rather than nothing to do, because the step no longer stops
-          # here. `27b22e9` dropped the `exit 0` that used to follow this line, so the visibility
-          # report below now runs on this path too — and that report is the one thing a re-run is
-          # fired to see. "Nothing to do" was true while the exit stood and went false beneath it.
-          #
-          # The answer is carried in a flag rather than asked twice: `npm view` is a network round
-          # trip and it cannot change inside one run. `no`/`yes`, symmetric on purpose — the test
-          # below reads one of the two, so an asymmetric pair leaves a reader hunting for the
-          # comparison against the other word, and there is never going to be one.
           already_published=no
           if npm view "$TARGET@$VERSION" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
             echo "$TARGET@$VERSION is already on GitHub Packages — nothing to publish."
             already_published=yes
           fi
 
-          # `--access public` is REQUIRED, not decorative. npm defaults a scoped package to
-          # `restricted` on first publish — `package.json` carries no `publishConfig`, and
-          # `npm config get access` is null, so the built-in default applies. The 0.1.0 npmjs publish
-          # needed this same flag; the record of it is in
-          # `.portulan/handoffs/2026-08-18-the-flip-the-publish-and-what-each-measurement-cost.md`.
-          # Without it this either fails on first publish or lands a RESTRICTED package while the
-          # README says the route is open to anyone holding a read:packages token — the documentation
-          # and the artifact disagreeing, which is worse than either being wrong alone.
-          #
-          # This was written as "may be a no-op ... UNVERIFIED until this workflow first fires". It
-          # has now fired, so the answer is recorded instead of the hedge: the flag IS a no-op here.
-          # npm sent it, said "with public access", and the package was created PRIVATE on a PUBLIC
-          # repository. Visibility on this registry is an org policy plus a per-package setting, both
-          # UI-only. See the third cost in this file's header. The flag stays because it is required
-          # on npmjs and free here.
+          # Visibility here is a per-package setting made by hand, not `--access public`, which npmjs needs.
           if [ "$already_published" = "no" ]; then
             npm publish --access public --registry=https://npm.pkg.github.com
             echo "published $TARGET@$VERSION to GitHub Packages"
           fi
 
-          # Report what the registry says the visibility IS, rather than what we asked for. A publish
-          # that succeeded and left the package restricted would otherwise look identical to success.
-          #
-          # This runs on BOTH paths. It used to sit below the idempotent early `exit 0`, so a re-run
-          # printed no visibility line — measured on dispatch run 32171959326, which printed none.
-          # The path somebody takes to CHECK ON a package was the one path with the check switched
-          # off, which is the shape this report exists to refuse.
-          # Read with node rather than `--jq`: `workflow-filters` executes every jq and awk program
-          # a workflow runs, so an uncovered `--jq` here would make that recipe's green mean less
-          # than it says — it went red on exactly this line and was right to.
+          # Parsed with node, not `--jq`: a jq program here would owe fixtures to the workflow-filters recipe.
           if gh api "/orgs/sleepy-panda-srl/packages/npm/portulan" > package-visibility.json 2>/dev/null; then
             node -e 'const p=require("./package-visibility.json"); console.log("visibility:", p.visibility)'
           else

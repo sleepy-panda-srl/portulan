@@ -1,51 +1,6 @@
 #!/usr/bin/env bash
-# Run a `gh` command as the agent identity instead of as the maintainer.
-#
-#     ./.portulan/tools/gh-bot api repos/{owner}/{repo}/issues/8/comments -f body='…'
-#
-# The token is minted fresh (it expires in an hour), passed to `gh` through the environment, and
-# never written to disk or echoed. Prefer this over exporting a token in your shell: an exported
-# credential outlives the command and quietly re-attributes everything you type afterwards, which
-# is the failure this whole mechanism exists to prevent.
-#
-# Scope, deliberately narrow: this is for PULL REQUEST CONVERSATION ONLY — comments and review
-# replies. Commits and pushes keep the maintainer's identity, because the build's provenance
-# discipline requires his authorship on the commit record. Do not use this to push. See
-# ../gate-map.md, "Which identity acts". Since 2026-07-28 that scope is a list this file checks
-# rather than a sentence it asks you to have read — see the `api` arm below, and read the paragraph
-# above it for what the list is worth and what it is not.
-#
-# **Resolving a review thread is NOT in that scope, and this sentence listed it until 2026-08-10.**
-# GitHub refuses `resolveReviewThread` to *this* App — `FORBIDDEN — Resource not accessible by
-# integration`, re-measured that day through this wrapper. The general form of that claim — any App,
-# whatever its permission set — is ../gate-map.md's row to make and is stated there; what is measured
-# here is the particular, which is all a tool's own docblock should be asserting. The refusal is not a
-# permission the installation is missing: it already holds `pull_requests: write`, the one that covers review
-# conversation, and is refused anyway. Resolving is the maintainer's on the merits too, not only by
-# refusal — a reply is *what the agent says*, resolving is *the judgement that a review point is
-# settled*, and this repository gates merging on conversation resolution, which makes that judgement
-# part of the merge gate rather than part of the conversation. ../gate-map.md's "Resolving a review
-# thread" row is the carrier; ./README.md and the `graphql` note in the `api` arm below agree.
-#
-# **How it survived is the part worth the lines, and it is not that nobody looked.** 69d61f1 corrected
-# this exact claim on 2026-07-25, titled "three documents said it could" — the gate map,
-# ../memory/agent-activity-is-attributable.md, and ./README.md. There were four. This file was written
-# 4h54m earlier the same day by ce13a45, and the sweep counted the carriers it had found rather than
-# searching for the ones it had not.
-#
-# **The missed one was a copy, which is why it reads as an independent claim and is not.** The gate
-# map's conversation row carried the same three items in the same order — "comments, review replies,
-# resolving threads" — and 69d61f1 rewrote it to "comments and review replies". That is, word for word,
-# the sentence restored above, sixteen days late: this docblock was the row's twin, and the correction
-# fixed the original while the copy went on speaking for the tool. Then e680674 added the `graphql`
-# note below on 2026-07-28, stating the refusal correctly in a file whose opening paragraph still
-# claimed the capability — so one file carried a claim and its own refutation for thirteen days.
-#
-# The lesson is about the site, not the sentence: a scope summary at the top of a tool is read as
-# orientation and audited as prose, by readers who came to use the file rather than to check it.
-#
-# Exit 2 if the token could not be minted, so a misconfiguration cannot be mistaken for a
-# GitHub refusal — the same contract as the verify recipes.
+# Run a `gh` command as the agent identity, for pull-request conversation only.
+# Exit 2 when this refuses or is misconfigured, so neither reads as a GitHub refusal.
 
 set -uo pipefail
 
@@ -59,57 +14,8 @@ if [ "$#" -eq 0 ]; then
     exit 2
 fi
 
-# Refuse the operations that must stay the maintainer's. This is a guard-rail against habit,
-# not a security boundary — the token itself is scoped by the App's permissions, and that is
-# what actually stops a push.
-#
-# `gh pr` is refused with a POINTER, not a flat no: pull-request conversation is exactly what this
-# identity is for, and an agent that hits a dead end here will reach for plain `gh` and post as the
-# maintainer — the failure this whole mechanism exists to prevent. The refusal must always name the
-# sanctioned spelling.
-#
-# ## Why `api` grew an endpoint allowlist, 2026-07-28
-#
-# `gh api` is the one subcommand here that reaches every endpoint GitHub has, so the subcommand
-# refusals above said nothing about it — and this wrapper is a spelling no compiled gate can see.
-# A shell gate in ../gates.json compiles to `Bash(<prefix>:*)`, a literal prefix match against the
-# command as typed, so `./.portulan/tools/gh-bot api …` matches no rule; ../../cli/compile.mjs's
-# `spellings()` peels `sh -c` and knows nothing of this path. The wrapper is *also* allowlisted by
-# hand in `.claude/settings.local.json` on the maintainer's machine, so on that host it runs
-# unattended.
-#
-# This grew against the `gh api` gate, and that gate was removed on 2026-07-28. So the allowlist below
-# is now NARROWER than the policy it once backstopped: a ruleset read is unattended through plain
-# `gh api` and refused here. Deliberate, and a statement about the PRINCIPAL rather than the endpoint —
-# this token is minted by the repository and should reach the smallest surface that does its job, while
-# the maintainer's own credentials are his to spend. See ../gate-map.md, "The honest holes", hole 6.
-#
-# **What that was actually worth, measured 2026-07-28 rather than argued.** The installation's whole
-# permission set is `{"contents": "read", "metadata": "read", "pull_requests": "write"}` — `contents`
-# added 2026-07-29 for the scheduled librarian, per ../proposals/0015 — and no `administration`, so:
-#
-# **The labels endpoint is deliberately not on the allowlist below, and the librarian does not use this
-# wrapper for it.** Adding a label rides the Issues API, which is not pull-request conversation; the
-# workflow mints its own token through ./gh-bot-token.mjs and calls `gh pr edit` there. That the App
-# can label at all was measured 2026-07-29 — added and removed on a closed pull request, then confirmed
-# live on #85, where an App-raised `labeled` event re-ran `pr-labeled` and cleared it. Named here so
-# the absence reads as a scope decision rather than an oversight.
-#
-#   PATCH repos/{owner}/{repo}/rulesets/{id}      403 Resource not accessible by integration
-#   GET   repos/{owner}/{repo}/branches/main/protection
-#                                                 403 Resource not accessible by integration
-#   GET   repos/{owner}/{repo}/rulesets           200 — ruleset READ rides on `metadata`
-#
-# So the settings CHANGE the gate exists to stop was already refused by the platform, which is the
-# floor doing exactly the job ../../core/operating/autonomy.md gives it. The read was not: the gate
-# covers reads on purpose ("a gated read is a small cost"), and through this wrapper one succeeded
-# silently. This allowlist is what stops that being silent, and it is the layer that keeps holding
-# on the day someone widens the App — the permission set is a live setting no file here can pin.
-#
-# **Still a guard against habit, and it must not be read as more.** An agent with shell access can
-# mint the token itself and call `gh` directly. That is true of every local layer in this repository,
-# including the compiled permission rules; the rail is the App's permission set, and it is named as
-# such in ../gate-map.md rather than implied by this code being here.
+# A guard against habit, not a security boundary: the App's permission set bounds the token.
+# `gh pr` is refused with a pointer to the API form, so an agent does not fall back to plain `gh` as the maintainer.
 case "${1:-}" in
     pr)
         printf 'gh-bot: use the API form so the action is unambiguous, e.g.\n' >&2
@@ -123,11 +29,7 @@ case "${1:-}" in
         exit 2
         ;;
     api)
-        # Find the endpoint: the first argument that is not a flag and not a flag's value. Scanning
-        # for "the first thing containing a slash" would be shorter and wrong — `-f body='see
-        # repos/x/y'` contains one — and taking `$2` would be wrong the other way, since `gh api -X
-        # PATCH repos/…` puts the method there. Options that consume the next argument are listed
-        # rather than guessed, because a missed one shifts the scan onto that option's VALUE.
+        # The endpoint is the first argument that is neither a flag nor the value of an option that takes one.
         endpoint=""
         skip=0
         for arg in "${@:2}"; do
@@ -141,40 +43,20 @@ case "${1:-}" in
         done
         endpoint="${endpoint#/}"
 
-        # The endpoints this identity is for. Every path segment is spelled — `[^/]+`, never `.*` —
-        # because a pattern able to cross a `/` is how an allowlist quietly admits the subtree it
-        # meant to exclude, and `repos/*/*/pulls/*` under `case` globbing would have matched
-        # `repos/o/r/pulls/1/merge`. Anchored at both ends for the same reason.
-        #
-        # `graphql` is admitted and is this guard's honest boundary: one endpoint carrying arbitrary
-        # queries, which no allowlist here can inspect. It is what `resolveReviewThread` is spelled
-        # through, and GitHub refuses that to any App regardless — `FORBIDDEN — Resource not
-        # accessible by integration`, measured 2026-07-27 and recorded in ../gate-map.md. So what
-        # bounds GraphQL is the permission set, exactly as it bounds everything else here.
+        # Each segment is `[^/]+` and the pattern is anchored, so no entry admits a subtree; the App's permission set bounds `graphql`.
         conversation='^(graphql'
         conversation+='|installation/repositories'
         conversation+='|repos/[^/]+/[^/]+/issues/[0-9]+/comments'
         conversation+='|repos/[^/]+/[^/]+/issues/comments/[0-9]+'
         conversation+='|repos/[^/]+/[^/]+/pulls/[0-9]+/comments'
         conversation+='|repos/[^/]+/[^/]+/pulls/[0-9]+/comments/[0-9]+/replies'
-        # A review by id, and that review's comments. Both are real routes and both were refused
-        # until 2026-07-28 — measured, `…/pulls/61/reviews/4796335478` answers 200. The list form
-        # is the `(/…)?` arm.
         conversation+='|repos/[^/]+/[^/]+/pulls/[0-9]+/reviews(/[0-9]+(/comments)?)?'
-        # A review COMMENT by id. `pulls/reviews/<id>` was admitted here too and is not a route at
-        # all — measured 404 on the same day. An allowlist that admits a path GitHub cannot serve
-        # is not harmful, it is unreviewable: it reads as a considered decision about a surface
-        # that does not exist.
         conversation+='|repos/[^/]+/[^/]+/pulls/comments/[0-9]+'
         conversation+=')$'
 
-        # An endpoint this scan could not identify is refused, never admitted. "Could not tell" must
-        # not resolve to "allow" — the same contract ../verify/README.md holds every recipe to, and
-        # the reason `--help` lands here too rather than being special-cased into a hole.
+        # An endpoint the scan could not identify is refused, never admitted, `--help` included.
         if ! [[ "$endpoint" =~ $conversation ]]; then
-            # An if/else rather than `${endpoint:+…}${endpoint:-…}`, which prints the endpoint TWICE
-            # when it is set — the `:-` arm falls through to the value, not to nothing. Caught by
-            # reading the refusal this prints instead of only checking that it fired.
+            # An if/else, since `${endpoint:+…}${endpoint:-…}` prints the endpoint twice when it is set.
             if [ -n "$endpoint" ]; then shown="\`$endpoint\`"; else shown="<no endpoint found in these arguments>"; fi
             printf 'gh-bot: this identity is for PULL REQUEST CONVERSATION, and %s is not one of its endpoints.\n' "$shown" >&2
             printf '        Allowed: issue/review comments, review replies, reviews, `graphql`, `/installation/repositories`.\n' >&2

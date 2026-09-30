@@ -1,54 +1,21 @@
-# Every pull request carries a label from the declared set.
-#
-# The policy is `.portulan/labels.json` and this file is only the checker — the same split as
-# `.portulan/gates.json` and `cli/compile.mjs`, and for the same reason: the set of labels is ours to
-# choose, while "a pull request must carry one" is machinery. Editing the set is a workspace change and
-# needs no workflow edit.
-#
-# WHY A SEPARATE WORKFLOW rather than a job inside verify.yml. A label check needs the `labeled` and
-# `unlabeled` event types, and adding those to verify.yml would re-run every verify recipe every time
-# somebody clicks a label — for a check that reads two files and never looks at the tree. It would also
-# make the required `workspace-verify` context re-report on label churn, which is noise on the one check
-# branch protection actually pins.
-#
-# THE TRIGGER LIST IS LOAD-BEARING. Without `labeled`/`unlabeled` this check would refuse a pull request,
-# the author would add the label, and nothing would re-run — the check would stay red with no way to
-# clear it but an empty push. That is a gate that fails CLOSED and traps the change, which is worse than
-# the omission it protects against.
-#
-# A REQUIRED STATUS CHECK SINCE 2026-07-27, and it got there by a sequence rather than in one step —
-# proposal 0004 learned the expensive way why. A required context that has never reported blocks every
-# open pull request that does not carry the workflow, including ones already in review, and
-# `enforce_admins: true` means nobody could force past it. So this shipped first, merged to `main` (#46),
-# reported green on real pull requests, and only then joined branch protection — at a moment with zero
-# open pull requests, so nothing in flight could be trapped by the new requirement.
-#
-# The job id IS the status-check context, so renaming it later detaches the requirement silently.
+# Every pull request carries a label from the set .portulan/labels.json declares.
 
 name: pr labels
 
 on:
   pull_request:
+    # `labeled` and `unlabeled` re-run the check once a label is added; without them only a push clears a red.
     types: [opened, reopened, ready_for_review, synchronize, labeled, unlabeled]
 
-# `pull-requests: read` buys the one thing the event payload cannot give: the labels the pull request
-# carries RIGHT NOW. Measured on #46, the pull request that added this file — `gh pr create --label` opens
-# the pull request and applies labels as a second operation, so the `opened` event's payload carries an
-# empty label array and this check went red on a pull request that was labelled from the first second.
-# A spurious red on every newly-opened pull request is precisely the failure `.portulan/memory/` warns
-# about, since a false red is what gets a whole check switched off. So the payload supplies the number
-# and the API supplies the answer.
 permissions:
   contents: read
   pull-requests: read
 
 jobs:
+  # This id is a required status-check context (a `name:` would replace it): renaming it blocks every pull request.
   pr-labeled:
     runs-on: ubuntu-latest
     steps:
-      # Pinned to a full-length SHA because the organisation and this repository both set
-      # `sha_pinning_required: true` — the platform refuses an unpinned action outright. Same pin as
-      # verify.yml, so Dependabot bumps both together.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: The pull request carries at least one declared label
@@ -60,9 +27,6 @@ jobs:
 
           POLICY=.portulan/labels.json
 
-          # Preconditions fail CLOSED, never green. A check that cannot read its own policy and reports
-          # success has told everyone the pull request is labelled without having looked — the defect
-          # .portulan/memory/verify-preconditions-fail-closed.md exists for.
           if [ ! -f "$POLICY" ]; then
             printf '::error::%s is missing — cannot judge whether this pull request is labelled\n' "$POLICY"
             exit 1
@@ -72,10 +36,7 @@ jobs:
             exit 1
           fi
 
-          # Current labels, from the API rather than from the event payload — see the note on
-          # `pull-requests: read` at the top of this file. This read is also a precondition: if it fails
-          # the check does not know whether the pull request is labelled, and saying GREEN there would be
-          # a check reporting on something it could not see.
+          # From the API, not the event payload: `gh pr create --label` applies labels after `opened` fires.
           if ! carried=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.labels[]?.name'); then
             printf '::error::could not read the labels on #%s — refusing to report green on an unread pull request\n' "$PR_NUMBER"
             exit 1

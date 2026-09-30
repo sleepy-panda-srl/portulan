@@ -1,141 +1,9 @@
-# A pull request a bot opens gets its Copilot review requested in the name of a person GitHub can bill.
-#
-# The policy is `.portulan/gate-map.md` → *Which identity acts* and *Merge discipline*; this file is
-# only the actuator. No check awaits the round it asks for: since 2026-09-23 the session that owns the
-# pull request does, and names the review it addressed in its ready reply.
-#
-# ## Why the ruleset is not enough
-#
-# Ruleset `copilot auto-review on pull requests` requests Copilot on a pull request a person opens, and
-# on every push to it. On a pull request a GitHub App opens (`claude[bot]` from a cloud session,
-# `portulan-agent[bot]` from the scheduled librarian) it does not, and what GitHub documents points at
-# who pays. *About GitHub Copilot code review*, read 2026-09-23, under "Code review usage":
-#
-# > For pull requests authored by other bots, or when a bot requests the review, usage is billed
-# > directly to the organization.
-#
-# The same page names the organisation's *AI credits paid usage* policy as what allows a charge for
-# code review. Nothing here is paying the organisation's share, and whether that is because the
-# organisation has no Copilot plan or because the policy is off cannot be read from this repository.
-# The timelines fit it, read 2026-09-23. On the six App-authored pull requests read, every
-# Copilot round was started "on behalf of" the maintainer after a request made in his name (#86, #157,
-# #415, #429, #430), and #421, which had no such request, drew no round. Neither #415, #429 nor #430
-# carries the "requested due to automatic review settings" event that the person-authored #418 carries
-# on every push.
-#
-# The re-request `copilot-review.yml` made until its removal on 2026-09-23 did not fill the gap: it was
-# made with `GITHUB_TOKEN`, which is `github-actions[bot]`, so it was a bot's request as well. That fits
-# the *requested, accepted, and gone* signature issue #161 records on #157 and #248, and explains no
-# more of that issue than its re-requests.
-#
-# ## What this does instead
-#
-# It asks the way he does, with a token of the maintainer's, and the page quoted above attributes a
-# review "manually requested by another user" to that user. It replaces his click and does not change
-# who pays. The route that needs no token is the organisation paying, through that policy, which is his
-# decision; if it is ever taken, this file becomes a second request for the same round and should be
-# removed.
-#
-# **Measured on #435, 2026-09-23, the first bot-authored pull request after this file merged.** The
-# request this job made at 15:49:59 is on the timeline as the maintainer's, Copilot's run for that head
-# started at 15:50:09, and its review landed at 15:54:21. The route works. The job went red anyway,
-# because it judged the request by GitHub's answer to it, and that answer could not have shown it.
-#
-# ## Which token does what, and how the request is confirmed
-#
-# The maintainer's token does one thing: `POST /pulls/{n}/requested_reviewers` naming
-# `copilot-pull-request-reviewer[bot]`, which *Using GitHub Copilot code review* documents and which
-# recorded the request on #435, above. Every read uses the job's own `GITHUB_TOKEN`, granted
-# `pull-requests: read`, so no read depends on what his fine-grained token was scoped to.
-#
-# REST cannot prove the request: its `requested_reviewers` never lists a Bot. On #435 it was empty after
-# a request the timeline recorded; the maintainer's earlier script in another repository had measured the
-# same, REST reporting no reviewers while GraphQL showed Copilot requested; and the field reports cited in
-# #436's handoff say it too. A check keyed on that list was red by construction, the #286 failure turned
-# inside out: there a success claimed a request that did not exist, and here a failure denied one that
-# did. So the one GraphQL read is the pull request's `reviewRequests`, which does list a Bot: before
-# asking, to see a round in flight, and after, as the proof.
-#
-# That read selects each reviewer's type and a Bot's login, and it tolerates a reviewer it may not read.
-# `CODEOWNERS` requests a team on every pull request here, and reading a Team needs the organisation's
-# *Members* permission, which neither token is given. GitHub then answers the rest beside a `FORBIDDEN`
-# error whose path runs through that `requestedReviewer`; that error, and only that one, is read as a
-# reviewer not shown, and so is a reviewer GitHub answers as null. A hidden reviewer may be Copilot, so a
-# request the reads after it do not find is red only when all three answered and showed every reviewer.
-#
-# ## A round for the newest head, and never a request over a round in flight
-#
-# A request names no commit; Copilot reviews the head it finds. On #435 a push at 15:52 had this job ask
-# while Copilot still held the 15:49 request, and nothing was recorded: the held request was answered on
-# the earlier head at 15:54:21, and the newer head drew no round. So before asking, the job reads the
-# pull request. Copilot holding a request means a round is running or on order, and it waits, looking
-# every 15 seconds for up to 15 minutes. Once Copilot holds none, it asks, at most once per run, and
-# only for the head its event carried: a look that finds another head stops it, because the push that
-# made that head has a run of its own, which asks for it.
-#
-# It does not judge whether a round is already on the head. A review object is not always a round:
-# Copilot files an error or a refusal as a review too, and telling them apart means reading the body,
-# whose format moved on 2026-09-23 under the matcher `copilot-review.yml` had for it. Raised by Copilot
-# on #436, the third finding there on that judgement. The price is a second round of a head that has
-# had one: on a re-run, a reopening or a draft made ready again, and on a push that lands between a
-# run's last look and Copilot taking the request up, some ten seconds, because a request names no
-# commit and none can be pinned. The gain is that a re-run after a refusal asks.
-#
-# One job per pull request runs at a time. A newer push waits behind the running job rather than
-# cancelling it, so a request is never cut off between the call and the read that confirms it; a third
-# push cancels the second's pending run, which shows as cancelled and costs nothing, because the run
-# for the newest push is the one left to ask.
-#
-# Only a pull request a bot opened, from this repository, and not a draft. A person's pull request is
-# the ruleset's, billed to its author. A fork's is not this repository's to spend his allowance on.
-# Drafts mirror the ruleset's `review_draft_pull_requests: false`, and `ready_for_review` asks when a
-# draft stops being one; a pull request that becomes a draft during the wait is not asked for either.
-# `synchronize` mirrors its `review_on_push: true`, so each push a bot makes starts a run to ask for its
-# head. A head pushed over before its run asks draws no round, since that run stops or is cancelled as
-# above, and the newest head's run is the one left to ask.
-#
-# ## Why `pull_request_target`, and why the token sits in an environment
-#
-# The token is the maintainer's, and *Pull requests: write*, the smallest permission that can request a
-# reviewer, also lets it submit reviews as him, approvals included. So nothing a pull request contains
-# may reach it. `pull_request_target` runs the base branch's copy of this file, so a pull request cannot
-# change what runs with the token, and this job checks nothing out and runs no code from the pull
-# request. The token is a secret of environment `copilot-request`, whose deployment branches the
-# maintainer limits to `main`. GitHub sends no job that names an environment to a runner until that
-# environment's rules pass, so a workflow pushed on any other branch cannot read the token either. This
-# file cannot check the limit; it is part of his one-time setup. The job's `GITHUB_TOKEN` gets
-# `pull-requests: read` and nothing else, for the reads.
-#
-# The price of `pull_request_target` is that the pull request changing this file cannot exercise it: the
-# copy that runs is the one on `main`.
-#
-# ## Observation procedure (proposal 0007)
-#
-# The first cut's procedure ran on #435 and is recorded above; the second cut's first runs, refused, are
-# in the handoff of the change that replaced it. This cut's runs on the next push to a pull request a
-# bot opened, after it merges: this job's log shows the reads and the request, and its summary Copilot
-# among the review requests; the timeline shows "<maintainer> requested a review from Copilot" at the
-# job's time; and a Copilot run for that head starts. On a push made while a round is running, the log
-# shows the wait.
-#
-# ## What is red, and what is a warning
-#
-# Red is a fault that needs the maintainer: no token; a request GitHub refuses, which an expired or
-# revoked token, or one without *Pull requests: write*, gets; a read before the request that the job's
-# own token is refused, other than the one reviewer error above, which is this file's `permissions`;
-# and a request GitHub accepted whose review requests, read three times after it, show every reviewer
-# and never Copilot, which is a request GitHub did not record. A warning and exit 0: a request this job
-# could not make, because the pull request or its review requests stayed unreadable or Copilot still
-# held a request when the wait ran out, which a re-run of this job repairs; a request made after which a
-# read of the review requests failed; and one whose review requests list no Copilot but hide a
-# reviewer, which may be Copilot's. So while a hidden reviewer such as the team above holds a request,
-# the check goes red only for a request refused or never made. A rename of the reviewer's login shows in
-# either, with the logins printed. What this job cannot see is a request GitHub records and Copilot then
-# drops; the session awaiting the round notices that, when no round arrives on the head.
+# Requests Copilot with the maintainer's token on a pull request a bot opens, which the Copilot ruleset skips.
 
 name: copilot request
 
 on:
+  # The token can approve as the maintainer: this runs main's copy and must never run the pull request's code.
   pull_request_target:
     types: [opened, reopened, ready_for_review, synchronize]
 
@@ -153,6 +21,7 @@ jobs:
     environment: copilot-request
     permissions:
       pull-requests: read
+    # Never cancel a running job: it may be between its request and the read that confirms it.
     concurrency:
       group: copilot-request-${{ github.event.pull_request.number }}
       cancel-in-progress: false
@@ -166,26 +35,19 @@ jobs:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
+          # Red only for what needs the maintainer: no token, a refusal, or a request GitHub did not record.
           set -uo pipefail
-          # No globbing: the reviewer login contains `[bot]`, which an unquoted expansion would read
-          # as a character class.
+          # No globbing: `[bot]` in the unquoted login lists would be a character class.
           set -f
 
           REVIEWER='copilot-pull-request-reviewer[bot]'
-          # The logins that count as Copilot, lower-cased. REST names the reviewer with the `[bot]`
-          # suffix and has shown it as `Copilot` (#86); GraphQL's `Bot.login`, which the review
-          # requests read below carries, drops the suffix. The REST spellings were shared with
-          # `REVIEWERS` in `copilot-review.yml` until its removal on 2026-09-23, and every spelling is
-          # this file's alone now. A rename shows in this job's verdict, with the logins printed.
+          # Copilot's logins, lower-cased, with and without the `[bot]` suffix GraphQL's Bot.login drops.
           COPILOT_LOGINS='copilot-pull-request-reviewer[bot] copilot-pull-request-reviewer copilot copilot[bot]'
           POLL_SECONDS=15
           WAIT_SECONDS=900
-          # After asking, the review requests are read up to three times this far apart, so a read that
-          # lags the request is not taken for a request GitHub dropped.
+          # The three reads after asking are this far apart: a read can lag the request it follows.
           CONFIRM_SECONDS=5
 
-          # Everything this job concludes goes to the job summary as well as the log, because a log
-          # line alone is the notification nobody reads (proposal 0006).
           report() {
             printf '%s\n' "$@"
             if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
@@ -193,7 +55,6 @@ jobs:
             fi
           }
 
-          # Prints the first login in $1 that counts as Copilot, and fails when none does.
           copilot_in() {
             local login lower candidate
             for login in $1; do
@@ -224,21 +85,12 @@ jobs:
           err_file=$(mktemp)
           body_file=$(mktemp)
 
-          # The pull request's head, state and draft flag, over REST with the job's own token. A head
-          # the answer does not carry prints an empty first field, which the loop reads as unreadable.
           read_pr() {
             gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
               --jq '[.head.sha, .state, (.draft | tostring)] | join("|")' 2>"$err_file"
           }
 
-          # The review requests, over GraphQL with the job's own token: each reviewer's type and a
-          # Bot's login, nothing more. `gh` exits non-zero on any GraphQL error and then prints the
-          # whole answer unfiltered, so the answer is judged here. `ok`, then `hidden` or `shown`, then
-          # the Bot logins: the pull request and its list of review requests are in it, and every error
-          # is a reviewer GitHub would not show, which is the team `CODEOWNERS` requests; `hidden` when
-          # such a reviewer, or one GitHub answers as null, is among them. `refused`: a FORBIDDEN error
-          # anywhere else, a fault of this job's token or its `permissions`. `unread`: anything else,
-          # which the next look repeats.
+          # REST's requested_reviewers never lists a Bot; GraphQL's reviewRequests does.
           REQUESTS_QUERY='query($owner: String!, $repo: String!, $number: Int!) {
             repository(owner: $owner, name: $repo) {
               pullRequest(number: $number) {
@@ -246,6 +98,7 @@ jobs:
               }
             }
           }'
+          # The CODEOWNERS team is FORBIDDEN to this token and makes gh exit non-zero, so jq judges the answer.
           read_requests() {
             gh api graphql -f query="$REQUESTS_QUERY" -f owner="$owner" -f repo="$repo" -F number="$PR_NUMBER" \
               >"$body_file" 2>"$err_file" || true
@@ -253,8 +106,6 @@ jobs:
               "$body_file" 2>>"$err_file" || printf 'unread\n'
           }
 
-          # Red at once, with GitHub's answer: a read the job's own token is refused is this file's
-          # fault, and waiting fifteen minutes on it would only hide the repair.
           refused_read() {
             printf '::error::GitHub refused to show #%s to the job token\n' "$PR_NUMBER"
             printf '%s\n' "$1"
@@ -267,13 +118,12 @@ jobs:
             exit 1
           }
 
+          # A request made while Copilot holds one is lost, so the job waits until it holds none.
           started=$(date +%s)
           looks=0
           unread=0
           while :; do
             looks=$((looks + 1))
-            # Each look starts with no error, so the warning at the end of the wait quotes the last
-            # look's failure and never an earlier one's.
             last_error=''
             verdict=''
             shown=''
@@ -316,7 +166,7 @@ jobs:
             fi
 
             if [ -z "$shown" ]; then
-              # This look read nothing to act on: the pull request or its review requests were unreadable.
+              # Unreadable this look: never ask without having read the review requests.
               :
             elif held=$(copilot_in "$requested"); then
               if [ "$looks" -eq 1 ] || [ $((looks % 4)) -eq 0 ]; then
@@ -324,7 +174,6 @@ jobs:
                   "$held" "$PR_NUMBER" "$head"
               fi
             else
-              # Nothing on order: ask, once, over REST, with the maintainer's token and nothing else.
               if ! GH_TOKEN=$REQUEST_TOKEN gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
                     -f "reviewers[]=${REVIEWER}" >"$body_file" 2>"$err_file"; then
                 printf '::error::GitHub refused the request for %s on #%s\n' "$REVIEWER" "$PR_NUMBER"
@@ -338,8 +187,7 @@ jobs:
                 exit 1
               fi
               asked="Requested ${REVIEWER} on #${PR_NUMBER} (${head}) with the maintainer's token after $(( $(date +%s) - started ))s."
-              # ACCEPTED IS NOT RECORDED. The proof is Copilot among the review requests after the call. Its
-              # absence is proven only by three reads that all answered and showed every reviewer.
+              # An accepted call is not a recorded request: Copilot must show among the review requests.
               read_all=yes
               hidden_any=''
               for confirm in 1 2 3; do
@@ -351,6 +199,7 @@ jobs:
                       hidden_any=yes
                     fi
                     if found=$(copilot_in "$requested"); then
+                      # Green means recorded: if Copilot drops the request, only the missing round shows it.
                       report "$asked GitHub lists ${found} among the review requests." \
                         "" \
                         "The author, ${PR_AUTHOR}, is a bot, and GitHub bills a review on a bot's pull request to the" \
@@ -370,7 +219,6 @@ jobs:
                 fi
               done
               if [ -n "$hidden_any" ]; then
-                # A reviewer this job may not see can be Copilot's request, so its absence proves nothing.
                 printf '::warning::requested Copilot on #%s, unconfirmed: the review requests list no Copilot and hide a reviewer, which may be Copilot\n' "$PR_NUMBER"
                 printf 'Bot review requests after the call:%s\n' "${requested:+ $requested}"
                 report "$asked GitHub accepted the call, and its review requests list no Copilot but hide a reviewer from this job, which may be Copilot's request, so it is unconfirmed." \

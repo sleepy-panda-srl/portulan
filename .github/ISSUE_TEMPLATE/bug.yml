@@ -1,5 +1,3 @@
-# Bug report. Structured because a bug report's value is almost entirely in the parts people leave out
-# — what was expected, and what would have to be true for the reporter to be wrong.
 name: Bug report
 description: Something in Portulan does not do what it says it does.
 title: "[bug] "

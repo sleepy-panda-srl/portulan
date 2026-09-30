@@ -1,30 +1,10 @@
 #!/usr/bin/env bash
+# Portulan workspace — verify recipe: a registered rule is restated outside its carrier only beside a citation.
 #
-# verify: a reduced rule stays reduced.
-#
-# Proposal `.portulan/proposals/0027-a-reduced-rule-stays-reduced.md`. A rule an incident has reduced
-# to ONE carrier is registered in `.portulan/rule-carriers.json` with the spellings its other carriers
-# used; those spellings may then appear only in the carrier, or beside a citation of it.
-#
-# This wrapper is thin ON PURPOSE, in the shape `index.sh` and `control-chars.sh` already set: the
-# things that can be subtly wrong live in ../../cli/rule-carriers.mjs, which the suite covers. What
-# stays here is the part a suite cannot cover — the dependency guard, the enumeration precondition,
-# and exit-code passthrough, which are the three things every recipe in this directory has had a
-# defect in.
-#
-# Exit 0 clean · 1 a registered rule is restated without a citation · 2 could not run.
-#
-# WHAT THIS DOES NOT DO, because a recipe that overclaims is worse than none: it covers only the rules
-# the registry lists. Every unregistered rule in this repository is uncovered and nothing can audit
-# that — a rule has no token, which is proposal 0020's theorem and is untouched by this.
+# Exit 0 green · 1 red · 2 could not run.
 
 set -uo pipefail
 
-# EVERY external command this recipe runs is guarded, not just the interesting ones. `dirname`, `mktemp`
-# and `rm` are as load-bearing as `node` here: without them the script dies with a shell error — 127 —
-# which the CI loop reports as a plain failure, so a "could not run" would arrive dressed as "ran and
-# failed". That is the inversion ../memory/verify-preconditions-fail-closed.md exists about, and every
-# other recipe in this directory guards its whole list for the same reason.
 for need in git node dirname mktemp rm; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
@@ -35,9 +15,6 @@ done
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd) || exit 2
 cd -- "$root" || exit 2
 
-# The instrument's presence is a precondition rather than a red, the same argument index.sh makes:
-# `node` on a missing file exits 1, and passing that through would report "a rule is restated" about a
-# tree nothing had read.
 [ -f cli/rule-carriers.mjs ] || {
     printf 'verify: cli/rule-carriers.mjs not found — this recipe cannot run\n' >&2
     exit 2
@@ -49,10 +26,6 @@ REGISTRY=".portulan/rule-carriers.json"
     exit 2
 }
 
-# Enumerating the tree is a precondition exactly as it is inside every other recipe here — see
-# ../memory/verify-preconditions-fail-closed.md. A `git ls-files` that fails must never become an
-# empty list and a green over nothing; the instrument refuses an empty list for the same reason, so
-# this is belt and braces rather than the only guard.
 manifest=$(mktemp) || exit 2
 trap 'rm -f "$manifest"' EXIT
 

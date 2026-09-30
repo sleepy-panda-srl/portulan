@@ -1,27 +1,9 @@
 // A form step — each section a team marks in its own instruction file moves to an on-read unit.
-//
-// Claude Code loads a repository's `CLAUDE.md` and `.claude/CLAUDE.md` whole into every context, so a section
-// only one kind of task needs is paid for by every session, subagent and checkpoint. A team marks such a
-// section with a line `<!-- portulan: on-read -->` under its heading, and this step moves it, heading and all
-// and byte for byte, into an on-read unit of `slots.context`, leaving a marker where it was; `0007` compiles
-// the unit's line into the index every context loads, naming the section and its size. The split is
-// `cli/instructions.mjs`'s, and proved before it is offered: the file must reassemble from its units byte for
-// byte and each clause land once, or the step refuses, and nothing is written. That command line puts every
-// section back, with `--join`, and says of each unit whether it was edited since.
-//
-// **Owed only where a team marked a section**: which guidance may leave every context is the team's word, and
-// a size says nothing about it (`0036`, rule 5). A mark the split refuses (a section importing a file, one
-// marked inside another, a mark under no heading) keeps the step owed and refused, as a changelog `0004`
-// cannot prove is, until the team moves the import or the mark. A mark in an instruction file that is a link
-// is owed by hand, since the file is not the team's to split until it is one of its own, and a refusal would
-// undo every other step with it. `upgrade` reads through no link, so this step reads such a file through the
-// link where it stays in the repository; one leading out of it is not this repository's.
 
 import { ESTIMATED_BYTES_PER_TOKEN, alwaysTier, declaredContext, tokensOf } from "../../cli/context.mjs";
 import { notYetForm } from "../../cli/form.mjs";
 import { INSTRUCTION_FILES, contextDir, grouped, instructionReader, linkRefusal, marksOf, planSplit, splitLines } from "../../cli/instructions.mjs";
 
-/** The split of the workspace's repository, planned through the view `upgrade` gives a step. */
 function splitOf(ws) {
     const tree = ws.repository.dir;
     const context = contextDir(tree, ws.dir, ws.manifest);
