@@ -7,7 +7,7 @@ release branches, and a `0.x` minor bump may carry a breaking change.
 
 | Version | Supported |
 |---|---|
-| `0.1.3` | Yes — the current release |
+| `0.2.0` | Yes — the current release |
 | Anything earlier | No |
 
 ## Reporting a vulnerability
