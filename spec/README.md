@@ -210,7 +210,8 @@ the horizon the budgets' `minimum` and `integer`; no keyword in the subset relat
 quotient stays by hand.
 
 **2.13 adds nothing to either list.** `spend.restart` is one of two strings, which the subset types in full
-with `type` and `enum`, so `doctor` only gates the key to 2.13.
+with `type` and `enum`, so the key needs no hand-check, only the gate to 2.13, which `doctor` and `compile`
+both hold.
 
 _These figures are history rather than state: what 2.3 and 2.4 added cannot change, so they do not go
 stale the way the removed count did. The one forward-looking sentence is the growth rate, and it is
