@@ -98,8 +98,8 @@ function horizonWords(horizon) {
 
 /**
  * `doctor`'s one line on the session switches: the cache lifetime, the git instructions, the headless runs
- * where declared, the multipliers, and the horizon where declared. **One line**, because a session that runs
- * `doctor` reads its output, and every line of it is read again on every later request.
+ * where declared, the multipliers, and the horizon and a block where declared. **One line**, because a
+ * session that runs `doctor` reads its output, and every line of it is read again on every later request.
  *
  * Where a `repository` workspace leaves the lifetime to the host, the line ends by naming where the offer is
  * printed, since `doctor` is where a person looks and `upgrade` is what prints the offer with its
@@ -125,6 +125,7 @@ export function sessionsLine(manifest) {
     parts.push(multipliersWords(spend.multipliers) ?? "multipliers the general ones");
     const horizon = horizonWords(spend.horizon);
     if (horizon !== null) parts.push(horizon);
+    if (spend.restart === "block") parts.push("a turn's end held once at the restart threshold");
     if (lifetime === null && workspace.kind === "repository") {
         parts.push("`portulan upgrade` prints the five-minute lifetime's offer and its trade-off");
     }

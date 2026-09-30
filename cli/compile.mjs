@@ -1258,7 +1258,8 @@ const HOST_TIER_NOT_A_GATE = {
 
 /**
  * The compiled-hook runners, in the order `claudeCode` spells them: the PreToolUse gate, the Stop gate,
- * then the restart advisory, which is the `PostToolUse` and `UserPromptSubmit` hooks and the status-line command.
+ * then the restart advisory, which is the `PostToolUse` and `UserPromptSubmit` hooks, the status-line command
+ * and, where a workspace declares a block, a second `Stop` command.
  * **This is their one carrier.** They are invoked by generated host configuration rather than
  * imported by anything, so no import graph can find them and every other roster that needs to know
  * which `cli/` modules are runners has to ask here — `./payload.mjs` does. A fourth runner added below
@@ -1509,17 +1510,21 @@ export function claudeCode(parsed, options = {}) {
     if (sessions?.git_instructions !== undefined) switches.includeGitInstructions = sessions.git_instructions;
     if (sessions?.cache_lifetime !== undefined) switches.promptCacheTtl = sessions.cache_lifetime;
     const sessionsFrom = Object.keys(switches).length ? sessions.manifest : null;
-    // **The declared figures, Workspace Definition 2.12's `spend`, written onto all three advisory commands only
-    // where declared**, so a manifest without the key compiles byte for byte as before. The advisory is handed its
+    // **The declared figures, Workspace Definition 2.12's `spend`, written onto every advisory command only where
+    // declared**, so a manifest without the key compiles byte for byte as before. The advisory is handed its
     // command and the host's payload and nothing else, so the figures ride the command, where this file's drift
-    // rail holds them to the manifest; each of the three computes the threshold, so each carries them. Proposal
+    // rail holds them to the manifest; each command computes the threshold, so each carries them. Proposal
     // `0038`, ruling 2; `./advisory.mjs` reads them back.
     const spend = options.spend ?? null;
     const figures = [];
     if (spend?.multipliers) figures.push("--read", spend.multipliers.read, "--write-5m", spend.multipliers.write["5m"], "--write-1h", spend.multipliers.write["1h"]);
     if (spend?.horizon) figures.push("--horizon", spend.horizon);
     const spendFlags = figures.map((f) => ` ${f}`).join("");
-    const spendFrom = figures.length ? spend.manifest : null;
+    // `spend.restart` `"block"`, Workspace Definition 2.13: the advisory's line also holds the turn's end once,
+    // as a second `Stop` command beside the Stop-gate's rather than inside it, so the gate's counters and caps
+    // stay about the recipe and the handoff. `"advise"` is what an undeclared workspace gets, and compiles as it.
+    const restartBlock = spend?.restart === "block";
+    const spendFrom = figures.length || restartBlock ? spend.manifest : null;
     // Both keys come from one manifest when `compile` reads it; an API caller may name two, and each is said.
     const declaredIn =
         sessionsFrom && sessionsFrom === spendFrom
@@ -1546,13 +1551,21 @@ export function claudeCode(parsed, options = {}) {
                 matcher,
                 hooks: [{ type: "command", command: `node ${runner}` }],
             })),
-            Stop: [{ hooks: [{ type: "command", command: `node ${stopRunner}` }] }],
+            Stop: [
+                {
+                    hooks: [
+                        { type: "command", command: `node ${stopRunner}` },
+                        ...(restartBlock ? [{ type: "command", command: `node ${advisoryRunner} stop${spendFlags}` }] : []),
+                    ],
+                },
+            ],
             // **The restart advisory, proposal `0038`'s rule 2**, compiled for every workspace whatever
-            // its policy says, because it gates nothing: one line where the session's recorded usage has
-            // crossed the restart threshold, once, and never a block — with the next tool result, on
-            // every tool, since no matcher is match-all, or at the next prompt, whichever comes first.
-            // Each enters the context without an extra turn; a non-blocking Stop hook's output would reach
-            // only the host's debug log. See ./advisory.mjs.
+            // its policy says, because these two hooks gate nothing: one line where the session's recorded
+            // usage has crossed the restart threshold, once — with the next tool result, on every tool,
+            // since no matcher is match-all, or at the next prompt, whichever comes first. Each enters the
+            // context without an extra turn; a non-blocking Stop hook's output would reach only the host's
+            // debug log. The block, where `spend.restart` declares it, is the `Stop` command above. See
+            // ./advisory.mjs.
             PostToolUse: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} tool${spendFlags}` }] }],
             UserPromptSubmit: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} prompt${spendFlags}` }] }],
         },
@@ -1620,13 +1633,21 @@ export function claudeCode(parsed, options = {}) {
     }
     // Said on every run that writes the figures, because the threshold every session here is told at moves with
     // them, and nothing but a recompile carries an edit of them to the commands.
-    if (spendFrom !== null) {
+    if (figures.length) {
         const m = spend.multipliers;
         const priced = m ? `read ${m.read}×, write ${m.write["5m"]}× for five minutes and ${m.write["1h"]}× for an hour, whichever lifetime the host records` : "the general multipliers";
         notes.push(
             `the restart advisory and the status line compute the threshold at the declared figures (\`spend\`): ${priced}, and ` +
                 `${spend.horizon ? `a horizon of ${spend.horizon} requests` : `the general horizon of ${HORIZON} requests`}. The compiled ` +
                 `commands carry them, so an edit to \`spend\` is drift until recompiled`,
+        );
+    }
+    // Said on every run that compiles it, because it holds a turn's end in every session here.
+    if (restartBlock) {
+        notes.push(
+            `the restart advisory also holds a turn's end (\`spend.restart\` "block"): at the first stop at or past the restart ` +
+                `threshold that no block provoked, once in a session and again after each compaction, with the line as the reason, beside the Stop-gate. Nothing ends the ` +
+                `session, and the line still comes with a tool result or at the prompt`,
         );
     }
     if (editCoveredGates.length) {
@@ -3359,8 +3380,8 @@ export function sessionsDeclaration(workspaceRoot, workspaceDir = ".portulan") {
 }
 
 /**
- * A workspace's declared multipliers and horizon, Workspace Definition 2.12's `spend`, or null where it
- * declares none.
+ * A workspace's declared multipliers, horizon and restart, Workspace Definition 2.12's `spend` and 2.13's
+ * `spend.restart`, or null where it declares none.
  *
  * **Refused whole on any shape or value the ledger refuses**, for `sessionsDeclaration`'s reason: what this
  * returns is written onto the restart advisory's commands, and this runner must not depend on `doctor` having
@@ -3368,23 +3389,37 @@ export function sessionsDeclaration(workspaceRoot, workspaceDir = ".portulan") {
  * prices by, and its refusal stops this run with exit 2 before anything is written. A manifest that cannot be
  * read is not this function's to judge: it answers null, as `sessionsDeclaration` does. Proposal `0038`,
  * ruling 2; added 2026-09-24.
+ *
+ * `spend.restart` is refused, too, in a manifest declaring a MINOR before 2.13, the gate `doctor` puts on it,
+ * so no block is compiled from a declaration its own version's validator refuses. A key gated at birth fails
+ * no manifest that compiles today; the keys born gated before it stay `doctor`'s alone.
  */
 export function spendDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
-    let declared;
+    let parsed;
     try {
-        declared = JSON.parse(fs.readFileSync(manifest, "utf8")).spend;
+        parsed = JSON.parse(fs.readFileSync(manifest, "utf8"));
     } catch {
         return null;
     }
+    const declared = parsed?.spend;
     if (declared === undefined) return null;
     const where = path.relative(workspaceRoot, manifest).split(path.sep).join("/");
+    let spend;
     try {
-        return { manifest: where, ...readSpend(declared, where) };
+        spend = { manifest: where, ...readSpend(declared, where) };
     } catch (error) {
         if (error instanceof LedgerError) throw new CompileError(error.message);
         throw error;
     }
+    const version = /^([0-9]+)\.([0-9]+)$/.exec(parsed.portulan?.spec ?? "");
+    if (spend.restart !== null && version && Number(version[1]) === 2 && Number(version[2]) < 13) {
+        throw new CompileError(
+            `\`spend.restart\` in ${where} is Workspace Definition 2.13's, and this manifest declares ${version[0]}, whose validator ` +
+                "refuses it as an unknown key. Declare 2.13, or remove the key",
+        );
+    }
+    return spend;
 }
 
 /**
@@ -4300,7 +4335,7 @@ export function run(argv, options = {}) {
             }
             if (spend !== null) {
                 say(
-                    `note    \`spend\` in ${spend.manifest} compiled nothing: its figures ride the restart advisory's commands ` +
+                    `note    \`spend\` in ${spend.manifest} compiled nothing: what it declares rides the restart advisory's commands ` +
                         `in the settings a gate policy compiles to, and this workspace has none`,
                 );
             }

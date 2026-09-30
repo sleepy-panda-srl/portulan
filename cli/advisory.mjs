@@ -4,10 +4,11 @@
 //   node cli/advisory.mjs tool [<figures>]      a PostToolUse hook: the line, as additionalContext, once, mid-stretch
 //   node cli/advisory.mjs prompt [<figures>]    a UserPromptSubmit hook: the same line, at the next prompt, if not said yet
 //   node cli/advisory.mjs status [<figures>]    a status-line command: the figure and the request count, on every refresh
+//   node cli/advisory.mjs stop [<figures>]      a Stop hook, where a workspace declares it: the same line as a block, once
 //
 //   <figures>  --read <m> --write-5m <m> --write-1h <m>, the three together or none, and --horizon <n>:
-//              a workspace's `spend` (Workspace Definition 2.12), as `./compile.mjs` writes it onto all three
-//              commands. Undeclared, the threshold is computed at the general multipliers and 20 requests.
+//              a workspace's `spend` (Workspace Definition 2.12), as `./compile.mjs` writes it onto every
+//              command. Undeclared, the threshold is computed at the general multipliers and 20 requests.
 //
 // Wired by `./compile.mjs` into `.claude/settings.json`. `0038`'s rule 2: every request re-reads the
 // context, so a session is told to end when continuing costs more than restarting, **once, where the
@@ -24,28 +25,36 @@
 // silent. Each line and the status line carry the session's request count, `0038`'s rule 1 figure — a
 // report, never a budget, which `0038` rules out.
 //
-// ## A report, never a gate
+// ## A report by default, a block by declaration
 //
 // Ruling 3 of `0038` made the advisory a report by default: the threshold is an estimate, and a forced
-// restart on a wrong one costs a fresh write and a handoff, while an ignored line costs nothing. So this
-// never blocks and never ends anything — ending stays the agent's or the human's act. **It exits 0 on
-// every path.** For `UserPromptSubmit` an exit of 2 would erase the person's prompt, so a runner that
-// could crash into it would be the one way this line did harm; anything it cannot read, it passes over
-// in silence, and says why on stderr, which the host keeps for its debug log. That holds for the figures
-// on its command too: a flag it does not take, a multiplier set missing one of its three or a figure out
-// of its range is said once, and the half it belongs to falls back to undeclared.
+// restart on a wrong one costs a fresh write and a handoff, while an ignored line costs nothing. So the
+// `stop` mode is compiled only where a workspace declares `spend.restart` `"block"` (Workspace Definition
+// 2.13): at the first stop whose last recorded request is at or past the threshold, and that no block
+// provoked, it holds the turn's end once, with the line as its reason, and the turn goes on. The line still
+// comes with a tool result or a prompt, since that is what reaches an agent mid-stretch, and a headless run's
+// only stop is its last. Nothing here ends anything — ending stays the agent's or the human's act. **It exits
+// 0 on every path.** For `UserPromptSubmit` an exit of 2 would erase the person's prompt, and for `Stop` it
+// would hold every turn's end, so a runner that could crash into it would be the one way this line did harm;
+// anything it cannot read, it passes over in silence, and says why on stderr, which the host keeps for its
+// debug log. That holds for the figures on its command too: a flag it does not take, a multiplier set missing
+// one of its three or a figure out of its range is said once, and the half it belongs to falls back to
+// undeclared.
 //
 // ## Once
 //
 // The line is written at the first tool result or prompt whose last recorded request is at or past the
-// threshold. The host writes its transcript asynchronously, so that request may be one behind the one
-// just answered: the line is one request late at most, and never early. Whether it was said is kept in the OS temp
+// threshold. The host writes its transcript asynchronously, so that request may be one behind the one just
+// answered: the line is one request late at most, and never early. Whether it was said is kept in the OS temp
 // directory, keyed by session and by how many times the session has compacted — a compaction starts the
-// context again, so the line may be owed again, and until the first request after it there is no figure
-// at all, since the context the records last show is the one the compaction replaced. The file is
-// created exclusively before the line is written, and **where it cannot be created, nothing is
-// written**: an advisory that could not remember saying itself would say itself at every prompt, which
-// is the echo `0038`'s rule 5 forbids.
+// context again, so the line may be owed again, and until the first request after it there is no figure at
+// all, since the context the records last show is the one the compaction replaced. The file is created
+// exclusively before the line is written, and **where it cannot be created, nothing is written**: an advisory
+// that could not remember saying itself would say itself at every prompt, which is the echo `0038`'s rule 5
+// forbids. The block keeps a held-once record of its own: a line already said does not spare it, and once it
+// has blocked, the line counts as said. A stop that a block provoked, which the host marks
+// `stop_hook_active`, is never held: a host has been measured giving that retry a new session id
+// (`./stop-gate.mjs`, at `MAX_CHAIN_BLOCKS`), and a record keyed to the id would then hold every retry.
 //
 // ## What a call costs
 //
@@ -55,7 +64,7 @@
 // digest of the bytes before it, and each call folds in only the complete lines past that offset; a torn
 // last line is read once its newline lands. The transcript is read from its start only when nothing is
 // kept, or what is kept no longer describes it: another path, another file, a file shorter than the
-// offset, or other bytes where the last read ended. At a tool result or a prompt the told-once record is looked at before
+// offset, or other bytes where the last read ended. At a tool result, a prompt or a stop the once record is looked at before
 // the transcript is opened, so once the line is said, a prompt with nothing new since the last call costs
 // the runner's startup and nothing more. A first read goes 64 KB at a time rather than holding the
 // transcript whole. What is kept is counts, message ids and a digest, never a byte of what the session
@@ -117,6 +126,11 @@ function stem(sessionId) {
 /** Where the record that the line was said lives, for one session and one compaction epoch. */
 export function toldFile(sessionId, compactions, dir = os.tmpdir()) {
     return path.join(dir, `${stem(sessionId)}-${compactions}`);
+}
+
+/** Where the record that the turn's end was held lives, for one session and one compaction epoch. */
+export function heldFile(sessionId, compactions, dir = os.tmpdir()) {
+    return path.join(dir, `${stem(sessionId)}-${compactions}-held`);
 }
 
 /** Where one session's running figures are kept between calls. */
@@ -277,8 +291,8 @@ function refresh(found, warn, spend) {
         : { why: "no request is recorded yet", after: "the first recorded request" };
 }
 
-/** What each surface asks the agent to finish before it hands off: mid-stretch the step, at a prompt the prompt. */
-const FINISH = { PostToolUse: "finish the current step", UserPromptSubmit: "finish what this prompt asks" };
+/** What each surface asks the agent to finish before it hands off: mid-stretch the step, at a prompt the prompt, at a stop nothing. */
+const FINISH = { PostToolUse: "finish the current step, then ", UserPromptSubmit: "finish what this prompt asks, then ", Stop: "" };
 
 /** The line the agent reads: the figure, the requests behind it, the multipliers it assumed, and what to do. */
 export function adviceLine(figure, event = "UserPromptSubmit") {
@@ -290,7 +304,7 @@ export function adviceLine(figure, event = "UserPromptSubmit") {
     return (
         `Portulan restart advisory: after ${grouped(figure.requests)} requests, each re-reading it, this session's context, ${grouped(figure.context)} tokens, has reached its restart threshold of ` +
         `${grouped(figure.threshold)} = fresh context ${grouped(figure.fresh)} × (1 + write ${m.write}× / (${figure.horizon} more requests × read ${m.read}×)); ${assumed}. ` +
-        `Continuing costs more in re-reads than restarting: ${FINISH[event]}, then write the handoff and end the session. Said once.`
+        `Continuing costs more in re-reads than restarting: ${FINISH[event]}write the handoff and end the session. Said once.`
     );
 }
 
@@ -305,8 +319,8 @@ export function statusLine(figure) {
 }
 
 /**
- * Either hook's half: `event` is `PostToolUse` or `UserPromptSubmit`. Returns what to print: the hook's
- * JSON, or null for silence. `dir` is where the told-once records and the running figures live; `declared`
+ * One hook's half: `event` is `PostToolUse`, `UserPromptSubmit` or `Stop`. Returns what to print: the hook's
+ * JSON, or null for silence. `dir` is where the once records and the running figures live; `declared`
  * and `horizon` are the figures on the command, as `spendFlags` reads them.
  */
 function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = null, horizon = HORIZON } = {}) {
@@ -314,6 +328,7 @@ function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = n
     // (Claude Code 2.1.281's program text). The line and the figures are the main session's, and a subagent
     // told to end its session would end nothing, so its tool results neither say the line nor spend the once.
     if (typeof payload?.agent_id === "string" && payload.agent_id !== "") return null;
+    if (event === "Stop" && payload?.stop_hook_active === true) return null;
     const sessionId = sessionOf(payload);
     if (sessionId === null) {
         warn("the host sent no session_id, so saying the line once could not be kept");
@@ -324,22 +339,36 @@ function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = n
         warn(found.why);
         return null;
     }
+    const record = event === "Stop" ? heldFile : toldFile;
     // Said in this epoch, and nothing written since the figures were kept: nothing can have compacted, so
     // nothing is owed, and the transcript is not opened.
-    if (found.stat.size === found.kept.offset && fs.existsSync(toldFile(sessionId, found.kept.figures.compactions, dir))) return null;
+    if (found.stat.size === found.kept.offset && fs.existsSync(record(sessionId, found.kept.figures.compactions, dir))) return null;
     const figure = refresh(found, warn, { declared, horizon });
     if (figure.why !== undefined) {
         warn(figure.why);
         return null;
     }
     if (figure.context < figure.threshold) return null;
+    const mark = (file) => fs.writeFileSync(file, `${figure.context} ${figure.threshold}\n`, { flag: "wx", mode: 0o600 });
     try {
-        fs.writeFileSync(toldFile(sessionId, figure.compactions, dir), `${figure.context} ${figure.threshold}\n`, { flag: "wx", mode: 0o600 });
+        mark(record(sessionId, figure.compactions, dir));
     } catch (error) {
-        if (error.code !== "EEXIST") warn(`the told-once record could not be written — ${error.code ?? error.message}; staying silent rather than saying the line at every prompt`);
+        if (error.code !== "EEXIST") {
+            warn(
+                event === "Stop"
+                    ? `the held-once record could not be written — ${error.code ?? error.message}; letting the turn end rather than holding it at every stop`
+                    : `the told-once record could not be written — ${error.code ?? error.message}; staying silent rather than saying the line at every prompt`,
+            );
+        }
         return null;
     }
-    return JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: adviceLine(figure, event) } });
+    if (event !== "Stop") return JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: adviceLine(figure, event) } });
+    try {
+        mark(toldFile(sessionId, figure.compactions, dir));
+    } catch (error) {
+        if (error.code !== "EEXIST") warn(`the told-once record could not be written — ${error.code ?? error.message}; the line may come once more after the block`);
+    }
+    return JSON.stringify({ decision: "block", reason: adviceLine(figure, event) });
 }
 
 /** The `PostToolUse` half: the line with the next tool result, mid-stretch, where no prompt comes. */
@@ -347,6 +376,9 @@ export const onTool = (payload, options) => once("PostToolUse", payload, options
 
 /** The `UserPromptSubmit` half: the line at the next prompt, where no tool result said it first. */
 export const onPrompt = (payload, options) => once("UserPromptSubmit", payload, options);
+
+/** The `Stop` half, compiled only where declared: the line as the reason the turn's end is held, once. */
+export const onStop = (payload, options) => once("Stop", payload, options);
 
 /**
  * The status-line half. The context is the host's own last-call counts where it sends them, which are
@@ -430,16 +462,16 @@ export function main(argv = process.argv.slice(2), { stdout = process.stdout, st
         const figures = spendFlags(argv.slice(1));
         if (figures.fault !== null) warn(`the figures after ${mode} are not all usable — ${figures.fault}`);
         const priced = { dir, warn, declared: figures.declared, horizon: figures.horizon ?? HORIZON };
-        if (mode === "prompt" || mode === "tool") {
-            const out = (mode === "tool" ? onTool : onPrompt)(input, priced);
+        if (mode === "prompt" || mode === "tool" || mode === "stop") {
+            const out = { tool: onTool, prompt: onPrompt, stop: onStop }[mode](input, priced);
             if (out !== null) stdout.write(`${out}\n`);
         } else if (mode === "status") {
             stdout.write(`${onStatus(input, priced)}\n`);
         } else {
-            warn(`unknown mode ${JSON.stringify(mode)}: the compiled commands pass tool, prompt or status`);
+            warn(`unknown mode ${JSON.stringify(mode)}: the compiled commands pass tool, prompt, status or stop`);
         }
     } catch (cause) {
-        // A defect here must cost the person nothing: no line, and the prompt goes through.
+        // A defect here must cost the person nothing: no line, the prompt goes through, and the turn ends.
         warn(`could not run — ${cause?.message ?? cause}`);
     }
     return 0;

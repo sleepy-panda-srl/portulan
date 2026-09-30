@@ -754,11 +754,12 @@ describe("the session switches", () => {
 // workspace's to know, and `../spec/slots.md` says so.
 
 /** A scratch workspace whose manifest declares `spend`, on the policy `workspace()` writes. */
-function workspaceWithSpend(spend, p = policy()) {
+// By default the version whose validator takes the declaration: `spend` is 2.12's, and `spend.restart` 2.13's.
+function workspaceWithSpend(spend, p = policy(), spec = spend?.restart === undefined ? "2.12" : "2.13") {
     const dir = workspace(p);
     const file = path.join(dir, ".portulan", "workspace.json");
     const m = JSON.parse(fs.readFileSync(file, "utf8"));
-    m.portulan.spec = "2.12";
+    m.portulan.spec = spec;
     m.spend = spend;
     fs.writeFileSync(file, JSON.stringify(m, null, 2));
     return dir;
@@ -770,21 +771,24 @@ function afterMode(command, mode) {
     return words.slice(words.indexOf(mode) + 1);
 }
 
-/** The three advisory commands of compiled settings, each with its mode. */
+/** The advisory commands of compiled settings, each with its mode: its three, and the block where declared. */
 function advisoryCommands(settings) {
+    const block = settings.hooks.Stop[0].hooks[1]?.command;
     return [
         [settings.hooks.PostToolUse[0].hooks[0].command, "tool"],
         [settings.hooks.UserPromptSubmit[0].hooks[0].command, "prompt"],
         [settings.statusLine.command, "status"],
+        ...(block === undefined ? [] : [[block, "stop"]]),
     ];
 }
 
-const DECLARED = { manifest: ".portulan/workspace.json", multipliers: { read: 0.05, write: { "5m": 1.5, "1h": 2.5 } }, horizon: 30 };
+const DECLARED = { manifest: ".portulan/workspace.json", multipliers: { read: 0.05, write: { "5m": 1.5, "1h": 2.5 } }, horizon: 30, restart: null };
 
 describe("the declared figures", () => {
     test("undeclared, or declared with neither half, the settings and the notes read exactly as they did", () => {
         const plain = claudeCode(parse(policy()));
-        for (const spend of [null, { manifest: ".portulan/workspace.json", multipliers: null, horizon: null }]) {
+        const none = { manifest: ".portulan/workspace.json", multipliers: null, horizon: null };
+        for (const spend of [null, none, { ...none, restart: null }, { ...none, restart: "advise" }]) {
             const out = claudeCode(parse(policy()), { spend });
             assert.equal(out.artifact.text, plain.artifact.text);
             assert.deepEqual(out.notes, plain.notes);
@@ -833,6 +837,31 @@ describe("the declared figures", () => {
         for (const out of [multipliers, horizon]) assert.equal(out.artifact.value.$portulan.spend, ".portulan/workspace.json");
     });
 
+    test("a declared block is a second Stop command beside the Stop-gate's, carrying the figures, and said on every run", () => {
+        const stopGate = `node "\${CLAUDE_PROJECT_DIR}/cli/stop-gate.mjs"`;
+        const block = claudeCode(parse(policy()), { spend: { ...DECLARED, restart: "block" } });
+        assert.deepEqual(
+            block.artifact.value.hooks.Stop,
+            [{ hooks: [{ type: "command", command: stopGate }, { type: "command", command: `node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" stop --read 0.05 --write-5m 1.5 --write-1h 2.5 --horizon 30` }] }],
+        );
+        const said =
+            "the restart advisory also holds a turn's end (`spend.restart` \"block\"): at the first stop at or past the restart threshold that no block provoked, " +
+            "once in a session and again after each compaction, with the line as the reason, beside the Stop-gate. Nothing ends the session, " +
+            "and the line still comes with a tool result or at the prompt";
+        assert.ok(block.notes.includes(said), block.notes.join("\n"));
+        // Declared alone, the block is the only thing `spend` compiles: no figures, and no note about any.
+        const alone = claudeCode(parse(policy()), { spend: { manifest: ".portulan/workspace.json", multipliers: null, horizon: null, restart: "block" } });
+        const value = alone.artifact.value;
+        assert.equal(value.hooks.Stop[0].hooks[1].command, `node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" stop`);
+        assert.equal(value.statusLine.command, `node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" status`);
+        assert.equal(value.$portulan.spend, ".portulan/workspace.json");
+        assert.equal(value.$portulan.warning, "Generated file. Edit .portulan/gates.json, or `spend` in .portulan/workspace.json, and recompile; `verify/compile.sh` fails on drift.");
+        assert.ok(alone.notes.includes(said), alone.notes.join("\n"));
+        assert.ok(!alone.notes.some((n) => /declared figures/.test(n)), alone.notes.join("\n"));
+        // And the Stop-gate stays first, where the probe of an arm's Stop command reads it.
+        assert.equal(value.hooks.Stop[0].hooks[0].command, stopGate);
+    });
+
     test("the warning names each key where it was declared: two in one manifest once, and two manifests each", () => {
         const sessions = { manifest: ".portulan/workspace.json", cache_lifetime: "5m" };
         const header = (options) => claudeCode(parse(policy()), options).artifact.value.$portulan;
@@ -870,14 +899,16 @@ describe("the declared figures", () => {
             { manifest: "w.json", multipliers: null, horizon: 7 },
             { manifest: "w.json", multipliers: { read: 0.25, write: { "5m": 1.25, "1h": 2 } }, horizon: null },
         ]) {
-            for (const [command, mode] of advisoryCommands(claudeCode(parse(policy()), { spend }).artifact.value)) {
+            const commands = advisoryCommands(claudeCode(parse(policy()), { spend: { ...spend, restart: "block" } }).artifact.value);
+            assert.deepEqual(commands.map(([, mode]) => mode), ["tool", "prompt", "status", "stop"]);
+            for (const [command, mode] of commands) {
                 assert.deepEqual(spendFlags(afterMode(command, mode)), { declared: spend.multipliers, horizon: spend.horizon, fault: null }, command);
             }
         }
     });
 
     test("the commands carry no shell syntax: after the runner and its mode, only flags and numbers", () => {
-        const spend = { manifest: "w.json", multipliers: { read: 1e-7, write: { "5m": 1e21, "1h": 2 } }, horizon: 30 };
+        const spend = { manifest: "w.json", multipliers: { read: 1e-7, write: { "5m": 1e21, "1h": 2 } }, horizon: 30, restart: "block" };
         for (const [command, mode] of advisoryCommands(claudeCode(parse(policy()), { spend }).artifact.value)) {
             assert.doesNotMatch(command, /[|;&><]/, command);
             for (const word of afterMode(command, mode)) assert.match(word, /^(--[a-z0-9-]+|[0-9][0-9.e+-]*)$/, command);
@@ -888,7 +919,8 @@ describe("the declared figures", () => {
         assert.equal(spendDeclaration(workspace()), null);
         const dir = workspaceWithSpend({ multipliers: { read: 0.05, write: { "5m": 1.5, "1h": 2.5 } }, horizon: { requests: 30 } });
         assert.deepEqual(spendDeclaration(dir), DECLARED);
-        assert.deepEqual(spendDeclaration(workspaceWithSpend({})), { manifest: ".portulan/workspace.json", multipliers: null, horizon: null });
+        assert.deepEqual(spendDeclaration(workspaceWithSpend({})), { manifest: ".portulan/workspace.json", multipliers: null, horizon: null, restart: null });
+        assert.deepEqual(spendDeclaration(workspaceWithSpend({ restart: "block" })), { manifest: ".portulan/workspace.json", multipliers: null, horizon: null, restart: "block" });
         // A manifest that is missing or does not parse is not this reader's to judge: `run` stops on the
         // second before it asks, and `doctor` names both.
         assert.equal(spendDeclaration(scratch()), null);
@@ -910,6 +942,8 @@ describe("the declared figures", () => {
         ["a horizon that is not a whole number of requests", { horizon: { requests: 2.5 } }],
         ["a horizon of no requests", { horizon: { requests: 0 } }],
         ["a horizon spelled as a bare number", { horizon: 20 }],
+        ["a restart it does not take", { restart: "stop" }],
+        ["a restart spelled as a boolean", { restart: true }],
     ]) {
         test(`${what} stops compile with exit 2 and writes nothing`, () => {
             const dir = workspaceWithSpend(spend);
@@ -921,6 +955,19 @@ describe("the declared figures", () => {
             assert.equal(fs.existsSync(path.join(dir, ".claude", "settings.json")), false);
         });
     }
+
+    test("a restart in a manifest that declares 2.12 stops compile with exit 2, as doctor refuses it", () => {
+        for (const restart of ["block", "advise"]) {
+            const dir = workspaceWithSpend({ restart }, policy(), "2.12");
+            assert.throws(
+                () => spendDeclaration(dir),
+                (error) => error instanceof CompileError && /^`spend\.restart` in \.portulan\/workspace\.json is Workspace Definition 2\.13's, and this manifest declares 2\.12/.test(error.message),
+            );
+            assert.equal(run(["--workspace", dir], { quiet: true }), 2);
+            assert.equal(fs.existsSync(path.join(dir, ".claude", "settings.json")), false);
+        }
+        assert.equal(spendDeclaration(workspaceWithSpend({ horizon: { requests: 30 } }, policy(), "2.12")).restart, null, "the rest of `spend` is 2.12's");
+    });
 
     test("compiled end to end, the commands carry the figures and --check holds them to the manifest", () => {
         const dir = workspaceWithSpend({ multipliers: { read: 0.05, write: { "5m": 1.5, "1h": 2.5 } }, horizon: { requests: 30 } });
@@ -952,6 +999,25 @@ describe("the declared figures", () => {
         assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1);
         assert.equal(run(["--workspace", dir], { quiet: true }), 0);
         assert.doesNotMatch(fs.readFileSync(target, "utf8"), /--read|--horizon|"spend"/);
+    });
+
+    test("compiled end to end, a declared block is written and held to the manifest, and an advice compiles as none", () => {
+        const dir = workspaceWithSpend({ restart: "block" });
+        const without = workspace();
+        const target = path.join(dir, ".claude", "settings.json");
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+        const [gate, block, ...more] = JSON.parse(fs.readFileSync(target, "utf8")).hooks.Stop[0].hooks.map((h) => h.command);
+        assert.ok(gate.endsWith('/cli/stop-gate.mjs"') && block.endsWith('/cli/advisory.mjs" stop') && more.length === 0, [gate, block, ...more].join("\n"));
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 0);
+        const file = path.join(dir, ".portulan", "workspace.json");
+        const m = JSON.parse(fs.readFileSync(file, "utf8"));
+        m.spend.restart = "advise";
+        fs.writeFileSync(file, JSON.stringify(m, null, 2));
+        // Taking the block back is drift until recompiled, and the recompile is the settings of no `spend` at all.
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1);
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+        assert.equal(run(["--workspace", without], { quiet: true }), 0);
+        assert.equal(fs.readFileSync(target, "utf8"), fs.readFileSync(path.join(without, ".claude", "settings.json"), "utf8"));
     });
 
     test("a manifest declaring `spend` with neither half compiles byte for byte as one without the key", () => {
@@ -3879,7 +3945,7 @@ describe("guidance: written, then byte-compared", () => {
         fs.writeFileSync(file, JSON.stringify(m, null, 2));
         const { code, out } = said(t, ["--workspace", dir]);
         assert.equal(code, 0, out);
-        assert.match(out, /note {4}`spend` in workspace\.json compiled nothing: its figures ride the restart advisory's commands in the settings a gate policy compiles to, and this workspace has none/);
+        assert.match(out, /note {4}`spend` in workspace\.json compiled nothing: what it declares rides the restart advisory's commands in the settings a gate policy compiles to, and this workspace has none/);
         assert.ok(!fs.existsSync(path.join(dir, ".claude", "settings.json")), "no policy, so no settings");
         // A refused value stops this run too, before any guidance is written.
         m.spend = { horizon: { requests: -1 } };

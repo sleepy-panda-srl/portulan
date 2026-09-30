@@ -13,8 +13,10 @@
 #             threshold is told once and its second prompt nothing, the one below it nothing. With a tool
 #             result: a subagent's is told nothing, the session's own is told once, with the requests
 #             behind the figure and to finish the current step, and the prompt after it nothing, since the
-#             two halves say one line between them. Every run exits 0, because a UserPromptSubmit hook
-#             exiting 2 would erase the person's prompt
+#             two halves say one line between them. At a stop, as a workspace declaring `spend.restart`
+#             "block" compiles it: the one past its threshold is held once with the line, even where the
+#             line was said first, and nothing is said after the block; the one below it is not held.
+#             Every run exits 0, because a UserPromptSubmit hook exiting 2 would erase the person's prompt
 #
 # ## Why a fixture, and never this machine's records
 #
@@ -88,6 +90,7 @@ call() {
 }
 prompt() { call prompt UserPromptSubmit "$@"; }
 tool() { call tool PostToolUse "$@"; }
+stop() { call stop Stop "$@"; }
 
 prompt recipe-past "$PAST" first
 prompt recipe-past "$PAST" second
@@ -125,7 +128,29 @@ if [ -s "$tmp/tool-below" ]; then
     printf '  ✗ advisory: a session below its threshold was told with a tool result: %s\n' "$(cat -- "$tmp/tool-below")"
     advisory=1
 fi
-[ "$advisory" -eq 0 ] && printf '  ok advisory: the session past its threshold is told once, at its first prompt or with its first tool result, and never twice; a subagent'"'"'s tool result and a session below the threshold are not\n'
+stop stop-past "$PAST" stop-first
+stop stop-past "$PAST" stop-second
+tool stop-past "$PAST" stop-after
+tool stop-told "$PAST" stop-told-line
+stop stop-told "$PAST" stop-told
+stop stop-below "$BELOW" stop-below
+if ! grep -q '^{"decision":"block","reason":"Portulan restart advisory: after [0-9][0-9,]* requests, .*80,004.*: write the handoff and end the session\. Said once\."}$' "$tmp/stop-first" || grep -q 'finish' "$tmp/stop-first"; then
+    printf '  ✗ advisory: the session past its threshold was not held at its first stop with the line and its Stop ending; it printed: %s\n' "$(cat -- "$tmp/stop-first")"
+    advisory=1
+fi
+if [ -s "$tmp/stop-second" ] || [ -s "$tmp/stop-after" ]; then
+    printf '  ✗ advisory: after the block the line came again, at the next stop (%s) or with a tool result (%s)\n' "$(cat -- "$tmp/stop-second")" "$(cat -- "$tmp/stop-after")"
+    advisory=1
+fi
+if ! grep -q '"additionalContext":"Portulan restart advisory' "$tmp/stop-told-line" || ! grep -q '^{"decision":"block"' "$tmp/stop-told"; then
+    printf '  ✗ advisory: a line said with a tool result spared the block at the next stop; it printed: %s\n' "$(cat -- "$tmp/stop-told")"
+    advisory=1
+fi
+if [ -s "$tmp/stop-below" ]; then
+    printf '  ✗ advisory: a session below its threshold was held at a stop: %s\n' "$(cat -- "$tmp/stop-below")"
+    advisory=1
+fi
+[ "$advisory" -eq 0 ] && printf '  ok advisory: the session past its threshold is told once, at its first prompt or with its first tool result, and never twice; a subagent'"'"'s tool result and a session below the threshold are not; where declared, it is held once at a stop, a line said first spares no block, and nothing is said after one\n'
 
 # Could-not-run outranks red: a run that judged nothing cannot vouch for the one that did.
 worst=$advisory

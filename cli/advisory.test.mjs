@@ -8,8 +8,9 @@
 // Every case writes its transcript and its told-once directory under a temporary directory, so no case
 // reads a real session or leaves a record beside one. What the suite pins is proposal `0038`'s promise
 // for the line — with the first tool result or at the first prompt whose recorded usage has reached the
-// threshold, once between them, and at no earlier one — and the runner's own: it exits 0 on every path,
-// because a `UserPromptSubmit` hook that exits 2 erases the person's prompt.
+// threshold, once between them, and at no earlier one — the declared block's, once at a stop and at no
+// earlier one, and the runner's own: it exits 0 on every path, because a `UserPromptSubmit` hook that exits
+// 2 erases the person's prompt.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -19,7 +20,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { adviceLine, compact, main, onPrompt, onStatus, onTool, spendFlags, stateFile, statusLine, toldFile } from "./advisory.mjs";
+import { adviceLine, compact, heldFile, main, onPrompt, onStatus, onStop, onTool, spendFlags, stateFile, statusLine, toldFile } from "./advisory.mjs";
 import { readTranscript } from "./ledger.mjs";
 
 // A HERMETIC HOST: nothing here reads the host's configuration, and the suite says so the way every
@@ -170,6 +171,75 @@ describe("the line with a tool result", () => {
             assert.equal(onTool({ session_id: "s", transcript_path: file, agent_id: "a1" }, { dir: state }), null);
             assert.equal(fs.readdirSync(state).length, 0, "nothing was kept for it either");
             assert.notEqual(onTool({ session_id: "s", transcript_path: file }, { dir: state }), null);
+        });
+    });
+});
+
+describe("the block at a stop, where a workspace declares it", () => {
+    test("silent below the threshold, a block at the first stop that reaches it, and nothing said after it", () => {
+        withTemp((dir) => {
+            const state = path.join(dir, "state");
+            fs.mkdirSync(state);
+            const file = session(dir, [60000, 79999]);
+            assert.equal(onStop({ session_id: "s", transcript_path: file }, { dir: state }), null);
+            grow(file, record({ read: 79999 }));
+            const parsed = JSON.parse(onStop({ session_id: "s", transcript_path: file }, { dir: state }));
+            assert.deepEqual(Object.keys(parsed), ["decision", "reason"]);
+            assert.equal(parsed.decision, "block");
+            assert.match(parsed.reason, /^Portulan restart advisory: after 4 requests, each re-reading it, this session's context, 80,000 tokens, has reached its restart threshold of 80,000/);
+            assert.match(parsed.reason, /restarting: write the handoff and end the session\. Said once\.$/, "the turn is ending, so there is no step left to finish");
+            assert.equal(onStop({ session_id: "s", transcript_path: file }, { dir: state }), null, "held once");
+            grow(file, record({ read: 80000, w1h: 10 }));
+            assert.equal(onStop({ session_id: "s", transcript_path: file }, { dir: state }), null, "and not again at a later stop");
+            assert.equal(onTool({ session_id: "s", transcript_path: file }, { dir: state }), null, "the block said the line");
+            assert.equal(onPrompt({ session_id: "s", transcript_path: file }, { dir: state }), null);
+        });
+    });
+
+    test("a stop a block provoked is never held, whatever session id the host gives it", () => {
+        withTemp((dir) => {
+            const file = session(dir, [90000]);
+            assert.equal(JSON.parse(onStop({ session_id: "first", transcript_path: file }, { dir })).decision, "block");
+            assert.equal(onStop({ session_id: "rotated", transcript_path: file, stop_hook_active: true }, { dir }), null, "the retry, under a new id");
+            assert.equal(onStop({ session_id: "unheld", transcript_path: file, stop_hook_active: true }, { dir }), null, "a block by another hook provoked this one");
+            assert.equal(JSON.parse(onStop({ session_id: "unheld", transcript_path: file }, { dir })).decision, "block", "held at its next stop instead");
+        });
+    });
+
+    test("a line already said spares no block, and a compaction owes both again", () => {
+        withTemp((dir) => {
+            const file = session(dir, [90000]);
+            assert.notEqual(onTool({ session_id: "s", transcript_path: file }, { dir }), null);
+            assert.equal(JSON.parse(onStop({ session_id: "s", transcript_path: file }, { dir })).decision, "block");
+            grow(file, [boundary, ...record({ w1h: 19999 }), ...record({ read: 20000, w1h: 20000 })]);
+            assert.match(JSON.parse(onStop({ session_id: "s", transcript_path: file }, { dir })).reason, /40,001 tokens, has reached its restart threshold of 40,000/);
+            assert.equal(onStop({ session_id: "s", transcript_path: file }, { dir }), null);
+            assert.equal(onTool({ session_id: "s", transcript_path: file }, { dir }), null);
+        });
+    });
+
+    test("its record is its own, per session and epoch, and only its owner can read it", () => {
+        withTemp((dir) => {
+            const file = session(dir, [90000]);
+            assert.notEqual(heldFile("s", 0, dir), toldFile("s", 0, dir));
+            assert.notEqual(heldFile("s", 0, dir), heldFile("s", 1, dir));
+            assert.notEqual(heldFile("a/b", 0, dir), heldFile("ab", 0, dir));
+            assert.notEqual(onStop({ session_id: "s", transcript_path: file }, { dir }), null);
+            for (const f of [heldFile("s", 0, dir), toldFile("s", 0, dir)]) assert.equal(fs.statSync(f).mode & 0o777, 0o600, f);
+        });
+    });
+
+    test("where holding it once cannot be remembered, or nothing can be read, the turn ends, with the reason on stderr", () => {
+        withTemp((dir) => {
+            const file = session(dir, [90000]);
+            const warnings = [];
+            const warn = (w) => warnings.push(w);
+            assert.equal(onStop({ session_id: "s", transcript_path: file }, { dir: path.join(dir, "no-such-directory"), warn }), null);
+            assert.match(warnings.join("\n"), /the held-once record could not be written — ENOENT; letting the turn end rather than holding it at every stop/);
+            assert.equal(onStop({ transcript_path: file }, { dir, warn }), null, "no session id, nothing to key it by");
+            assert.equal(onStop({ session_id: "s", transcript_path: path.join(dir, "absent.jsonl") }, { dir, warn }), null);
+            assert.equal(onStop({ session_id: "s" }, { dir, warn }), null);
+            assert.deepEqual(warnings.slice(-3).map((w) => w.split(" — ")[0]), ["the host sent no session_id, so saying the line once could not be kept", "the transcript could not be read", "the host sent no transcript_path"]);
         });
     });
 });
@@ -358,8 +428,8 @@ describe("the status line", () => {
 });
 
 describe("the declared figures on the command", () => {
-    // Workspace Definition 2.12's `spend`, which `compile` writes onto all three commands as flags. A figure it
-    // cannot use falls back to undeclared for its own half, said once on stderr, and the runner still exits 0.
+    // Workspace Definition 2.12's `spend`, which `compile` writes onto every advisory command as flags. A figure
+    // it cannot use falls back to undeclared for its own half, said once on stderr, and the runner still exits 0.
     const FLAGS = ["--read", "0.05", "--write-5m", "1.25", "--write-1h", "2", "--horizon", "30"];
     const declared = { read: 0.05, write: { "5m": 1.25, "1h": 2 } };
 
@@ -418,11 +488,11 @@ describe("the declared figures on the command", () => {
         });
     });
 
-    test("the runner reads them after its mode, in each of its three, and without them prices as it did", () => {
+    test("the runner reads them after its mode, in each of its four, and without them prices as it did", () => {
         withTemp((dir) => {
             const file = session(dir, [90000]);
             const at = (id) => ({ session_id: id, transcript_path: file });
-            for (const mode of ["tool", "prompt"]) {
+            for (const mode of ["tool", "prompt", "stop"]) {
                 const quiet = call([mode, ...FLAGS], at(`declared-${mode}`), dir);
                 assert.deepEqual([quiet.code, quiet.out, quiet.err], [0, "", ""], `${mode}: below the declared threshold, and nothing to warn of`);
                 assert.match(call([mode], at(`general-${mode}`), dir).out, /has reached its restart threshold of 80,000/, mode);
@@ -458,13 +528,15 @@ describe("the runner", () => {
             ["prompt", "null"],
             ["status", ""],
             ["other", "{}"],
+            ["stop", "not json"],
             ["prompt", JSON.stringify({ session_id: "s", transcript_path: "/no/such/file.jsonl" })],
+            ["stop", JSON.stringify({ session_id: "s", transcript_path: "/no/such/file.jsonl", stop_hook_active: true })],
         ]) {
             const result = spawnSync(process.execPath, [TOOL, mode], { input, encoding: "utf8", env: { ...process.env, TMPDIR: HERMETIC_HOST } });
             assert.equal(result.status, 0, `${mode} ${input}: ${result.stderr}`);
         }
         // And whatever figures its command carries, in any of its modes.
-        for (const mode of ["tool", "prompt", "status"]) {
+        for (const mode of ["tool", "prompt", "status", "stop"]) {
             for (const flags of [["--read"], ["--read", "x", "--horizon", "-1"], ["--nope", "1"]]) {
                 const result = spawnSync(process.execPath, [TOOL, mode, ...flags], { input: "{}", encoding: "utf8", env: { ...process.env, TMPDIR: HERMETIC_HOST } });
                 assert.equal(result.status, 0, `${mode} ${flags.join(" ")}: ${result.stderr}`);
@@ -486,6 +558,19 @@ describe("the runner", () => {
         assert.equal(main(["prompt"], { stdout, stderr, payload, dir: HERMETIC_HOST }), 0);
         assert.equal(written.out, "");
         assert.match(written.err, /could not run — boom/);
+    });
+
+    test("the block is one JSON line the host reads as a Stop hook's decision, with the line as its reason", () => {
+        withTemp((dir) => {
+            const file = session(dir, [90000]);
+            const result = spawnSync(process.execPath, [TOOL, "stop"], { input: JSON.stringify({ session_id: "runner", transcript_path: file, hook_event_name: "Stop", stop_hook_active: false }), encoding: "utf8", env: { ...process.env, TMPDIR: dir } });
+            assert.equal(result.status, 0, result.stderr);
+            const lines = result.stdout.trimEnd().split("\n");
+            assert.equal(lines.length, 1);
+            const output = JSON.parse(lines[0]);
+            assert.equal(output.decision, "block");
+            assert.ok(output.reason.startsWith("Portulan restart advisory:"));
+        });
     });
 
     test("the hook's output is one JSON line the host reads as additional context, from either hook", () => {

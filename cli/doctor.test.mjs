@@ -742,7 +742,24 @@ describe("the declared multipliers and horizon, which compile and the ledger rea
         });
     }
 
+    test("`spend.restart` in a manifest declaring 2.12 is a failure that names 2.13, and the rest of `spend` passes there", async () => {
+        const fails = severities(await inspected("2.12", { ...declared, restart: "block" }), "fail");
+        assert.deepEqual(
+            fails.map((f) => f.message),
+            ["`spend.restart` is Workspace Definition 2.13's, and this manifest declares 2.12, whose validator refuses it as an unknown key. Declare 2.13, or remove the key"],
+        );
+    });
+
+    for (const restart of ["advise", "block"]) {
+        test(`declared at 2.13, a restart of "${restart}" passes, alone or beside the figures`, async () => {
+            assert.deepEqual(severities(await inspected("2.13", { restart }), "fail"), []);
+            assert.deepEqual(severities(await inspected("2.13", { ...declared, restart }), "fail"), []);
+        });
+    }
+
     for (const [what, spend, pointer] of [
+        ["a restart it does not take", { restart: "stop" }, /^\/spend\/restart — value "stop" is not one of the permitted values \(enum: "advise", "block"\)/],
+        ["a restart spelled as a boolean", { restart: true }, /^\/spend\/restart — expected type `string`/],
         ["multipliers with no write", { multipliers: { read: 0.1 } }, /^\/spend\/multipliers — required property `write` is missing/],
         ["a write for one lifetime only", { multipliers: { read: 0.1, write: { "5m": 1.25 } } }, /^\/spend\/multipliers\/write — required property `1h` is missing/],
         ["a horizon with no requests", { horizon: {} }, /^\/spend\/horizon — required property `requests` is missing/],
@@ -750,7 +767,7 @@ describe("the declared multipliers and horizon, which compile and the ledger rea
         ["a figure spelled as a string", { multipliers: { read: "0.1", write } }, /^\/spend\/multipliers\/read — expected type `number`/],
     ]) {
         test(`${what} is refused by the schema`, async () => {
-            const fails = severities(await inspected("2.12", spend), "fail");
+            const fails = severities(await inspected(spend.restart === undefined ? "2.12" : "2.13", spend), "fail");
             assert.ok(fails.some((f) => pointer.test(f.message)), JSON.stringify(fails));
         });
     }
@@ -802,6 +819,12 @@ describe("where every session switch stands is one line, reported and never fail
         assert.equal(await line(demo), DEFAULTS);
     });
 
+    test("a declared block, Workspace Definition 2.13's `spend.restart`, is said, and an advice as the default", async () => {
+        const at = (restart) => line({ ...wellFormed(), portulan: { spec: "2.13" }, sessions: { cache_lifetime: "5m" }, spend: { restart } });
+        assert.equal(await at("block"), "cache lifetime 5m, compiled as `promptCacheTtl`; git instructions the host's default; multipliers the general ones; a turn's end held once at the restart threshold");
+        assert.equal(await at("advise"), "cache lifetime 5m, compiled as `promptCacheTtl`; git instructions the host's default; multipliers the general ones");
+    });
+
     test("declared multipliers and a horizon, Workspace Definition 2.12's `spend`, are said with their figures", async () => {
         const spend = { multipliers: { read: 0.05, write: { "5m": 1.25, "1h": 2 } }, horizon: { requests: 30 } };
         assert.equal(
@@ -819,7 +842,7 @@ describe("where every session switch stands is one line, reported and never fail
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 12 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 13 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -2111,9 +2134,9 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
             return tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
         };
         assert.equal(await run([build("9.9")], { quiet: true }), 2, "a MAJOR ahead");
-        // `2.13`, not a string one character on: the MINOR is compared as a number, so this also holds
+        // `2.14`, not a string one character on: the MINOR is compared as a number, so this also holds
         // the comparison to its arithmetic now that the current MINOR has two digits.
-        assert.equal(await run([build("2.13")], { quiet: true }), 2, "a MINOR ahead");
+        assert.equal(await run([build("2.14")], { quiet: true }), 2, "a MINOR ahead");
         assert.equal(await run([build("2.0")], { quiet: true }), 0, "the current version");
     });
 
@@ -2330,7 +2353,7 @@ describe("the packs a workspace declares", () => {
 
     test("the two version trains are read by different functions and do not collide", () => {
         assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 12 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 13 });
         // The workspace reader must not accept the pack `$id` as a workspace version.
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });

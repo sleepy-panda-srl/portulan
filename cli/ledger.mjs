@@ -361,6 +361,12 @@ export const SPEND_FIGURES = {
 };
 
 /**
+ * What a crossed restart threshold does (Workspace Definition 2.13): `"advise"` says the line, as an undeclared
+ * workspace's advisory does, and `"block"` also holds the turn's end once.
+ */
+export const RESTARTS = ["advise", "block"];
+
+/**
  * The write, `"5m"` or `"1h"`, that the read divides past the largest number, or null. The restart threshold
  * divides each write by the horizon times the read, so figures each in its range can still give no threshold:
  * a read near zero under a write near the largest number overflows to Infinity, a line no session reaches. A
@@ -371,15 +377,15 @@ export function overflowingWrite({ read, write }) {
 }
 
 /**
- * A manifest's `spend`, read: `{ multipliers, horizon }`, each null where its half is undeclared, and both
- * null where `spend` is. `where` names the manifest in a refusal. **Refused at the first fault, in any shape
- * the schema refuses, any figure out of its range, or a pair that gives no finite threshold**, because every
- * threshold the ledger prints and the advisory says is priced by it, and neither reader may depend on
+ * A manifest's `spend`, read: `{ multipliers, horizon, restart }`, each null where it is undeclared, and all
+ * three null where `spend` is. `where` names the manifest in a refusal. **Refused at the first fault, in any
+ * shape the schema refuses, any figure out of its range, or a pair that gives no finite threshold**, because
+ * every threshold the ledger prints and the advisory says is priced by it, and neither reader may depend on
  * `doctor` having been run: `./compile.mjs` writes what this returns into the settings the host reads, and
  * `--workspace` prints by it.
  */
 export function readSpend(value, where) {
-    if (value === undefined) return { multipliers: null, horizon: null };
+    if (value === undefined) return { multipliers: null, horizon: null, restart: null };
     const refuse = (what) => new LedgerError(`\`spend\` in ${where} ${what}; ../spec/slots.md gives its shape, and \`doctor\` names every finding`);
     const code = (key) => `\`${key}\``;
     // An object of `keys` and no other, holding every one of them where `whole` says it must.
@@ -395,7 +401,7 @@ export function readSpend(value, where) {
         if (!SPEND_FIGURES[range].holds(v)) throw refuse(`${at}sets ${code(key)} to ${JSON.stringify(v)}, which is not ${SPEND_FIGURES[range].is}`);
         return v;
     };
-    shaped(value, "", ["multipliers", "horizon"], false);
+    shaped(value, "", ["multipliers", "horizon", "restart"], false);
     let multipliers = null;
     if (value.multipliers !== undefined) {
         const m = shaped(value.multipliers, "at `multipliers` ", ["read", "write"], true);
@@ -406,7 +412,8 @@ export function readSpend(value, where) {
         if (over !== null) throw refuse(`at \`multipliers\` gives no finite restart threshold, since \`write["${over}"]\` divided by \`read\` overflows`);
     }
     const horizon = value.horizon === undefined ? null : figure(shaped(value.horizon, "at `horizon` ", ["requests"], true).requests, "at `horizon` ", "requests", "requests");
-    return { multipliers, horizon };
+    if (value.restart !== undefined && !RESTARTS.includes(value.restart)) throw refuse(`sets \`restart\` to ${JSON.stringify(value.restart)}, which is neither ${RESTARTS.map((r) => `"${r}"`).join(" nor ")}`);
+    return { multipliers, horizon, restart: value.restart ?? null };
 }
 
 /**

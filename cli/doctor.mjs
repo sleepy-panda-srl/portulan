@@ -1239,14 +1239,15 @@ export async function inspect(workspaceDir, options = {}) {
         // manifest can newly fail it; refusing an older one now could fail a manifest that passes today, which
         // ../spec/README.md calls a MAJOR. Raised by Copilot on #440, for `context`, the first key born gated.
         // `slots.context` is the second, at 2.10, and a slot is read one level down. The memory cap's cutoff
-        // and `sessions` are the third and fourth, at 2.11, and `spend`, `0038`'s multipliers and horizon, is
-        // the fifth, at 2.12.
+        // and `sessions` are the third and fourth, at 2.11, `spend`, `0038`'s multipliers and horizon, is the
+        // fifth, at 2.12, and `spend.restart`, its declared block, is the sixth, at 2.13.
         for (const [key, since, value] of [
             ["context", 9, workspace.context],
             ["slots.context", 10, workspace.slots?.context],
             ["memory.store.budget.cutoff", 11, workspace.memory?.store?.budget?.cutoff],
             ["sessions", 11, workspace.sessions],
             ["spend", 12, workspace.spend],
+            ["spend.restart", 13, workspace.spend?.restart],
         ]) {
             if (major === 2 && minor < since && value !== undefined) {
                 fail(

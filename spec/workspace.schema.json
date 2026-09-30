@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://portulan.dev/spec/2.12/workspace.schema.json",
-  "title": "Portulan Workspace Definition v2.12",
+  "$id": "https://portulan.dev/spec/2.13/workspace.schema.json",
+  "title": "Portulan Workspace Definition v2.13",
   "description": "The manifest at the root of a workspace. It is an index, not a container: it names the slots the engine resolves against and points at the Markdown that holds each slot's content and rationale. Written in a deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset and for what validates it.",
   "type": "object",
   "additionalProperties": false,
@@ -395,7 +395,7 @@
       }
     },
     "spend": {
-      "description": "Optional, added in 2.12. The multipliers and the horizon the restart threshold is computed at, `F × (1 + m_w / (n × m_r))` in proposal 0038's arithmetic, from its ruling 2: the manifest declares the multipliers, as `context.ratio` declares bytes per token, so a team's contracted rates and its host's real prices are one declared value. Nothing is defaulted in the manifest: undeclared, `cli/ledger.mjs` and the restart advisory use the general multipliers, a cache read at a tenth of an uncached input token and a write at 1.25× for five minutes or 2× for an hour, and the 20-request horizon of ruling 3, and say `undeclared`. Declared, `compile` writes the figures onto the advisory's commands, and `cli/ledger.mjs --workspace` reads them. The subset has neither `minimum` nor `maximum`, so every range below is `doctor`'s.",
+      "description": "Optional, added in 2.12. The multipliers and the horizon the restart threshold is computed at, `F × (1 + m_w / (n × m_r))` in proposal 0038's arithmetic, from its ruling 2: the manifest declares the multipliers, as `context.ratio` declares bytes per token, so a team's contracted rates and its host's real prices are one declared value. Nothing is defaulted in the manifest: undeclared, `cli/ledger.mjs` and the restart advisory use the general multipliers, a cache read at a tenth of an uncached input token and a write at 1.25× for five minutes or 2× for an hour, and the 20-request horizon of ruling 3, and say `undeclared`. Declared, `compile` writes the figures onto the advisory's commands, and `cli/ledger.mjs --workspace` reads them. `restart`, added in 2.13, says what a crossed threshold does. The subset has neither `minimum` nor `maximum`, so every range below is `doctor`'s.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -438,6 +438,11 @@
               "type": "number"
             }
           }
+        },
+        "restart": {
+          "description": "Optional, added in 2.13. What a crossed restart threshold does: `advise`, what an undeclared workspace gets, says the advisory's line once with a tool result or at a prompt; `block` also holds a turn's end once, at the first stop at or past the threshold that no block provoked, with the same line as the reason, compiled as a second `Stop` command beside the Stop-gate's. Nothing ends the session either way. Proposal 0038's ruling 3: a report by default, a rail by declaration.",
+          "type": "string",
+          "enum": ["advise", "block"]
         }
       }
     }
