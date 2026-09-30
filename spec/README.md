@@ -209,6 +209,9 @@ ratio; the read is the first figure bounded above, so it would need `exclusiveMi
 the horizon the budgets' `minimum` and `integer`; no keyword in the subset relates two figures, so the
 quotient stays by hand.
 
+**2.13 adds nothing to either list.** `spend.restart` is one of two strings, which the subset types in full
+with `type` and `enum`, so `doctor` only gates the key to 2.13.
+
 _These figures are history rather than state: what 2.3 and 2.4 added cannot change, so they do not go
 stale the way the removed count did. The one forward-looking sentence is the growth rate, and it is
 dated by the version it names._
@@ -224,14 +227,27 @@ number governing both would make a bump in either mean a change in the other:
 
 | Schema | Manifest key | Current | What it governs |
 |---|---|---|---|
-| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.12** | the Workspace Definition — the manifest at a workspace root |
+| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.13** | the Workspace Definition — the manifest at a workspace root |
 | [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.0** | the Pack Definition — the manifest at a pack root. |
 
 The rules below apply to each train independently. `portulan.spec` is `MAJOR.MINOR`, and the current
-Workspace Definition version is **2.12**. It did **not** move when the Pack Definition arrived, because
+Workspace Definition version is **2.13**. It did **not** move when the Pack Definition arrived, because
 `workspace.schema.json` was byte-identical across that change: `packs` already existed as an array of
 strings and was deliberately left that way, since tightening its items to the canonical `category/name`
 form would be a constraint an existing manifest could newly fail, which is a MAJOR.
+
+**2.13 is a MINOR on 2.8's terms: optional keys only.** `spend.restart` is the last piece of item 5 of
+proposal `0038`'s order of work, the declared block its ruling 3 allows: `"advise"` is the restart
+advisory as it was, and `"block"` also holds a turn's end once, at the first stop at or past the threshold,
+with the advisory's line as the reason; [`slots.md`](slots.md) argues it. Nothing is removed, renamed, tightened or
+defaulted: without the key, or with `"advise"`, the settings compile byte for byte as before, so every 2.12
+manifest is a valid 2.13 manifest unchanged. This repository's own workspace stays on 2.11 and declares no
+block: it declares no multipliers either, and at the general ones the line comes early for a model whose
+cache reads cost less than a tenth, so a block would hold its sessions short of their real line. Nothing
+writes 2.13 unasked: `init` asks nothing about the key and `upgrade` offers nothing, since ruling 3 makes a
+block a workspace's own choice. `KNOWN_SPECS` in [`../cli/index.mjs`](../cli/index.mjs) and
+[`../cli/librarian.mjs`](../cli/librarian.mjs) gains `"2.13"` by addition, and `doctor` gates the key to
+2.13.
 
 **2.12 is a MINOR on 2.8's terms: optional keys only.** `spend` is item 4 of proposal `0038`'s order of
 work: the multipliers the restart threshold is computed at, which its ruling 2 has the manifest declare, and

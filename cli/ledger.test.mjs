@@ -418,10 +418,10 @@ describe("a declared `spend`, as a manifest carries it", () => {
     const write = { "5m": 1.25, "1h": 2 };
 
     test("undeclared, either half alone, or both, each read as the shape the threshold takes", () => {
-        assert.deepEqual(readSpend(undefined, "w.json"), { multipliers: null, horizon: null });
-        assert.deepEqual(readSpend({}, "w.json"), { multipliers: null, horizon: null });
-        assert.deepEqual(readSpend({ horizon: { requests: 30 } }, "w.json"), { multipliers: null, horizon: 30 });
-        assert.deepEqual(readSpend({ multipliers: { read: 0.05, write }, horizon: { requests: 30 } }, "w.json"), { multipliers: { read: 0.05, write }, horizon: 30 });
+        assert.deepEqual(readSpend(undefined, "w.json"), { multipliers: null, horizon: null, restart: null });
+        assert.deepEqual(readSpend({}, "w.json"), { multipliers: null, horizon: null, restart: null });
+        assert.deepEqual(readSpend({ horizon: { requests: 30 } }, "w.json"), { multipliers: null, horizon: 30, restart: null });
+        assert.deepEqual(readSpend({ multipliers: { read: 0.05, write }, horizon: { requests: 30 } }, "w.json"), { multipliers: { read: 0.05, write }, horizon: 30, restart: null });
         // The bounds themselves: a read at the cost of an uncached token, and writes at it.
         assert.deepEqual(readSpend({ multipliers: { read: 1, write: { "5m": 1, "1h": 1 } } }, "w.json").multipliers, { read: 1, write: { "5m": 1, "1h": 1 } });
         // A horizon past 2^53 is still a whole number, and `doctor`'s positive-integer check passes it, so it is
@@ -429,10 +429,20 @@ describe("a declared `spend`, as a manifest carries it", () => {
         assert.equal(readSpend({ horizon: { requests: 1e16 } }, "w.json").horizon, 1e16);
     });
 
+    test("what a crossed threshold does is read as declared, alone or beside the figures", () => {
+        // Workspace Definition 2.13: `compile` writes the block from it, and the ledger prices nothing by it.
+        for (const restart of ["advise", "block"]) {
+            assert.deepEqual(readSpend({ restart }, "w.json"), { multipliers: null, horizon: null, restart });
+            assert.equal(readSpend({ multipliers: { read: 0.05, write }, horizon: { requests: 30 }, restart }, "w.json").restart, restart);
+        }
+    });
+
     for (const [what, spend, says] of [
         ["a list in place of the object", [], /is not an object/],
         ["null", null, /is not an object/],
-        ["an unknown key", { price: 1 }, /names `price`, which is neither `multipliers` nor `horizon`/],
+        ["an unknown key", { price: 1 }, /names `price`, which is neither `multipliers` nor `horizon` nor `restart`/],
+        ["a restart it does not take", { restart: "stop" }, /sets `restart` to "stop", which is neither "advise" nor "block"/],
+        ["a restart spelled as a boolean", { restart: true }, /sets `restart` to true/],
         ["multipliers with no write", { multipliers: { read: 0.1 } }, /at `multipliers` has no `write`/],
         ["multipliers with no read", { multipliers: { write } }, /at `multipliers` has no `read`/],
         ["a write for one lifetime only", { multipliers: { read: 0.1, write: { "5m": 1.25 } } }, /at `multipliers\.write` has no `1h`/],

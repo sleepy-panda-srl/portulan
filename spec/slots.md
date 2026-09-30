@@ -797,8 +797,9 @@ declaring a version before 2.11, gated from birth as `context` was.
 ## `spend` — the figures the restart threshold is computed at
 
 Added at **2.12**, from [proposal 0038](../.portulan/proposals/0038-what-a-change-spends-is-measured.md)'s
-ruling 2, *the manifest declares the multipliers*, and its ruling 3's horizon. The proposal carries the
-arithmetic; this object holds the figures a workspace computes it at.
+ruling 2, *the manifest declares the multipliers*, and its ruling 3's horizon; `restart` at **2.13**, from
+the same ruling's block by declaration. The proposal carries the arithmetic; this object holds the figures a
+workspace computes it at, and what a crossed threshold does.
 
 | Field | What it is |
 |---|---|
@@ -806,11 +807,13 @@ arithmetic; this object holds the figures a workspace computes it at.
 | `multipliers.write["5m"]` | What a five-minute cache write costs, as the same multiple. At least 1. |
 | `multipliers.write["1h"]` | What a one-hour cache write costs, as the same multiple. At least 1. |
 | `horizon.requests` | The requests still to go at which the restart threshold is judged. A positive integer. |
+| `restart` | `"advise"` or `"block"`: what a crossed threshold does. Undeclared, `"advise"`. |
 
 ```json
 "spend": {
   "multipliers": { "read": 0.05, "write": { "5m": 1.25, "1h": 2 } },
-  "horizon": { "requests": 30 }
+  "horizon": { "requests": 30 },
+  "restart": "block"
 }
 ```
 
@@ -820,11 +823,12 @@ at the lifetime the host recorded for the session's writes (the five-minute one 
 and `n` the horizon. [`../cli/ledger.mjs`](../cli/ledger.mjs) reads the key from `<dir>/workspace.json` when
 run with `--workspace <dir>`, and computes every threshold its report states at it. The restart advisory,
 [`../cli/advisory.mjs`](../cli/advisory.mjs), is handed its command and the host's payload and nothing else,
-so `compile` writes the figures onto all three of its commands, the `PostToolUse` and `UserPromptSubmit` hooks
-and the status line, as `--read`, `--write-5m`, `--write-1h` and `--horizon`, and its drift check holds them
-to the manifest: an edit to `spend` is drift until recompiled. A workspace with no gate policy has no settings
-for them to ride, and `compile` says that it compiled nothing. Every threshold the ledger or the advisory prints
-says whether its multipliers are declared, and so does a ledger report with no threshold to judge.
+so `compile` writes the figures onto each of its commands, the `PostToolUse` and `UserPromptSubmit` hooks, the
+status line and, where `restart` declares it, the block, as `--read`, `--write-5m`, `--write-1h` and
+`--horizon`, and its drift check holds them to the manifest: an edit to `spend` is drift until recompiled. A
+workspace with no gate policy has no settings for them to ride, and `compile` says that it compiled nothing.
+Every threshold the ledger or the advisory prints says whether its multipliers are declared, and so does a
+ledger report with no threshold to judge.
 
 **Declared, not defaulted.** Undeclared, both price at the general multipliers, a read at a tenth and writes
 at 1.25× and 2×, over a horizon of 20 requests, and say `undeclared`. That is ruling 2's answer to a spread no
@@ -835,6 +839,21 @@ times more in excess reads over 20 requests. A declaration makes a team's contra
 prices one value. Either half may be declared alone, and the other keeps its general figures. The three
 multipliers are one set, because a threshold priced by one declared figure and two general ones would be
 priced by nobody's.
+
+**`restart`: a block, only where declared.** `"advise"` is the advisory every workspace has: the line once,
+with a tool result or at a prompt. `"block"` keeps that line and adds a block at the end of a turn: at the
+first stop whose last recorded request is at or past the threshold, the advisory's own `stop` command, which
+`compile` writes as a second `Stop` command beside the Stop-gate's, holds the turn's end with the line as its
+reason, once in a session and again after each compaction, and the turn goes on. It is the advisory's command
+rather than a reason inside the Stop-gate, so the gate's counters and caps stay about the recipe and the
+handoff; and nothing ends the session, which stays the agent's or the human's act. `0038`'s *Enforcement*
+says the block comes *instead* of the line, and it is read here as *added*, because the line is what reaches
+an agent mid-stretch and a headless run's only stop is its last (the coordinator session's delegated call of
+2026-09-24); where the agent already acted on the line, the block costs one request. Ruling 3 makes the block
+a workspace's own choice, so `init` asks nothing about it and `upgrade` offers nothing: the threshold is an
+estimate, and one priced at the general multipliers comes early for a model whose cache reads cost less than
+a tenth, where a block would hold a turn short of its real line. Undeclared or `"advise"`, the settings
+compile byte for byte as before; where `"block"` writes the command, `compile` says so on every run.
 
 **What is not here.** Ruling 2 has `init` offer the declaration from the host's own pricing setting where the
 host exposes one, else from a dated per-host table in the engine. Both are keyed by the model a host records,
@@ -854,7 +873,8 @@ The first two stop with exit 2; the advisory, whose exit 2 would erase the perso
 stderr what it could not use and prices that half at the general figures. A threshold that a session's fresh
 context still carries past the largest number is none: the ledger stops with exit 2, and the advisory says it
 is not known. `doctor` refuses the key in a manifest declaring a version before 2.12, gated from birth as
-`sessions` was.
+`sessions` was, and `restart` in one before 2.13; it is one of two strings, which the subset types in full, and
+the ledger and `compile` refuse any other with exit 2.
 
 ## `slots.context` — the guidance a host loads, each unit in its tier
 

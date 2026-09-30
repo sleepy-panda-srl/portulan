@@ -141,6 +141,16 @@ describe("doctor's one line on the session switches", () => {
         assert.match(sessionsLine({ kind: "repository", spend: { horizon: { requests: 1 } } }), /; multipliers the general ones; a horizon of 1 request;/);
     });
 
+    test("a declared block is said after the figures, and an advice, the default, is not", () => {
+        // `spend.restart` at Workspace Definition 2.13: `"advise"` or `"block"`.
+        assert.equal(
+            sessionsLine({ kind: "repository", sessions: { cache_lifetime: "5m" }, spend: { horizon: { requests: 30 }, restart: "block" } }),
+            "cache lifetime 5m, compiled as `promptCacheTtl`; git instructions the host's default; multipliers the general ones; a horizon of 30 requests; a turn's end held once at the restart threshold",
+        );
+        assert.equal(sessionsLine({ kind: "repository", spend: { restart: "advise" } }), sessionsLine({ kind: "repository" }));
+        assert.equal(sessionsLine({ kind: "repository", spend: { restart: ["block"] } }), sessionsLine({ kind: "repository" }), "a value it cannot read is none");
+    });
+
     test("it never throws, and a manifest it cannot read is one declaring nothing", () => {
         for (const manifest of [undefined, null, "a manifest", [], { sessions: "on", spend: 3 }, { sessions: [], spend: { multipliers: [], horizon: "30" } }]) {
             assert.equal(sessionsLine(manifest), DEFAULTS, JSON.stringify(manifest));
@@ -158,10 +168,10 @@ describe("doctor's one line on the session switches", () => {
         const everything = {
             kind: "repository",
             sessions: { git_instructions: false, headless: { cache_lifetime: "5m", git_instructions: false, exclude_dynamic_sections: true } },
-            spend: { multipliers: { read: 0.025, write: { "5m": 1.25, "1h": 2 } }, horizon: { requests: 20 } },
+            spend: { multipliers: { read: 0.025, write: { "5m": 1.25, "1h": 2 } }, horizon: { requests: 20 }, restart: "block" },
         };
         const line = sessionsLine(everything);
         assert.ok(!line.includes("\n"));
-        assert.match(line, /; multipliers declared, read 0\.025× and writes 1\.25×\/2×; a horizon of 20 requests; `portulan upgrade`/);
+        assert.match(line, /; multipliers declared, read 0\.025× and writes 1\.25×\/2×; a horizon of 20 requests; a turn's end held once at the restart threshold; `portulan upgrade`/);
     });
 });
