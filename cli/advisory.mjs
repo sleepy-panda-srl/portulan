@@ -30,28 +30,31 @@
 // Ruling 3 of `0038` made the advisory a report by default: the threshold is an estimate, and a forced
 // restart on a wrong one costs a fresh write and a handoff, while an ignored line costs nothing. So the
 // `stop` mode is compiled only where a workspace declares `spend.restart` `"block"` (Workspace Definition
-// 2.13): at the first stop whose last recorded request is at or past the threshold it holds the turn's end
-// once, with the line as its reason, and the turn goes on. The line still comes with a tool result or a
-// prompt, since that is what reaches an agent mid-stretch, and a headless run's only stop is its last.
-// Nothing here ends anything — ending stays the agent's or the human's act. **It exits 0 on every path.**
-// For `UserPromptSubmit` an exit of 2 would erase the person's prompt, and for `Stop` it would hold every
-// turn's end, so a runner that could crash into it would be the one way this line did harm; anything it
-// cannot read, it passes over in silence, and says why on stderr, which the host keeps for its debug log.
-// That holds for the figures on its command too: a flag it does not take, a multiplier set missing one of
-// its three or a figure out of its range is said once, and the half it belongs to falls back to undeclared.
+// 2.13): at the first stop whose last recorded request is at or past the threshold, and that no block
+// provoked, it holds the turn's end once, with the line as its reason, and the turn goes on. The line still
+// comes with a tool result or a prompt, since that is what reaches an agent mid-stretch, and a headless run's
+// only stop is its last. Nothing here ends anything — ending stays the agent's or the human's act. **It exits
+// 0 on every path.** For `UserPromptSubmit` an exit of 2 would erase the person's prompt, and for `Stop` it
+// would hold every turn's end, so a runner that could crash into it would be the one way this line did harm;
+// anything it cannot read, it passes over in silence, and says why on stderr, which the host keeps for its
+// debug log. That holds for the figures on its command too: a flag it does not take, a multiplier set missing
+// one of its three or a figure out of its range is said once, and the half it belongs to falls back to
+// undeclared.
 //
 // ## Once
 //
 // The line is written at the first tool result or prompt whose last recorded request is at or past the
-// threshold. The host writes its transcript asynchronously, so that request may be one behind the one
-// just answered: the line is one request late at most, and never early. Whether it was said is kept in the OS temp
+// threshold. The host writes its transcript asynchronously, so that request may be one behind the one just
+// answered: the line is one request late at most, and never early. Whether it was said is kept in the OS temp
 // directory, keyed by session and by how many times the session has compacted — a compaction starts the
-// context again, so the line may be owed again, and until the first request after it there is no figure
-// at all, since the context the records last show is the one the compaction replaced. The file is
-// created exclusively before the line is written, and **where it cannot be created, nothing is
-// written**: an advisory that could not remember saying itself would say itself at every prompt, which
-// is the echo `0038`'s rule 5 forbids. The block keeps a held-once record of its own: a line already said
-// does not spare it, and once it has blocked, the line counts as said.
+// context again, so the line may be owed again, and until the first request after it there is no figure at
+// all, since the context the records last show is the one the compaction replaced. The file is created
+// exclusively before the line is written, and **where it cannot be created, nothing is written**: an advisory
+// that could not remember saying itself would say itself at every prompt, which is the echo `0038`'s rule 5
+// forbids. The block keeps a held-once record of its own: a line already said does not spare it, and once it
+// has blocked, the line counts as said. A stop that a block provoked, which the host marks
+// `stop_hook_active`, is never held: a host has been measured giving that retry a new session id
+// (`./stop-gate.mjs`, at `MAX_CHAIN_BLOCKS`), and a record keyed to the id would then hold every retry.
 //
 // ## What a call costs
 //
@@ -325,6 +328,7 @@ function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = n
     // (Claude Code 2.1.281's program text). The line and the figures are the main session's, and a subagent
     // told to end its session would end nothing, so its tool results neither say the line nor spend the once.
     if (typeof payload?.agent_id === "string" && payload.agent_id !== "") return null;
+    if (event === "Stop" && payload?.stop_hook_active === true) return null;
     const sessionId = sessionOf(payload);
     if (sessionId === null) {
         warn("the host sent no session_id, so saying the line once could not be kept");

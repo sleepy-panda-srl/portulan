@@ -842,18 +842,20 @@ priced by nobody's.
 
 **`restart`: a block, only where declared.** `"advise"` is the advisory every workspace has: the line once,
 with a tool result or at a prompt. `"block"` keeps that line and adds a block at the end of a turn: at the
-first stop whose last recorded request is at or past the threshold, the advisory's own `stop` command, which
-`compile` writes as a second `Stop` command beside the Stop-gate's, holds the turn's end with the line as its
-reason, once in a session and again after each compaction, and the turn goes on. It is the advisory's command
-rather than a reason inside the Stop-gate, so the gate's counters and caps stay about the recipe and the
-handoff; and nothing ends the session, which stays the agent's or the human's act. `0038`'s *Enforcement*
-says the block comes *instead* of the line, and it is read here as *added*, because the line is what reaches
-an agent mid-stretch and a headless run's only stop is its last (the coordinator session's delegated call of
-2026-09-24); where the agent already acted on the line, the block costs one request. Ruling 3 makes the block
-a workspace's own choice, so `init` asks nothing about it and `upgrade` offers nothing: the threshold is an
-estimate, and one priced at the general multipliers comes early for a model whose cache reads cost less than
-a tenth, where a block would hold a turn short of its real line. Undeclared or `"advise"`, the settings
-compile byte for byte as before; where `"block"` writes the command, `compile` says so on every run.
+first stop whose last recorded request is at or past the threshold and that no block provoked, the advisory's
+own `stop` command, which `compile` writes as a second `Stop` command beside the Stop-gate's, holds the turn's
+end with the line as its reason, once in a session and again after each compaction, and the turn goes on. A
+stop that a block provoked is never held, since a host that gives that retry a new session id would find no
+record of the hold and hold it again. It is the advisory's command rather than a reason inside the Stop-gate,
+so the gate's counters and caps stay about the recipe and the handoff; and nothing ends the session, which
+stays the agent's or the human's act. `0038`'s *Enforcement* says the block comes *instead* of the line, and
+it is read here as *added*, because the line is what reaches an agent mid-stretch and a headless run's only
+stop is its last (the coordinator session's delegated call of 2026-09-24); where the agent already acted on
+the line, the block costs one request. Ruling 3 makes the block a workspace's own choice, so `init` asks
+nothing about it and `upgrade` offers nothing: the threshold is an estimate, and one priced at the general
+multipliers comes early for a model whose cache reads cost less than a tenth, where a block would hold a turn
+short of its real line. Undeclared or `"advise"`, the settings compile byte for byte as before; where
+`"block"` writes the command, `compile` says so on every run.
 
 **What is not here.** Ruling 2 has `init` offer the declaration from the host's own pricing setting where the
 host exposes one, else from a dated per-host table in the engine. Both are keyed by the model a host records,

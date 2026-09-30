@@ -844,7 +844,7 @@ describe("the declared figures", () => {
             [{ hooks: [{ type: "command", command: stopGate }, { type: "command", command: `node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" stop --read 0.05 --write-5m 1.5 --write-1h 2.5 --horizon 30` }] }],
         );
         const said =
-            "the restart advisory also holds a turn's end (`spend.restart` \"block\"): at the first stop at or past the restart threshold, " +
+            "the restart advisory also holds a turn's end (`spend.restart` \"block\"): at the first stop at or past the restart threshold that no block provoked, " +
             "once in a session and again after each compaction, with the line as the reason, beside the Stop-gate. Nothing ends the session, " +
             "and the line still comes with a tool result or at the prompt";
         assert.ok(block.notes.includes(said), block.notes.join("\n"));

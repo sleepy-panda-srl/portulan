@@ -237,17 +237,16 @@ strings and was deliberately left that way, since tightening its items to the ca
 form would be a constraint an existing manifest could newly fail, which is a MAJOR.
 
 **2.13 is a MINOR on 2.8's terms: optional keys only.** `spend.restart` is the last piece of item 5 of
-proposal `0038`'s order of work, the declared block its ruling 3 allows: `"advise"` is the restart
-advisory as it was, and `"block"` also holds a turn's end once, at the first stop at or past the threshold,
-with the advisory's line as the reason; [`slots.md`](slots.md) argues it. Nothing is removed, renamed, tightened or
-defaulted: without the key, or with `"advise"`, the settings compile byte for byte as before, so every 2.12
-manifest is a valid 2.13 manifest unchanged. This repository's own workspace stays on 2.11 and declares no
-block: it declares no multipliers either, and at the general ones the line comes early for a model whose
-cache reads cost less than a tenth, so a block would hold its sessions short of their real line. Nothing
-writes 2.13 unasked: `init` asks nothing about the key and `upgrade` offers nothing, since ruling 3 makes a
-block a workspace's own choice. `KNOWN_SPECS` in [`../cli/index.mjs`](../cli/index.mjs) and
-[`../cli/librarian.mjs`](../cli/librarian.mjs) gains `"2.13"` by addition, and `doctor` gates the key to
-2.13.
+proposal `0038`'s order of work, the declared block its ruling 3 allows: `"advise"` is the restart advisory as
+it was, and `"block"` also holds a turn's end once, at the first stop at or past the threshold that no block
+provoked, with the advisory's line as the reason; [`slots.md`](slots.md) argues it. Nothing is removed,
+renamed, tightened or defaulted: without the key, or with `"advise"`, the settings compile byte for byte as
+before, so every 2.12 manifest is a valid 2.13 manifest unchanged. This repository's own workspace stays on
+2.11 and declares no block: it declares no multipliers either, and at the general ones the line comes early
+for a model whose cache reads cost less than a tenth, so a block would hold its sessions short of their real
+line. Nothing writes 2.13 unasked: `init` asks nothing about the key and `upgrade` offers nothing, since
+ruling 3 makes a block a workspace's own choice. `KNOWN_SPECS` in [`../cli/index.mjs`](../cli/index.mjs) and
+[`../cli/librarian.mjs`](../cli/librarian.mjs) gains `"2.13"` by addition, and `doctor` gates the key to 2.13.
 
 **2.12 is a MINOR on 2.8's terms: optional keys only.** `spend` is item 4 of proposal `0038`'s order of
 work: the multipliers the restart threshold is computed at, which its ruling 2 has the manifest declare, and

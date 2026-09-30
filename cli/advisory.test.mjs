@@ -196,6 +196,16 @@ describe("the block at a stop, where a workspace declares it", () => {
         });
     });
 
+    test("a stop a block provoked is never held, whatever session id the host gives it", () => {
+        withTemp((dir) => {
+            const file = session(dir, [90000]);
+            assert.equal(JSON.parse(onStop({ session_id: "first", transcript_path: file }, { dir })).decision, "block");
+            assert.equal(onStop({ session_id: "rotated", transcript_path: file, stop_hook_active: true }, { dir }), null, "the retry, under a new id");
+            assert.equal(onStop({ session_id: "unheld", transcript_path: file, stop_hook_active: true }, { dir }), null, "a block by another hook provoked this one");
+            assert.equal(JSON.parse(onStop({ session_id: "unheld", transcript_path: file }, { dir })).decision, "block", "held at its next stop instead");
+        });
+    });
+
     test("a line already said spares no block, and a compaction owes both again", () => {
         withTemp((dir) => {
             const file = session(dir, [90000]);

@@ -1258,7 +1258,8 @@ const HOST_TIER_NOT_A_GATE = {
 
 /**
  * The compiled-hook runners, in the order `claudeCode` spells them: the PreToolUse gate, the Stop gate,
- * then the restart advisory, which is the `PostToolUse` and `UserPromptSubmit` hooks and the status-line command.
+ * then the restart advisory, which is the `PostToolUse` and `UserPromptSubmit` hooks, the status-line command
+ * and, where a workspace declares a block, a second `Stop` command.
  * **This is their one carrier.** They are invoked by generated host configuration rather than
  * imported by anything, so no import graph can find them and every other roster that needs to know
  * which `cli/` modules are runners has to ask here — `./payload.mjs` does. A fourth runner added below
@@ -1645,7 +1646,7 @@ export function claudeCode(parsed, options = {}) {
     if (restartBlock) {
         notes.push(
             `the restart advisory also holds a turn's end (\`spend.restart\` "block"): at the first stop at or past the restart ` +
-                `threshold, once in a session and again after each compaction, with the line as the reason, beside the Stop-gate. Nothing ends the ` +
+                `threshold that no block provoked, once in a session and again after each compaction, with the line as the reason, beside the Stop-gate. Nothing ends the ` +
                 `session, and the line still comes with a tool result or at the prompt`,
         );
     }

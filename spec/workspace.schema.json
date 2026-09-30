@@ -440,7 +440,7 @@
           }
         },
         "restart": {
-          "description": "Optional, added in 2.13. What a crossed restart threshold does: `advise`, what an undeclared workspace gets, says the advisory's line once with a tool result or at a prompt; `block` also holds a turn's end once, at the first stop at or past the threshold, with the same line as the reason, compiled as a second `Stop` command beside the Stop-gate's. Nothing ends the session either way. Proposal 0038's ruling 3: a report by default, a rail by declaration.",
+          "description": "Optional, added in 2.13. What a crossed restart threshold does: `advise`, what an undeclared workspace gets, says the advisory's line once with a tool result or at a prompt; `block` also holds a turn's end once, at the first stop at or past the threshold that no block provoked, with the same line as the reason, compiled as a second `Stop` command beside the Stop-gate's. Nothing ends the session either way. Proposal 0038's ruling 3: a report by default, a rail by declaration.",
           "type": "string",
           "enum": ["advise", "block"]
         }
