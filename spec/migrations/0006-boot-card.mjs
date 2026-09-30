@@ -1,16 +1,4 @@
 // A form step — the boot is a card, drafted from the workspace's own slots.
-//
-// Portulan's own boot became a card on 2026-09-24: an always unit that `portulan compile` writes into the
-// rules the host loads into every context, so a session reads no slot to boot. This step drafts one for a
-// consumer from its own files, the way `init` drafts one for a fresh repository, and `0007` compiles it:
-// the identity imported whole, the leads of the principles and the definition of done and the gates of
-// the policy written out by `compile`, each section naming its file. So the card says what the slots say,
-// and moves when they move: an edit to any of them is drift until the card is recompiled.
-//
-// **Owed only where the workspace has not decided.** Where `slots.context` is undeclared, the card is
-// drafted in `context/`, the slot is declared, and the manifest is stamped 2.10, the version that slot
-// arrived in: a manifest declares what its content needs. Where the slot is declared, the workspace has
-// decided, and a slot with no `boot` unit is a workspace that boots through its slots, as before.
 
 import path from "node:path";
 
@@ -21,7 +9,6 @@ const CONTEXT_SPEC = "2.10";
 
 const posix = (p) => p.split(path.sep).join("/");
 
-/** `declared`, or `CONTEXT_SPEC` where the declared version is older: never a version downwards. */
 function atLeastContextSpec(declared) {
     const [major, minor] = String(declared).split(".").map(Number);
     const [needMajor, needMinor] = CONTEXT_SPEC.split(".").map(Number);
@@ -82,8 +69,7 @@ export const step = {
             { file: "workspace.json", next: `${JSON.stringify(manifest, null, 2)}\n` },
             { file: "context/boot.md", next: draftCard(manifest, read, { workspace, inTree, repoCards }) },
         ];
-        // A `.gitignore` that hides `.claude/` would keep the compiled card from review and from every
-        // fresh checkout: the exceptions git needs, as git answers for this tree.
+        // A `.gitignore` hiding `.claude/` would keep the compiled card out of review and every fresh checkout.
         const { lines } = claudeRulesUnignore(tree, ws.repository.git);
         if (lines.length) edits.push({ root: "tree", file: ".gitignore", next: withIgnoreLines(ws.repository.read(".gitignore"), lines) });
         return { ok: true, edits };

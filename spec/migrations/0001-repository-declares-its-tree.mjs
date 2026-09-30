@@ -1,30 +1,11 @@
 // Workspace Definition 1.0 → 2.0 — a `repository` workspace declares its `tree`.
-//
-// The only MAJOR migration this train has, and `../README.md` records why it was taken while it cost
-// nothing: `tree` began optional, and optional was a hole — deleting one manifest line degraded the
-// whole claims-lint class from *checked* to *reported*, GREEN, exit 0.
-//
-// **This step has no subject in this repository and none in any tree we have seen.** Nothing here
-// declares 1.0. It is exercised against a fixture, which `../README.md` says out loud rather than
-// leaving a passing suite to imply otherwise.
 
 import fs from "node:fs";
 import path from "node:path";
 
-/** The version this step migrates FROM, as a MAJOR. One place, so the two readers below agree. */
 const FROM_MAJOR = 1;
 
-/**
- * Is `dir` a repository root? `.git` is the evidence, and it is **a file as often as a directory**.
- *
- * A worktree's `.git` is a FILE containing `gitdir: …`, and so is a submodule's. A directory-only
- * test passes every suite written on an ordinary clone and is wrong for every worktree user — the
- * shape this project keeps paying for, so it is guarded here rather than discovered. The repository
- * this step ships from is itself checked out as a worktree today.
- *
- * Three answers, not two: `yes`, `no`, and **`unknown`** — because only `ENOENT` means absent, and an
- * `EACCES` is a question nobody answered.
- */
+/** `.git` is a file in a worktree or a submodule, and only ENOENT means it is absent. */
 function repositoryRoot(dir) {
     try {
         fs.lstatSync(path.join(dir, ".git"));
@@ -63,16 +44,10 @@ export const step = {
     plan(ws, ctx) {
         const next = { ...ws.manifest, portulan: { ...ws.manifest.portulan, spec: this.to } };
 
-        // Only a `repository` needs `tree`. A `demo` or `portfolio` describes repositories that are
-        // not beside it, and giving one a tree would be inventing a claim the workspace never made.
         if (next.kind === "repository" && typeof next.tree !== "string") {
             if (typeof ctx.tree === "string" && ctx.tree !== "") {
                 next.tree = ctx.tree;
             } else {
-                // Derived only where it is derivable, and refused otherwise. A hopeful `../` is a
-                // claim about somebody's layout made by a tool that did not look — and `tree` is
-                // precisely the slot whose wrongness turns a check class into a lie rather than an
-                // error.
                 const parent = path.resolve(ws.dir, "..");
                 const verdict = repositoryRoot(parent);
                 if (verdict === "yes") {

@@ -1,15 +1,6 @@
 {
   "skill": "codify",
-  "_comment": [
-    "Golden tasks for core/skills/codify/SKILL.md. TWO bound cases, both load-bearing and both against",
-    "the skill's OWN OUTPUT — proposals, which its step 4 names: step 1 wants provenance on them and",
-    "step 3 wants an enforcement field. core/templates/proposal.md mandates both and nothing checks",
-    "either, so neither has a carrier.",
-    "",
-    "This _comment claimed step 1 was `bound TWICE`, to proposals and to memory. There is no memory",
-    "binding in this file: the memory-provenance row was dropped when the pre-commit checkpoint bound",
-    "step 3 instead, and the summary did not move with it. Copilot round 1 on #360."
-  ],
+  "_comment": "Golden tasks for core/skills/codify/SKILL.md, one case per numbered step of its `## The pass`.",
   "cases": [
     {
       "step": 1,
@@ -24,17 +15,6 @@
       },
       "predicate": "provenance-present",
       "carrier": null,
-      "_note": [
-        "CODIFY'S OWN OUTPUT IS A PROPOSAL — its step 4 says so — and core/templates/proposal.md mandates",
-        "a Provenance field. `doctor` checks provenance on MEMORY records; docs.sh checks a proposal's",
-        "numbering, its outcome and its pull-request URL. Neither checks a proposal's provenance. So this",
-        "row has no carrier and it is the corpus's second live finding.",
-        "",
-        "THE PREDICATE IS SHAPE-TOLERANT ON PURPOSE. The corpus carries two spellings — `**Provenance.**`",
-        "(14) and `## Provenance` (13) — and a literal predicate would report the thirteen renamed ones as",
-        "absent. That is exactly the false red this session's own first measurement produced against the",
-        "task corpus, caught at a checkpoint. Six files carry neither spelling and those are the finding."
-      ],
       "expect": {
         "accepted": [
           {
@@ -61,12 +41,6 @@
             "file": "0030-a-declined-contribution-is-not-a-blocked-one.md",
             "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
           }
-        ],
-        "_accepted_note": [
-          "Six merged proposals carry no provenance field in any spelling. THREE OF THESE FILENAMES",
-          "WERE WRONG ON THE FIRST RUN — written from the number prefix rather than read off disk —",
-          "and the both-directions check caught all three before any reviewer did.",
-          "Two carriers: evals/README.md's `Accepted drift` subsection, and issue 358."
         ]
       }
     },
@@ -89,15 +63,6 @@
       },
       "predicate": "enforcement-present",
       "carrier": null,
-      "_note": [
-        "BOUND AT THE PRE-COMMIT CHECKPOINT, which refused the judgement-only classification this",
-        "step first carried. The declined argument was that presence-checking would be `the",
-        "presence floor with none of the value` — an argument this module refutes in its own",
-        "printed output, and which equally refutes the provenance binding beside it.",
-        "",
-        "core/templates/proposal.md mandates an **Enforcement.** field and nothing checks it.",
-        "THIRTEEN of thirty-three carry none — a larger finding than the six that shipped first."
-      ],
       "expect": {
         "accepted": [
           {
@@ -152,10 +117,6 @@
             "file": "0032-the-seam-guards-the-client-and-not-the-host.md",
             "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
           }
-        ],
-        "_accepted_note": [
-          "Thirteen merged proposals carry no enforcement field in any spelling. Same acceptance",
-          "and the same two carriers as the provenance row above."
         ]
       }
     },

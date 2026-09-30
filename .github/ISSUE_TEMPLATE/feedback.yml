@@ -1,6 +1,3 @@
-# Feedback. Deliberately the loosest of the three forms: the reports worth most here are the ones that
-# do not fit a defect template — "I could not tell what this file was for" is not a bug and not a
-# proposal, and a repository whose product is its files needs to hear it more than it needs either.
 name: Feedback
 description: Tell us what was confusing, what did not fit, or what you expected to find and did not.
 title: "[feedback] "
@@ -46,9 +43,6 @@ body:
     validations:
       required: false
 
-  # Optional, and normally filled by `portulan feedback` rather than by hand — the CLI sender assembles
-  # a fixed environment block (proposal 0014) and every form it can file into needs a declared home for
-  # it. Added 2026-08-10 with the sender; `bug.yml` has had this field since the forms landed.
   - type: textarea
     id: environment
     attributes:

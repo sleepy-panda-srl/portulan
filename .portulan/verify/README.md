@@ -161,8 +161,8 @@ specific applies — is built out of `grep` throughout**, so the tool most likel
 is the tool the byte silences. _(Named rather than counted, after two corrections. This sentence first
 claimed **every** recipe here was built out of `grep`, and six of the ten invoke it zero times —
 `plugin.sh`, `tests.sh`, `workflow-filters.sh`, `compile.sh`, `control-chars.sh` and `rule-carriers.sh`,
-of which **`compile.sh` and `control-chars.sh` carry the word in comments only and the other four never
-mention it at all** — named rather than placed, because "the middle two" was a position in a list, and a
+of which **`compile.sh` and `control-chars.sh` then carried the word in comments only and the other four
+never mentioned it at all** — named rather than placed, because "the middle two" was a position in a list, and a
 position is a count wearing a word — **which is why this said three until 2026-08-10**: an instrument
 that counts occurrences answers a different question from the sentence's verb, and the retrospective
 pass over this very pull request found it, then itself said four by leaving out the recipe the
@@ -415,8 +415,9 @@ register are at `git show 8a33f9b:.portulan/verify/README.md`; the `record` chec
 at `git show fc453be:.portulan/verify/README.md`. What stands now is per rail, not per check: a
 rail's standing observation procedure is its drill in [`../../cli/drills.mjs`](../../cli/drills.mjs),
 which forces the rail red on the calendar in
-[`../../.github/workflows/drills.yml`](../../.github/workflows/drills.yml), whose header carries which
-of its runs have answered; the rails not drilled are printed with their reasons on every run. The
+[`../../.github/workflows/drills.yml`](../../.github/workflows/drills.yml), whose answering runs are
+recorded in [`../gate-map/platform-floor.md`](../gate-map/platform-floor.md); the rails not drilled are
+printed with their reasons on every run. The
 moves that forced each check red when it landed were one-time runs, and they are at the first pointer
 above. The scheduled librarian, a watcher rather than a rail, carries its own procedure in
 [`../../cli/librarian.mjs`](../../cli/librarian.mjs).

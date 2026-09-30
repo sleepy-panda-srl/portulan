@@ -1,18 +1,7 @@
 // A form step — a change's record is its commit message, and the Session log is retired to a pointer.
-//
-// Portulan retired its own Session log on 2026-09-23: a log every change appends to conflicts on every
-// merge, and says less than the commit messages it repeats. `git log --first-parent` lists what landed.
-// This step retires a consumer's the same way: each tracked Markdown file with a `Session log` section
-// that holds entries keeps the heading and two lines, naming the last commit that holds its entries.
-//
-// **Nothing is lost, and that is why the step refuses a file with changes not committed.** The pointer
-// names the commit where the entries are, `git show <sha>:<file>`, and that is only true of entries
-// committed there: an entry written since would be in no commit the pointer names. A section whose first
-// line opens `Retired ` is a pointer already, and is left as it is, which keeps the step idempotent.
 
 import { notYetForm, retireSessionLogs, sessionLogPointer, sessionLogSections } from "../../cli/form.mjs";
 
-/** The tracked Markdown files holding a Session log with entries, or why the question has no answer. */
 function logsIn(ws) {
     if (!ws.repository) return { skip: "this workspace declares no tree, so no repository holds a Session log" };
     const git = ws.repository.git;
@@ -25,8 +14,7 @@ function logsIn(ws) {
         try {
             text = ws.repository.read(rel);
         } catch {
-            // A link, or a path git tracks that the disk cannot give: its target is read in its own
-            // right where git tracks it, and a Session log is text in a file, never behind a link.
+            // A link, or a path the disk cannot give: a link's target is read in its own right where git tracks it.
             continue;
         }
         if (text === null || !text.includes("Session log")) continue;

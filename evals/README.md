@@ -102,8 +102,9 @@ The sweep reports on a **commit** and refuses a dirty tree (`--working-copy` syn
 the verify recipe runs `--check` and not the sweep; the rails it cannot force are named in its output, each
 with the reason.
 
-**The calendar** is [`../.github/workflows/drills.yml`](../.github/workflows/drills.yml), weekly, and its
-header carries the recorded runs of both its triggers, the dispatch and the schedule.
+**The calendar** is [`../.github/workflows/drills.yml`](../.github/workflows/drills.yml), weekly, and the
+recorded runs of its dispatch and its schedule are in
+[`../.portulan/gate-map/platform-floor.md`](../.portulan/gate-map/platform-floor.md).
 
 **What it does NOT establish:** `--check` runs no rail, so whether each one fires is the sweep's answer on
 the calendar; and a scheduled run that never starts stays undetectable from inside —

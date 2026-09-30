@@ -1,25 +1,7 @@
 // A form step — a changelog entry is a fragment under `changes/`.
-//
-// Portulan moved its own changelog on 2026-09-23: two open changes that each add a bullet under
-// Unreleased conflict on merge, and a file per entry never does. `portulan index --changes changes`
-// prints the fragments as a release cut pastes them. This step moves a consumer the same way: each entry
-// under `CHANGELOG.md`'s Unreleased heading becomes a fragment, the heading keeps a two-line pointer, and
-// `changes/README.md` keeps the rule and the directory.
-//
-// **The move is proved before it is offered.** The fragments are rendered as the cut renders them, and
-// each section must print back exactly as the changelog held it, or the step refuses and names the
-// section: a move that changed a word would be a record rewritten by a tool. The one change is an entry
-// that does not open `- `, since a fragment must or the cut refuses it: its first two characters, a `*`
-// or `+` marker or a tab after one, become `- `, and the step names each entry it rewrites, by its line,
-// before anything is written. A `### heading` under Unreleased that names none of the six sections has
-// no fragment name, and is refused the same way.
 
 import { CHANGELOG, CHANGES_DIR, CHANGES_README, changesReadme, notYetForm, unreleasedCount, unreleasedFragments, unreleasedRewrites } from "../../cli/form.mjs";
 
-/**
- * The entries the move rewrites, named by line, or nothing where it rewrites none: a fragment opens `- ` or
- * the release cut refuses it, so an entry that does not is the one change the move makes to what it says.
- */
 function rewritten(changelog) {
     const lines = unreleasedRewrites(changelog);
     if (lines.length === 0) return "";

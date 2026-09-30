@@ -1,32 +1,4 @@
-# The workspace verify recipes, run by the platform rather than by whoever remembers to.
-#
-# This is what makes them eligible to be a *required status check* on `main`
-# (.portulan/proposals/0001-platform-floor-on-main.md): branch protection can only require a
-# check that CI actually reports. Without it, "required status checks" has nothing to require
-# and the floor rests on review alone.
-#
-# The recipes are NOT listed here. They are the set `cli/recipe-set.mjs` yields for
-# `.portulan/workspace.json`, so adding a recipe to the manifest makes it enforced — no workflow
-# edit, and no branch-protection change that somebody has to remember. See
-# .portulan/proposals/0004-ci-runs-every-declared-recipe.md.
-#
-# **Yields, not declares, and the difference arrived with milestone 7's composition amendment.** The
-# set is now the workspace's own recipes PLUS those contributed by the packs it composes, namespaced
-# by pack. This step calls the carrier rather than reading the manifest itself, because the row puts
-# CI inside the contract: a composed recipe missing from what CI runs would be a green computed over
-# something nobody ran.
-#
-# One job, one context, and the name says what it asserts. It arrived that way by a sequence
-# rather than an edit: a required context cannot be renamed in a pull request, because the old
-# context stops reporting and `enforce_admins` means the resulting block cannot be forced past.
-# So the new job ran alongside the old, protection was re-pointed by hand, and only then was the
-# transitional job deleted — proposal 0004, completed 2026-07-25.
-#
-# Deliberately no matrix and no cache: the recipes need bash, git, POSIX text utilities, and
-# node — all preinstalled on the runner. Note there is no actions/setup-node step, and that is
-# the point: adding one would pin a version, which would make this workflow a build. A verify
-# recipe with a build step of its own is a verify recipe that starts failing for reasons
-# unrelated to the change under test.
+# The workspace verify recipes, run by CI as the required `workspace-verify` check.
 
 name: workspace verify
 
@@ -39,76 +11,14 @@ permissions:
   contents: read
 
 jobs:
-  # A job's NAME is the status-check context branch protection pins, and the name defaults to the
-  # job id when no `name:` is given — which is why this job sets none. Verified against the live
-  # repository rather than assumed: the required context is the bare string `workspace-verify`,
-  # pinned to app 15368 (GitHub Actions). The `workflow / job` form seen in some UI listings is a
-  # display convention, not the context string.
-  #
-  # Renaming this id silently detaches the required-check rule that references it. If it ever has
-  # to change, repeat 0004's sequence — run the new name alongside, move protection, then delete —
-  # rather than editing the id in place.
+  # This id is a required status-check context (a `name:` would replace it): renaming it blocks every pull request.
   workspace-verify:
     runs-on: ubuntu-latest
+    # No setup or install step: every tool the recipes need is preinstalled on the runner.
     steps:
-      # Pinned to a full-length commit SHA, and that is a rail rather than a convention: the
-      # organisation and this repository both set `sha_pinning_required: true`, so the platform
-      # refuses an unpinned action outright. The policy is also right on its merits — a movable tag is
-      # a supply-chain hole, because whoever controls `v7` can repoint it at any commit and every
-      # workflow trusting the tag picks it up silently.
-      #
-      # **The watcher on this pin has been demonstrated rather than assumed**, once, on 2026-07-27.
-      # For five days after `dependabot.yml` landed beside this file there was no way to tell a
-      # working watcher from a dead one: version-update jobs have no REST endpoint, no `dependabot`
-      # check run appeared on any commit read, and the pin already sat on the newest release — so "no
-      # pull request opened" and "never ran" produced the same silence. The pin was deliberately
-      # regressed one patch to v7.0.0; Dependabot opened the bump back to v7.0.1; merging that was
-      # simultaneously the proof and the revert. It also demonstrated the claim `dependabot.yml` rests
-      # on — that the SHA and this trailing version comment get rewritten together. Full account in
-      # .portulan/proposals/0007-every-watcher-ships-with-its-observation-procedure.md.
-      #
-      # One limit that experiment exposed, worth keeping where the next person will trip on it:
-      # Dependabot rewrote the pin and could not rewrite the paragraph describing the pin, so between
-      # two merges this comment claimed a deliberate regression that no longer existed. **A mechanical
-      # revert is not a narrative revert**, and the prose is the half nothing checks.
-      #
-      # Moved off v4.4.0 because that release declares `using: node20` and the runner has been
-      # forcing it onto Node 24 since the Node 20 deprecation, which is a warning today and a
-      # broken required check on the day the runner stops carrying the old runtime. v5.0.0 is the
-      # first release declaring `using: node24`; v7 is taken rather than the smallest bump so the
-      # pin sits on the line that keeps getting fixes. What that jump changes for *this* job is
-      # nothing: v6 moved persisted credentials into `$RUNNER_TEMP` (needs runner >= v2.329.0,
-      # which GitHub-hosted `ubuntu-latest` is well past) and every recipe here touches git only
-      # through `git ls-files` — local, no network, no credentials.
-      #
-      # One caveat, and the condition that matters is the trigger rather than this step. Since
-      # v5.1.0 checkout refuses to check out a *fork* pull request under `pull_request_target` or
-      # `workflow_run` unless `allow-unsafe-pr-checkout` is set — because those two run with the
-      # base repository's token and secrets, which is what makes executing fork code there a pwn
-      # request. Read at the pinned commit rather than inferred: the refusal needs all of that
-      # event, a head repo whose id differs from the base, and a resolved repository/ref/commit
-      # pointing at that fork's PR head. On `pull_request` — this workflow's trigger — the check
-      # returns before testing anything else, so it cannot fire here.
-      #
-      # Adding a `ref:` or `repository:` therefore does NOT arm a refusal on `pull_request`; all it
-      # does is stop this step qualifying for the default-self-checkout early-out, so the check is
-      # called and then returns on the event. What would actually matter is this workflow moving to
-      # `pull_request_target` or `workflow_run`, which is the change to think twice about.
-      # `fetch-depth: 0` since #265, and it is load-bearing rather than cautious. The `pack-version`
-      # recipe asks what this change DID — whether a pack whose `contributes` moved also moved its
-      # `portulan.version` — which is a question about a diff against the merge-base, not about the tree.
-      # The default checkout is shallow, and measured on both of its shapes that produces either a base
-      # ref this repository does not have (`--depth 1` is also `--single-branch`) or a ref whose history
-      # is truncated so no merge-base exists. Either way the recipe exits **2**, could not run.
-      #
-      # **And an exit 2 here is not a shrug — the loop below turns ANY nonzero recipe exit into
-      # `status=1`, so it FAILS this required check.** So without full depth the rail would not be
-      # decorative; it would block every pull request in the repository, including ones touching no pack
-      # at all. The two changes ship together for that reason. (A draft of this comment said
-      # "decorative", which is the pleasanter error and the wrong one — corrected on the measurement.)
-      # `librarian.yml` sets this for the same underlying reason and says so in its own header.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The pack-version recipe needs the merge-base; in a shallow clone it exits 2, failing this check.
           fetch-depth: 0
 
       - name: Run every verify recipe the workspace manifest yields
@@ -116,38 +26,15 @@ jobs:
           set -uo pipefail
           set +e   # GitHub's default shell is `bash -e`; a red recipe must not abort the loop
 
-          # The emitter validates before it emits. A recipe that is declared but cannot be run —
-          # an empty or whitespace-only command, a newline smuggled into one, an id that is not a
-          # slug — must never be silently skipped, because "declared" is what this gate treats as
-          # "enforced". Throwing here exits non-zero and becomes exit 2 below.
-          # The enumeration used to live here, as an inline `node -e`. It does not any more.
-          #
-          # Milestone 7's composition amendment made a composed pack's verify recipes part of this
-          # workspace's runnable set, and the row states the consequence for THIS step in its own
-          # words: *CI runs the recipe set the manifest yields*, so a composed recipe missing from it
-          # "would be a green computed over something nobody ran". A workflow computing its own set
-          # would be that green — the required check reporting on a set nobody else agrees with.
-          #
-          # So the set has one carrier, `cli/recipe-set.mjs`, and this step calls it. The four
-          # validations that used to be spelled above — a non-slug id, an empty run, a newline or tab
-          # in a run, and an empty set — moved into that module with their exit-2 semantics intact,
-          # and are asserted there rather than trusted to have survived the move. The roster of
-          # readers, this workflow included, is pinned in `cli/recipe-set.live.test.mjs`.
           err=$(mktemp)
           recipes=$(node cli/recipe-set.mjs --workspace .portulan --repo-root . --pack-root packs 2>"$err")
           rc=$?
           if [ "$rc" -ne 0 ]; then
-            # The annotation carries the emitter's own message rather than a generic one. A manifest that
-            # parses but declares an unrunnable recipe is NOT unreadable, and saying so sends whoever reads
-            # the check summary to the wrong file — the failure is in a value, not in the JSON.
             printf '::error::verify recipes unusable: %s\n' "$(tr '\n' ' ' <"$err" | sed 's/  */ /g' | cut -c1-400)"
             cat "$err" >&2
             exit 2
           fi
 
-          # Reporting green having run nothing is the failure this whole gate exists to prevent.
-          # Enumerating the recipes is a precondition, exactly as enumerating the tree is inside
-          # each recipe — see .portulan/memory/verify-preconditions-fail-closed.md.
           if [ -z "$recipes" ]; then
             printf '::error::the manifest declares no verify recipes — refusing to report green\n'
             exit 2
@@ -155,9 +42,6 @@ jobs:
 
           status=0
           while IFS=$'\t' read -r id cmd; do
-            # Belt and braces behind the emitter's validation. A `continue` here would be the
-            # same fail-open in miniature: a line the loop cannot parse is work that was declared
-            # and silently not done, so it stops the run rather than being skipped.
             if [ -z "$id" ] || [ -z "$cmd" ]; then
               printf '::error::malformed recipe line from the manifest — refusing to report a partial run\n'
               exit 2

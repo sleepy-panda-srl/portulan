@@ -1,8 +1,4 @@
 // A form step — a `comments` recipe holds the comment lines that record a change's history.
-//
-// `init` drafts the recipe where git lists the tree, at the count it finds there, so no workspace starts
-// red. This step offers the same to a workspace drafted without one, and refuses where
-// `verify/comments.sh` is already in the workspace undeclared, rather than write over it.
 
 import path from "node:path";
 

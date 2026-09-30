@@ -1,66 +1,10 @@
 #!/usr/bin/env bash
-# Portulan workspace — verify recipe: every generated index is current, and the budgeted one is
-# within budget.
-#
-# One check, run against both workspaces this repository owns:
-#   index   every generated index a workspace declares is exactly what its source renders, and
-#           neither the store's index, nor the store itself, nor any single record in it is over the
-#           budget its manifest declares
-#
-# **Two series since Workspace Definition 2.5**, and only one of them is budgeted. The memory store
-# has an index and a rail on its size; the handoff series has an index and no rail, because
-# consolidation is a budget's only permitted remedy and a handoff series is append-only — retiring a
-# handoff to buy headroom would either red ./docs.sh's `record` correspondence or destroy the record
-# it exists to keep. ../../spec/slots.md carries the argument. It is not merely documented: the
-# schema gives `handoffs.index` one key, so a workspace that declares a budget there is a `doctor`
-# failure rather than a workspace that quietly acquired the rail.
-#
-# ../../core/operating/memory.md has said since milestone 1 that the index is "generated, never
-# hand-maintained" and that a budget is "a rail, not an aim". Until this recipe existed, both
-# sentences bound review and nothing else — which
-# ../memory/a-mandate-nothing-checks-is-already-broken.md says is another spelling of broken.
-#
-# It never writes. `index --check` renders in memory and byte-compares, exactly as ./compile.sh
-# does for the compiled enforcement, and for the same reason: a verify recipe that repairs what it
-# is checking always passes. The generator's write mode is one flag away, which is precisely why
-# the flag is not passed here.
-#
-# **The reds are different defects with different repairs**, and the tool keeps them apart:
-#   out of date  →  run `node cli/index.mjs --pack-root packs .portulan examples`. The pin is not
-#                   decoration: bare, that command REFUSES on a host where a declared pack is both
-#                   installed and in the tree (#318), so an unpinned remedy would fail exactly where
-#                   this red is most likely to be seen — on a pack developer's machine.
-#   over budget  →  consolidate the store (../../core/skills/consolidate/SKILL.md) — merge,
-#                   compress, split, retire — and never by raising the budget in the change that
-#                   broke it. WHICH of the four applies is decided by which budget went over, and
-#                   the finding names it: too many lines wants merge or retire, one record over
-#                   `record_kilobytes` wants split, compress or demote. Splitting to repair a
-#                   per-record breach SPENDS a line of the count budget — the two rails trade
-#                   against each other on purpose, so the trade is visible in the diff.
-#                   `columns` is the exception and consolidation is the WRONG tool for it: one
-#                   over-long index line is repaired by renaming the record, and nothing is
-#                   merged, split or retired
-#   heading      →  a record's H1 disagrees with its filename: edit the record
-#   date         →  a handoff's filename does not lead with YYYY-MM-DD: rename the file
-# A single "index check failed" would send an author to regenerate a file that is already correct
-# and still too big.
-#
-# What this recipe CANNOT establish: that the index is any good at recall. It checks derivation and
-# cost. Whether these lines lead a reader to the right record is an eval question and a naming
-# question for whoever writes the records. It is UNOWNED: this sentence said "(milestone 8)" until
-# that row closed on 2026-09-09 carrying no clause that reaches recall quality, and the close
-# re-pointed it rather than leaving a reader to infer an owner that never existed.
-#
-# The workspaces are named rather than discovered, and the named list is audited against the tree —
-# the shape ./doctor.sh explains at length and this recipe reuses rather than re-deriving. Note the
-# list is every workspace, not every workspace with an index: a workspace declaring none is
-# reported as such by the tool, so "no index" stays visible instead of being an absence in a list.
+# Portulan workspace — verify recipe: every generated index is current, and the store within its budget.
 #
 # Exit 0 green · 1 red · 2 could not run.
 
 set -uo pipefail
 
-# Every external command this recipe runs — see ./docs.sh for the measurement behind the shape.
 for need in dirname git grep node sed sort tr; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
@@ -71,9 +15,7 @@ done
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd) || exit 2
 cd -- "$root" || exit 2
 
-# The generator's own presence is a precondition, not a red. `node cli/index.mjs` on a missing file
-# exits 1, and passing that through would report "the index has drifted" about an index nothing had
-# looked at — the defect a reviewer found in ./doctor.sh, in the recipe that has no tests.
+# node exits 1 on a missing script, which would read as a red verdict.
 [ -f cli/index.mjs ] || {
     printf 'verify: cli/index.mjs not found — this recipe cannot run\n' >&2
     exit 2
@@ -83,19 +25,13 @@ WORKSPACES=(.portulan examples)
 
 FIXTURE_PREFIX="cli/fixtures/"
 
-# Checked before the array is expanded: on bash 3.2 — the system bash on macOS — expanding an empty
-# array under `set -u` aborts mid-script, which would surface as exit 1, a red that judged nothing.
+# Before any expansion: bash 3.2 aborts on an empty array under set -u, which would read as red.
 if [ "${#WORKSPACES[@]}" -eq 0 ]; then
     printf 'verify: WORKSPACES is empty — this recipe would check nothing\n' >&2
     exit 2
 fi
 
-# `core.quotePath=false` is load-bearing here, and ../verify/docs.sh states the full argument beside its
-# own enumeration. In short: git C-quotes any path holding a byte outside printable ASCII, so a workspace
-# at `café/workspace.json` arrives as `"caf\303\251/workspace.json"` — quotes included. The `$`-anchored
-# `sed` below cannot strip a suffix that now ends in a quote, so `present` carries a spelling that matches
-# no declared workspace and this recipe refuses a tree that is perfectly legal. **A false red**, which
-# ./README.md names as the failure that gets a check switched off.
+# core.quotePath=false: a C-quoted path ends in a quote, which the $-anchored sed below cannot strip.
 if ! manifests=$(git -c core.quotePath=false ls-files --cached --others --exclude-standard -- 'workspace.json' '*/workspace.json'); then
     printf 'verify: git ls-files failed — cannot audit the workspace list\n' >&2
     exit 2
@@ -114,27 +50,13 @@ fi
 
 printf 'index: checking every generated index declared by %s\n' "$(printf '%s' "$named" | tr '\n' ' ')"
 
-
-# ---------------------------------------------------------------------------------------------
-# **The resolution root is PINNED, and that is what keeps this recipe's verdict about the tree.**
-#
-# A required check answers *does this tree hold its own claims*, so its answer may not move with what
-# happens to be installed on the machine running it. Naming the root is how that is guaranteed: it
-# replaces every other source, so nothing here consults the host's plugin cache whatever the default
-# becomes.
-#
-# It is the same argument this file already makes one noun over — the workspaces below are NAMED
-# rather than discovered, so adding one is a visible edit here rather than a silent omission.
-# ---------------------------------------------------------------------------------------------
+# --pack-root pins resolution to the tree, so packs installed on the host cannot move the verdict.
 node cli/index.mjs --check --pack-root packs "${WORKSPACES[@]}"
 status=$?
 
 case "$status" in
     0) exit 0 ;;
     1) exit 1 ;;
-    # `index` reserves 2 for "could not judge" and so does this recipe — passed through rather than
-    # translated. ./compile.sh shipped for one checkpoint missing this arm and printed "not a verdict
-    # it documents" about a code the tool documents plainly: the right outcome with a false sentence.
     2) exit 2 ;;
     *)
         printf 'verify: index exited %s, which is not a verdict it documents — refusing to translate it into one\n' "$status" >&2

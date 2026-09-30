@@ -1,15 +1,4 @@
 // A form step — the guidance the workspace declares is compiled into what the host loads.
-//
-// A card, or any unit in `slots.context`, reaches a session only once `portulan compile` has written it
-// into `.claude/rules/portulan/`. This step writes compile's guidance half, through compile's own reader,
-// planner and refusals, and never its settings half: `.claude/settings.json` stays the output of a
-// `compile` a person runs. It follows `0006`, which drafts a card and leaves it uncompiled, and it is
-// owed wherever the compiled rules differ from what compile would write, so a workspace whose card
-// drifted is brought back to its slots by the same run.
-//
-// **What compile did not write, it leaves, and so does this step.** A rule written by hand where the card
-// would go is a refusal of compile's, reported as this step's answer; one beside the compiled rules is
-// left where it is, as `compile` leaves it, and named.
 
 import { guidanceEdits } from "../../cli/compile.mjs";
 import { notYetForm } from "../../cli/form.mjs";
