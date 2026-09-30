@@ -88,66 +88,66 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 
 | File | What it is |
 |---|---|
-| [`ab-grade.test.mjs`](ab-grade.test.mjs) | The A/B graders' suite. Every case exists because something has already been wrong in that exact way, or because a supervisor named the way it would be. |
-| [`ab-run.test.mjs`](ab-run.test.mjs) | The A/B runner's suite. Every case exists because something here has already been wrong in that way, or because the session-open checkpoint named the way it would be. |
-| [`ab.test.mjs`](ab.test.mjs) | The A/B arm builder's suite. Every case here exists because something in this repository has already been wrong in that exact way, or because a supervisor named the way it would be. |
+| [`ab-grade.test.mjs`](ab-grade.test.mjs) | Tests for `ab-grade` — the A/B graders: staging, attribution, the four scenarios, the two levels and the register. |
+| [`ab-run.test.mjs`](ab-run.test.mjs) | Tests for `ab-run` — the A/B runner: isolation, the matrix, the journal, the register and the checks behind it. |
+| [`ab.test.mjs`](ab.test.mjs) | Tests for `ab` — the A/B arm builder: its disposition table, rule-2 matcher, nonces, isolation and stop probe. |
 | [`advisory.test.mjs`](advisory.test.mjs) | Tests for `advisory` — the restart advisory's one line with a tool result or at the prompt, and its figure in the status line. |
 | [`checkout-refs.live.test.mjs`](checkout-refs.live.test.mjs) | A workflow that checks out MORE THAN ONCE names the ref of every checkout after the first. |
 | [`cli-roster.live.test.mjs`](cli-roster.live.test.mjs) | `cli/README.md` is exactly what ./roster.mjs renders from this directory, and the render keeps its shape. |
-| [`collisions.test.mjs`](collisions.test.mjs) | The collision contract — one rule, three carriers, pinned together. |
+| [`collisions.test.mjs`](collisions.test.mjs) | The collision contract: `init`, `new` and `vendor` answer each contracted state alike, and no fourth `collisions` exists. |
 | [`comments.test.mjs`](comments.test.mjs) | Tests for `comments`: each language's comments found exactly, and the four kinds of history told from the rest. |
 | [`compile.test.mjs`](compile.test.mjs) | Tests for `compile` — the enforcement compiler. |
 | [`context.test.mjs`](context.test.mjs) | Tests for `context` — what a boot reads and what the host loads into every context, measured. |
 | [`control-chars.test.mjs`](control-chars.test.mjs) | Tests for `control-chars` — the rail on bytes a reader cannot see. |
 | [`discover.test.mjs`](discover.test.mjs) | Tests for host plugin-cache discovery. |
 | [`doctor.test.mjs`](doctor.test.mjs) | Tests for `doctor` — the Workspace Definition validator. |
-| [`drills.test.mjs`](drills.test.mjs) | The forced-red drill harness's suite. |
+| [`drills.test.mjs`](drills.test.mjs) | Tests for `drills` — the forced-red drill harness: its table, perturbation guards, pair oracle, hook rails and tree choice. |
 | [`eval-bundle.test.mjs`](eval-bundle.test.mjs) | The evaluation-bundle cutter, driven on this repository AND on real fixture repositories. |
 | [`feedback.live.test.mjs`](feedback.live.test.mjs) | The sender's field map, against the real issue forms rather than against a fixture. |
-| [`feedback.test.mjs`](feedback.test.mjs) | `portulan feedback` — the suite, written before the sender. |
+| [`feedback.test.mjs`](feedback.test.mjs) | Tests for `portulan feedback`: draft, preview, send, the seam scan and the payload; `gh` is injected, never run. |
 | [`finish.test.mjs`](finish.test.mjs) | Tests for `finish` — one call closes a change: the fragment, the commit, every recipe on it, the push. |
 | [`form.test.mjs`](form.test.mjs) | `form` — the one definition of a consumer's new form, which `init`, `vendor`, `upgrade` and `doctor` read. |
-| [`fuzz-shell.ground.test.mjs`](fuzz-shell.ground.test.mjs) | The fuzzer's ground truth, MEASURED under real bash rather than argued. |
-| [`fuzz-shell.test.mjs`](fuzz-shell.test.mjs) | The grammar-fuzzer rail's suite — the hermetic half. |
+| [`fuzz-shell.ground.test.mjs`](fuzz-shell.ground.test.mjs) | Tests for `fuzz-shell`'s ground truth, measured under real bash: each bash-safe production's position, the path spellings, the wrappers. |
+| [`fuzz-shell.test.mjs`](fuzz-shell.test.mjs) | Tests for `fuzz-shell` — the hermetic half: its payloads are gated commands, so nothing here spawns bash or runs one. |
 | [`gate.test.mjs`](gate.test.mjs) | The PreToolUse gate runner, driven as the host drives it. |
 | [`gh-bot.test.mjs`](gh-bot.test.mjs) | The agent identity's wrapper refuses the endpoints it is not for. |
-| [`goldens.test.mjs`](goldens.test.mjs) | The gate-corpus rail's suite. Every contracted state is exercised POSITIVELY — green, a missing fixture, a regression, a hole that closed, every malformed-fixture refusal, and could-not-run — because a failure path nobody has run is one nobody has seen work. |
-| [`index.test.mjs`](index.test.mjs) | Tests for `index` — the memory index generator and its budget rail. |
+| [`goldens.test.mjs`](goldens.test.mjs) | Tests for `goldens` — the gate-corpus rail: the exemption, both rails, every corpus refusal and the CLI. |
+| [`index.test.mjs`](index.test.mjs) | Tests for `index` — the memory, handoff and scope indexes, the memory budgets, and changelog fragments. |
 | [`init.test.mjs`](init.test.mjs) | Tests for `init` — the onboarding subcommand that drafts a workspace for a repository that has none. |
-| [`instructions.test.mjs`](instructions.test.mjs) | `instructions`: the sections a team marks in its own instruction file, moved to on-read units and proved. The marks, the split and its proof, what it refuses, the join, the offer `doctor` and `init` print, and the invented consumer of `fixtures/consumer/`, split by the command line and measured. |
+| [`instructions.test.mjs`](instructions.test.mjs) | Tests for `instructions`: the sections a team marks, moved to on-read units and proved, and the join back. |
 | [`ledger.test.mjs`](ledger.test.mjs) | Tests for `ledger` — what a change spends, from the host's own usage records. |
 | [`librarian.test.mjs`](librarian.test.mjs) | Tests for `librarian` — the scheduled pass over the curated layer. |
 | [`list-quoting.live.test.mjs`](list-quoting.live.test.mjs) | Every recipe that enumerates the tree reads the pathname git actually carries. |
-| [`mutants.test.mjs`](mutants.test.mjs) | The mutation-census rail's suite. |
-| [`new.test.mjs`](new.test.mjs) | Tests for `new` — the authoring subcommand that scaffolds an artifact from a core template into the user's OWN layer. |
-| [`pack-identity.test.mjs`](pack-identity.test.mjs) | Tests for the byte-identity rail. Every comparable rail in this directory has a suite; this one shipped without and Copilot said so on #297, which is the note that produced this file. |
+| [`mutants.test.mjs`](mutants.test.mjs) | Tests for `mutants`, the mutation-census rail: its operator table, its imports, its corpus and its refusals. |
+| [`new.test.mjs`](new.test.mjs) | Tests for `new`: scaffolds that validate, written into the user's own layer and never into `core/`. |
+| [`pack-identity.test.mjs`](pack-identity.test.mjs) | Tests for the byte-identity rail: green, both findings and could-not-run, each exercised. |
 | [`pack-version.test.mjs`](pack-version.test.mjs) | The pack-version rail, driven on REAL git repositories rather than an injected history. |
 | [`payload.test.mjs`](payload.test.mjs) | Tests for the payload-classification rail. |
-| [`pinned-roots.live.test.mjs`](pinned-roots.live.test.mjs) | The required checks name their resolution root, and this is what makes that a rail. |
+| [`pinned-roots.live.test.mjs`](pinned-roots.live.test.mjs) | Required checks name their resolution root, and every suite whose imports reach the host's plugin record empties it. |
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Tests for `plugin-lint` — the packaging validator. |
-| [`portulan.test.mjs`](portulan.test.mjs) | Tests for the `npx` entry point, written before it — the convention every tool in this directory but `stop-gate` follows. |
+| [`portulan.test.mjs`](portulan.test.mjs) | Tests for the `npx` entry point: dispatch through an injected loader, its refusals, and its version. |
 | [`recipe-set.live.test.mjs`](recipe-set.live.test.mjs) | The composed recipe set, against THIS repository rather than against fixtures. |
 | [`recipe-set.test.mjs`](recipe-set.test.mjs) | The recipe set — one carrier, and every reader reaches it. |
-| [`release-eval.test.mjs`](release-eval.test.mjs) | The release-eval suite. Every case exists because something here was already wrong in that way, or because a fresh-context reviewer named the way it would be before a line was written. |
-| [`review-meter.test.mjs`](review-meter.test.mjs) | The review-loop meter's suite. Every counting trap this repository has already PAID to discover is a case here, because the whole argument for the tool is that a hand count kept getting them wrong — a suite that only exercised the happy path would be the hand count with more steps. |
+| [`release-eval.test.mjs`](release-eval.test.mjs) | The release-eval suite, on the record layer only: `--capture` spawns every other rail, the tests that run this suite included. |
+| [`review-meter.test.mjs`](review-meter.test.mjs) | Tests for `review-meter` — the review-loop meter: arithmetic, snapshot contract, register rail, window and shaping. |
 | [`rule-carriers.test.mjs`](rule-carriers.test.mjs) | Tests for `rule-carriers` — the rail that keeps a reduced rule reduced. |
 | [`sessions.test.mjs`](sessions.test.mjs) | `sessions` — the cache lifetime's offer, and `doctor`'s one line on the session switches. |
-| [`shadowed-pack.test.mjs`](shadowed-pack.test.mjs) | A shadowed pack is refused rather than picked — #316. |
-| [`shadowed-resolution.test.mjs`](shadowed-resolution.test.mjs) | `index` and `recipe-set` refuse a shadowed pack, and the divergence they would otherwise ship — #318. |
-| [`skill-goldens.test.mjs`](skill-goldens.test.mjs) | The core-skill corpus's suite. Every refusal is exercised POSITIVELY, because a failure path nobody has run is one nobody has seen work — and three of these exist only because this session's own opening passes produced the defect they now pin. |
+| [`shadowed-pack.test.mjs`](shadowed-pack.test.mjs) | A shadowed pack is refused rather than picked. |
+| [`shadowed-resolution.test.mjs`](shadowed-resolution.test.mjs) | `index` and `recipe-set` refuse a shadowed pack, and the divergence they would otherwise ship. |
+| [`skill-goldens.test.mjs`](skill-goldens.test.mjs) | Tests for `skill-goldens`, the core-skill golden corpus: every refusal exercised on a fixture that trips it. |
 | [`skills-set.live.test.mjs`](skills-set.live.test.mjs) | The registrable set, against THIS repository rather than against fixtures. |
 | [`skills-set.test.mjs`](skills-set.test.mjs) | The registrable set — what a plugin manifest must declare so a composed pack's skills register. |
-| [`stop-gate.test.mjs`](stop-gate.test.mjs) | Tests for the Stop-gate runner's cap and date handling. |
-| [`symbols.live.test.mjs`](symbols.live.test.mjs) | The outline against THIS repository: every tracked code file outlines, and each span is whole; every tracked Markdown file outlines, and each link to one of its headings finds it. |
+| [`stop-gate.test.mjs`](stop-gate.test.mjs) | Tests for the Stop-gate runner: its per-reason caps, the handoff date, its verdicts, the did-work signals and the tree it answers about. |
+| [`symbols.live.test.mjs`](symbols.live.test.mjs) | `symbols` against this repository: tracked code and Markdown files outline, each declaration compiles alone, and heading links land. |
 | [`symbols.test.mjs`](symbols.test.mjs) | The outline's contract, on fixtures: what each construct prints, and every refusal. |
-| [`telemetry.test.mjs`](telemetry.test.mjs) | The OTel emitter's suite. Every case here exists because something in this repository has already been wrong in that exact way, or because a supervisor named the way it would be. |
+| [`telemetry.test.mjs`](telemetry.test.mjs) | Tests for the OTel emitter: its consent gate, closed payload, offline audit and transport. |
 | [`test-isolation.live.test.mjs`](test-isolation.live.test.mjs) | A test that substitutes a shared object hands the restore to the runner, or says why it cannot. |
-| [`upgrade.live.test.mjs`](upgrade.live.test.mjs) | `upgrade` against real workspaces rather than against its own fixtures. |
+| [`upgrade.live.test.mjs`](upgrade.live.test.mjs) | `upgrade` against real workspaces, drafted by the real `init`, never against hand-built fixtures. |
 | [`upgrade.test.mjs`](upgrade.test.mjs) | `upgrade` — the migration chain, and the three kinds of step. |
-| [`vendor.test.mjs`](vendor.test.mjs) | Tests for `vendor` — the subcommand that materialises a workspace where it is needed, and carries the residence switch in both directions. |
-| [`version-carriers.test.mjs`](version-carriers.test.mjs) | The rail's suite. Every contracted state is exercised POSITIVELY — green, drift, a carrier reworded away, and could-not-run — because a failure path nobody has run is one nobody has seen work. Two cases exist only because this repository's own corpus refutes the naive design: the record layer must be IGNORED, and a `g` regex must not carry lastIndex between files. |
+| [`vendor.test.mjs`](vendor.test.mjs) | Tests for `vendor` — a workspace materialised where it is needed, and the residence switch in both directions. |
+| [`version-carriers.test.mjs`](version-carriers.test.mjs) | Tests for `version-carriers`: green, drift, a reworded carrier and could-not-run, each exercised. |
 | [`vision-sections.live.test.mjs`](vision-sections.live.test.mjs) | The constitution is cited by its sections, not by its words, and this holds every citation to it. |
-| [`warm.test.mjs`](warm.test.mjs) | The warm-start A/B's suite. **No case runs a real agent**: a stub stands in, writing a transcript where the host would and printing the host's JSON result, because a test starting `claude` would put a session and a credential inside a verify recipe. What the stub cannot stand in for is the host honouring a switch; that is the recorded run's to show (`../evals/ab/warm.md`). |
+| [`warm.test.mjs`](warm.test.mjs) | Tests for the warm-start A/B: pricing, Portulan's share, the child's start, sequences and switches, on a stub agent. |
 
 ### Other files
 

@@ -1,15 +1,4 @@
 // The outline's contract, on fixtures: what each construct prints, and every refusal.
-//
-//   node --test cli/symbols.test.mjs
-//
-// The fixtures hold the constructs a hand-written scanner gets wrong: braces inside strings, templates,
-// nested templates and regular expressions; a `/` that divides, after `++`, a property named `default`
-// or an object literal; statements with no semicolon; doc comments that attach and one a blank line
-// detaches; a class's members, a suite's tests, a section inside a function; a shell function whose
-// here-document carries a `}` at column zero, whose body holds a brace group, and whose strings,
-// expansions and comments hold braces. Each outline is pinned whole, so a change to what a session is
-// shown fails here first. `symbols.live.test.mjs` holds the same parser to every code file this
-// repository tracks.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -301,8 +290,7 @@ describe("a shell outline", () => {
 
 describe("a Markdown outline", () => {
     test("names every heading once, with its section's span, anchor and size, and nothing in fences, comments or frontmatter", () => {
-        // A paragraph under `---` is a heading, a list item over one is not, and `#` in fenced code, a
-        // comment or the frontmatter is none. The anchor names a repeated heading, `#why-1`, from the outline.
+        // A paragraph over `---` is a heading and a list item is not; a `#` in code, a comment or frontmatter is none.
         assert.deepEqual(render("guide.md", outlineMd(MD)), [
             "guide.md: 33 lines, 269 B",
             "5-20 # Guide #guide (127 B)",

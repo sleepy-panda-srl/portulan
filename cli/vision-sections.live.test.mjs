@@ -1,23 +1,4 @@
 // The constitution is cited by its sections, not by its words, and this holds every citation to it.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// Code, tests and the spec used to quote `docs/vision.md` word for word, so no sentence there could be
-// shortened without leaving a false quote somewhere else. A citation now names the section instead:
-// `vision.md § thesis 4`, or `vision.md § *Delivery tiers*` for a heading, a bold lead or an influence
-// map school. This suite holds every such name, and every "thesis N", to the file as it stands. It
-// checks that the section exists and never that any words match, so the text under a section is free to
-// change and a renamed lead or a renumbered thesis goes red where it is cited. Case and spacing are not
-// part of a name, and neither is a heading's parenthetical aside or the stop, colon, comma or semicolon
-// that closes a bold lead, since no citation carries them. Two sections that differ only in those count
-// as duplicates, so a citation can never match the wrong one. A rename that changes only them therefore
-// stays green, and one that changes a word or a punctuation mark within the name goes red.
-//
-// **The record layer is out.** A handoff, proposal or milestone file cites a thesis by the number it
-// had on the record's day, and records are forward-only. `.portulan/rule-carriers.json`'s `exclude` is
-// the one list of those paths and is read rather than copied. `.portulan/tasks/` is not on it and is
-// scanned: an open task is a live carrier a session acts on, and a done one keeps the words it quotes,
-// which this never checks, while every section it names must still exist.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -33,10 +14,6 @@ const SELF = "cli/vision-sections.live.test.mjs";
 
 const key = (label) => label.replace(/\s+/g, " ").trim().toLowerCase();
 
-// What a citation can name: every `##` heading without its parenthetical aside, the bold lead that
-// opens a paragraph or a list item, and the first cell of each table row under the header. The theses
-// are the one numbered list, and their numbers must run 1..n, or a gap would pass every citation of
-// the numbers either side of it.
 function sections(markdown) {
     const labels = new Map();
     const duplicates = [];
@@ -64,17 +41,7 @@ function sections(markdown) {
 
 const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"];
 
-// Line breaks and comment leaders (`//`, `* `, `#`, `>`) are joined to a space first, so a citation
-// that wraps inside a comment or a paragraph reads as one. A `§` names the file it follows: after
-// another `.md` it is that file's business, and after `vision.md` it must name a thesis or an italic
-// label, or it is reported. After no file, a `§` in a citation's shape, `§ thesis N` or `§ *Label*`, is
-// reported too, since a citation nothing checks is never a pass; any other `§`, such as the section
-// marker in `cli/symbols.mjs`'s outlines, cites nothing, and the text after it stays unread by this
-// match, so a citation that follows it is still found. A `§` inside a code span is an example of the
-// form, not a citation, and is dropped first, a line at a time, since a backtick pairs with the next
-// one on its line. A backtick left open on its line, as a template literal that runs on, opens no span,
-// so what follows it is still read. A plain "thesis N" that a `§` introduces was read with its file,
-// and is not read again as the constitution's.
+// A code span's `§` is blanked as an example, a line at a time; lines then join past their comment leaders.
 function citations(text) {
     const flat = text
         .split("\n")
@@ -153,10 +120,7 @@ test("a citation passes only when the section exists, and an unreadable one is a
     assert.deepEqual(problems(c, "20-53 // § 2. A section, then vision.md § *Gone*"), ["§ *Gone*, no such section"], "an outline's § cites nothing");
 });
 
-// A tracked link is read where it leads: at a tracked file under that file's own name, at a directory
-// through the files tracked in it. A link that dangles, loops, leaves the working tree or reaches
-// nothing tracked is read nowhere, so the scan reports it. Paths are compared as the bytes git lists,
-// held in `latin1` strings, which keep one character per byte.
+// Paths are compared as git's bytes, held in `latin1` strings, which keep one character per byte.
 function linkReaches(root, tracked, at) {
     let real;
     try {
@@ -180,10 +144,7 @@ test("a tracked link counts as read only when it leads to something tracked in t
     assert.deepEqual(Object.keys(links).filter((link) => linkReaches(root, tracked, path.join(root, link))), ["file", "folder", "itself"]);
 });
 
-// Tracked paths are listed NUL-separated and kept as bytes: without `-z` git C-quotes a name that holds
-// a control character, and a name that is not UTF-8 does not survive decoding, so either would be read
-// as a file that is not there. A citation of `vision.md` is read as the constitution, so no other
-// tracked file may carry that name. Every tracked name is returned too, as what a link may reach.
+// Raw bytes via `-z`: git C-quotes a name with a control character, and a non-UTF-8 name would not decode back.
 function scanned() {
     const exclude = JSON.parse(fs.readFileSync(path.join(REPO, ".portulan/rule-carriers.json"), "utf8")).exclude;
     assert.ok(Array.isArray(exclude) && exclude.length > 0, "rule-carriers.json carries no exclude list to read the record layer from");
@@ -221,8 +182,7 @@ test("every section this repository cites is one the constitution has", () => {
             continue;
         }
         if (stat.isSymbolicLink() && !linkReaches(root, tracked, at)) found.push(`${name}: a link to nothing tracked here, so nothing read it`);
-        // A link is read where it leads, and a directory at a tracked path is a submodule, which is
-        // another repository's.
+        // A link is read where it leads, and a directory here is a submodule, another repository's.
         if (!stat.isFile()) continue;
         const text = fs.readFileSync(at);
         if (text.includes(0)) continue;

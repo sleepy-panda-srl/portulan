@@ -1,23 +1,4 @@
 // Tests for `librarian` — the scheduled pass over the curated layer.
-//
-// Written before the tool, per ../core/operating/verification.md: the failing test is the spec.
-// Zero dependencies, node's own runner, same as ./index.test.mjs and ./doctor.test.mjs, and run by
-// the same recipe.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// The suite uses REAL git repositories in scratch directories rather than an injected clock or an
-// injected `git`. The whole point of this tool is that it reads history — `doctor` reads the tree and
-// says so — and a fake history proves nothing about the one call this tool exists to make. `git init`
-// costs a few milliseconds; the fidelity is worth it. The one thing that IS injected is the pass date
-// (`asOf`), because a test asserting "90 days stale" against the wall clock would start failing on a
-// date nobody chose.
-//
-// What this suite CANNOT establish: that a nag is worth sending. It checks that the pass dates records
-// from git rather than from the filesystem, that each threshold fires at its own boundary and not
-// before, that a store it cannot date is refused rather than reported on, and that the record it writes
-// satisfies the rails the repository already has for a session record. Whether a maintainer is glad to
-// receive it is not a property any assertion here can hold.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -29,10 +10,7 @@ import { fileURLToPath } from "node:url";
 
 import { inspect as inspectIndex } from "./index.mjs";
 
-// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
-// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
-// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
-// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+// Hermetic host: the tools read its installed-plugin record unasked; a case that wants a host passes `env:`.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -50,21 +28,7 @@ import {
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-// One exit handler for every scratch directory — the per-directory form exceeds node's default ten
-// listeners partway through a suite this size, which ./doctor.test.mjs learned in review and
-// ./index.test.mjs inherited.
-//
-// The per-directory `try` is not defensive habit: a case chmods the NON-EMPTY scratch
-// `.portulan/handoffs` child to `0o500` — readable and searchable, but not writable — and restores
-// it in `finally`, so a case dying before its `finally` leaves a directory `rmSync` cannot enter.
-// `force: true` suppresses ENOENT, not EACCES. Naked, that throw aborts the loop inside an `exit`
-// handler and abandons every directory after it.
-//
-// Which locks actually bite was measured, not assumed, because a hazard claimed where none exists
-// is the same defect as one missed: an EMPTY directory still removes if it is READABLE, so only an
-// unreadable one blocks while empty; a NON-EMPTY one additionally needs write and search. The errno
-// follows readability, not position: an UNREADABLE root gives EACCES, while everything else — a
-// locked child, or a readable-but-unwritable root — gives ENOTEMPTY.
+// One exit handler for every scratch directory: one per directory passes node's default of ten listeners.
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) {
@@ -95,7 +59,6 @@ const git = (cwd, ...args) =>
         },
     });
 
-/** Write a tree described as { "relative/path": "contents" }. */
 function tree(dir, files) {
     for (const [rel, body] of Object.entries(files)) {
         const target = path.join(dir, rel);
@@ -105,15 +68,7 @@ function tree(dir, files) {
     return dir;
 }
 
-/**
- * A scratch git repository whose files carry chosen AUTHOR dates.
- *
- * `files` maps a path to `[contents, "YYYY-MM-DD"]`. Each date becomes its own commit, oldest first,
- * so `git log -1 --format=%as -- <path>` returns exactly the date the test asked for. Author date
- * rather than committer date throughout, and the tool matches: this repository rebases constantly,
- * which rewrites every committer date and leaves author dates alone, so committer date would report
- * "everything was touched on the day of the last rebase".
- */
+// `--date` sets the author date, which the tool reads because a rebase rewrites only committer dates.
 function repo(files, { workspace = null, at = ".portulan" } = {}) {
     const dir = scratch();
     git(dir, "init", "-q", "-b", "main");
@@ -125,8 +80,6 @@ function repo(files, { workspace = null, at = ".portulan" } = {}) {
         byDate.get(date)[rel] = body;
     }
     const dates = [...byDate.keys()].sort();
-    // The manifest rides the first commit so it is dated too; a workspace whose own manifest git has
-    // never seen is a different test, below.
     let first = true;
     for (const date of dates) {
         tree(dir, byDate.get(date));
@@ -141,11 +94,7 @@ function repo(files, { workspace = null, at = ".portulan" } = {}) {
     return dir;
 }
 
-// Only the slots a test actually populates. A declared slot with no directory behind it is a
-// `doctor` failure — it validates that every declared path resolves — and this pass refuses it too
-// rather than reading an absent store as an empty one, which is the enumeration fail-open
-// ../.portulan/memory/verify-preconditions-fail-closed.md was minted from. Declaring slots the
-// fixture does not create would therefore have every test in this file failing for that one reason.
+// Only the slots every fixture creates: the pass refuses a declared slot with no directory behind it.
 const MANIFEST = (extra = {}) => ({
     portulan: { spec: "2.4" },
     name: "scratch",
@@ -183,8 +132,6 @@ describe("daysBetween", () => {
     });
 
     test("is negative when the record is dated after the pass", () => {
-        // A record dated in the future is a clock or a fabricated date, not a stale record. The pass
-        // must not silently read it as "0 days old" — the sign is the signal.
         assert.equal(daysBetween("2026-02-01", "2026-01-01"), -31);
     });
 
@@ -208,8 +155,6 @@ describe("sealedStamp", () => {
     });
 
     test("a sealed stamp missing its date is refused, not skipped", () => {
-        // Skipping it would drop the one record that most needs the nag, silently. `doctor` fails a
-        // malformed stamp on a rule; this pass cannot date one, so it refuses to judge the store.
         const source = "**type:** rule\n**provenance:** `form=sealed` `owner=Ada` `shape=x`\n\nA rule.\n";
         assert.throws(() => sealedStamp(source), LibrarianError);
     });
@@ -230,7 +175,6 @@ describe("retireWhen", () => {
     });
 
     test("prose that merely discusses retiring is not a condition", () => {
-        // The same anchoring `doctor` uses: the bolded field at line start, never a mention.
         assert.equal(retireWhen("**type:** rule\n\nWe should retire when bored.\n"), null);
     });
 
@@ -273,7 +217,6 @@ describe("passWorkspace — the age half of the store report", () => {
             },
             { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) },
         );
-        // Touch the file so its mtime is now: a pass reading the filesystem would call it fresh.
         fs.utimesSync(path.join(dir, ".portulan/memory/old-rule.md"), new Date(), new Date());
 
         const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
@@ -348,8 +291,6 @@ describe("passWorkspace — the sealed-stamp re-validation nag", () => {
     });
 
     test("dates the nag from the STAMP, not from the file's last commit", () => {
-        // The stamp's date is when the incident was sealed; the file's date is when someone last
-        // edited the prose. Re-validation is owed on the incident, so a typo fix must not reset it.
         const dir = repo(
             { ".portulan/memory/s.md": [sealed("Ada", "2025-06-01"), "2026-06-14"] },
             { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) },
@@ -369,8 +310,6 @@ describe("passWorkspace — the sealed-stamp re-validation nag", () => {
     });
 
     test("a store with no sealed rules reports zero rather than staying silent", () => {
-        // The live `.portulan/memory/` has none. "Nothing to nag" and "did not look" must not print
-        // the same way — the argument `doctor`'s always-emitted store line already makes.
         const dir = repo(
             { ".portulan/memory/r.md": [linked(), "2026-06-01"] },
             { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) },
@@ -439,9 +378,6 @@ describe("passWorkspace — demotion drafts", () => {
     });
 
     test("the draft never claims the condition fired", () => {
-        // The librarian cannot evaluate a condition — vision thesis 4 says so in as many words. A
-        // draft that asserted otherwise would be the tool exceeding its own charter in the artifact
-        // the maintainer reads.
         const dir = repo(
             { ".portulan/memory/old.md": [linked(), "2026-01-01"] },
             { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) },
@@ -467,10 +403,6 @@ describe("passWorkspace — demotion drafts", () => {
 
 describe("passWorkspace — refusals", () => {
     test("a shallow repository is refused, never reported on", () => {
-        // In a shallow clone `git log -1 -- <path>` returns nothing for a file whose only commit was
-        // truncated away, so every record would read as undated and every threshold would fire or
-        // none would. Either way the verdict describes the checkout, not the store. This is the
-        // false-red generator ../.portulan/verify/README.md holds to be worse than no check at all.
         const dir = repo(
             { ".portulan/memory/r.md": [linked(), "2026-01-01"] },
             { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) },
@@ -497,13 +429,6 @@ describe("passWorkspace — refusals", () => {
     });
 
     test("an uncommitted record is undated and never stale, and the count says so", () => {
-        // This is not the fail-open it looks like, and the distinction cost an hour: a file git has
-        // never seen is not *undatable*, it is NEW. Nothing in the history this pass reads is older
-        // than a file's absence from that history, so age 0 is the precise answer rather than a
-        // guess. The first draft refused instead — and the first thing it refused was a proposal
-        // this session had written and not yet committed, which turned `tests.sh` red on a correct
-        // tree and made a verify recipe depend on git history. That is the one thing the split
-        // between this pass and the recipes exists to prevent.
         const dir = repo(
             { ".portulan/memory/r.md": [linked(), "2026-01-01"] },
             { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) },
@@ -524,11 +449,6 @@ describe("passWorkspace — refusals", () => {
     });
 
     test("a STAGED record is uncommitted too — tracking is the wrong question", () => {
-        // The state between the two the fix above separated, and it broke the fix: `git add` makes a
-        // file tracked while leaving it with no commit, so a test on *tracking* refuses exactly the
-        // session that staged its work before running the pass. `HEAD` is the question that has one
-        // answer for all three states. Found by running the pass against a staged tree, minutes after
-        // the untracked case was fixed by running it against an unstaged one.
         const dir = repo(
             { ".portulan/memory/r.md": [linked(), "2026-01-01"] },
             { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) },
@@ -556,13 +476,6 @@ describe("passWorkspace — refusals", () => {
     });
 
     test("a memory BUDGET that is not a positive integer is refused too, not printed as a percentage", () => {
-        // The sibling of the threshold check above, and it was missing: the three budgets went to
-        // `budgetHeadroom` raw, so a schema-legal `0` rendered `Infinity%` and a `1.5` a plausible-
-        // looking number — and a `"8"`, which the schema refuses but this tool never asks it about, did
-        // the same — in a weekly artifact nobody is watching when it runs, while `index` and `doctor`
-        // refused every one outright. Three consumers of one key must not give three answers.
-        // Raised by Copilot on #215, suppressed half, against the per-record line; repaired for all
-        // three budgets rather than the one that surfaced it.
         const budgets = [
             ["memory.index.budget.lines", (v) => ({ index: { path: "memory-index.md", budget: { lines: v } } })],
             ["memory.store.budget.kilobytes", (v) => ({ index: { path: "memory-index.md" }, store: { budget: { kilobytes: v } } })],
@@ -584,8 +497,6 @@ describe("passWorkspace — refusals", () => {
     });
 
     test("a budget refusal names the manifest path a reader can grep for", () => {
-        // Not `store`/`record_kilobytes`, the two arguments the helper took — a refusal naming a key
-        // that does not appear in the file is one the author cannot act on.
         const dir = repo(
             { ".portulan/memory/r.md": [linked(), "2026-01-01"] },
             { workspace: MANIFEST({ librarian: { staleness: STALENESS }, memory: { index: { path: "memory-index.md" }, store: { budget: { record_kilobytes: 0 } } } }) },
@@ -605,7 +516,6 @@ describe("passWorkspace — refusals", () => {
     });
 
     test("…and the version the shipped schema declares is implemented", () => {
-        // The same hand-edited list as `index`'s, held to the schema's `$id` the same way. Copilot on #440.
         const { $id } = JSON.parse(fs.readFileSync(path.resolve(HERE, "..", "spec", "workspace.schema.json"), "utf8"));
         const spec = $id.match(/\/spec\/(\d+\.\d+)\//)[1];
         const dir = repo(
@@ -659,9 +569,6 @@ describe("renderReport", () => {
     });
 
     test("the per-record distance NAMES the record it measured", () => {
-        // The line existed and nothing asserted it, which is how the seeding bug below survived a
-        // full review round. A distance with no filename sends a reader to sort the store by hand,
-        // and the whole point of the 2.8 rail is that a breach is LOCAL — it has a name.
         const memory = { index: { path: "memory-index.md" }, store: { budget: { record_kilobytes: 8 } } };
         const { result } = passOf(
             {
@@ -676,11 +583,6 @@ describe("renderReport", () => {
     });
 
     test("a store whose records are ALL zero bytes still reports that it has records", () => {
-        // `counts.largest` seeds at `{file: null, bytes: 0}` and was updated only on
-        // `recordBytes > largest.bytes`. A zero-byte record never beats the seed, so the report said
-        // "no records yet" over a store that held one — a false statement about the store, in the
-        // artifact that runs unattended. An empty `.md` is reachable: `doctor` reports it as a record
-        // with no provenance, and this pass counts it either way. Raised by Copilot on #215.
         const memory = { index: { path: "memory-index.md" }, store: { budget: { record_kilobytes: 8 } } };
         const { result } = passOf({ ".portulan/memory/empty.md": ["", "2026-06-01"] }, { memory });
         const text = renderReport([result], { asOf: "2026-06-15" });
@@ -691,9 +593,7 @@ describe("renderReport", () => {
 
     test("an EMPTY store says so, which is the only case that line may claim", () => {
         const memory = { index: { path: "memory-index.md" }, store: { budget: { record_kilobytes: 8 } } };
-        // A non-markdown file, so the store DIRECTORY exists and holds no record. An absent directory
-        // is a different case the pass refuses outright — `listSeries` will not render an index of
-        // nothing, because an empty index compares equal to an empty committed one and would pass.
+        // A non-record file, because an absent store directory is refused rather than reported empty.
         const { result } = passOf({ ".portulan/memory/.keep": ["", "2026-06-01"] }, { memory });
         const text = renderReport([result], { asOf: "2026-06-15" });
         assert.equal(result.counts.records, 0);
@@ -742,9 +642,6 @@ describe("run", () => {
     });
 
     test("a pass WITH findings still exits 0 — this tool renders no verdict", () => {
-        // The distinction from `doctor`, `index` and `compile`, and it is deliberate: those are
-        // checkers and 1 means red. A nag is not a failure, and a workflow that treated it as one
-        // would turn every stale record into a broken build.
         const dir = repo(
             { ".portulan/memory/old.md": [linked(), "2026-01-01"] },
             { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) },
@@ -755,11 +652,6 @@ describe("run", () => {
     });
 
     test("the summary says so when it regenerated an index", () => {
-        // The round-three fix renamed `drifted` to `regenerated` and missed this one site, so the
-        // branch became dead: the summary could never say it had regenerated anything. Found by
-        // Copilot on #81 in round four — a loose end in the fix rather than new feedback on old code,
-        // which is why it was finished rather than filed. A rename with no test on the renamed branch
-        // is how a field goes quietly unread.
         const m = MANIFEST({ librarian: { staleness: STALENESS }, memory: { index: { path: "memory-index.md" } } });
         m.slots.handoffs = "handoffs/";
         const dir = repo(
@@ -769,10 +661,6 @@ describe("run", () => {
         const out = say();
         assert.equal(run(["--as-of", "2026-06-15", "--write", path.join(dir, ".portulan")], out), 0);
         const printed = out.lines.join("\n");
-        // **Two sentences now, and the order is the assertion.** The pass's summary is printed before
-        // anything is regenerated, so it can only report *drift found*; the regeneration line comes
-        // after the work it describes. Claiming the repair in the earlier line is what Copilot caught
-        // on #85 round two — a record asserting work that had not happened yet and could still fail.
         assert.match(printed, /index drift found/);
         assert.match(printed, /regenerated scratch's index/);
         assert.ok(
@@ -782,11 +670,6 @@ describe("run", () => {
     });
 
     test("a workspace with no proposals slot does not crash the summary", () => {
-        // Copilot read `result.proposals?.filter(...).length ?? 0` as throwing when `proposals` is
-        // null. It does not: optional chaining short-circuits the WHOLE member chain, so the
-        // expression is `undefined` and `?? 0` catches it. Measured rather than argued, and asserted
-        // here so the next reader does not have to re-derive it — `examples` declares no
-        // `slots.proposals` and takes this path on every real run.
         const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) });
         const out = say();
         assert.equal(run(["--as-of", "2026-06-15", path.join(dir, ".portulan")], out), 0);
@@ -801,8 +684,6 @@ describe("run", () => {
     });
 
     test("an unknown option is refused, not dropped", () => {
-        // Dropping it is the fail-open Copilot found on #81: `--wrtie` produced a run that reported
-        // everything it found and wrote nothing, with a success message over work that did not happen.
         const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST() });
         const out = say();
         assert.equal(run(["--wrtie", path.join(dir, ".portulan")], out), 2);
@@ -821,11 +702,6 @@ describe("run", () => {
     });
 
     test("and where the grammar cannot help, the empty workspace list does", () => {
-        // `--report .portulan` is not detectable at parse time — `.portulan` is a perfectly good value,
-        // and any `--flag value` grammar consumes it. What catches the caller who meant it as a
-        // workspace is the check one layer up: no workspaces left, so nothing is examined and the run
-        // says so and exits 2 rather than reporting a green over an empty list. Asserted because it is
-        // the *only* thing standing between that typo and a pass that examined nothing.
         const out = say();
         assert.equal(run(["--report", ".portulan"], out), 2);
         assert.match(out.lines.join("\n"), /usage/);
@@ -847,9 +723,6 @@ describe("run", () => {
     });
 
     test("`--reviews` needs a value, and a flag is not one", () => {
-        // The same trap a value-bearing flag was measured to have: without this, `--reviews --write` sets the path
-        // to `--write` and drops the mode, and the pass then reports *not asked* about a corpus it was
-        // handed — a fail-open with a flag in front of it.
         assert.throws(() => parseArgs(["--reviews"]), LibrarianError);
         assert.throws(() => parseArgs(["--reviews", "--write", "a"]), LibrarianError);
     });
@@ -874,38 +747,14 @@ describe("run", () => {
 // ===========================================================================================
 // The live workspaces
 // ===========================================================================================
-//
-// The suite is the rail here, in the way ./index.test.mjs binds both live indexes: this repository's
-// own store must stay passable by the tool that will run against it weekly, and the demo workspace
-// must keep the one sealed record the nag exists for.
-
-// ===========================================================================================
-// The live workspaces
-// ===========================================================================================
-//
-// **These must run in a SHALLOW checkout**, and the first draft did not — which made this suite red
-// in CI on the pull request that introduced it. `.github/workflows/verify.yml` checks out with
-// `actions/checkout`'s default depth of 1, `passWorkspace` refuses a shallow repository outright, and
-// `tests.sh` is a verify recipe. So the suite would have failed `workspace-verify` — required by the
-// floor — on this change and on every change after it, over a store that was perfectly fine.
-//
-// That is this file's own rule turned on itself: *a check that reads history is a false-red generator
-// in a shallow CI checkout*, which is exactly why the staleness pass is a scheduled job and not a
-// recipe. Writing the rule down did not stop the suite from breaking it.
-//
-// So the live bindings are split by what they need. What can be established from the **tree** is
-// asserted from the tree, with no git at all — the demo workspace's one sealed rule is a fact about
-// four files. What genuinely needs history asserts the honest outcome for the checkout it is in:
-// the pass where history exists, the refusal where it does not. Skipping in CI was the other option
-// and is worse — a binding that stops binding exactly where nobody is watching.
 
 describe("the live workspaces", () => {
     const REPO_ROOT = path.resolve(HERE, "..");
+    // CI checks out at depth 1, and the pass refuses a shallow repository.
     const shallow = execFileSync("git", ["-C", REPO_ROOT, "rev-parse", "--is-shallow-repository"], {
         encoding: "utf8",
     }).trim() === "true";
 
-    /** Every record in a live store, read without asking git anything. */
     const storeOf = (workspaceDir, slot) => {
         const dir = path.join(REPO_ROOT, workspaceDir, slot);
         return fs
@@ -919,15 +768,10 @@ describe("the live workspaces", () => {
     });
 
     test("this repository has no sealed rules, so the nag's live subject is elsewhere", () => {
-        // Not a defect and not an aspiration: every rule here links a public incident, so retirement
-        // in this store can rest on evidence rather than on asking anyone. It is asserted because the
-        // day it changes is the day the sealed proportion `doctor` reports starts mattering here.
         assert.equal(storeOf(".portulan", "memory").filter((s) => sealedStamp(s) !== null).length, 0);
     });
 
     test("every live sealed stamp carries a date the pass can nag against", () => {
-        // `sealedStamp` throws on a sealed rule with no `date=`. Binding both stores to that here
-        // means a future sealed record lands with the field the nag needs, or this goes red.
         for (const dir of [".portulan", "examples"]) {
             for (const source of storeOf(dir, "memory")) assert.doesNotThrow(() => sealedStamp(source));
         }
@@ -972,11 +816,6 @@ const pass = (name, body = "What happened.") => `# Handoff — ${name}\n\n${body
 
 describe("passWorkspace — the handoff series", () => {
     test("reports count, oldest and size, and drafts nothing", () => {
-        // The row that added this clause bars a budget on the series and gives the reason: a handoff
-        // series is append-only, so consolidation — the one remedy a budget may ask for — would mean
-        // deleting the record the series exists to keep. A staleness THRESHOLD has the same problem
-        // one layer down: `record_days` drafts a demotion, and a demotion draft against an
-        // append-only series recommends exactly that deletion, weekly, forever.
         const dir = repo(
             {
                 ".portulan/memory/a-fact.md": [linked(), "2026-06-01"],
@@ -991,7 +830,6 @@ describe("passWorkspace — the handoff series", () => {
         assert.equal(result.handoffs.oldest.file, "2026-01-10-old.md");
         assert.equal(result.handoffs.oldest.days, 156);
         assert.ok(result.handoffs.bytes > 0);
-        // The store's own drafts are untouched by the series: nothing here adds to them.
         assert.deepEqual(result.drafts.map((d) => d.file), []);
     });
 
@@ -1023,8 +861,6 @@ describe("passWorkspace — the handoff series", () => {
 
 describe("passWorkspace — mining incidents", () => {
     test("counts the whole series and lists only what the window holds", () => {
-        // The ratio is the trend and never becomes noise; the LIST is scoped, because a list of every
-        // uncodified incident is the same 25 lines every week for a series that only grows.
         const dir = repo(
             {
                 ".portulan/memory/a-fact.md": [
@@ -1058,8 +894,6 @@ describe("passWorkspace — mining incidents", () => {
     });
 
     test("a window its scheduler names with `--since` outranks the newest pass record", () => {
-        // Passes stopped writing records into the series on 2026-09-24, so the newest one only ages.
-        // The scheduler owns the cadence and names when the previous pass ran; the pass remembers nothing.
         const dir = repo(
             {
                 ".portulan/memory/a-fact.md": [linked(), "2026-06-01"],
@@ -1076,10 +910,6 @@ describe("passWorkspace — mining incidents", () => {
     });
 
     test("an incident dated the same day as the last pass is inside the window, not lost to it", () => {
-        // The boundary is `>=`, and the strict version loses work permanently: a pass runs at 06:00
-        // and the session that day writes its handoff in the afternoon, so `>` puts it outside this
-        // window — the pass had not seen it — and outside every later one, because `since` only moves
-        // forward. It would survive nowhere but the ratio. Found at the pre-commit checkpoint.
         const dir = repo(
             {
                 ".portulan/memory/a-fact.md": [linked(), "2026-06-01"],
@@ -1108,11 +938,6 @@ describe("passWorkspace — mining incidents", () => {
     });
 
     test("a proposal linking an incident counts as codified too", () => {
-        // Measured on the real tree before it was written: a rule minted by one session took its
-        // provenance from the PROPOSAL that session filed rather than from the handoff, so a query
-        // that read only memory records called that incident uncodified. The finding it produces is
-        // still real — nothing points back to the session — but it is a different finding, and the
-        // candidate's wording says which.
         const dir = repo(
             {
                 ".portulan/memory/a-fact.md": [linked(), "2026-06-01"],
@@ -1150,9 +975,6 @@ describe("passWorkspace — mining pull-request reviews", () => {
     });
 
     test("a path drawing comments on two distinct pull requests recurs; one does not", () => {
-        // Two is not a tuning knob, it is what *recurring* means — `core/skills/codify/SKILL.md`
-        // triggers on "a pattern, not a one-off". A threshold here would be policy, and policy is
-        // declared in the manifest; this is a definition, so it is not.
         const dir = repo(
             {
                 ".portulan/memory/a-fact.md": [linked(), "2026-06-01"],
@@ -1175,15 +997,6 @@ describe("passWorkspace — mining pull-request reviews", () => {
     });
 
     test("a reply is not a finding — only the comment that opens a thread is one", () => {
-        // Measured on this repository rather than argued, and the partition is exact: of 376 inline
-        // review comments, all 189 from the reviewer open a thread and all 187 replies — 162 the
-        // agent identity's, 25 the maintainer's — carry `in_reply_to_id`. So *a finding is a thread
-        // opener* separates them with no list of logins to maintain, which matters because the
-        // reviewer here is itself a bot: excluding bots would have excluded the findings.
-        //
-        // Counting replies would also invert the signal. Every reply we write is one more comment on
-        // a path we were answering a question about, so the harder a finding was argued, the more it
-        // would look like a place reviewers keep finding things.
         const dir = repo({ ".portulan/memory/a-fact.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) });
         const reviews = [comment(1, "cli/doctor.mjs", 111), comment(2, "cli/doctor.mjs", 222)];
         const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", reviews });
@@ -1193,12 +1006,6 @@ describe("passWorkspace — mining pull-request reviews", () => {
     });
 
     test("a path the tree no longer holds is dropped, and the drop is counted", () => {
-        // Found by running the pass against this repository's real review corpus rather than by
-        // reading the code: `cli/mode.mjs` came back with findings on two pull requests, and that file
-        // does not exist — the mode axis was ruled dead and both its pull requests closed unmerged.
-        // A weekly nag pointing at a deleted file is a nag nobody can act on, and it never stops,
-        // because review history is append-only. The count is reported rather than the drop being
-        // silent: *we ignored some* and *there were none* must not print the same way.
         const dir = repo(
             { ".portulan/memory/a-fact.md": [linked(), "2026-06-01"], "kept.md": ["x\n", "2026-06-01"] },
             { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) },
@@ -1235,10 +1042,6 @@ describe("passWorkspace — scheduled consolidation", () => {
         `**type:** rule\n**scope:** workspace\n**provenance:** \`form=link\` \`href=${href}\`\n\n${fact}\n\n**Retire when:** never.\n`;
 
     test("two records citing one incident are raised as a question, never as a merge", () => {
-        // `core/skills/consolidate/SKILL.md` step 2 merges records that are one MECHANISM. Sharing an
-        // incident is not that: measured on this repository, all three shared-incident groups are
-        // deliberately distinct facts, because one incident teaches several mechanisms. So the pass
-        // asks and does not conclude.
         const dir = repo(
             {
                 ".portulan/memory/a-first.md": [withHref("../handoffs/2026-01-10-old.md"), "2026-06-01"],
@@ -1290,10 +1093,6 @@ describe("a pass leaves the tree it just wrote to green", () => {
     };
 
     test("a write pass writes no handoff, puts its report where it is told, and leaves a tree the recipe passes", () => {
-        // A pass leaves no open work, so it writes nothing into the series (2026-09-24); what it found
-        // goes to the path its scheduler names, outside the tree, and the only write to the tree is an
-        // index that had drifted. End-to-end, because what has to be true is that the TREE the pass
-        // leaves behind passes the recipe that guards it, or the pull request it files cannot merge.
         const m = MANIFEST({
             librarian: { staleness: STALENESS },
             memory: { index: { path: "memory-index.md" } },
@@ -1319,8 +1118,7 @@ describe("a pass leaves the tree it just wrote to green", () => {
     });
 
     test("a pass that could not write its report does not regenerate an index either", () => {
-        // A pass that did not do everything it was asked files nothing, so it changes nothing. The
-        // report path is a directory, which no write can replace, as root or not.
+        // The report path is a directory, which no write can replace, as root or not.
         const m = MANIFEST({ librarian: { staleness: STALENESS }, memory: { index: { path: "memory-index.md" } } });
         const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: m });
         const out = say();
@@ -1330,10 +1128,7 @@ describe("a pass leaves the tree it just wrote to green", () => {
     });
 
     test("a report named inside the tree is refused, and nothing is written or regenerated", () => {
-        // A report in the tree is a file the next commit carries, as the workflow stages with `git add
-        // -A`, and in the store it would be read as a record. Refused inside the workspace, inside the
-        // tree it declares, and through a link from outside into either, dangling or not: Copilot, #457,
-        // a dangling link names a file that does not exist yet, and a write through it creates it.
+        // A write through a dangling link creates the file it names, so those are refused too.
         const m = MANIFEST({ tree: "../", librarian: { staleness: STALENESS }, memory: { index: { path: "memory-index.md" } } });
         const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: m });
         const outside = scratch();
@@ -1361,8 +1156,7 @@ describe("a pass leaves the tree it just wrote to green", () => {
     });
 
     test("a report named at a hard link into the tree replaces the link, never the tree's file", () => {
-        // A hard link has no path to resolve, so containment sees only the outside name. Copilot, #457:
-        // a write in place would change the file in the tree through it; a rename replaces the name.
+        // A hard link has no path to resolve, so containment sees only its outside name.
         const m = MANIFEST({ tree: "../", librarian: { staleness: STALENESS } });
         const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: m });
         fs.writeFileSync(path.join(dir, "notes.md"), "the tree's copy\n");
@@ -1377,8 +1171,6 @@ describe("a pass leaves the tree it just wrote to green", () => {
     });
 
     test("a workspace whose pass failed still keeps the report out of the tree it declares", () => {
-        // The tree is read from the manifest, not from the pass's result, which a pass that threw
-        // never returns: a workspace this tool refuses to pass still governs its tree.
         const m = { ...MANIFEST({ tree: "../" }), portulan: { spec: "9.9" } };
         const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: m });
         const report = path.join(dir, "report.md");
@@ -1390,15 +1182,6 @@ describe("a pass leaves the tree it just wrote to green", () => {
 });
 
 describe("the report never claims an index is current when none is declared", () => {
-    // Copilot, #85 round one, in **both** channels at once — a thread on the handoff site, a
-    // suppressed low-confidence note on the store site, one defect. `index.declared` means *some
-    // index is declared*, and both report sites branched on it, so a workspace declaring only one of
-    // the two got "current" printed about an index that does not exist.
-    //
-    // It is the same sentence `cli/index.mjs`'s `run` was fixed for on #72 — "a green about a
-    // nonexistent artifact is the one sentence a tool whose subject is generated artifacts must not
-    // print" — and this change ported that fix to `run` and not to the record the pass files. The
-    // per-series flag is now carried rather than derived from the pair.
     const say = () => {
         const lines = [];
         const fn = (s) => lines.push(s);
@@ -1441,17 +1224,7 @@ describe("the report never claims an index is current when none is declared", ()
 });
 
 describe("a review corpus of the wrong shape is refused, never half-read", () => {
-    // Copilot, #85 round two, whose stated mechanism is **wrong for this gh** and whose hazard is
-    // real. It claimed `gh api --paginate` does not emit one JSON array without `--slurp`. Measured on
-    // gh 2.96.0 against this repository's four pages: plain `--paginate` gives **one flat array of
-    // 385 objects**, and `--slurp` gives **four nested arrays** — so the suggested remedy is what
-    // would break the parser, not what would save it.
-    //
-    // What is real is what the pass did with such a corpus: every inner array counted as a finding
-    // (an array has no `in_reply_to_id`) and then had no `path`, so it was skipped — and the report
-    // said *no path has drawn findings on two or more distinct pull requests* over a corpus it had
-    // entirely misread. A false green produced by a shape nobody validated, which is worth closing
-    // whatever any gh version does, because it closes the class rather than the version.
+    // gh 2.96.0: `--paginate` emits one flat array, and `--slurp` an array of pages, the shape refused here.
     test("an array of pages is refused rather than read as an array of comments", () => {
         const dir = repo({ ".portulan/memory/a-fact.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) });
         const slurped = [[{ pull_request_url: "x/1", path: "a.md", in_reply_to_id: null }]];
@@ -1489,10 +1262,6 @@ describe("a review corpus of the wrong shape is refused, never half-read", () =>
 
 describe("headroom is measured from what the store renders now", () => {
     test("a record added and not reindexed RAISES the reported pressure, never lowers it", () => {
-        // Copilot, #85 round six, and the sharper end of the note round three raised about the same
-        // function. Reading the committed index gets a pressure signal exactly backwards: a store that
-        // has just grown carries an index one line short, so the headroom would read *larger* at the
-        // moment it got smaller — the one direction a consolidation trigger must never fail in.
         const m = MANIFEST({
             librarian: { staleness: STALENESS },
             memory: { index: { path: "memory-index.md", budget: { lines: 20 } } },
@@ -1500,7 +1269,6 @@ describe("headroom is measured from what the store renders now", () => {
         const dir = repo({ ".portulan/memory/a-first.md": [linked(), "2026-06-01"] }, { workspace: m });
         const before = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }).consolidation.headroom.index;
 
-        // A second record, and deliberately NO regenerate — the committed index is now stale.
         tree(dir, { ".portulan/memory/b-second.md": linked() });
         const after = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }).consolidation.headroom.index;
 
@@ -1509,15 +1277,6 @@ describe("headroom is measured from what the store renders now", () => {
 });
 
 describe("a reviewed path is only ever probed inside the tree", () => {
-    // Copilot, #85 round seven. `path.resolve(treeRoot, p.path)` escapes on an absolute path or a
-    // `../` walk, so a malformed — or hostile — review comment could have this pass stat the runner's
-    // filesystem, and could have an out-of-tree path that happens to exist read as *still in the tree*.
-    // The corpus is external data and the pass runs unattended, which is the combination that makes a
-    // containment slip worth closing rather than arguing about likelihood.
-    //
-    // `isInside` is the repository's one implementation of this question, extracted after two copies
-    // of it drifted into the identical fail-open. A third copy here would have been the same mistake
-    // a third time.
     const comment = (pull, filePath) => ({
         pull_request_url: `https://api.github.com/repos/o/r/pulls/${pull}`,
         path: filePath,

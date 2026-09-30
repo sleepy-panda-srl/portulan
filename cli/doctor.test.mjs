@@ -1,25 +1,4 @@
 // Tests for `doctor` — the Workspace Definition validator.
-//
-// Written before the validator, per the constitution's verification-first doctrine
-// (../core/operating/verification.md: the failing test is the spec). Zero dependencies:
-// node's own test runner, which needs no install step and so does not turn this repository
-// into one that has a build.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// Quoted and recursive, and both matter. Node 26 rejects a bare directory, so `node --test cli/` fails
-// to resolve `cli` as a module and produces a red that looks exactly like a real one — which cost this
-// file's author a transcript. Run it through ../.portulan/verify/tests.sh in practice: a glob matching
-// nothing exits 0, so that recipe counts the files first.
-//
-// Two rules govern the fixtures, and both were forced by the checks that already run here
-// rather than chosen (see ./fixtures/README.md):
-//
-//   * a known-bad manifest is WELL-FORMED JSON that violates the schema — `json.sh` parses
-//     every tracked .json file, so a fixture that does not parse would make CI permanently red;
-//   * fixture Markdown carries no relative links — `docs.sh` link-checks every tracked .md.
-//
-// Cases that need a malformed file or a broken tree build one in a temp directory at run time.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -27,19 +6,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-// Beside the other imports rather than beside its use, because an ES import is HOISTED: placed below
-// the hermetic-host block it would read as though that block ran first, and it does not. Nothing here
-// depends on the order today — `compile.mjs` reads no environment at module scope, checked — but a
-// reader should not have to know that to trust the file.
 import { run as compileRun } from "./compile.mjs";
-// The boot's line, beside the report that must print the same one. Read no environment at module scope
-// either, checked, for the reason above.
 import { run as contextRun } from "./context.mjs";
 
-// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
-// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
-// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
-// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+// `doctor` reads the host's installed-plugin record, so every case gets an empty host unless it passes `env:`.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -64,30 +34,10 @@ const SCHEMA = JSON.parse(
     fs.readFileSync(path.join(REPO, "spec", "workspace.schema.json"), "utf8"),
 );
 
-// `$defs/provenance` as a schema in its own right, which is how `doctor` uses it: the definition
-// lives in the manifest schema, the instances live in Markdown records. Spread rather than
-// `$ref`-ed, because a `$ref` may carry only annotations as siblings — including `$defs` would be
-// a constraint-bearing sibling by the back door.
+// Spread rather than `$ref`-ed: a `$ref` may carry only annotations beside it, and `$defs` is not one.
 const provenanceSchema = { $defs: SCHEMA.$defs, ...SCHEMA.$defs.provenance };
 
-// One exit handler for all scratch directories rather than one each — the per-directory form
-// exceeds node's default ten-listener limit partway through this suite and prints a
-// MaxListenersExceededWarning. Found by review on ../.portulan/handoffs/2026-07-26-plugin-and-public-marketplace.md's
-// pull request, in the *new* suite; this file had the same defect first and the new one inherited
-// it by being modelled on it, which is how a defect in an exemplar becomes a defect in a family.
-//
-// The per-directory `try` is not defensive habit: two cases chmod a NON-EMPTY scratch child
-// (`nested`, `skills`) to `0o000` and restore it in `finally`, so a case dying before its `finally`
-// leaves a directory `rmSync` cannot enter. `force: true` suppresses ENOENT, not EACCES. Naked, that
-// throw aborts the loop inside an `exit` handler and abandons every directory after it — and at 260
-// scratch directories per run (measured on `d9be6e3`, counting every `mkdtempSync` landing directly
-// in `os.tmpdir()`, the hermetic host included) this file has the widest blast radius in `cli/`.
-//
-// Which locks actually bite was measured, not assumed, because a hazard claimed where none exists
-// is the same defect as one missed: an EMPTY directory still removes if it is READABLE, so only an
-// unreadable one blocks while empty; a NON-EMPTY one additionally needs write and search. The errno
-// follows readability, not position: an UNREADABLE root gives EACCES, while everything else — a
-// locked child, or a readable-but-unwritable root — gives ENOTEMPTY.
+// One exit handler for every scratch directory: one each would pass node's default limit of ten listeners.
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) {
@@ -99,14 +49,12 @@ process.on("exit", () => {
     }
 });
 
-/** A throwaway directory, removed when the process exits. */
 function scratch() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-doctor-"));
     SCRATCH.push(dir);
     return dir;
 }
 
-/** Write a tree described as { "relative/path": "contents" }. */
 function tree(dir, files) {
     for (const [rel, body] of Object.entries(files)) {
         const target = path.join(dir, rel);
@@ -120,10 +68,6 @@ const severities = (findings, severity) => findings.filter((f) => f.severity ===
 const checks = (findings, check) => findings.filter((f) => f.check === check);
 const text = (findings) => findings.map((f) => f.message).join("\n");
 
-// A manifest that satisfies every required key, for tests that mutate one thing at a time.
-// `tree` is here because `kind: repository` requires it as of spec 2.0 (proposal 0005) — adding the
-// check turned eight of these tests red at once, which is the cheapest possible confirmation that the
-// constraint binds every repository workspace rather than only the one it was written against.
 const wellFormed = () => ({
     portulan: { spec: "2.0" },
     name: "fixture",
@@ -133,7 +77,6 @@ const wellFormed = () => ({
     verify: { default: "docs", recipes: [{ id: "docs", run: "./verify.sh" }] },
 });
 
-// The files those three required slots point at. Markdown, no relative links — see the header.
 const minimalFiles = {
     "identity.md": "# Identity\n\nA fixture team.\n",
     "principles.md": "# Principles\n\nWrite the limit, not the aspiration.\n",
@@ -147,25 +90,15 @@ describe("the schema validator implements exactly the declared subset", () => {
         assert.doesNotThrow(() => compileSchema(SCHEMA));
     });
 
-    // The canonical validator fail-open: a keyword the validator does not implement is a
-    // constraint the author wrote and nothing enforces. spec/README.md names the subset and
-    // says a schema reaching outside it is a change to `doctor` too — this is that sentence
-    // as machinery.
     test("refuses a schema using a keyword outside the subset", () => {
         assert.throws(() => compileSchema({ type: "string", maxLength: 4 }), (error) => {
             assert.ok(error instanceof DoctorError);
-            // The message has to name the keyword: "your schema is invalid" sends the reader to
-            // the wrong file when the actual answer is "doctor does not implement this yet".
             assert.match(error.message, /maxLength/);
             assert.match(error.message, /subset/i);
             return true;
         });
     });
 
-    // Knowing a keyword's NAME is not enough: `pattern: "["` and `enum: "repository"` are both inside
-    // the subset by name and neither can be applied. Before this, they reached instance validation and
-    // surfaced as a raw SyntaxError or TypeError — exit 2, "unanticipated failure", naming neither the
-    // keyword nor where it lives, from a defect squarely in the schema.
     test("refuses a supported keyword carrying a value it cannot apply", () => {
         const cases = [
             [{ type: "string", pattern: "[" }, /pattern/],
@@ -216,20 +149,11 @@ describe("the schema validator implements exactly the declared subset", () => {
 
     test("reports the violated constraint and where it was violated", () => {
         const errors = validate(SCHEMA, { ...wellFormed(), kind: "example" });
-        // Length first, so an unexpected empty result is an assertion failure naming the count rather
-        // than a TypeError from indexing `errors[0]`. Copilot, round 1 on #135.
         assert.equal(errors.length, 2, errors.map((e) => `${e.pointer} ${e.message}`).join("\n"));
         assert.match(errors[0].message, /enum/);
         assert.equal(errors[0].pointer, "/kind");
 
-        // The count above was `1` until 2.7, and the second error is the measured cost of
-        // the top-level `oneOf` that arrived with the pointer kind. It is not noise and it is not
-        // located vaguely: `kind` discriminates the two forms, so a value in neither enum fails BOTH,
-        // and the extra error says exactly that — this manifest is neither a governing workspace nor a
-        // pointer. The precise one still comes first and still carries `/kind`, which is the property
-        // this test exists to hold. The blast radius is exactly this case: an unknown KEY, a `#fragment`
-        // slot and a bad path still produce one error each, because the forms constrain only `kind`,
-        // `slots`, `verify` and `governed_by`.
+        // `kind` discriminates the top-level `oneOf`'s two forms, so a value in neither fails both.
         assert.equal(errors[1].pointer, "");
         assert.match(errors[1].message, /not exactly one \(oneOf\)/);
     });
@@ -292,9 +216,6 @@ describe("the schema validator implements exactly the declared subset", () => {
         assert.equal(validate(SCHEMA, m).length, 1);
     });
 
-    // `additionalProperties: false` with no sibling `properties` forbids EVERY property. Reading a
-    // missing `properties` as "nothing to check" would make a supported spelling mean the opposite
-    // of what it says — silently, which is the whole failure class.
     test("`additionalProperties: false` with no `properties` forbids every property", () => {
         const schema = { type: "object", additionalProperties: false };
         assert.deepEqual(validate(schema, {}), []);
@@ -305,38 +226,17 @@ describe("the schema validator implements exactly the declared subset", () => {
 });
 
 describe("a budget or a threshold that is not a positive integer", () => {
-    // The declared keyword subset has no `minimum` and cannot say `integer`, so `type: "number"` is the
-    // strongest thing the schema can express and every value below would validate against it. The
-    // consuming tools refuse them with exit 2 — but only when they RUN, and `librarian` runs unattended
-    // on a cron, so a `0` would pass CI green and fail at 06:00 on a Monday with nobody watching. A
-    // policy defect that surfaces only in an unattended run is the worst place for one. Raised by
-    // Copilot on #81, in the suppressed half of the round, about the librarian's thresholds; the memory
-    // budgets were missing the same check and are a sibling of the same class, so they are covered here
-    // in the same stroke.
     const KEYS = [
         ["librarian.staleness.record_days", (m, v) => ((m.librarian = { staleness: { record_days: v } }), m)],
         ["librarian.staleness.sealed_days", (m, v) => ((m.librarian = { staleness: { sealed_days: v } }), m)],
-        // `memory-index.md` rather than a name nothing writes: `doctor` validates that
-        // `memory.index.path` resolves, so a fixture pointing at a file the tree does not contain
-        // adds an unrelated FAIL beside the one under test and dulls the signal. The `find` below is
-        // already scoped to the positive-integer message, so it was precise either way — but a
-        // fixture that is red for two reasons is one a later reader cannot trust at a glance.
         ["memory.index.budget.lines", (m, v) => ((m.memory = { index: { path: "memory-index.md", budget: { lines: v } } }), m)],
         ["memory.store.budget.kilobytes", (m, v) => ((m.memory = { store: { budget: { kilobytes: v } } }), m)],
-        // The per-record cap of Workspace Definition 2.8 is the fourth budget the subset can only type
-        // as `number`, so it arrives with the same refusal as its three siblings rather than inheriting
-        // the hole they were repaired for — the sibling rule of `.portulan/proposals/0020`, applied to
-        // the check that exists because of it.
         ["memory.store.budget.record_kilobytes", (m, v) => ((m.memory = { store: { budget: { record_kilobytes: v } } }), m)],
-        // Workspace Definition 2.9's always-tier budget, the fifth, refused on the same terms by its own
-        // check. The ratio beside it is well-formed, so the only failure in play is the one under test.
         ["context.always.budget.tokens", (m, v) => ((m.portulan = { spec: "2.9" }), (m.context = { always: { budget: { tokens: v } }, ratio: { bytes_per_token: 3, calibrated_by: "claude-code" } }), m)],
     ];
 
     for (const [name, set] of KEYS) {
-        // A string is refused by the SCHEMA — `type: "number"` is one thing the subset can say — so it
-        // is asserted as a failure without demanding this check's wording. The three the schema cannot
-        // see are the reason this check exists, and they get the message too.
+        // The subset can say `number` but neither `integer` nor `minimum`: the schema refuses only a string.
         for (const bad of [0, -1, 1.5]) {
             test(`${name}: ${JSON.stringify(bad)} is a failure, not a green`, async () => {
                 const m = set(wellFormed(), bad);
@@ -369,13 +269,9 @@ describe("a budget or a threshold that is not a positive integer", () => {
 });
 
 describe("the always tier's ratio, and the budget that needs it", () => {
-    // Workspace Definition 2.9. The ratio is the one number of the family that is not an integer, since
-    // 2.99 bytes per token is a real figure, so it is held to at least one rather than to positive: a
-    // token covers at least one byte, and a smaller figure is tokens per byte entered inverted.
+    // `bytes_per_token` may be fractional, since 2.99 is real, but not below 1, which is tokens per byte inverted.
     const withRatio = (ratio) => ({ ...wellFormed(), portulan: { spec: "2.9" }, context: { ratio } });
 
-    // Copilot on #440: the newest schema grades every manifest, so a key 2.9 added would pass in a manifest
-    // declaring 2.8, whose own validator refuses it. Gated at birth, so no manifest that passed can newly fail.
     for (const spec of ["2.0", "2.8"]) {
         test(`\`context\` in a manifest declaring ${spec} is a failure that names 2.9`, async () => {
             const m = { ...withRatio({ bytes_per_token: 3, calibrated_by: "claude-code" }), portulan: { spec } };
@@ -398,8 +294,6 @@ describe("the always tier's ratio, and the budget that needs it", () => {
         });
     }
 
-    // Copilot on #440: the budget first rode the shared loop, whose message cites a consuming tool's
-    // exit 2. Nothing consumes this budget yet, so its refusal must not claim one.
     test("a budget that is not a positive integer is refused without claiming a consumer", async () => {
         const m = withRatio({ bytes_per_token: 3, calibrated_by: "claude-code" });
         m.context.always = { budget: { tokens: 0 } };
@@ -419,8 +313,6 @@ describe("the always tier's ratio, and the budget that needs it", () => {
         });
     }
 
-    // Both refusals below are the schema's own, because `required` is in the subset: a budget with nothing
-    // to count it by, and a ratio that does not say which host's exact count it came from.
     test("a budget with no ratio is refused by the schema", () => {
         const errors = validate(SCHEMA, { ...wellFormed(), context: { always: { budget: { tokens: 8000 } } } });
         assert.ok(errors.some((e) => e.pointer === "/context" && /`ratio`/.test(e.message)), JSON.stringify(errors));
@@ -433,9 +325,6 @@ describe("the always tier's ratio, and the budget that needs it", () => {
 });
 
 describe("what every context loads is reported, and failed only against a declared budget", () => {
-    // Proposal 0036: `doctor` reports every workspace's always tier with no configuration, and fails only
-    // where the manifest declares a budget. The line is ./context.mjs's, so these pin the verdict and what
-    // the line names; context.test.mjs pins how it is measured.
     const budgeted = (tokens) => ({
         ...wellFormed(),
         portulan: { spec: "2.9" },
@@ -465,8 +354,6 @@ describe("what every context loads is reported, and failed only against a declar
         assert.deepEqual(severities(findings, "fail"), []);
     });
 
-    // Row 12's first demonstration, in miniature: the same words moved into a rule `paths:` scopes load
-    // on-path, and the budget holds with nothing raised.
     test("a declared budget exceeded is a failure naming the repair, and a demotion returns it green", async () => {
         const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(budgeted(800)), "CLAUDE.md": instructions });
         const over = only((await inspect(dir, { schema: SCHEMA })).findings);
@@ -499,7 +386,6 @@ describe("what every context loads is reported, and failed only against a declar
         assert.deepEqual(severities(findings, "fail"), []);
     });
 
-    // `0036`: the same figure closes the boot. The boot prints it with `context --brief`.
     test("the line is the one the boot closes with", async () => {
         const dir = tree(scratch(), {
             ...minimalFiles,
@@ -524,8 +410,6 @@ describe("what every context loads is reported, and failed only against a declar
 });
 
 describe("which form a consumer's records and boot are in is reported, and never failed", () => {
-    // 2026-09-24: the line is ./form.mjs's, the one definition `init`, `vendor` and `upgrade` write, so
-    // these pin that it is one report and moves no exit code; form.test.mjs pins each piece of it.
     const only = (findings) => {
         const hits = checks(findings, "form");
         assert.equal(hits.length, 1, `expected one form finding, got ${JSON.stringify(hits)}`);
@@ -590,9 +474,6 @@ describe("which form a consumer's records and boot are in is reported, and never
 });
 
 describe("the guidance slot, which compile reads", () => {
-    // Workspace Definition 2.10. `doctor` checks what it checks of every directory slot and gates the slot to
-    // its version; what a unit's frontmatter says is `compile`'s to refuse, since the subset cannot see inside
-    // a file. Proposal `0036`.
     const withGuidance = (spec) => ({ ...wellFormed(), portulan: { spec }, slots: { ...wellFormed().slots, context: "context/" } });
     const unit = "---\ntier: always\n---\n\nA.\n";
 
@@ -620,8 +501,6 @@ describe("the guidance slot, which compile reads", () => {
 });
 
 describe("the memory cap's cutoff", () => {
-    // Workspace Definition 2.11. The subset types it with a pattern, which admits a day that does not exist,
-    // and cannot say it needs `record_kilobytes` beside it; both are `doctor`'s, and the key is gated to 2.11.
     const withCutoff = (spec, budget) =>
         tree(scratch(), {
             ...minimalFiles,
@@ -661,8 +540,6 @@ describe("the memory cap's cutoff", () => {
 });
 
 describe("the session switches, which compile and the runners read", () => {
-    // Workspace Definition 2.11. Every field is a boolean or one of two strings, so the schema types the key in
-    // full and `doctor` only gates it to its version. `../core/operating/sessions.md`.
     const withSessions = (spec, sessions) => ({ ...wellFormed(), portulan: { spec }, sessions });
     const declared = { git_instructions: false, cache_lifetime: "1h", headless: { cache_lifetime: "5m", exclude_dynamic_sections: true } };
 
@@ -696,9 +573,6 @@ describe("the session switches, which compile and the runners read", () => {
 });
 
 describe("the declared multipliers and horizon, which compile and the ledger read", () => {
-    // Workspace Definition 2.12, proposal `0038`'s ruling 2. The schema holds the shape, both halves of the
-    // multipliers and both lifetimes of a write included; the subset types the four figures only as `number`,
-    // so their ranges are `doctor`'s by hand; and the key is gated to its version from birth.
     const write = { "5m": 1.25, "1h": 2 };
     const declared = { multipliers: { read: 0.05, write }, horizon: { requests: 30 } };
     const inspected = async (spec, spend) => {
@@ -774,9 +648,6 @@ describe("the declared multipliers and horizon, which compile and the ledger rea
 });
 
 describe("where every session switch stands is one line, reported and never failed", () => {
-    // 2026-09-24, proposal 0038's item 4: the line is ./sessions.mjs's, the module `init` and `upgrade` print
-    // the cache lifetime's offer from; sessions.test.mjs pins each clause of it. These pin that `doctor`
-    // prints it once, as a report, on a real inspection.
     const DEFAULTS = "cache lifetime the host's default, an hour on a subscription within its usage limits and five minutes on an API key; git instructions the host's default; multipliers the general ones";
     const line = async (manifest) => {
         const { findings } = await inspect(tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(manifest) }), { schema: SCHEMA });
@@ -850,24 +721,9 @@ describe("the schema declares which Workspace Definition version it implements",
         assert.throws(() => schemaVersion({}), DoctorError);
     });
 
-    // A version refusal names the remedy that is actually REACHABLE, and which one that is depends
-    // on the DIRECTION. Added at milestone 7 session 9 when `upgrade` gave the behind-arm a remedy
-    // to name at all — and pinned because the pre-commit checkpoint INVERTED the two arms and every
-    // one of the 259 tests across this suite and `upgrade`'s stayed green. A rail nobody has seen
-    // fail is a rail nobody has seen work.
     const at = (spec) => tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify({ ...wellFormed(), portulan: { spec } }) });
     const here = schemaVersion(SCHEMA);
 
-    /**
-     * The rejection, captured ONCE and asserted directly.
-     *
-     * A first cut ran `inspect` twice — through `assert.rejects(...).then(() => null).catch(e => e)`
-     * for the type and again for the message — which did double work and left `error` always `null`
-     * on the success path, so the line reading `assert.equal(error, null)` looked tautological to
-     * anyone reading it. In a suite whose subject is tests that cannot fail for the reason they
-     * exist, an assertion that *reads* as vacuous is barely better than one that is.
-     * Copilot, round 9 on #231.
-     */
     const refusal = async (spec) => {
         const error = await inspect(at(spec), { schema: SCHEMA }).then(() => null, (e) => e);
         assert.ok(error instanceof DoctorError, `doctor must refuse a manifest declaring ${spec}`);
@@ -895,22 +751,18 @@ describe("the schema declares which Workspace Definition version it implements",
 // -------------------------------------------------------------- the committed fixtures
 
 describe("the committed known-bad manifests each fail, and name why", () => {
-    // "A validator that goes green on first contact with a manifest written to satisfy it has
-    // demonstrated nothing" — .portulan/tasks/0002-workspace-definition-v1.md.
     const cases = fs
         .readdirSync(path.join(FIXTURES, "manifests"))
         .filter((f) => f.endsWith(".json") && f !== "valid.json");
 
     test("there are known-bad manifests to run", () => {
-        // An empty glob is a suite that passes having tested nothing.
         assert.ok(cases.length >= 6, `expected several bad manifests, found ${cases.length}`);
     });
 
     for (const file of cases) {
         test(file, () => {
             const body = fs.readFileSync(path.join(FIXTURES, "manifests", file), "utf8");
-            // Well-formed JSON, so `json.sh` stays green — the fixture is bad against the
-            // SCHEMA, not against the parser.
+            // `json.sh` parses every tracked .json, so a known-bad fixture is bad against the schema only.
             const instance = JSON.parse(body);
             const errors = validate(SCHEMA, instance);
             assert.ok(errors.length > 0, `${file} was expected to violate the schema`);
@@ -925,11 +777,6 @@ describe("the committed known-bad manifests each fail, and name why", () => {
             fs.readFileSync(path.join(FIXTURES, "manifests", "valid.json"), "utf8"),
         );
         assert.deepEqual(validate(SCHEMA, instance), []);
-        // Schema-valid is not the whole of valid, and a fixture called `valid` that satisfies only
-        // half the rules is a trap for whoever debugs against it. The cross-field rules are not
-        // expressible in the schema subset, so they are asserted here rather than assumed: this one
-        // was schema-valid and NOT doctor-valid for as long as spec 2.0 existed, which a reviewer
-        // caught and this suite did not.
         if (instance.kind === "repository") {
             assert.ok(instance.tree, "a `repository` manifest must declare `tree` under spec 2.0");
         }
@@ -955,10 +802,6 @@ describe("path slots resolve, and escapes are reported rather than failed", () =
     });
 
     test("the top-level `gates` path is resolved like any other — a policy file that does not exist fails", async () => {
-        // Regression. `gates` shipped for one checkpoint with `../spec/slots.md` already promising
-        // "What `doctor` checks: that the path resolves", and nothing resolving it — so a manifest
-        // naming a policy file that was not there validated GREEN. A mandate nothing checks is
-        // already broken; this is the check.
         const dir = tree(scratch(), {
             ...minimalFiles,
             "workspace.json": JSON.stringify({ ...wellFormed(), gates: "no-such-policy.json" }),
@@ -1002,7 +845,6 @@ describe("path slots resolve, and escapes are reported rather than failed", () =
         assert.equal(severities(ok.findings, "fail").length, 0);
         assert.match(text(severities(ok.findings, "report")), /outside the workspace/i);
 
-        // Escaping is permitted; being absent is not.
         const m2 = wellFormed();
         m2.slots.constitution = "../shared/missing.md";
         fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(m2));
@@ -1014,7 +856,6 @@ describe("path slots resolve, and escapes are reported rather than failed", () =
         const root = scratch();
         tree(root, { "outside.md": "# Outside\n" });
         const m = wellFormed();
-        // Never starts with `../`, still leaves the workspace.
         m.slots.constitution = "sub/../../outside.md";
         const dir = tree(path.join(root, "ws"), {
             ...minimalFiles,
@@ -1071,7 +912,6 @@ describe("cross-field checks", () => {
         const dir = tree(scratch(), {
             ...minimalFiles,
             "products/p.md": "# P\n",
-            // A substring match would accept this card for the name `portulan`.
             "repos/portulan-internal.md": "# Repo\n",
             "workspace.json": JSON.stringify(m),
         });
@@ -1095,7 +935,6 @@ describe("cross-field checks", () => {
         assert.equal(severities(bare.findings, "fail").length, 0);
         assert.match(text(severities(bare.findings, "report")), /affordances/i);
 
-        // A workspace-level default satisfies it by inheritance.
         m.affordances = "affordances.md";
         fs.writeFileSync(path.join(dir, "affordances.md"), "# Affordances\n");
         fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(m));
@@ -1138,8 +977,6 @@ describe("provenance is parsed into the two forms the constitution names", () =>
         assert.ok(errors.length > 0);
     });
 
-    // The template invites annotation prose after the stamp. Last-token-wins made that invitation
-    // a trap: a correct `form=link` record whose prose *discusses* the sealed form went red.
     test("a token inside the annotation prose does not overwrite the stamp", () => {
         const parsed = parseProvenance(
             "**provenance:** `form=link` `href=https://example.test/1`\n" +
@@ -1161,9 +998,6 @@ describe("provenance is parsed into the two forms the constitution names", () =>
         assert.match(text(checks(findings, "cross")), /share the id/);
     });
 
-    // Workspace Definition 2.3. Both are conditional dependencies, and `dependentRequired` is not in
-    // the subset — so neither is expressible in the schema and both are checked here, exactly as the
-    // `repository`/`tree` pair above is.
     test("`memory` without a `slots.memory` store is refused", async () => {
         const m = wellFormed();
         m.memory = { index: { path: "memory-index.md" } };
@@ -1175,10 +1009,6 @@ describe("provenance is parsed into the two forms the constitution names", () =>
     });
 
     test("an index sited inside the store it indexes is refused", async () => {
-        // Sited there it is counted as a record by this validator's own retirement and provenance
-        // walks — so the report about the store would include a file the store does not hold. The
-        // repair is a siting rule and not an exemption by filename, because an exemption is a door
-        // any record could walk through.
         const m = wellFormed();
         m.slots.memory = "memory/";
         m.memory = { index: { path: "memory/INDEX.md" } };
@@ -1193,10 +1023,6 @@ describe("provenance is parsed into the two forms the constitution names", () =>
         assert.match(text(failures), /inside slots\.memory/);
     });
 
-    // Workspace Definition 2.5. The handoff series gets the same two conditional dependencies, and
-    // they are tested rather than assumed to follow from the memory pair: the two checks share an
-    // argument and not a line of code, and the second copy of a containment rule is exactly what
-    // drifted last time (`isInside` exists because two copies of it carried one fail-open).
     test("`handoffs` without a `slots.handoffs` series is refused", async () => {
         const m = wellFormed();
         m.handoffs = { index: { path: "handoffs-index.md" } };
@@ -1208,9 +1034,6 @@ describe("provenance is parsed into the two forms the constitution names", () =>
     });
 
     test("a handoff index sited inside the series it indexes is refused", async () => {
-        // A different walk swallows it here than in the store's case, and the message says which: a
-        // Markdown file in `slots.handoffs` is either counted as a dated handoff by `docs.sh`'s record
-        // check or failed by the same check for carrying no date.
         const m = wellFormed();
         m.slots.handoffs = "handoffs/";
         m.handoffs = { index: { path: "handoffs/INDEX.md" } };
@@ -1225,10 +1048,6 @@ describe("provenance is parsed into the two forms the constitution names", () =>
         assert.match(text(failures), /inside slots\.handoffs/);
     });
 
-    // Workspace Definition 2.6. The scopes layer gets the same two conditional dependencies as the
-    // other two series, for the third time and on the same terms: the argument is shared, the code is
-    // not, and `index` refusing them is not `doctor` refusing them — a manifest checked at one carrier
-    // is checked at the narrower one, which is the class `0020` names.
     test("`personas` without a `slots.personas` layer is refused", async () => {
         const m = wellFormed();
         m.personas = { index: { path: "personas-index.md" } };
@@ -1240,9 +1059,6 @@ describe("provenance is parsed into the two forms the constitution names", () =>
     });
 
     test("a scope index sited inside the layer it indexes is refused", async () => {
-        // The walk that swallows it here is the orphan sweep: `index` reports any directory under the
-        // layer that no composed persona declares, and a generated file sited there would be examined
-        // by the very check that exists to tell an arrived location from an invented one.
         const m = wellFormed();
         m.slots.personas = "personas/";
         m.personas = { index: { path: "personas/INDEX.md" } };
@@ -1271,9 +1087,6 @@ describe("provenance is parsed into the two forms the constitution names", () =>
     });
 
     test("an index named `..something` inside the store is refused too", async () => {
-        // Copilot, #72. The containment test read a leading `..` in a FILENAME as a traversal, so a
-        // file plainly inside the store was judged outside it — and this walk then counted it as a
-        // record. Both copies of the rule carried it; there is one copy now, imported.
         const m = wellFormed();
         m.slots.memory = "memory/";
         m.memory = { index: { path: "memory/..index.md" } };
@@ -1312,7 +1125,6 @@ describe("provenance is parsed into the two forms the constitution names", () =>
     });
 
     test("every two-form entry already in this repository parses and validates", () => {
-        // Byte-for-byte against real records rather than fixtures written to suit the parser.
         const dir = path.join(REPO, ".portulan", "memory");
         const live = fs
             .readdirSync(dir)
@@ -1359,7 +1171,6 @@ describe("provenance is parsed into the two forms the constitution names", () =>
                 "**type:** rule\n**provenance:** `form=link` `href=https://example.test/1`\n\nA rule.\n",
             "memory/sealed.md":
                 "**type:** rule\n**provenance:** `form=sealed` `owner=A` `date=2026-07-25` `shape=inputs, wrong outcome, why the guard misses`\n\nA rule.\n",
-            // A decision must not move the denominator.
             "memory/decided.md":
                 "**type:** decision\n**provenance:** `form=link` `href=https://example.test/2`\n\nA decision.\n",
         });
@@ -1369,9 +1180,6 @@ describe("provenance is parsed into the two forms the constitution names", () =>
         assert.match(text(checks(findings, "provenance")), /1 of 2|1\/2|50/);
     });
 
-    // An unreadable record is a defect in the WORKSPACE, so it is exit 1 reported beside everything
-    // else — not exit 2, which would discard every finding the run had already reached. The identical
-    // shape was fixed for the gates file in the same change that left this one.
     test("an unreadable memory record fails the workspace; it does not abort the run", async () => {
         const m = wellFormed();
         m.slots.memory = "memory/";
@@ -1386,17 +1194,11 @@ describe("provenance is parsed into the two forms the constitution names", () =>
             assert.equal(await run([dir], { quiet: true }), 1, "a workspace defect is exit 1, not 2");
             const { findings, stats } = await inspect(dir, { schema: SCHEMA });
             assert.match(text(severities(checks(findings, "provenance"), "fail")), /locked\.md/);
-            // The readable one was still counted: the run continued rather than aborting.
             assert.equal(stats.records, 2);
-            // And the unreadable one is still SIZED (from stat): it is counted in `records`, so
-            // leaving it out of `bytes` would have the two totals disagree about what a record is.
             const expected =
                 fs.statSync(path.join(dir, "memory", "readable.md")).size +
                 fs.statSync(path.join(dir, "memory", "locked.md")).size;
             assert.equal(stats.bytes, expected, "count and size must agree on what a record is");
-            // And the summary must not claim assessment it never performed: the unreadable record
-            // is counted as unassessed, and the retirement report says so instead of asserting
-            // that every record states a condition.
             assert.equal(stats.unassessed, 1);
             const retirement = text(severities(checks(findings, "retirement"), "report"));
             assert.match(retirement, /1 unreadable and never assessed/);
@@ -1468,8 +1270,6 @@ describe("the store reports its own growth", () => {
     });
 
     test("every live record in this repository states a retirement condition", () => {
-        // Byte-for-byte against the real stores, like the two-form parse test above: customer zero
-        // holding itself to the bar the note only reports — for this repository, the suite is the rail.
         for (const store of [path.join(REPO, ".portulan", "memory"), path.join(REPO, "examples", "memory")]) {
             for (const f of fs.readdirSync(store).filter((n) => n.endsWith(".md") && n !== "README.md")) {
                 assert.match(
@@ -1482,18 +1282,7 @@ describe("the store reports its own growth", () => {
     });
 });
 
-// -------------------------------------------------------------------- the claims lint
-
 // ------------------------------------------------- the per-host degradation report
-//
-// `docs/vision.md` § *LLM-agnostic by construction* promises per-host enforcement backends with an
-// honest degradation report. The compiler's per-rule accounting is that report's data — every rule ends
-// as compiled or refused-with-a-reason, per backend — so this reads it rather than re-deriving it. Two
-// implementations of one accounting is the drift this repository keeps finding.
-//
-// Report severity, never failure, for the same reason `retirement` is: nothing legislates a coverage
-// floor, and `doctor` does not enforce what nobody legislated. What it must never do is print a
-// green that reads as "everything is enforced" when three gates are enforced by nothing.
 
 describe("the enforcement backends report their own degradation", () => {
     const gated = (rules) => ({
@@ -1526,8 +1315,6 @@ describe("the enforcement backends report their own degradation", () => {
     });
 
     test("it names the GATES no backend compiles, and does not pad the count with `auto` rules", async () => {
-        // Reporting eight where three are real is how a report gets skimmed. An `auto` rule compiled
-        // by no backend is the system working; a `gated` one is a gate that exists only as a sentence.
         const dir = withGates(gated([
             { id: "push-force", tier: "gated", action: { shell: "git push --force" }, reason: "no lease on a shared remote" },
             { id: "spend-money", tier: "gated", action: { none: "no tool-level surface reaches a registrar or a payment page" }, reason: "money is gated" },
@@ -1551,8 +1338,6 @@ describe("the enforcement backends report their own degradation", () => {
     });
 
     test("a workspace declaring no gate policy gets no enforcement findings at all", async () => {
-        // Not a silent skip and not a fabricated note: a workspace with no `gates` key has not
-        // declared a policy, so there is nothing to report degradation about.
         const dir = scratch();
         tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
         const { findings } = await inspect(dir);
@@ -1560,9 +1345,6 @@ describe("the enforcement backends report their own degradation", () => {
     });
 
     test("a policy the compiler refuses is a finding, not a crash and not a silent pass", async () => {
-        // The M2 lesson, one tool over: an unguarded read turned a workspace already judged red into
-        // exit 2, trading a verdict for "could not run". A malformed gate policy must be reported
-        // where every other finding is, with the run's other verdicts intact.
         const dir = withGates(gated([{ id: "bad", tier: "occasionally", action: { shell: "x" }, reason: "nope" }]));
         fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(manifest()));
         const { findings } = await inspect(dir);
@@ -1571,12 +1353,6 @@ describe("the enforcement backends report their own degradation", () => {
     });
 
     test("a policy that PARSES but that a backend refuses is a finding too, not a crash", async () => {
-        // The narrower sibling of the test above, and the one that was actually broken: the parse
-        // was guarded and the backends were not, so a policy `parse()` accepts and a backend refuses
-        // — a declared floor no rule reaches, or gate rules that all compile to nothing — threw out
-        // of `inspect`, exited 2, and discarded every verdict the run had already reached. That is
-        // the milestone-2 gates-file defect, in the file whose adjacent comment cites it. Found at
-        // the pre-commit checkpoint.
         const dir = withGates({
             portulan: { spec: "2.2" },
             why: "gate-map.md",
@@ -1591,10 +1367,7 @@ describe("the enforcement backends report their own degradation", () => {
     });
 
     test("a floor context no workflow job reports FAILS — the costliest typo the tree can catch", async () => {
-        // A required context that never reports blocks every pull request, and `enforce_admins`
-        // leaves nobody able to force past it: proposal 0004's lesson, which cost a three-step
-        // rename to work around. This is the one enforcement check that is a failure rather than a
-        // note, because the claim is about the tree and the tree can answer it.
+        // A required context no job reports blocks every pull request, and `enforce_admins` lets no one past it.
         const dir = withGates(
             {
                 portulan: { spec: "2.2" },
@@ -1612,16 +1385,6 @@ describe("the enforcement backends report their own degradation", () => {
     });
 
     test("a gate map naming NO check still gets the cross-check — the worst divergence, not the exempt one", async () => {
-        // Found by review, round 2. The cross-check was gated on the prose having named at least one
-        // context, so a gate map whose required-check row is missing or written in a shape this tool
-        // does not recognise skipped it entirely — and that is not the mild case, it is the extreme
-        // one: the policy declares two required checks and the prose carries none. The generic "names
-        // no required status check" note fires, but it says nothing was compared against the *tree*
-        // and says nothing at all about the policy declaring checks the prose omits.
-        //
-        // A check that quietly does not run in its own worst case is this repository's recurring
-        // defect (`a-checker-must-refuse-what-it-cannot-check.md`), and the guard here was an
-        // optimisation that read as a precondition.
         const dir = withGates(
             {
                 portulan: { spec: "2.2" },
@@ -1636,9 +1399,7 @@ describe("the enforcement backends report their own degradation", () => {
         );
         fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(manifest()));
         const { findings } = await inspect(dir);
-        // Asserted on the cross-check's OWN sentence, not on the context name: an unpinned-check note
-        // also mentions `workspace-verify`, so a looser assertion passed before the fix and proved
-        // nothing. Caught by running the test red first and finding it green.
+        // On the cross-check's own sentence: an unpinned-check note also names `workspace-verify`.
         assert.match(
             text(checks(findings, "enforcement")),
             /prose does not name it/,
@@ -1647,12 +1408,6 @@ describe("the enforcement backends report their own degradation", () => {
     });
 
     test("the cross-check reads the gate map itself, not an array another check emptied", async () => {
-        // Found by review. `claimedChecks` is cleared when there are no workflows to compare it
-        // against — so with a tree carrying none, the cross-check saw an empty prose list and
-        // reported that the prose names nothing, about a gate map that names it plainly. A false
-        // report, and the SECOND consumer of that array to be caught reading it after the mutation:
-        // the first fix introduced a separate `namedAnyCheck` flag for one consumer instead of
-        // making the array safe to read, so the next consumer inherited the trap.
         const dir = withGates(
             {
                 portulan: { spec: "2.2" },
@@ -1687,9 +1442,6 @@ describe("the enforcement backends report their own degradation", () => {
     });
 
     test("the floor and the gate map are cross-checked — two carriers of one fact must agree", async () => {
-        // The gate map's platform-floor table and the policy's `floor` now both state which checks
-        // `main` requires. Where a fact has two in-tree carriers, the drift is not hypothetical: this
-        // and the prose half is the half no other check here reads for content.
         const dir = withGates(
             {
                 portulan: { spec: "2.2" },
@@ -1708,6 +1460,8 @@ describe("the enforcement backends report their own degradation", () => {
     });
 });
 
+// -------------------------------------------------------------------- the claims lint
+
 describe("workspace claims are linted against the tree", () => {
     test("a repo card claiming a path the tree lacks is a failure", async () => {
         const dir = path.join(FIXTURES, "drifted-workspace");
@@ -1722,8 +1476,6 @@ describe("workspace claims are linted against the tree", () => {
         assert.deepEqual(severities(checks(findings, "claims"), "fail"), []);
     });
 
-    // Was a bare `continue`: an unreadable card dropped every claim it makes and the run stayed green.
-    // A card that cannot be read is not a card with no claims.
     test("an unreadable repo card fails rather than dropping its claims", async () => {
         const m = wellFormed();
         m.tree = "./";
@@ -1744,10 +1496,6 @@ describe("workspace claims are linted against the tree", () => {
         }
     });
 
-    // Proposal 0005, accepted 2026-07-25. A `repository` workspace IS the policy layer of a repository
-    // that is present, so it has no honest reason to omit `tree` — and while it could, deleting one
-    // manifest line degraded the whole claims-lint class to notes, GREEN, exit 0. The escape narrows
-    // from "omit a line" to "lie about what you are", which is better and is not a fix.
     test("a `repository` workspace must declare `tree`", async () => {
         const m = wellFormed();
         m.kind = "repository";
@@ -1786,10 +1534,6 @@ describe("workspace claims are linted against the tree", () => {
         assert.match(text(checks(findings, "claims")), /unverifiable/i);
     });
 
-    // Every finding in this block came from the pre-commit checkpoint rather than from this suite.
-    // The gate-map half of the lint was extracted only inside the `tree` branch, so a workspace
-    // without a tree produced no mention of its required-check claim at all — while spec/slots.md
-    // promised those claims were "counted and reported unverifiable, never skipped silently".
     test("a gate-map claim is reported unverifiable when there is no tree, not dropped", async () => {
         const m = wellFormed();
         m.kind = "demo";
@@ -1812,21 +1556,12 @@ describe("workspace claims are linted against the tree", () => {
             "identity.md": minimalFiles["identity.md"],
             "principles.md": minimalFiles["principles.md"],
             "workspace.json": JSON.stringify(m),
-            // gate-map.md deliberately absent
         });
-        // A verdict the run had already reached must not be traded for "could not run".
         assert.equal(await run([dir], { quiet: true }), 1);
         const { findings } = await inspect(dir, { schema: SCHEMA });
         assert.match(text(severities(checks(findings, "paths"), "fail")), /gate-map\.md/);
     });
 
-    // Found by the third real workspace's own onboarding session, forcing each claim check red rather
-    // than reading its green. A build/test/run line written as a real command — `dotnet run --project
-    // src/…` — was taken as one candidate, rejected for containing a space, and then **silently
-    // dropped**: not checked, not counted, not reported. Invisible on customer zero, whose card writes
-    // bare paths rather than commands, which is exactly how it survived to the third real workspace.
-    // A candidate that IS a single path is an unambiguous claim: fail when it is absent. This is the
-    // shape customer zero's card uses and the one the milestone-2 close demonstrated red.
     test("a build/test/run line that is a bare path fails when the path is absent", async () => {
         const m = wellFormed();
         m.tree = "./";
@@ -1844,10 +1579,6 @@ describe("workspace claims are linted against the tree", () => {
         assert.deepEqual(severities(checks(fixed.findings, "claims"), "fail"), []);
     });
 
-    // A candidate that is a COMMAND merely contains tokens that might be paths — or output paths, or
-    // flag values, or globs. Reported, never failed. An earlier version failed them and produced a
-    // false red on every one of the cases below, all of which a reviewer constructed and all of which
-    // are the shape core/templates/repo-card.md tells adopters to write.
     test("a path pulled out of a command is reported, never failed", async () => {
         const m = wellFormed();
         m.tree = "./";
@@ -1877,9 +1608,6 @@ describe("workspace claims are linted against the tree", () => {
         }
     });
 
-    // A command token is unverifiable whether or not it happens to resolve. Counting it as *checked*
-    // when the path exists would make the accounting depend on incidental filesystem state and
-    // overstate what was verified.
     test("a command token is unverifiable whether or not it resolves", async () => {
         const m = wellFormed();
         m.tree = "./";
@@ -1903,8 +1631,6 @@ describe("workspace claims are linted against the tree", () => {
         assert.deepEqual(severities(checks(absent.findings, "claims"), "fail"), []);
     });
 
-    // Absolute tokens resolve against the HOST, so `/usr/bin/env` would otherwise be found and
-    // counted as a passing claim about a repository it has nothing to do with.
     test("an absolute token is never treated as a claim about the tree", async () => {
         const m = wellFormed();
         m.tree = "./";
@@ -1919,9 +1645,6 @@ describe("workspace claims are linted against the tree", () => {
         assert.equal(stats.claims, 0, "an absolute path is not a checked claim");
     });
 
-    // The gate map's row label is a convention no template defines. A workspace wording it
-    // differently used to produce nothing at all — no finding, no count — so a GREEN could not be
-    // told apart from "I did not recognise your table".
     test("a gate map whose floor row is worded differently says so", async () => {
         const m = wellFormed();
         m.tree = "./";
@@ -1936,8 +1659,6 @@ describe("workspace claims are linted against the tree", () => {
         assert.match(text(checks(findings, "claims")), /names no required status check/);
     });
 
-    // The silent half of the same defect: a line with no path-shaped token in it must be COUNTED and
-    // SAID, not dropped. "Nothing to check here" and "I did not look" print identically otherwise.
     test("a build/test/run line with no checkable path is reported, never dropped", async () => {
         const m = wellFormed();
         m.tree = "./";
@@ -1953,7 +1674,7 @@ describe("workspace claims are linted against the tree", () => {
         });
         const { findings, stats } = await inspect(dir, { schema: SCHEMA });
         assert.deepEqual(severities(checks(findings, "claims"), "fail"), []);
-        // `none` claims nothing; the other two are unverifiable and must be visible as such.
+        // `none` claims nothing, so two of the three lines are unverifiable.
         assert.equal(stats.unverifiable, 2);
         assert.match(text(checks(findings, "claims")), /App\.slnx/);
         assert.match(text(checks(findings, "claims")), /npm test/);
@@ -1978,11 +1699,7 @@ describe("workspace claims are linted against the tree", () => {
         assert.match(text(checks(findings, "claims")), /workspace-verify/);
     });
 
-    // Found on the third real workspace, which is what a third instance is for. A job's reported
-    // context is its `name:` when it has one and its id otherwise — so a gate map naming the ID of a
-    // job that carries a display name is naming something no check will ever report, and this lint
-    // used to pass it. Customer zero could not have surfaced it: its workflow deliberately sets no
-    // `name:` so that the two coincide.
+    // GitHub reports a job's check context as its `name:` when it has one, and as its id otherwise.
     test("a gate map naming a job id shadowed by a display name fails, and says why", async () => {
         const m = wellFormed();
         m.tree = "./";
@@ -2001,8 +1718,6 @@ describe("workspace claims are linted against the tree", () => {
         assert.match(text(failures), /Example Job/);
     });
 
-    // Also from the third workspace: it requires two checks, and reading only the first silently
-    // exempted the second — which was the one that was wrong.
     test("every check named in the row is linted, not just the first", async () => {
         const m = wellFormed();
         m.tree = "./";
@@ -2109,9 +1824,6 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
         assert.equal(await run([dir], { quiet: true }), 1);
     });
 
-    // A missing or unparseable manifest is a verdict ABOUT the workspace, not an environment
-    // failure — so it is 1. Exit 2 is reserved for "this tool could not run at all", which is
-    // what keeps `could not run` from being mistaken for `ran and failed`.
     test("1 when the manifest is absent or malformed", async () => {
         const absent = tree(scratch(), minimalFiles);
         assert.equal(await run([absent], { quiet: true }), 1);
@@ -2124,9 +1836,6 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
         assert.equal(await run([], { quiet: true }), 2);
     });
 
-    // "This workspace is wrong" and "I do not implement the contract it names" are different
-    // statements, and only the first is a verdict doctor is entitled to make. Before this existed,
-    // a manifest declaring a Workspace Definition version that has never shipped validated GREEN.
     test("2 when the manifest names a Workspace Definition this validator does not implement", async () => {
         const build = (spec) => {
             const m = wellFormed();
@@ -2134,15 +1843,10 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
             return tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
         };
         assert.equal(await run([build("9.9")], { quiet: true }), 2, "a MAJOR ahead");
-        // `2.14`, not a string one character on: the MINOR is compared as a number, so this also holds
-        // the comparison to its arithmetic now that the current MINOR has two digits.
         assert.equal(await run([build("2.14")], { quiet: true }), 2, "a MINOR ahead");
         assert.equal(await run([build("2.0")], { quiet: true }), 0, "the current version");
     });
 
-    // "MINOR is additive, so an older manifest stays valid" is the versioning rule's whole promise.
-    // There is no 2.x older than 2.0 yet, so the older side is supplied by a synthetic schema one
-    // MINOR ahead — which tests the comparison rather than waiting for a version to exist.
     test("an older MINOR still validates, and says it is older", async () => {
         const ahead = { ...SCHEMA, $id: "https://portulan.dev/spec/2.1/workspace.schema.json" };
         const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
@@ -2159,8 +1863,6 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
         );
     });
 
-    // Borrowing exit 1 for an internal error would claim a judgement that was never made —
-    // the same laundering already fixed once in .portulan/tools/gh-bot-token.mjs.
     test("2, never 1, when something unanticipated throws", async () => {
         const poison = { get kind() { throw new Error("unanticipated"); } };
         assert.equal(await run([path.join(REPO, ".portulan")], { quiet: true, schema: poison }), 2);
@@ -2168,10 +1870,6 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
 });
 
 describe("a `handoffs` object with no index configures nothing", () => {
-    // Copilot, #85 round one. `memory` tolerates an object with no `index` — a workspace may rail its
-    // store's size and generate nothing — but `handoffs` has one key and no budget, so `handoffs: {}`
-    // is a no-op that reads as configured to anyone who greps for it. Unlike the two conditional
-    // requirements around it, this one IS expressible in the declared subset, so the schema carries it.
     test("`handoffs: {}` is refused by the schema, not tolerated", async () => {
         const m = wellFormed();
         m.slots.handoffs = "handoffs/";
@@ -2185,11 +1883,6 @@ describe("a `handoffs` object with no index configures nothing", () => {
 });
 
 describe("the positive-integer failure message says only what is true of this tree", () => {
-    // #84, and the rider that came with the ruling to fold it in: a corrected failure message is a
-    // claim like any other, so something has to bind what it now asserts. The old sentence said a
-    // non-positive value "reads as *undeclared* to the tool that consumes it" — true of nothing here,
-    // since both consumers refuse it outright. This pins the repair from both sides, because a
-    // message is the one artifact a reader has the least room to check.
     test("it does not claim a consumer reads the value as undeclared", async () => {
         const m = wellFormed();
         m.slots.memory = "memory/";
@@ -2203,9 +1896,6 @@ describe("the positive-integer failure message says only what is true of this tr
     });
 
     test("and the behaviour it DOES assert is the one the consumers have", async () => {
-        // The message's remaining claim is that the consuming tool refuses such a value rather than
-        // reading it as absent. Asserted against the consumer itself, so the message and the code
-        // cannot drift apart the way the old sentence had already drifted from them.
         const { LibrarianError, passWorkspace } = await import("./librarian.mjs");
         const m = wellFormed();
         m.slots.memory = "memory/";
@@ -2217,10 +1907,6 @@ describe("the positive-integer failure message says only what is true of this tr
 
 // ---------------------------------------------------------------- packs
 
-// Milestone 6. This slot reported a COUNT for four milestones and said so — "a declaration only" —
-// because there was no format to validate a pack against and nowhere to resolve a name. Both now
-// exist, and the tests below are the difference between resolving and counting.
-
 const PACK_SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO, "spec", "pack.schema.json"), "utf8"));
 
 const packManifest = (over = {}) => ({
@@ -2231,10 +1917,7 @@ const packManifest = (over = {}) => ({
     ...over,
 });
 
-// The persona file the manifest above declares. It did not exist in these fixtures until milestone 7,
-// because until then `doctor` counted `contributes.personas` and opened nothing — so a fixture could
-// declare a persona it did not ship and stay green. Opening the key made that dishonest rather than
-// merely incomplete, and the fixture now carries what a real pack must: all five parts of the contract.
+// All five parts of the persona contract, since `doctor` validates every persona a pack declares.
 const PACK_PERSONA = [
     "---", "name: supervisor", "description: Grades work in a fresh context.", "tools: Read, Grep", "---", "",
     "# Persona — supervisor", "", "## Charter", "It grades; it does not implement.", "",
@@ -2266,7 +1949,7 @@ describe("the packs a workspace declares", () => {
         const dir = tree(scratch(), {
             ...minimalFiles,
             "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/checkpoints"] }),
-            // `auto` is not in the fragment tier enum — the half of tighten-only that shape enforces.
+            // `auto` is not in the fragment tier enum: a pack's gates can only tighten.
             "packs/rituals/checkpoints/pack.json": JSON.stringify(
                 packManifest({
                     contributes: { gates: [{ id: "x", tier: "auto", action: { shell: "s" }, reason: "r" }] },
@@ -2288,24 +1971,16 @@ describe("the packs a workspace declares", () => {
         assert.match(text(severities(checks(findings, "packs"), "fail")), /does not resolve/);
     });
 
-    // The `tree` precedent: with nowhere to search, the claim is unverifiable rather than wrong.
     test("a declared pack on a workspace with no tree is REPORTED, never failed", async () => {
         const manifest = { ...wellFormed(), kind: "portfolio", packs: ["rituals/absent"] };
         delete manifest.tree;
         const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(manifest) });
         const { findings } = await inspect(dir, { schema: SCHEMA });
         assert.equal(severities(checks(findings, "packs"), "fail").length, 0, text(findings));
-        // The WORDING moved when discovery landed: "no roots to search" now has more than one cause —
-        // no `tree`, or `--pack-root auto` finding nothing on a workspace that HAS one — so the sentence
-        // names the cause it actually had instead of asserting the first. The severity is the rule here,
-        // and it is unchanged: reported, never failed.
         assert.match(text(checks(findings, "packs")), /no packs root to search/);
         assert.match(text(checks(findings, "packs")), /none is derivable from the manifest/);
     });
 
-    // Normative in spec/pack.schema.json, and for one pre-commit checkpoint implemented nowhere while
-    // `doctor` printed "validates against Pack Definition 99.0" — a conformance claim about a contract
-    // it had never seen. DoD condition 4, inside the change that introduced the sentence.
     test("a pack declaring a version AHEAD of this doctor is refused rather than graded", async () => {
         for (const ahead of ["99.0", "1.9", "2.0"]) {
             const dir = tree(scratch(), {
@@ -2321,11 +1996,7 @@ describe("the packs a workspace declares", () => {
         }
     });
 
-    // Written against a SYNTHETIC schema one minor ahead, because the shipped Pack Definition is 1.0
-    // and there is no earlier minor to name yet. An earlier draft asserted this with `1.0` — the
-    // current version — so it proved only that the current version is graded, under a name claiming
-    // more. Found by review; the fix is to make the test do what its name says rather than rename it
-    // down, since MINOR-behind-still-graded is a real rule that will matter at the first pack bump.
+    // A synthetic validator at 1.5: the shipped Pack Definition is 1.0, so no earlier minor exists yet.
     test("a pack declaring an EARLIER minor on the same major is still graded", async () => {
         const ahead = { ...PACK_SCHEMA, $id: "https://portulan.dev/spec/pack/1.5/pack.schema.json" };
         const dir = tree(scratch(), {
@@ -2354,7 +2025,6 @@ describe("the packs a workspace declares", () => {
     test("the two version trains are read by different functions and do not collide", () => {
         assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
         assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 13 });
-        // The workspace reader must not accept the pack `$id` as a workspace version.
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });
 
@@ -2368,10 +2038,6 @@ describe("the packs a workspace declares", () => {
 // -------------------------------------------------------------- a pack root named on the command line
 
 describe("--pack-root names a resolution root outside the workspace's tree", () => {
-    // Adjustment 6 of the milestone-6 session-open checkpoint. `inspect` has read `options.packRoots`
-    // since session 0 and no caller set it — so the from-a-feed path existed in the resolver and had no
-    // way in from a command line. `doctor` matters most of the three, because it is the tool that
-    // validates a resolved pack against the Pack Definition rather than merely finding it.
     test("a pack in a named root resolves and is validated", async () => {
         const feed = tree(scratch(), {
             "rituals/checkpoints/pack.json": JSON.stringify({
@@ -2394,7 +2060,6 @@ describe("--pack-root names a resolution root outside the workspace's tree", () 
         assert.equal(severities(checks(withRoot.findings, "packs"), "fail").length, 0, text(withRoot.findings));
         assert.equal(withRoot.stats.packs, 1);
 
-        // The negative control: the same workspace without the root cannot resolve it.
         const without = await inspect(dir, { schema: SCHEMA });
         assert.equal(without.stats.packs, 0);
     });
@@ -2413,12 +2078,6 @@ describe("--pack-root names a resolution root outside the workspace's tree", () 
 // ------------------------------------------- the union: a workspace composing from BOTH residences
 
 describe("`--pack-root auto` unions the discovered roots with the tree-derived one", () => {
-    // The measured table that forced the 2026-08-12 change, as a test rather than as a paragraph. The
-    // subject is the workspace `init` DRAFTS BY DEFAULT — it composes a checkpoints pack, which lives
-    // in the host's cache — once the adopter adds a pack of their own, which lives in their tree.
-    // Before the union no invocation resolved both without naming a cache path by hand.
-
-    /** A pack directory: `<root>/<category>/<name>/pack.json`, with a summary a test can tell apart. */
     const packAt = (root, id, summary) => {
         const [category, name] = id.split("/");
         return tree(root, {
@@ -2434,7 +2093,6 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         });
     };
 
-    /** A host whose plugin cache carries `packs/` — the repository-shaped install. */
     const hostCarrying = (build) => {
         const config = scratch();
         const installPath = path.join(config, "plugins", "cache", "feed", "pack-plugin", "0.1.0");
@@ -2449,8 +2107,7 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         return { env: { CLAUDE_CONFIG_DIR: config }, cache: path.join(installPath, "packs") };
     };
 
-    /** A workspace whose `tree` carries its own pack, composing one from each residence. */
-    const both = () => {
+    const composingFromBoth = () => {
         const repo = scratch();
         packAt(path.join(repo, "packs"), "tools/mine", "the adopter's own pack");
         const m = wellFormed();
@@ -2461,17 +2118,12 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
     };
 
     test("a SHADOWED pack is reported, and the report says what differs (#264)", async () => {
-        // The cache and the tree both carry `rituals/checkpoints`; discovered wins. Reporting only
-        // *that* a shadow exists would not retire #264 — silence about the shadowed COPY is the part
-        // that makes the drift unreproducible, so both halves of the difference must be named.
         const repo = scratch();
         packAt(path.join(repo, "packs"), "rituals/checkpoints", "the tree's own copy");
         const treeManifest = path.join(repo, "packs", "rituals", "checkpoints", "pack.json");
         const t = JSON.parse(fs.readFileSync(treeManifest, "utf8"));
         t.portulan.version = "9.9.9";
-        // The fragments must DIFFER too, or the second half of the report has nothing to find and the
-        // assertion below passes on a fixture that cannot exercise it. `packAt` writes `contributes: {}`
-        // into both copies by default, which is exactly that trap.
+        // The fragments must differ too, or the report's fragment half has nothing to find.
         t.contributes = { gates: [{ id: "only-in-the-tree", tier: "prohibited", action: { shell: "git push --mirror" }, reason: "tree only" }] };
         fs.writeFileSync(treeManifest, JSON.stringify(t, null, 2));
 
@@ -2489,12 +2141,6 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         assert.match(packs, /version .* against the tree's 9\.9\.9/, "the version half of the difference");
         assert.match(packs, /gate fragments that differ once parsed/, "and the FRAGMENT half — the clause the default fixture cannot reach");
         assert.doesNotMatch(packs, /could not be compared/, "both copies were readable");
-        // **The remedy clause changed with #316, deliberately, and this expectation moves with it.**
-        // It read `pin with \`--pack-root packs\`` while an unpinned `compile` would silently pick the
-        // discovered copy; that compile now REFUSES, so telling a reader to pin *as a precaution* would
-        // describe a world that no longer exists. What must NOT move — and is asserted above, unchanged
-        // — is the shadow sentence itself and both halves of the difference. Naming the split here
-        // because a test edited alongside the code it guards is the shape that hides a regression.
         assert.match(packs, /REFUSES this rather than picking/, "what compile now does about it");
         assert.match(packs, /--pack-root packs/, "and the root to name to proceed");
         assert.equal(severities(checks(found.findings, "packs"), "fail").length, 0,
@@ -2502,14 +2148,6 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
     });
 
     test("fragments differing OUTSIDE id/tier/action still count as differing", async () => {
-        // **This must drive `inspect`, not compare two literals.** The first version asserted only that
-        // two JSON strings differ, which is true of the strings whatever the implementation does — it
-        // would have passed against the very projection it was written to forbid. A test that cannot
-        // fail is worse than no test, because it reads as coverage. Copilot.
-        //
-        // The two copies differ ONLY in `reason`: identical id, tier and action. A projection of
-        // `[id, tier, action]` sees them as equal and reports "the two agree today"; the whole-fragment
-        // comparison the message promises sees the difference.
         const gates = (reason) => ({ gates: [{ id: "x", tier: "gated", action: { shell: "git push --mirror" }, reason }] });
         const repo = scratch();
         packAt(path.join(repo, "packs"), "rituals/checkpoints", "the tree's own copy");
@@ -2522,7 +2160,7 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
             packAt(packs, "rituals/checkpoints", "the installed copy");
             const cached = path.join(packs, "rituals", "checkpoints", "pack.json");
             const c = JSON.parse(fs.readFileSync(cached, "utf8"));
-            c.portulan.version = t.portulan.version;      // versions AGREE, so only fragments can differ
+            c.portulan.version = t.portulan.version;
             c.contributes = gates("the cache's reason");
             fs.writeFileSync(cached, JSON.stringify(c, null, 2));
         });
@@ -2554,38 +2192,24 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
 
     test("the arrangements, and BOTH resolve with no flag at all since the disposal", async () => {
         const host = hostCarrying((packs) => packAt(packs, "rituals/checkpoints", "from the cache"));
-        const dir = both();
+        const dir = composingFromBoth();
 
-        // 1. **No flag, and this is the disposal.** It read *"the derived root only, so the cache pack is
-        //    unreachable"* and asserted one failure — which was the row's clause going unmet: this exact
-        //    workspace shape is what `init` drafts by default the moment an adopter adds a pack of its
-        //    own, and it had no green invocation that did not name a host cache path by hand. The four
-        //    arrangements are three now, because two of them are the same answer.
         const derived = await inspect(dir, { schema: SCHEMA, ...host });
         assert.equal(severities(checks(derived.findings, "packs"), "fail").length, 0, text(derived.findings));
         assert.equal(derived.stats.packs, 2, "both packs are graded with no flag");
-        // Never silently: the unasked union says so on its own line, and says which half was discovered.
         assert.match(text(checks(derived.findings, "packs")), /resolution root union — discovered in the host plugin cache unasked/);
         assert.match(text(checks(derived.findings, "packs")), /`rituals\/checkpoints` resolves from the discovered root/);
 
-        // 2. `auto`: the same two packs, reached by asking. The flag is now a way of *insisting* rather
-        //    than the only way of reaching, which is what "optional where discovery finds a root" means.
         const union = await inspect(dir, { schema: SCHEMA, ...host, discoverPacks: true });
         assert.equal(severities(checks(union.findings, "packs"), "fail").length, 0, text(union.findings));
         assert.equal(union.stats.packs, 2);
 
-        // 3. The origin of EACH pack is stated — the whole contract of the union, and the reason it is
-        //    a field rather than a sentence. Asserted per pack, because one match on /root/ would be
-        //    satisfied by the plan line above them and would bind nothing.
         const packs = text(checks(union.findings, "packs"));
         assert.match(packs, /`rituals\/checkpoints` resolves from the discovered root/);
         assert.match(packs, /`tools\/mine` resolves from the tree-derived root/);
     });
 
     test("order is load-bearing: where both roots carry the pack, the DISCOVERED copy wins", async () => {
-        // Identical fixtures on both sides would make this test unable to fail — the m6 defect where
-        // "the fixtures encoded the same assumption as the code". So the two copies differ, and the
-        // assertion is on which one was opened.
         const host = hostCarrying((packs) => packAt(packs, "rituals/checkpoints", "from the cache"));
         const repo = scratch();
         packAt(path.join(repo, "packs"), "rituals/checkpoints", "from the local tree");
@@ -2601,76 +2225,43 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
     });
 
     test("origin is stated ONLY under the union — the other arrangements already said it", async () => {
-        // A negative control. If the suffix leaked onto every branch, every test above would still
-        // pass and the union would have stopped being distinguishable from the invocation.
-        const dir = both();
+        const dir = composingFromBoth();
         const derived = await inspect(dir, { schema: SCHEMA });
         assert.doesNotMatch(text(checks(derived.findings, "packs")), /from the (discovered|tree-derived) root/);
     });
 
     test("asking for a named root and `auto` together is refused BEFORE a workspace is read", async () => {
-        // Asserting exit 2 alone did not bind: `resolutionRoots` refuses the same pair from inside
-        // `inspect`, so deleting the parse-time check left the test green through the other carrier.
-        // The property that distinguishes them is WHEN, so the workspace named here does not exist —
-        // a refusal at parse time never looks at it and exits 2, while any path that got as far as
-        // reading reports an unreadable manifest and exits 1.
-        const dir = both();
+        const dir = composingFromBoth();
+        // No workspace here: a parse-time refusal never reads it, and a later one would exit 1.
         const absent = path.join(scratch(), "not-a-workspace");
         assert.equal(await run(["--pack-root", "auto", "--pack-root", dir, absent], { quiet: true }), 2);
-        // The control: without the pair, the same absent workspace is a verdict rather than a refusal.
         assert.equal(await run([absent], { quiet: true }), 1);
     });
 
     test("`auto` against an unreadable record is exit 2, never a green over a host nobody read", async () => {
-        // The fail-open this change closes, at the level a user meets it. An empty root set makes
-        // `doctor` report every declared pack *unverifiable* and exit 0 — so `--pack-root auto` on a
-        // corrupt record was a GREEN, and it discarded the tree-derived root on the way, so a pack
-        // that resolves locally stopped being looked at too. Measured before the fix: exit 0.
         const config = scratch();
         const record = path.join(config, "plugins", "installed_plugins.json");
         fs.mkdirSync(path.dirname(record), { recursive: true });
         fs.writeFileSync(record, "{ not json");
-        const dir = both();
+        const dir = composingFromBoth();
         assert.equal(await run(["--pack-root", "auto", dir], { quiet: true, env: { CLAUDE_CONFIG_DIR: config } }), 2);
-        // The control: the same workspace and the same flag, on a host whose record is merely ABSENT,
-        // is a verdict rather than a refusal — nothing installed is an answer.
         assert.equal(await run(["--pack-root", "auto", dir], { quiet: true, env: { CLAUDE_CONFIG_DIR: scratch() } }), 1);
     });
 
     test("a malformed host record cannot reach an unasked run's verdict — and IS reported", async () => {
-        // **The property survives the disposal and its mechanism inverts, which is why this is
-        // re-derived rather than adjusted.** It used to hold because nothing read the record; it now
-        // holds because the unasked arm reads it, fails to parse it, and degrades to the derived root
-        // *while saying so*. So the assertion that the diagnostic is ABSENT became the assertion that it
-        // is PRESENT — and the verdict-independence it was really about is unchanged and still asserted:
-        // the resolution root is the derived one and the exit code is what the tree earns.
-        //
-        // Kept as its own case because the alternative disposition — could-not-run, as the `forced` arm
-        // does — would make every CI runner's first schema-bump day an exit 2 on a question nobody asked.
-        // The pair is asserted at the resolver in `discover.test.mjs`; this is the tool-level half, which
-        // is the layer that was measured green while the mapping was deleted at four callers.
         const config = scratch();
         const record = path.join(config, "plugins", "installed_plugins.json");
         fs.mkdirSync(path.dirname(record), { recursive: true });
         fs.writeFileSync(record, "{ not json");
-        const dir = both();
+        const dir = composingFromBoth();
         const derived = await inspect(dir, { schema: SCHEMA, env: { CLAUDE_CONFIG_DIR: config } });
         assert.match(text(checks(derived.findings, "packs")), /resolution root derived/);
-        // `Discovery could not look` and not `could not be read`: the latter is in the unresolvable-pack
-        // sentence too, so it would hold with the degrade deleted. Measured against the path it must
-        // exclude — the discriminator defect this repository has now committed three times.
+        // Not `could not be read`, which the unresolvable-pack sentence also carries.
         assert.match(text(checks(derived.findings, "packs")), /Discovery could not look/);
-        // And it is a verdict, never a refusal: exit 1 on what the tree earns, not 2.
         assert.equal(await run([dir], { quiet: true, env: { CLAUDE_CONFIG_DIR: config } }), 1);
     });
 
     test("the note-vs-fail keying is on ORIGIN, not on how many roots there are", async () => {
-        // **`examples/` is the live instance, and this is the case that makes the disposal safe.** A
-        // workspace with no `tree` derives no root, so under a count key its declared packs became a
-        // FAIL the moment a discovered root joined the set — measured on the real tree before this
-        // landed: `doctor examples` exited 0 and `doctor --pack-root auto examples` exited **1**. Making
-        // discovery the unasked default would have moved that flip onto the bare invocation: red on a
-        // laptop carrying a pack, green in CI. So a MISS under discovered-only roots is a note.
         const host = hostCarrying((packs) => packAt(packs, "rituals/checkpoints", "from the cache"));
         const repo = scratch();
         const noTree = wellFormed();
@@ -2679,21 +2270,12 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         const dir = tree(path.join(repo, ".portulan"), { ...minimalFiles, "workspace.json": JSON.stringify(noTree) });
 
         const got = await inspect(dir, { schema: SCHEMA, ...host });
-        // The hit is graded whatever its origin — origin decides whether a MISS fails, never whether a
-        // hit is examined.
         assert.equal(got.stats.packs, 1, text(got.findings));
-        // The miss is a note, and its sentence does NOT claim there was nowhere to look, because there
-        // was: `tools/absent` was searched for under a real root that nobody asked for.
         assert.equal(severities(checks(got.findings, "packs"), "fail").length, 0, text(got.findings));
         assert.match(text(checks(got.findings, "packs")), /`tools\/absent` was looked for under 1 discovered root\(s\) and is not there/);
         assert.doesNotMatch(text(checks(got.findings, "packs")), /`tools\/absent` cannot be resolved — there is no packs root to search/);
-        // Counted rather than skipped: a check class that disappears in silence is the defect
-        // `stats.unverifiable` exists against.
         assert.ok(got.stats.unverifiable >= 1, "a discovered-only miss is unverifiable, not nothing");
 
-        // **The control, and it is what stops this case licensing a general softening.** The same
-        // arrangement with a root the WORKSPACE claims — a `tree` — still FAILS the pack that is not
-        // there. Without this half, deleting the origin filter entirely would leave the case above green.
         const withTree = wellFormed();
         withTree.packs = ["rituals/checkpoints", "tools/absent"];
         withTree.tree = "../";
@@ -2705,10 +2287,6 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
 });
 
 describe("--pack-root fails closed in doctor too, not only in index", () => {
-    // Copilot, round 7 on #117 — the SIBLING class, and the maintainer's ruling of 2026-07-27 names it:
-    // "never ship a change that corrects one wrong claim while knowingly leaving its neighbours." The
-    // file-vs-directory check was added to `index` for a round-6 finding and not to the other two tools
-    // that take the same flag. Three carriers, one fix.
     test("a root that is a FILE is refused", async () => {
         const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
         assert.equal(await run(["--pack-root", path.join(dir, "workspace.json"), dir], { quiet: true }), 2);
@@ -2728,13 +2306,6 @@ describe("--pack-root fails closed in doctor too, not only in index", () => {
 // ---------------------------------------------------- residence: one repository, one workspace
 
 describe("a repository is governed by exactly one workspace", () => {
-    // The maintainer's ruling of 2026-07-30, recorded in ../.portulan/proposals/0017 and railed here.
-    // Every one of these was forced RED before its refusal was believed, per proposal 0007 — and the
-    // green controls are not decoration: the first draft of this feature made every COMPLIANT pointer
-    // red, because `verify.default` is checked unconditionally and a pointer declares no recipes. A
-    // suite with only the reds would have shipped that.
-
-    /** A thin manifest that names its governor and carries no policy layer — identity keys and an optional `summary` are the whole permit-list, which is what `extra` adds to below. */
     const pointer = (extra = {}) => ({
         portulan: { spec: "2.7" },
         name: "tipar-api",
@@ -2743,27 +2314,9 @@ describe("a repository is governed by exactly one workspace", () => {
         ...extra,
     });
 
-    /**
-     * A host with nothing installed, injected into every inspect of a pointer below.
-     *
-     * Since milestone 7 `doctor` dereferences `governed_by` against the host's installed-plugin
-     * record (./discover.mjs), so an un-injected run reads the machine the suite is on — and this
-     * project's own maintainer has the governing workspace of these very fixtures installed. Without
-     * this the suite would print one sentence on his laptop and another in CI, which is the class of
-     * test that stops meaning anything without ever going red.
-     *
-     * `emptyHost()` is a fresh directory per call: no record file, so the resolver's `absent` branch
-     * answers, which is the state every machine without an install is in.
-     *
-     * It is spread LAST at every call site (`{ schema: SCHEMA, ...emptyHost() }`), which is what makes
-     * the injection hold. `cli/vendor.test.mjs`'s `green()` is hardened against the ordering instead —
-     * it takes caller options and merges them, so there the ordering is a promise the helper makes and
-     * a caller could otherwise defeat. Here the ordering is visible in each line, so the sibling sweep
-     * for that finding (Copilot, round 1) leaves this shape alone deliberately rather than by omission.
-     */
+    // Pointers resolve against the host, so each inspect gets an empty one, spread last so nothing overrides it.
     const emptyHost = () => ({ env: { CLAUDE_CONFIG_DIR: scratch() } });
 
-    /** A portfolio workspace with cards for the repositories it covers. */
     const portfolio = (cards) => {
         const m = wellFormed();
         m.name = "sleepy-panda";
@@ -2775,7 +2328,6 @@ describe("a repository is governed by exactly one workspace", () => {
         return tree(scratch(), files);
     };
 
-    /** `<root>/<repo>/.portulan/workspace.json`, the layout `--repo-root` looks under. */
     const checkouts = (manifests) =>
         tree(
             scratch(),
@@ -2794,7 +2346,6 @@ describe("a repository is governed by exactly one workspace", () => {
         const failures = severities(checks(findings, "residence"), "fail");
         assert.equal(failures.length, 1, text(findings));
         assert.match(text(failures), /governed by exactly one workspace/);
-        // The keys are NAMED. A refusal that says "carries too much" sends the reader looking.
         assert.match(text(failures), /`slots`, `verify`/);
     });
 
@@ -2809,32 +2360,22 @@ describe("a repository is governed by exactly one workspace", () => {
     });
 
     test("a bare, compliant pointer is GREEN — and says what it did not check", async () => {
-        // The control that matters most. `verify.default` is checked unconditionally against a recipe
-        // list, so a pointer taking the ordinary path fails a check about a slot it CORRECTLY does not
-        // carry: green because the manifest is right, red because the validator did not know that.
         const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
         const { findings } = await inspect(dir, { schema: SCHEMA, ...emptyHost() });
         assert.equal(severities(findings, "fail").length, 0, text(findings));
         const notes = text(checks(findings, "residence"));
         assert.match(notes, /governed by `sleepy-panda`/);
         assert.match(notes, /portulan-internal/);
-        // Skipped is SAID, never silent — the standing rule about a check that disappears.
         assert.match(notes, /did not run here/);
     });
 
     test("`summary` is on the pointer's permit-list, and the list is railed rather than described", async () => {
-        // The pre-commit checkpoint found `slots.md` claiming a pointer carries "nothing but
-        // `governed_by`" while `POINTER_KEYS` deliberately admits `summary` — prose overstating its own
-        // mechanism by one key. The prose is corrected; this is the half that stops it drifting back,
-        // because nothing held the permit-list before and a future tightening would have broken no test.
         const dir = tree(scratch(), {
             "workspace.json": JSON.stringify(pointer({ summary: "Governed by the Sleepy Panda SRL portfolio workspace." })),
         });
         const { findings } = await inspect(dir, { schema: SCHEMA, ...emptyHost() });
         assert.equal(severities(findings, "fail").length, 0, text(findings));
 
-        // And the negative half: a key that is NOT on the list is still refused, so the exemption is the
-        // list rather than a general softening.
         const bad = tree(scratch(), {
             "workspace.json": JSON.stringify(pointer({ packs: ["rituals/checkpoints"] })),
         });
@@ -2852,18 +2393,8 @@ describe("a repository is governed by exactly one workspace", () => {
         assert.doesNotMatch(text(checks(findings, "residence")), /delivered through/);
     });
 
-    // ---- the pointer's name, dereferenced — milestone 7's discovery
-    //
-    // Until this landed, `doctor` on a pointer printed *"Nothing was fetched … the roots are named
-    // rather than found (milestone 7)"* and the boot skill instructed *"Do not fetch it … nothing
-    // here discovers one."* Both were true, and both were the whole of issue #134's open half: the
-    // repository said which workspace governs it and nothing anywhere turned that name into a
-    // directory. These four tests are the four answers a resolver is allowed to give.
-    //
-    // Every one injects its host. The negative control is the one to keep: an absent record must read
-    // as *not installed*, and an unreadable one must not.
+    // ---- the pointer's name, dereferenced
 
-    /** A host carrying one installed plugin whose payload IS a workspace of the given name. */
     const hostWith = (name, { plugin = "sleepy-panda", marketplace = "portulan-internal", version = "0.5.0" } = {}) => {
         const config = scratch();
         const installPath = path.join(config, "plugins", "cache", marketplace, plugin, version);
@@ -2882,7 +2413,6 @@ describe("a repository is governed by exactly one workspace", () => {
     };
 
     test("a pointer whose governor IS installed resolves to the directory, and names it", async () => {
-        // #134's acceptance criterion at the `doctor` layer: the boot reports what this says.
         const host = hostWith("sleepy-panda");
         const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
         const { findings, governor } = await inspect(dir, { schema: SCHEMA, env: host.env });
@@ -2893,16 +2423,11 @@ describe("a repository is governed by exactly one workspace", () => {
         assert.match(notes, /is installed here/);
         assert.match(notes, /sleepy-panda@portulan-internal/);
         assert.match(notes, /version 0\.5\.0/);
-        // The root is actionable, and what to run against it is said rather than left to be guessed.
         assert.match(notes, /to grade it/);
-        // The sentence this replaced must be gone: a document denying a capability that exists is the
-        // same defect as one claiming a capability that does not.
         assert.doesNotMatch(notes, /the roots are named rather than found/);
     });
 
     test("a pointer whose governor is NOT installed gets the honest sentence, and stays green", async () => {
-        // A pointer is correct while its governor is uninstalled — a fresh clone is in exactly that
-        // state, and so is every CI run. Failing here would red an honest manifest.
         const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
         const { findings, governor } = await inspect(dir, { schema: SCHEMA, ...emptyHost() });
         assert.equal(severities(findings, "fail").length, 0, text(findings));
@@ -2934,8 +2459,6 @@ describe("a repository is governed by exactly one workspace", () => {
     });
 
     test("the resolver is injectable, so a surface can be tested without a host at all", async () => {
-        // The seam the boot skill's own demonstration uses. It also pins that `doctor` prints the
-        // resolver's OWN sentence rather than paraphrasing it into a second carrier.
         const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
         let asked = null;
         const { findings } = await inspect(dir, {
@@ -2950,11 +2473,6 @@ describe("a repository is governed by exactly one workspace", () => {
     });
 
     test("an ASYNC resolver is awaited — the injection point may not silently yield a Promise", async () => {
-        // `inspect` is `async` and `options.discover` is an injection point, so a hook that returns a
-        // promise must work. Before it was awaited, `governor.state` came back `undefined` and the
-        // report described a Promise rather than a host — a silent wrong answer rather than a crash.
-        // Today's resolver is synchronous and `await` on a plain value is a no-op, which is why the
-        // sync cases above still pass unchanged. (Copilot, round 2.)
         const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
         const { findings } = await inspect(dir, {
             schema: SCHEMA,
@@ -2966,9 +2484,6 @@ describe("a repository is governed by exactly one workspace", () => {
     });
 
     test("a verdict with no `state` is named by its shape, never printed as the word `undefined`", async () => {
-        // #182 item 2. The fallback exists because a resolver returning no sentence is a defect in the
-        // resolver — and the fallback had that same defect itself, interpolating `undefined` into the
-        // one sentence whose job is to say a resolver misbehaved.
         const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
         const { findings } = await inspect(dir, { schema: SCHEMA, discover: () => ({ nonsense: 1, other: 2 }) });
         const residence = text(checks(findings, "residence"));
@@ -2976,17 +2491,11 @@ describe("a repository is governed by exactly one workspace", () => {
         assert.match(residence, /no `state` at all/);
         assert.match(residence, /`nonsense`, `other`/, "and it names what it actually received");
         assert.doesNotMatch(residence, /undefined/, "the word the fix exists to remove");
-        // Still green: no discovery outcome moves this tool's verdict, and a malformed resolver is a
-        // defect in the resolver rather than in the workspace being graded.
         assert.equal(severities(findings, "fail").length, 0, text(findings));
 
-        // An empty object has no keys to name, and says so rather than printing an empty list.
         const empty = await inspect(dir, { schema: SCHEMA, discover: () => ({}) });
         assert.match(text(checks(empty.findings, "residence")), /keys: none/);
 
-        // And a `state` that is PRESENT but not a string is its own shape: calling that "no `state` at
-        // all" while listing `state` among the keys is the same class of wrong one revision later.
-        // Found at the pre-commit checkpoint by feeding it `{state: 123}` rather than by reading it.
         const wrongType = await inspect(dir, { schema: SCHEMA, discover: () => ({ state: 123 }) });
         const said = text(checks(wrongType.findings, "residence"));
         assert.match(said, /a `state` that is not a string \(`number`\)/);
@@ -2994,12 +2503,6 @@ describe("a repository is governed by exactly one workspace", () => {
     });
 
     test("NO discovery outcome moves this tool's verdict — all four leave a compliant pointer green", async () => {
-        // The invariant, asserted rather than trusted to the three cases above happening to agree.
-        // `doctor`'s exit code is a statement about a WORKSPACE; letting a host's install state move
-        // it would make the verdict a fact about somebody's laptop — and CI, where nothing is ever
-        // installed, would then disagree with every developer machine. Named at the session-open
-        // checkpoint, where the plan's word for the two-candidate case was "refuse", which reads as a
-        // failure and is not one.
         const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
         for (const state of ["resolved", "not-installed", "ambiguous", "could-not-look"]) {
             const { findings } = await inspect(dir, {
@@ -3012,8 +2515,6 @@ describe("a repository is governed by exactly one workspace", () => {
     });
 
     test("the schema requires `governed_by` of a pointer and `slots`/`verify` of a workspace", async () => {
-        // The requirement stayed IN the schema at 2.7 rather than moving into `doctor` — the `oneOf`
-        // carries it per form. Checked here so the split cannot rot into a doctor-only rule.
         const m = pointer();
         delete m.governed_by;
         assert.notEqual(validate(SCHEMA, m).length, 0, "a pointer with no governor must not validate");
@@ -3022,8 +2523,6 @@ describe("a repository is governed by exactly one workspace", () => {
         delete w.verify;
         assert.notEqual(validate(SCHEMA, w).length, 0, "a governing workspace with no verify must not validate");
 
-        // And the MINOR property, stated as a test rather than as a sentence: every shape valid before
-        // 2.7 is valid at 2.7. `examples/` is the second instance and is still on 2.4.
         assert.equal(validate(SCHEMA, wellFormed()).length, 0);
         assert.equal(validate(SCHEMA, pointer()).length, 0);
     });
@@ -3039,7 +2538,6 @@ describe("a repository is governed by exactly one workspace", () => {
         assert.equal(failures.length, 1, text(findings));
         assert.match(text(failures), /tipar-api/);
         assert.match(text(failures), /governed by exactly one workspace/);
-        // The compliant sibling is reported green in the same run, so the red is the card and not the run.
         assert.match(text(checks(findings, "residence")), /`lantern` carries a pointer naming this workspace/);
     });
 
@@ -3053,13 +2551,6 @@ describe("a repository is governed by exactly one workspace", () => {
     });
 
     test("a workspace that names its OWN repository is not two managers", async () => {
-        // Customer zero's shape: `.portulan/` names the card `portulan`, so a root holding the Portulan
-        // checkout finds this very manifest. One workspace seen from outside is not two workspaces, and
-        // the first draft of this check refused the arrangement the ruling PERMITS. Caught at the
-        // session-open checkpoint, adjustment 2.
-        // Built the way a repository really sits: the workspace is `<repo>/.portulan/`, and the root
-        // holds the REPO. Comparison is on the real path, so the symlink is the point rather than a
-        // convenience — a lexical compare would miss the identity and print the false red.
         const m = wellFormed();
         m.name = "sleepy-panda";
         m.slots.repos = "repos/";
@@ -3073,13 +2564,12 @@ describe("a repository is governed by exactly one workspace", () => {
         });
         const dir = path.join(repo, ".portulan");
         const root = scratch();
+        // A symlink, since identity is judged on the real path and a lexical compare would miss it.
         fs.symlinkSync(repo, path.join(root, "itself"), "dir");
         const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [root] });
         assert.equal(severities(checks(findings, "residence"), "fail").length, 0, text(findings));
         assert.match(text(checks(findings, "residence")), /resolves to this manifest itself/);
 
-        // The negative control: a genuine second workspace at the same name is still refused, so the
-        // exemption is identity and not a hole any manifest at that path could walk through.
         const other = checkouts({ itself: { ...wellFormed(), name: "a-second-workspace" } });
         const second = await inspect(dir, { schema: SCHEMA, repoRoots: [other] });
         assert.equal(severities(checks(second.findings, "residence"), "fail").length, 1, text(second.findings));
@@ -3094,8 +2584,6 @@ describe("a repository is governed by exactly one workspace", () => {
     });
 
     test("a named repository with no manifest is reported, never failed", async () => {
-        // Not governed by Portulan at all, and not checked out where this run could see it, are two
-        // different facts and this check distinguishes neither. Saying so beats guessing.
         const dir = portfolio(["tipar-api"]);
         const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [scratch()] });
         assert.equal(severities(checks(findings, "residence"), "fail").length, 0, text(findings));
@@ -3111,11 +2599,6 @@ describe("a repository is governed by exactly one workspace", () => {
     });
 
     test("--repo-root fails closed on the same two inputs --pack-root does", async () => {
-        // The sibling class, and the ruling of 2026-07-27: never fix one carrier and leave its
-        // neighbours. The first draft of this comment claimed both flags ran through one helper while
-        // `--pack-root` still carried its own copy — a comment asserting a refactor nobody had done,
-        // caught by Copilot on round 1. They share `directoryRoot` now, so the claim is true; the two
-        // flags below are asserted TOGETHER so a future divergence reds here rather than drifting.
         const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
         for (const flag of ["--repo-root", "--pack-root"]) {
             assert.equal(await run([flag, path.join(dir, "workspace.json"), dir], { quiet: true }), 2, `${flag}: a FILE is not a root`);
@@ -3126,11 +2609,6 @@ describe("a repository is governed by exactly one workspace", () => {
     });
 
     test("a manifest at a named root with an unrecognised kind is reported, never refused", async () => {
-        // The sibling of the missing-governor case below, and it SURVIVED that fix — a manifest with no
-        // `kind`, or a kind this validator does not know, fell into the governing branch and was refused
-        // as `kind: "undefined"`. Copilot, round 4 on #135, one round after round 1 fixed its twin. Both
-        // follow from one fact: a manifest at a named root is read, never validated, so this check
-        // refuses only what a manifest clearly DECLARES.
         const dir = portfolio(["tipar-api", "lantern"]);
         const root = checkouts({
             "tipar-api": { portulan: { spec: "2.7" }, name: "tipar-api" },
@@ -3141,35 +2619,21 @@ describe("a repository is governed by exactly one workspace", () => {
         assert.match(text(checks(findings, "residence")), /no recognisable `kind`/);
         assert.doesNotMatch(text(findings), /kind: "undefined"/);
 
-        // The negative control: a kind this validator DOES know is still refused, so the report is for
-        // shapes doctor cannot read rather than an escape any manifest can take.
         const governing = checkouts({ "tipar-api": { ...wellFormed(), name: "tipar-api" } });
         const { findings: refused } = await inspect(dir, { schema: SCHEMA, repoRoots: [governing] });
         assert.equal(severities(checks(refused, "residence"), "fail").length, 1, text(refused));
     });
 
     test("a pointer at a named root that names no governor is reported, never refused", async () => {
-        // A manifest at a named root is read, never validated — it is somebody else's workspace. So a
-        // malformed pointer there must not be compared against this workspace's name, which produced
-        // "names `undefined` as its governor": a conflicting-governor refusal for a manifest that names
-        // no governor at all. Copilot, round 1 on #135.
         const dir = portfolio(["tipar-api"]);
         const root = checkouts({ "tipar-api": { portulan: { spec: "2.7" }, name: "tipar-api", kind: "pointer" } });
         const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [root] });
         assert.equal(severities(checks(findings, "residence"), "fail").length, 0, text(findings));
-        // The phrasing widened to "no USABLE governing workspace" when #141 extended this branch from
-        // absent to invalid; the assertion's intent — the report branch fires and nothing is refused —
-        // is unchanged.
         assert.match(text(checks(findings, "residence")), /names no usable governing workspace/);
         assert.doesNotMatch(text(findings), /undefined/);
     });
 
     test("a pointer whose governor is PRESENT but unusable is reported too — the third gap of one class", async () => {
-        // #141. The guard asked `=== undefined`, which catches ABSENT and not INVALID, so `""`, `null`
-        // and a non-string fell through to the conflicting-governor branch and were refused for naming
-        // a governor they do not name — a false red about somebody else's manifest, in the block whose
-        // own rule is *read, never validated*. Third gap of this class in this one block; the first two
-        // were a missing `governed_by.workspace` and an unrecognised `kind`.
         for (const governor of ["", "   ", null, 7, {}, []]) {
             const dir = portfolio(["tipar-api"]);
             const root = checkouts({
@@ -3183,43 +2647,24 @@ describe("a repository is governed by exactly one workspace", () => {
                 `governor ${JSON.stringify(governor)} must not be refused: ${text(findings)}`,
             );
             assert.match(residence, /names no usable governing workspace/, JSON.stringify(governor));
-            // It names WHAT it received rather than leaving a reader to guess, and never prints the
-            // conflicting-governor sentence, which is the false red this closes.
             assert.match(residence, /`governed_by.workspace` is /);
             assert.doesNotMatch(residence, /as its governor/);
         }
 
-        // The BOUNDARY, pinned rather than left in a comment: a padded slug is still a name the
-        // manifest DECLARES, so it stays a conflict. Judging its legality would be validating somebody
-        // else's workspace, which this block forbids — and a "helpful" two-sided trim would silently
-        // flip this red to green. A first draft at `cli/discover.mjs` went exactly that way once.
+        // A padded slug is still a declared name, so it stays a conflict: nothing here trims it.
         const dir = portfolio(["tipar-api"]);
         const root = checkouts({
             "tipar-api": { portulan: { spec: "2.7" }, name: "tipar-api", kind: "pointer", governed_by: { workspace: "  sleepy-panda  " } },
         });
         const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [root] });
         assert.equal(severities(checks(findings, "residence"), "fail").length, 1, text(findings));
-        // And the padding is visible in the refusal rather than hidden inside backticks.
         assert.match(text(checks(findings, "residence")), /"  sleepy-panda  "/);
     });
 });
 
-// ---------------------------------------------------------------- what a pack ships (milestone 7)
-
-// Row 7's validation half, under the maintainer's ruling of 2026-08-03 on
-// https://github.com/sleepy-panda-srl/portulan/issues/150: the **broad** reading. `doctor` validates a
-// skill's frontmatter, a persona against its five-part contract, a pack against its schema, and the
-// persona↔agent binding — and it does so for **a pack's** skills and personas, not only for what `new`
-// scaffolds. Seven carriers promised that split ("row 6 declares, row 7 validates") and the row's own
-// sentence was narrower than all seven; the ruling made the carriers right rather than re-pointing them.
-//
-// **Why these tests open real files rather than asserting on a manifest.** Until this landed, `doctor`
-// counted `contributes.skills` into a report line and opened nothing — and spec/pack.schema.json said in
-// as many words that an escaping value there "is still inert" *because* nothing opened it. Opening it is
-// what makes containment this tool's problem, so the containment case is here beside the contract cases.
+// ---------------------------------------------------------------- what a pack ships
 
 describe("a pack's skills and personas are validated, not counted", () => {
-    /** A workspace declaring one pack, plus a packs root holding it. Returns both directories. */
     function withPack(contributes, files) {
         const dir = scratch();
         tree(dir, {
@@ -3273,8 +2718,6 @@ describe("a pack's skills and personas are validated, not counted", () => {
     });
 
     test("a persona missing any one of the five parts fails, and the failure NAMES the part", async () => {
-        // Named individually so a reader learns which part is absent. "does not meet the contract" sends
-        // somebody to read five sections looking for the one that is missing.
         for (const [part, pattern] of [
             ["## Charter", /charter/i],
             ["## Autonomy reach", /autonomy/i],
@@ -3296,8 +2739,6 @@ describe("a pack's skills and personas are validated, not counted", () => {
     });
 
     test("a persona claiming Prohibited as its reach fails — no role may act in that tier", async () => {
-        // core/personas/README.md fixes this, and until now nothing checked it. It is the clause a
-        // template cannot hold: prose telling an author not to claim it is not a rule, it is advice.
         const { dir, root } = withPack(
             { personas: ["personas/my-role.md"] },
             { "personas/my-role.md": goodPersona.replace("Propose.", "Prohibited.") },
@@ -3314,9 +2755,6 @@ describe("a pack's skills and personas are validated, not counted", () => {
     });
 
     test("a skills root escaping the pack is refused after resolution, never followed", async () => {
-        // spec/pack.schema.json's `$defs/filePath` bars only the LEADING `../` form and says so; `a/../../x`
-        // matches the pattern and still escapes. The pattern was never the guard — and while nothing opened
-        // this key, an escaping value was inert. Opening it is what makes containment this tool's problem.
         const { dir, root } = withPack({ skills: ["skills/"] }, { "skills/keep": "" });
         const outside = scratch();
         tree(outside, { "elsewhere/SKILL.md": "---\nname: x\ndescription: y\n---\n" });
@@ -3328,18 +2766,12 @@ describe("a pack's skills and personas are validated, not counted", () => {
     });
 
     test("an unreadable skill root is could-not-read, never reported as barren", async () => {
-        // Only ENOENT means absent. A walk that reports "no skills here" over a directory it could not
-        // open is "nothing looked" recorded as "nothing wrong" — #108's shape, in a new walker.
         const { dir, root } = withPack({ skills: ["skills/"] }, { "skills/my-check/SKILL.md": goodSkill });
         const locked = path.join(root, "rituals/fixture/skills");
         fs.chmodSync(locked, 0o000);
         try {
             const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
             assert.match(text(checks(findings, "packs")), /could not|unreadable|EACCES/i);
-            // Asserted against the SUMMARY line specifically, not against every message. The first
-            // spelling of this was `doesNotMatch(text(findings), /no skills/)` and it failed against the
-            // explanatory message, which quotes the phrase in order to refuse it — an assertion that
-            // cannot tell a claim from a quotation of the claim.
             const summary = checks(findings, "packs").map((f) => f.message).find((m) => /contributes/.test(m));
             assert.ok(summary, "no summary line was reported at all");
             assert.match(summary, /UNREAD/, "the summary counted skills without saying a root went unread");
@@ -3351,10 +2783,6 @@ describe("a pack's skills and personas are validated, not counted", () => {
 
 describe("an unreadable directory NESTED under a skills root is not counted as zero", () => {
     test("the root reports UNREAD however deep the unreadable directory sits", async () => {
-        // Copilot, round 1 on #156. Its stated mechanism was `found += null` producing NaN; measured,
-        // `null` coerces to 0, so the count was not corrupted — it was quietly *understated*, which is
-        // worse, because an understated count looks like a root with fewer skills rather than like a
-        // walk that failed. The top-level fix propagated `null`; the recursive call swallowed it.
         const dir = scratch();
         tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/fixture"] }) });
         const root = scratch();
@@ -3382,9 +2810,6 @@ describe("an unreadable directory NESTED under a skills root is not counted as z
 
 describe("a symlinked directory under a skills root is reported, never silently skipped", () => {
     test("`Dirent.isDirectory()` is false for a link, so the obvious walk skips it", async () => {
-        // Copilot, round 3 on #156. A symlinked directory has isDirectory() === false and
-        // isSymbolicLink() === true, so `if (!isDirectory()) continue` skips it with no finding at all —
-        // hiding whatever sits behind it. A silent skip is a false green of this walk's own kind.
         const dir = scratch();
         tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/fixture"] }) });
         const root = scratch();
@@ -3408,9 +2833,6 @@ describe("a symlinked directory under a skills root is reported, never silently 
 
 // ---------------------------------------------------------------- the persona ↔ agent binding
 
-// Row 7's fourth validation — "a skill's frontmatter, a persona against its five-part contract, a pack
-// against its schema, and the persona↔agent binding nothing checks today". The first three landed at
-// session 2; this is the one that was still owed.
 describe("a composed persona is matched to the host binding that would carry it", () => {
     const persona = (name) =>
         [
@@ -3419,7 +2841,6 @@ describe("a composed persona is matched to the host binding that would carry it"
             "## Memory scope", "`personas/x/`.", "", "## Read / write posture", "Reads in parallel.", "",
         ].join("\n");
 
-    /** A workspace composing one pack that contributes one persona, plus whatever sits in `agents/`. */
     function withPersona(agents = {}, { tree: treeDecl = "./", personaName = "my-role" } = {}) {
         const dir = scratch();
         const manifest = { ...wellFormed(), packs: ["rituals/fixture"] };
@@ -3453,9 +2874,6 @@ describe("a composed persona is matched to the host binding that would carry it"
     });
 
     test("no binding is a REPORT, not a failure — and it names the path that would carry one", async () => {
-        // A persona without a host binding is unbound rather than wrong: an adopter may be on a host
-        // with no agent layer at all, and this repository's own supervisor is deliberately unbound
-        // because its ritual's mechanism is a fresh context rather than a subagent.
         const { dir, root } = withPersona();
         const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
         assert.equal(severities(bindingsOf(findings), "fail").length, 0, text(findings));
@@ -3485,8 +2903,6 @@ describe("a composed persona is matched to the host binding that would carry it"
     });
 
     test("a workspace with no `tree` is unverifiable, not unbound", async () => {
-        // The same answer every other claim gets without a tree, and for the same reason: there is
-        // nowhere for `agents/` to be, which is not the same as having looked and found nothing.
         const { dir, root } = withPersona({}, { tree: null });
         const { findings, stats } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
         assert.equal(severities(bindingsOf(findings), "fail").length, 0, text(findings));
@@ -3500,8 +2916,7 @@ describe("a composed persona is matched to the host binding that would carry it"
         fs.chmodSync(file, 0o000);
         try {
             const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
-            // Root ignores the mode bits, so the assertion is conditional on the read actually failing
-            // — the alternative is a test that passes for the wrong reason in a container.
+            // Root reads through mode bits, so this asserts only where the read actually failed.
             const said = text(bindingsOf(findings));
             if (/could not be read/.test(said)) assert.match(said, /Unread, not absent/);
         } finally {
@@ -3532,8 +2947,6 @@ describe("a composed persona is matched to the host binding that would carry it"
 
 // ---------------------------------------------------------------- agent legibility
 
-// Row 7's 2026-07-28 amendment: "`doctor` scores agent legibility — the audit vision.md's influence
-// map calls the unclaimed niche, reading the `affordances` slot that is its input."
 describe("agent legibility is scored, reported, and never graded", () => {
     const full = () => ({
         ...wellFormed(),
@@ -3546,31 +2959,13 @@ describe("agent legibility is scored, reported, and never graded", () => {
     });
     const withLimits = "# Affordances\n\n## What an agent can rely on here\n\nA thing.\n\n## What an agent must not assume\n\nAnother thing.\n";
 
-    /** Score a manifest against a directory holding whatever affordances documents it names. */
     const scoreOf = (manifest, files = { "affordances.md": withLimits }) => {
         const dir = scratch();
         tree(dir, files);
         return legibility(manifest, dir);
     };
 
-    // #228 item 1. Products resolve `product.affordances ?? workspace.affordances`, so N products
-    // inheriting one workspace-level default all name the SAME document — which was read N times, and
-    // when it could not be read, counted N times under a name that says documents.
-    //
-    // The read count is the only observable: `legibility` returns `met`/`applicable`/`dimensions`, and
-    // neither half moves a verdict — `limits` asks `unreadable === 0`, never the magnitude. So the
-    // instrument is a counting spy on `fs.readFileSync`, which measures the actual claim ("once per
-    // document") rather than a proxy for it.
-    //
-    // `t.mock.method` RATHER THAN A HAND-ROLLED PATCH-AND-RESTORE, so the substitution is scoped to the
-    // test and restored by the runner. The first version assigned to `fs.readFileSync` and restored in
-    // `finally` — correct today, because tests within a file run sequentially, but it made this suite's
-    // correctness rest on a scheduling property no assertion here states. That is not a new argument:
-    // `./init.test.mjs` carries it almost word for word, in a comment ending "Found by review on the
-    // pull request" — the rule was fixed there and never swept to its other sites. This is one of them,
-    // and it was NEW code, so it ships fixed rather than filed. The six pre-existing hand-rolled sites
-    // in `./feedback.test.mjs`, `./compile.test.mjs` and `./vendor.test.mjs` are a different change's
-    // business. Copilot, #250 round 1.
+    // Counted at `fs.readFileSync`: no figure `legibility` returns shows how often a document was read.
     const readsOf = (t, manifest, files) => {
         const real = fs.readFileSync;
         const hits = [];
@@ -3601,8 +2996,6 @@ describe("agent legibility is scored, reported, and never graded", () => {
             { id: "b", name: "B", product: "product.md" },
             { id: "c", name: "C", product: "product.md" },
         ];
-        // No affordances.md on disk: every read attempt fails. Before the fix there were three
-        // attempts and `unreadable` reached 3 for one missing document.
         assert.equal(readsOf(t, m, {}).length, 1, "three products, one missing document, one attempt");
     });
 
@@ -3612,9 +3005,6 @@ describe("agent legibility is scored, reported, and never graded", () => {
             { id: "a", name: "A", product: "product.md", affordances: "affordances.md" },
             { id: "b", name: "B", product: "product.md", affordances: "other-affordances.md" },
         ];
-        // The negative control for the two cases above: dedup keyed on `rel` must not collapse two
-        // genuinely different documents into one read. Without this, a fix that simply stopped after
-        // the first document would pass both cases above and lose a product's own affordances.
         const hits = readsOf(t, m, { "affordances.md": withLimits, "other-affordances.md": withLimits });
         assert.equal(hits.length, 2, "two products naming two documents are two reads");
         assert.equal(new Set(hits).size, 2, "and two distinct paths, not one read twice");
@@ -3627,9 +3017,6 @@ describe("agent legibility is scored, reported, and never graded", () => {
     });
 
     test("each dimension is independently lost, and no other moves with it", () => {
-        // Eight assertions rather than one summed figure: a score that only ever moves as a total is a
-        // score nobody can act on, and a dimension quietly coupled to another is a measurement of one
-        // thing reported as two.
         const drop = [
             ["requires", (m) => delete m.verify.recipes[0].requires],
             ["gates", (m) => delete m.gates],
@@ -3656,8 +3043,6 @@ describe("agent legibility is scored, reported, and never graded", () => {
     });
 
     test("a workspace-level default counts for a product that declares none", () => {
-        // `examples/` ships exactly this shape, and a score contradicting `doctor`'s own note about it
-        // in the same run would be the defect this dimension exists to avoid.
         const manifest = full();
         delete manifest.products[0].affordances;
         manifest.affordances = "affordances.md";
@@ -3690,8 +3075,6 @@ describe("agent legibility is scored, reported, and never graded", () => {
     });
 
     test("a low score moves NO exit code — a measurement is not a verdict", async () => {
-        // The whole design: a score that could fail a workspace would make `doctor`'s verdict a
-        // function of how much affordance prose somebody wrote.
         const dir = scratch();
         tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()), "verify.sh": "#!/bin/sh\n" });
         const { findings } = await inspect(dir, { schema: SCHEMA });
@@ -3700,8 +3083,6 @@ describe("agent legibility is scored, reported, and never graded", () => {
     });
 
     test("the two workspaces this repository ships score differently, and both are green", () => {
-        // The in-tree demonstration: a score that cannot tell two real workspaces apart is a score
-        // measuring nothing. Read from the manifests on disk rather than from fixtures.
         const own = legibility(JSON.parse(fs.readFileSync(path.join(REPO, ".portulan", "workspace.json"), "utf8")), path.join(REPO, ".portulan"));
         const demo = legibility(JSON.parse(fs.readFileSync(path.join(REPO, "examples", "workspace.json"), "utf8")), path.join(REPO, "examples"));
         assert.equal(own.met, own.applicable, "customer zero should meet every dimension it asks of others");
@@ -3710,9 +3091,7 @@ describe("agent legibility is scored, reported, and never graded", () => {
     });
 });
 
-// Added at the pre-commit checkpoint, which executed the hole rather than reading past it.
 describe("a persona's name is a pack's free text, so the binding read is contained", () => {
-    /** A pack whose persona declares whatever name it likes — which is what the contract permits. */
     function poison(name) {
         const dir = scratch();
         tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/fixture"] }) });
@@ -3732,18 +3111,7 @@ describe("a persona's name is a pack's free text, so the binding read is contain
     }
 
     test("a name that traverses upward is refused, not opened and greened", async () => {
-        // Measured before the guard: a persona named `../../poison` had `doctor` read
-        // `<tree>/../poison.md`, validate it, and print its binding-success line — a green over a
-        // file no host would ever load, with that file's own `name:` echoed into the report.
-        // That line's wording changed at milestone 7's close ("names and tool grant agree" →
-        // "names match and a tool grant is declared"), so the negative assertion below matches the
-        // stable half of it rather than the full sentence. A `doesNotMatch` against a string the tool
-        // no longer emits passes for the wrong reason: it would go on being green if this guard were
-        // removed tomorrow, which is the one thing it exists to catch.
-        // `path.join("agents", "../../poison.md")` is `../poison.md`, so the read this aims at is one
-        // level above the tree. Asserted BOTH ways — with the target present and absent — because the
-        // first cut only refused it when the file existed, which makes the refusal depend on whether
-        // the attacker got there first.
+        // `path.join("agents", "../../poison.md")` is `../poison.md`: the read aims one level above the tree.
         const { dir, root } = poison("../../poison");
         const outside = path.resolve(dir, "..", "poison.md");
         for (const present of [false, true]) {
@@ -3771,24 +3139,16 @@ describe("a persona's name is a pack's free text, so the binding read is contain
     });
 
     test("an ordinary name still resolves to an ordinary binding", async () => {
-        // The guard must not swallow the case it exists to protect.
         const { dir, root } = poison("my-role");
         fs.mkdirSync(path.join(dir, "agents"), { recursive: true });
         fs.writeFileSync(path.join(dir, "agents", "my-role.md"), "---\nname: my-role\ndescription: x\ntools: Read\n---\n");
         const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
-        // Matched on the phrase that carries the meaning rather than on one word of it: the previous
-        // `/agree/` was a single word of a sentence that milestone 7's close rewrote, so it broke on a
-        // wording change while a whole class of wrong reports would have satisfied it.
         assert.ok(text(checks(findings, "bindings")).includes(`— ${BINDING_OK}`), "an ordinary binding must still report success");
     });
 });
 
-// Added at the pre-commit checkpoint: the dimension it measured and found constant.
 describe("every legibility dimension can actually vary", () => {
     test("no dimension is a guaranteed point on a manifest the schema already requires", () => {
-        // `verify` was scored for exactly one checkpoint. The schema's first `oneOf` form requires it
-        // of every non-pointer workspace, a pointer never reaches the score, and a manifest that fails
-        // the schema returns earlier still — so it was a constant +1 dressed as a measurement.
         const schemaRequired = new Set(SCHEMA.oneOf?.[0]?.required ?? []);
         const ids = legibility({ verify: { recipes: [] }, slots: {} }, scratch()).dimensions.map((d) => d.id);
         for (const id of ids) {
@@ -3801,15 +3161,8 @@ describe("every legibility dimension can actually vary", () => {
 // ===========================================================================================
 // An explicit `--help`, and an unknown flag that is refused rather than swallowed
 // ===========================================================================================
-//
-// `./portulan.mjs` states the contract — an explicit `--help` exits 0, because asking for help is a
-// request and it succeeded — and five sibling tools kept it while this one did not. What a user got
-// instead was the no-arguments usage line on stderr at exit 2: the could-not-run fallback, not an
-// answer. Milestone 7's close handoff called this "the only two of eight"; measuring found three.
 describe("--help is a request that succeeded", () => {
     test("`--help` exits 0, prints to stdout, and names only flags this tool takes", async (t) => {
-        // `run` writes to stdout directly rather than through an injected sink, so the sink is stdout —
-        // the idiom ./compile.test.mjs already uses for the same shape.
         const out = [];
         t.mock.method(process.stdout, "write", (chunk) => (out.push(String(chunk)), true));
         const code = await run(["--help"]);
@@ -3818,20 +3171,8 @@ describe("--help is a request that succeeded", () => {
         const said = out.join("");
         assert.match(said, /^portulan doctor — validate a workspace/, "the identity line agrees with `portulan --help`'s summary");
         assert.match(said, /Exit codes: 0 succeeded · 1 a red verdict · 2 could not run/);
-        // dod condition 4: the screen may name only flags that exist — and the way this is established
-        // matters. The first cut grepped `"--flag"` strings out of `doctor.mjs`, which was VACUOUS: the
-        // help screen is in that file, so a flag added to `usage()` and never parsed would put its own
-        // string into the "real" set and satisfy the check it was meant to fail. (Copilot, round 2 on
-        // #241, and the same measures-the-convention-not-the-phenomenon shape this session keeps
-        // finding.) So the parser is ASKED instead: a flag this tool takes is one it does not refuse as
-        // unknown. That cannot be satisfied by prose, because prose is not what answers.
         for (const flag of said.match(/^\s+(--[a-z-]+)/gm)?.map((s) => s.trim()) ?? []) {
-            // **Hand-restored, and `t.mock.method` would be wrong here rather than merely unnecessary**
-            // (#254). The runner scopes a mock to the TEST; this substitution is scoped to one ITERATION,
-            // and there is one per flag on the help screen. Converting it would leave every iteration's
-            // mock installed under the next and restore them all at the end, which is a different
-            // lifetime than the code means. Where the two scopes agree — the `--help` capture above —
-            // this file now uses the runner.
+            // Hand-restored: `t.mock.method` would last the whole test, and this substitution lasts one flag.
             const err = [];
             const w = process.stderr.write.bind(process.stderr);
             process.stderr.write = (chunk) => (err.push(String(chunk)), true);
@@ -3852,12 +3193,7 @@ describe("--help is a request that succeeded", () => {
         assert.equal(await run(["-h"], { quiet: true }), 0);
     });
 
-    // The hazard this closes is not cosmetic. Measured before the fix: `doctor --repo-rot /nonexistent`
-    // silently DISCARDED the misspelled flag and graded `/nonexistent` as a workspace — red, for a
-    // reason that had nothing to do with what was asked. A typo in a flag is could-not-run.
     test("an unknown flag is refused loudly rather than swallowed and graded", async (t) => {
-        // A refusal is could-not-run, so it lands on STDERR beside every other `doctor:` refusal —
-        // stdout carries verdicts, and this run reached none.
         const out = [];
         t.mock.method(process.stderr, "write", (chunk) => (out.push(String(chunk)), true));
         const code = await run(["--repo-rot", "/nonexistent"]);
@@ -3866,8 +3202,6 @@ describe("--help is a request that succeeded", () => {
         const said = out.join("");
         assert.match(said, /unknown argument/);
         assert.match(said, /--repo-rot/, "the refusal names the argument it refused");
-        // #155's lesson: name BOTH real invocations, since a user who typed one cannot act on advice
-        // about the other.
         assert.match(said, /portulan doctor --help/);
         assert.match(said, /node cli\/doctor\.mjs --help/);
         assert.doesNotMatch(said, /nonexistent\/workspace\.json/, "the bad path must never be read as a workspace");
@@ -3877,16 +3211,6 @@ describe("--help is a request that succeeded", () => {
 // ===========================================================================================
 // The enforcement report reads the policy the workspace YIELDS, not the one it declares
 // ===========================================================================================
-//
-// Measured on `d5a5eb7`, before this: `doctor .portulan --pack-root packs` printed
-// `Claude Code: 10 of 23 rule(s) compiled … → .claude/settings.json` while that file carried ELEVEN
-// rules' compilation, the eleventh composed from `rituals/checkpoints`. An arrow naming an artifact
-// beside a number that is not that artifact's, which is what `../.portulan/dod.md` condition 4 exists
-// against. `compile --matrix` said 4 uncovered gates and this said 3.
-//
-// The word is the one condition 1 was already rewritten to for the recipe set: **yields**, not
-// declares. These tests pin the agreement rather than the numbers, so they keep binding as the
-// workspace's own policy grows.
 describe("the enforcement report counts composed gates", () => {
     const enforcement = async () => {
         const { findings } = await inspect(path.join(REPO, ".portulan"), { schema: SCHEMA, packRoots: [path.join(REPO, "packs")] });
@@ -3908,9 +3232,6 @@ describe("the enforcement report counts composed gates", () => {
 
     test("composed rules are attributed BY NAME to the pack that contributes them", async () => {
         const said = await enforcement();
-        // The members, not just a count. A bare "N are composed" tells a reader nothing about which file
-        // to change when two packs contribute gates — and its "N of those" also read as the uncovered
-        // gates on the line above rather than as the whole yield. Both were pre-commit findings.
         assert.match(said, /composed from its packs rather than declared in/);
         assert.match(said, /`commit-without-the-hooks` \(rituals\/checkpoints\)/, "the rule and its pack are named");
         assert.match(said, /of the \d+ rule\(s\) this workspace yields/, "the subject is the yield, not the uncovered gates");
@@ -3922,20 +3243,6 @@ describe("the enforcement report counts composed gates", () => {
     });
 });
 
-// A workspace may compose gate-contributing packs while declaring no policy of its own — the guard
-// above keys on `workspace.gates`, and composition does not. `examples/` is exactly that shape in this
-// tree, and `../.portulan/verify/doctor.sh` grades it on every run, so this note is REPORT severity:
-// a failure would turn the repository's own required verify red over a workspace behaving as designed.
-// The property the else-branch's comment claims: the note keys on gate FRAGMENTS, not on `packs` being
-// non-empty, so a workspace composing packs that contribute no gates stays silent here. The comment
-// cited `doctor.test.mjs`'s no-gates case for this, and that fixture declares no `packs` at all — so it
-// could not bind the keying, and rekeying the guard to `contributions.length` left the whole suite
-// green. Written at the pre-commit checkpoint, which measured exactly that. `tools/github` is the real
-// instance: a composed pack contributing verify recipes and no gates.
-// The other half of what this tool can KNOW. An unresolved pack's manifest is unreadable, so whether it
-// would have contributed gates is not a fact in reach — the sentence must say the totals may be
-// incomplete, never that gates were missed, which would claim knowledge of a file it could not open.
-// Listed as undemonstrated by the pre-commit pass; pinned here rather than left as prose.
 test("an unresolved pack makes the totals INCOMPLETE, never a claim about gates it could not read", async () => {
     const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-unresolvedpack-"));
     SCRATCH.push(dir);
@@ -3961,32 +3268,23 @@ test("an unresolved pack makes the totals INCOMPLETE, never a claim about gates 
 });
 
 test("a workspace composing a pack that contributes NO gates says nothing about enforcement", async () => {
-    // Built from `wellFormed()` and its files, not hand-rolled: the first cut of this test declared a
-    // bare manifest, failed schema validation, and never reached the packs or enforcement sections at
-    // all — so it passed with zero enforcement findings for a reason that had nothing to do with gate
-    // fragments, and rekeying the guard left it green. A fixture that does not reach the code under
-    // test is a test that cannot fail. Measured, then rebuilt.
     const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-nogatefrag-"));
     SCRATCH.push(dir);
     for (const [rel, body] of Object.entries(minimalFiles)) fs.writeFileSync(path.join(dir, rel), body);
     fs.writeFileSync(path.join(dir, "verify.sh"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    // `tools/github` contributes verify recipes and no gates.
     fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify({ ...wellFormed(), packs: ["tools/github"] }));
     const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [path.join(REPO, "packs")] });
-    // The precondition: this fixture really did reach the composition. Without it the assertion below
-    // is satisfied by any early return.
     assert.ok(checks(findings, "packs").length > 0, "the packs section ran — otherwise the assertion below proves nothing");
     assert.equal(checks(findings, "enforcement").length, 0, "no gate fragments composed, so nothing to say about enforcement");
 });
 
-// The no-policy branch counts only packs that RESOLVED, so where one did not it must say the count is a
-// floor. Without that, "composes N from its packs" implies the number covers every declared pack — the
-// same overstatement this change repairs one branch up. (Copilot, round 1 on #241.)
 test("the no-policy note says its count is a FLOOR when a declared pack did not resolve", async () => {
     const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-partialcompose-"));
     SCRATCH.push(dir);
     for (const [rel, body] of Object.entries(minimalFiles)) fs.writeFileSync(path.join(dir, rel), body);
     fs.writeFileSync(path.join(dir, "verify.sh"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
-    // Declares no `gates`, composes one pack that resolves and contributes fragments, and one that does not.
+    // `rituals/checkpoints` resolves and contributes gates; `no/such-pack` does not resolve.
     fs.writeFileSync(
         path.join(dir, "workspace.json"),
         JSON.stringify({ ...wellFormed(), slots: { identity: "identity.md", principles: "principles.md", gates: "gate-map.md" }, packs: ["rituals/checkpoints", "no/such-pack"] }),

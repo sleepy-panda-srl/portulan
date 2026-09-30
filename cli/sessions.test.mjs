@@ -1,12 +1,4 @@
 // `sessions` — the cache lifetime's offer, and `doctor`'s one line on the session switches.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// The texts, against the facts they state: the key in the offer is one the manifest takes and `compile`
-// writes, the version it names is the one `sessions` arrived at, and the figures are the ones the ledger
-// prices with. Then `doctor`'s line, switch by switch, on manifests built here. What `init`, `upgrade` and
-// `doctor` do with them, on trees they really wrote, is in `init.test.mjs`, `upgrade.test.mjs` and
-// `doctor.test.mjs`.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -19,9 +11,7 @@ import { CACHE_LIFETIMES } from "./compile.mjs";
 import { WRITE_BY_LIFETIME } from "./ledger.mjs";
 import { LIFETIME_OFFER, OFFER_ENDS, offerLines, sessionsLine } from "./sessions.mjs";
 
-// A HERMETIC HOST. `sessions` never asks the host where packs are installed, but this suite imports
-// `./compile.mjs`, which can, so it neutralises the installed-plugin record the way every suite in that
-// closure does. Swept by `pinned-roots.live.test.mjs`, whose header carries the argument.
+// This suite imports `./compile.mjs`, which can read the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -34,8 +24,6 @@ const TO_UPGRADE = "; `portulan upgrade` prints the five-minute lifetime's offer
 
 describe("the offer states what is true of the key it offers", () => {
     test("the key in the offer is JSON the manifest takes, at a lifetime `compile` writes", () => {
-        // The code span is the one thing an adopter copies, so it is parsed rather than read: a typo in it
-        // would be a manifest `doctor` refuses, handed over by the tool that offered it.
         const span = /`("sessions": \{[^`]*\})`/.exec(LIFETIME_OFFER.what);
         assert.ok(span, "the offer names the key in a code span");
         const declared = JSON.parse(`{${span[1]}}`);
@@ -57,7 +45,6 @@ describe("the offer states what is true of the key it offers", () => {
     });
 
     test("the multipliers it states are the ones the ledger prices a threshold with", () => {
-        // A figure in prose beside a constant is two carriers of one fact; this pins the prose to the constant.
         assert.equal(WRITE_BY_LIFETIME["5m"], 1.25);
         assert.equal(WRITE_BY_LIFETIME["1h"], 2);
         assert.match(LIFETIME_OFFER.reason, /^A five-minute cache write costs 1\.25 times an uncached input token where an hour's costs 2\./);
@@ -133,7 +120,6 @@ describe("doctor's one line on the session switches", () => {
     });
 
     test("declared multipliers are named with their figures, and a horizon only where declared", () => {
-        // `spend`'s shape at Workspace Definition 2.12: `{ multipliers: { read, write: { "5m", "1h" } }, horizon: { requests } }`.
         const spend = { multipliers: { read: 0.05, write: { "5m": 1.25, "1h": 2 } }, horizon: { requests: 30 } };
         const line = sessionsLine({ kind: "repository", sessions: { cache_lifetime: "5m" }, spend });
         assert.equal(line, "cache lifetime 5m, compiled as `promptCacheTtl`; git instructions the host's default; multipliers declared, read 0.05× and writes 1.25×/2×; a horizon of 30 requests");
@@ -142,7 +128,6 @@ describe("doctor's one line on the session switches", () => {
     });
 
     test("a declared block is said after the figures, and an advice, the default, is not", () => {
-        // `spend.restart` at Workspace Definition 2.13: `"advise"` or `"block"`.
         assert.equal(
             sessionsLine({ kind: "repository", sessions: { cache_lifetime: "5m" }, spend: { horizon: { requests: 30 }, restart: "block" } }),
             "cache lifetime 5m, compiled as `promptCacheTtl`; git instructions the host's default; multipliers the general ones; a horizon of 30 requests; a turn's end held once at the restart threshold",

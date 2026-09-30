@@ -1,13 +1,4 @@
 // Tests for `finish` — one call closes a change: the fragment, the commit, every recipe on it, the push.
-//
-// Zero dependencies, node's own runner, and run by the same recipe as every suite here:
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// Every case builds a scratch repository cloned from a scratch bare origin, so a push lands beside it and
-// nothing reaches a real remote. What the suite pins is the command's promise: a change closes only with
-// every recipe green on the commit it made, and when anything is red, nothing is pushed and the commit it
-// made is undone, its changes staged; it never pushes to the base branch, never skips a hook, never forces.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -19,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 import { finish, fragmentIn, parseArgs, run, runRecipe, tailKeeper, treeRoots } from "./finish.mjs";
 
-// A HERMETIC HOST: the recipe set's pack discovery reads the host's plugin cache, and nothing here may.
+// The recipe set's pack discovery reads the host's plugin cache: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -38,7 +29,6 @@ function scratch() {
     return dir;
 }
 
-// Git reads no configuration of this machine's: an identity of its own, no global or system file, no signing.
 const HOME = scratch();
 const ENV = {
     ...process.env,
@@ -63,17 +53,13 @@ const write = (root, rel, text) => {
 
 const GREEN = [{ id: "docs", run: "true" }];
 
-/**
- * A clone on a working branch `feat`, its base `main` pushed to a bare origin whose HEAD is recorded.
- * `recipes` are the workspace's, the first its default; `fragments` says whether the tree keeps `changes/`.
- */
+// A clone on branch `feat` of a bare origin holding `main`; `fragments` says whether the tree keeps `changes/`.
 function clone({ recipes = GREEN, fragments = true, manifest = {}, files = {} } = {}) {
     const root = scratch();
     const origin = path.join(root, "origin.git");
     const work = path.join(root, "work");
     git(root, ["init", "-q", "--bare", origin]);
-    // Set explicitly: `git init --bare` follows the host's init.defaultBranch, and `set-head -a` then fails
-    // wherever that is not `main` (./stop-gate.test.mjs measured it on CI).
+    // `git init --bare` follows the host's init.defaultBranch, and `set-head -a` fails where that is not `main`.
     git(root, ["--git-dir", origin, "symbolic-ref", "HEAD", "refs/heads/main"]);
     git(root, ["clone", "-q", origin, work]);
     write(work, ".portulan/workspace.json", JSON.stringify({ name: "fixture", ...manifest, verify: { default: recipes[0].id, recipes } }));
@@ -89,10 +75,7 @@ function clone({ recipes = GREEN, fragments = true, manifest = {}, files = {} } 
     return { work, origin };
 }
 
-/**
- * A change on `feat`: an edit and, unless told otherwise, its fragment, staged by name as a caller stages a
- * new file in the same call, since the command never stages an untracked one.
- */
+// Stages the fragment by name, as a caller must: the command never stages an untracked file.
 function change(work, { fragment = true } = {}) {
     fs.appendFileSync(path.join(work, "f.txt"), "one\n");
     if (fragment) {
@@ -101,7 +84,6 @@ function change(work, { fragment = true } = {}) {
     }
 }
 
-/** A pack, `tools/thing` unless named, whose one recipe passes, as its `pack.json` and README spell it under `dir`. */
 function packAt(dir, ref = "tools/thing") {
     const [category, name] = ref.split("/");
     write(dir, `${ref}/pack.json`, JSON.stringify({
@@ -111,7 +93,6 @@ function packAt(dir, ref = "tools/thing") {
     write(dir, `${ref}/README.md`, `# ${name}\n`);
 }
 
-/** A host whose plugin record installs one plugin carrying these packs, as an installed Portulan carries its own. */
 function hostWith(refs = ["tools/thing"]) {
     const host = scratch();
     const installPath = path.join(host, "plugins", "cache", "feed", "portulan", "0.1.0");
@@ -520,7 +501,6 @@ describe("a red stops it, and undoes its own commit", () => {
         const { work, origin } = clone();
         change(work);
         assert.equal((await close(work, ["-m", "One"])).code, 0);
-        // Someone else moves the remote branch.
         const other = path.join(path.dirname(work), "other");
         git(path.dirname(work), ["clone", "-q", "-b", "feat", origin, other]);
         write(other, "g.txt", "theirs\n");

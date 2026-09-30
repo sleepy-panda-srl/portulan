@@ -1,21 +1,4 @@
 // The sender's field map, against the real issue forms rather than against a fixture.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// `feedback.mjs` has to carry the shape of `.github/ISSUE_TEMPLATE/*.yml` — `package.json`'s `files`
-// does not ship those forms, so a published package cannot read them; parsing YAML at runtime would
-// need a dependency this CLI is ruled not to have, and generating the map would need a build step it is
-// ruled not to have either. That leaves **one fact with two carriers**, which is the defect this
-// repository names more often than any other, so it gets `0020`'s repair for the case where a single
-// carrier is impossible: one carrier, and a rail on the pair.
-//
-// This is the rail. It runs in this repository's own CI, which is the only place the forms can change.
-//
-// **It parses YAML with a reader written here**, which is a smaller claim than it sounds: it is a
-// reader for these three files, in this repository, exercised by these assertions on every run — not a
-// general parser. What makes that safe rather than convenient is the precondition below: if the reader
-// stops understanding a form and returns nothing, the test **fails** instead of passing vacuously. A
-// rail that goes quiet when its instrument breaks is the false green this project keeps paying for.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -32,17 +15,12 @@ const TEMPLATES = path.join(REPO, ".github", "ISSUE_TEMPLATE");
 // A reader for these three files
 // ===========================================================================================
 
-/** The column a line's content starts at, or Infinity for a blank one. */
 function indent(line) {
     if (!line.trim()) return Infinity;
     return line.length - line.trimStart().length;
 }
 
-/**
- * Read a scalar that may be folded (`>`) or literal (`|`) across the lines that follow it, the way
- * GitHub reads these forms: continuation lines are the ones indented past the key, joined with single
- * spaces. `at` is the column the key itself starts at.
- */
+// `at` is the column its key starts at.
 function scalar(lines, i, at, inline) {
     if (!/^[|>][+-]?$/.test(inline)) return { value: unquote(inline), next: i + 1 };
     const collected = [];
@@ -213,9 +191,6 @@ describe("the shipped field map against the real issue forms", () => {
     }
 
     test("a form that declares a label the sender never sets is not a gap the sender has to close", () => {
-        // Every form declares `labels:`, and the sender deliberately sends none — proposal 0014:
-        // "No issue triage, labelling or routing from the client. The repository owns its own labels."
-        // Asserted so a later reader meets the decision instead of the omission.
         for (const declared of FORMS) {
             const read = readForm(fs.readFileSync(path.join(TEMPLATES, declared.file), "utf8"));
             assert.deepEqual(read.labels, [declared.kind], `${declared.file}: the form labels itself`);

@@ -1,28 +1,4 @@
 // `upgrade` — the migration chain, and the three kinds of step.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// Written before the tool. Row 7 says the CLI ships `upgrade` and that it *"migrates a workspace in
-// either residence"*; `spec/migrations/README.md` is the contract this file grades against.
-//
-// ## What this file must not become
-//
-// A suite that builds its own idea of a workspace and then agrees with itself. This repository has
-// measured **seven** instances of a harness inheriting the blind spot of the change it checks, two of
-// them in the session immediately before this one. So the split is deliberate:
-//
-// - **Here**: the step contract, the chain's arithmetic, the pre-state gate, the exit codes, and the
-//   refusals — against `ws` views built in memory, which is the honest way to force a step's own
-//   branches red.
-// - **`upgrade.live.test.mjs`**: the same tool against workspaces the **real `init`** drafts and
-//   against this repository's own two workspaces, because the repair's whole subject is a workspace
-//   that travelled and no fixture written here has ever travelled anywhere.
-//
-// ## The one thing a green here cannot mean
-//
-// That `0001` was exercised on a real workspace. **Nothing in this tree declares Workspace Definition
-// 1.0** — `.portulan` is 2.8, `examples/` is 2.4, the drifted fixture is 2.0 — so the version step is
-// fixture-only, said here rather than left for a reader to infer from a passing suite.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -40,10 +16,7 @@ import { run as init } from "./init.mjs";
 import { unitDigest } from "./instructions.mjs";
 import { execFileSync } from "node:child_process";
 
-// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
-// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
-// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
-// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+// The tools read the host's installed-plugin record, so every case gets an empty host unless it passes `env:`.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -52,19 +25,6 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
 const MARKER = "portulan:bundle-fallback";
 
-// The per-directory `try` is not defensive habit: the unreadable-component case chmods a scratch
-// child to `0o000` while EMPTY — unreadable, so still a hazard — and restores it in `finally`, so a
-// case dying before its `finally` leaves a directory `rmSync` cannot enter. `force: true` suppresses
-// ENOENT, not EACCES. Naked, that throw aborts the loop inside an `exit` handler and abandons every
-// directory after it. This was the LAST carrier found, because the sweep that fixed the other seven
-// grepped for `SCRATCH` and this array is named `scratches` — the same measure-the-convention-not-the-
-// phenomenon defect the sweep existed to repair.
-//
-// Which locks actually bite was measured, not assumed, because a hazard claimed where none exists
-// is the same defect as one missed: an EMPTY directory still removes if it is READABLE, so only an
-// unreadable one blocks while empty; a NON-EMPTY one additionally needs write and search. The errno
-// follows readability, not position: an UNREADABLE root gives EACCES, while everything else — a
-// locked child, or a readable-but-unwritable root — gives ENOTEMPTY.
 const scratches = [];
 function scratch() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-upgrade-"));
@@ -81,7 +41,6 @@ process.on("exit", () => {
     }
 });
 
-/** A harness that captures both streams, so a test can assert what a user was told. */
 function harness() {
     const out = [];
     const err = [];
@@ -93,13 +52,6 @@ function harness() {
     };
 }
 
-/**
- * A `ws` view built in memory — the shape `spec/migrations/README.md` promises a step.
- *
- * In memory rather than on disk **on purpose**: a step's `owed` has branches that a real directory
- * makes expensive to reach (an unreadable file, a marked line of the wrong shape), and a branch that
- * is expensive to reach is a branch that ends up untested.
- */
 function view(manifest, files = {}, dir = "/nowhere") {
     const text = `${JSON.stringify(manifest, null, 2)}\n`;
     return {
@@ -115,7 +67,6 @@ function view(manifest, files = {}, dir = "/nowhere") {
     };
 }
 
-/** A governing manifest, minimal and legal, at whatever spec version a case needs. */
 function manifest(spec, extra = {}) {
     return {
         portulan: { spec },
@@ -127,7 +78,6 @@ function manifest(spec, extra = {}) {
     };
 }
 
-/** A drafted rail's two marked lines, as `cli/init.mjs` writes them. */
 function railWith(bundle) {
     return [
         "#!/usr/bin/env bash",
@@ -142,8 +92,6 @@ function railWith(bundle) {
 
 const steps = await loadSteps();
 const stepById = (id) => steps.find((s) => s.id.startsWith(id));
-
-// ===========================================================================================
 
 describe("the step contract — every module in spec/migrations/ satisfies it", () => {
     test("the directory yields at least the two steps this session ships", () => {
@@ -174,8 +122,6 @@ describe("the step contract — every module in spec/migrations/ satisfies it", 
     });
 
     test("no step reaches the pack train — the README's first stated limit", () => {
-        // Two version trains exist. A step touching `portulan.pack` would be migrating a contract
-        // this chain does not govern, and the failure would be silent.
         for (const step of steps) {
             const source = fs.readFileSync(path.join(REPO, "spec", "migrations", `${step.id}.mjs`), "utf8");
             assert.doesNotMatch(source, /portulan\s*\.\s*pack\b|"pack"\s*:/, `${step.id} reaches the Pack Definition`);
@@ -193,14 +139,11 @@ describe("the bundle's spec version is derived, never written down", () => {
     test("no literal current version is spelled in the tool", () => {
         const source = fs.readFileSync(path.join(REPO, "cli", "upgrade.mjs"), "utf8");
         const { major, minor } = bundleSpec();
-        // The version as a bare quoted string. `2.0` may legitimately appear as step 0001's target.
         assert.doesNotMatch(source, new RegExp(`["'\`]${major}\\.${minor}["'\`]`), "the current spec version is written down in upgrade.mjs");
     });
 });
 
-// ===========================================================================================
-// Step 0001 — the version step
-// ===========================================================================================
+// ---------------------------------------------------------------- step 0001 — the version step
 
 describe("0001 — a repository workspace declares its tree", () => {
     const step = () => stepById("0001");
@@ -236,9 +179,6 @@ describe("0001 — a repository workspace declares its tree", () => {
     });
 
     test("`../` IS derived where the parent is verifiably a repository root — and a worktree's .git is a FILE", () => {
-        // This repository is currently checked out as a worktree, where `.git` is a file rather than
-        // a directory. A directory-only test would have been green in this suite and wrong for every
-        // worktree user — which is this project's own recurring shape, so both are forced here.
         for (const kind of ["dir", "file"]) {
             const root = scratch();
             const wsDir = path.join(root, ".portulan");
@@ -261,9 +201,7 @@ describe("0001 — a repository workspace declares its tree", () => {
     });
 });
 
-// ===========================================================================================
-// Step 0002 — the repair
-// ===========================================================================================
+// ---------------------------------------------------------------- step 0002 — the repair
 
 describe("0002 — the bundle path a rewriter owes", () => {
     const step = () => stepById("0002");
@@ -280,26 +218,17 @@ describe("0002 — the bundle path a rewriter owes", () => {
     });
 
     test("idempotent for a bundle path that JSON has to ESCAPE — the Windows shape", () => {
-        // `init` emits `JSON.stringify(...)`, so a bundle at `C:\Users\x` is written
-        // `"C:\\Users\\x/cli/index.mjs"`. Comparing that raw source text to an unescaped `want` never
-        // matches, and the step reports itself perpetually owed — rewriting the same file every run.
-        //
-        // Invisible on POSIX, where an ordinary path contains nothing JSON escapes, so every test and
-        // every live run here passed over it. Copilot's promoted note, round 4.
         for (const bundle of ["C:\\Users\\x", "/tmp/with\\backslash", '/tmp/with"quote']) {
             const ws = view(manifest("2.8", { tree: "../" }), { "verify/index.sh": railWith(bundle) });
             const at = { bundle, spec: bundleSpec(), tree: null };
             assert.equal(step().owed(ws, at).owed, false, `${bundle}: a rail already naming this bundle was reported owed`);
 
-            // And the other direction: a DIFFERENT escaped path is still owed, so the fix cannot be
-            // "always answer not-owed".
             const stale = view(manifest("2.8", { tree: "../" }), { "verify/index.sh": railWith("C:\\Other\\bundle") });
             assert.equal(step().owed(stale, at).owed, true, `${bundle}: a foreign escaped path was reported current`);
         }
     });
 
     test("a round trip through the rewrite survives escaping", () => {
-        // Rewrite to an escaping path, then ask again: the value written must be the value read back.
         const bundle = "C:\\Users\\x";
         const ws = view(manifest("2.8", { tree: "../" }), { "verify/index.sh": railWith("/somewhere/else") });
         const at = { bundle, spec: bundleSpec(), tree: null };
@@ -315,8 +244,6 @@ describe("0002 — the bundle path a rewriter owes", () => {
     });
 
     test("a file that cannot be READ is `could not tell`, never `not owed`", () => {
-        // The whole of *an empty set is two questions*. A read that failed must not answer the
-        // question it could not look at.
         const ws = view(manifest("2.8", { tree: "../" }), { "verify/index.sh": null });
         const answer = step().owed(ws, ctx());
         assert.equal(answer.owed, null, "an unreadable file answered a question nobody could look at");
@@ -345,17 +272,12 @@ describe("0002 — the bundle path a rewriter owes", () => {
     });
 
     test("it repairs a marked line WHEREVER it is, not only in verify/index.sh", () => {
-        // The marker is the contract — `cli/init.mjs` says so in as many words. Keying on the
-        // filename instead would be a second, narrower carrier of the same rule.
         const ws = view(manifest("2.8", { tree: "../" }), { "verify/other.sh": railWith("/somewhere/else") });
         assert.equal(step().owed(ws, ctx()).owed, true);
         assert.equal(step().plan(ws, ctx()).edits[0].file, "verify/other.sh");
     });
 
     test("a document that TALKS about the marker is not a marked line", () => {
-        // Found by running this step against `.portulan` rather than against these fixtures: a
-        // handoff documents the marker in a sentence, and the first cut refused the whole workspace
-        // over it — exit 2, on the one workspace this repository owns. A token appears in prose.
         const prose = `Both lines now carry the token \`# ${MARKER}\` — a rewriter can find them.\n`;
         const ws = view(manifest("2.8", { tree: "../" }), { "handoffs/2026-08-11-a-handoff.md": prose });
         assert.equal(step().owed(ws, ctx()).owed, false, "a paragraph about the marker was read as a marked line");
@@ -363,8 +285,7 @@ describe("0002 — the bundle path a rewriter owes", () => {
     });
 
     test("the scope is scripts, not `verify/index.sh` — the marker stays the carrier", () => {
-        // Narrowing to a filename would make a second and narrower carrier of the rule the marker
-        // exists to BE. A shebang is enough; so is a `.sh` name.
+        // A script is a `.sh` name or a shell shebang, and `tools/rail` has only the shebang.
         const stale = railWith("/somewhere/else");
         for (const rel of ["verify/index.sh", "verify/other.sh", "tools/rail"]) {
             const ws = view(manifest("2.8", { tree: "../" }), { [rel]: stale });
@@ -373,10 +294,7 @@ describe("0002 — the bundle path a rewriter owes", () => {
     });
 
     test("a bundle path containing `$&` is spliced verbatim, not read as a replacement pattern", () => {
-        // `String.prototype.replace` reads `$&`, `` $` ``, `$'` and `$$` in the replacement as
-        // patterns. With a string replacer, a checkout under such a directory wrote a rail with the
-        // OLD path spliced back in and the quoting broken — and `doctor` grades that green, because
-        // it never runs shell. Found at the pre-commit checkpoint by building the path.
+        // `String.prototype.replace` reads `$&`, `` $` ``, `$'` and `$$` in a replacement string as patterns.
         for (const nasty of ["/tmp/a$&b", "/tmp/a$`b", "/tmp/a$'b", "/tmp/a$$b"]) {
             const ws = view(manifest("2.8", { tree: "../" }), { "verify/index.sh": railWith("/somewhere/else") });
             const planned = step().plan(ws, { bundle: nasty, spec: bundleSpec(), tree: null });
@@ -390,8 +308,6 @@ describe("0002 — the bundle path a rewriter owes", () => {
     });
 
     test("a path that still resolves is re-pointed anyway — the README's second stated limit", () => {
-        // Deterministic beats conditional: repairing only what is broken HERE makes the result
-        // depend on which machine ran it.
         const other = scratch();
         fs.mkdirSync(path.join(other, "cli"), { recursive: true });
         fs.writeFileSync(path.join(other, "cli", "index.mjs"), "// a real, resolvable second checkout\n");
@@ -401,9 +317,7 @@ describe("0002 — the bundle path a rewriter owes", () => {
     });
 });
 
-// ===========================================================================================
-// The chain
-// ===========================================================================================
+// ---------------------------------------------------------------- the chain
 
 describe("the plan, and what `could not tell` does to it", () => {
     const ctx = () => ({ bundle: REPO, spec: bundleSpec(), tree: null });
@@ -421,13 +335,7 @@ describe("the plan, and what `could not tell` does to it", () => {
     });
 
     test("and the TOOL refuses on it — exit 2, never a green `owes nothing`", async () => {
-        // The test above proves the arithmetic and NOT the tool's response to it: it calls
-        // `planFor` directly, so deleting `run`'s guard left it green. Found by mutating the
-        // guard rather than by reading the suite — one rule, two sites, covered at one.
-        //
-        // The route to `owed: null` here is a marked line of a shape `0002` does not recognise,
-        // which is deterministic. A chmod-000 file would exercise the same branch and would stop
-        // exercising it the moment anything ran this suite as root.
+        // Could-not-tell through a marked line `0002` does not recognise, not a chmod, which root ignores.
         const { major, minor } = bundleSpec();
         const root = scratch();
         fs.mkdirSync(path.join(root, ".git"));
@@ -447,7 +355,6 @@ describe("the plan, and what `could not tell` does to it", () => {
 });
 
 describe("the pre-state gate — which direction the workspace is off in", () => {
-    /** A workspace directory on disk, valid enough for `doctor` to reach a verdict. */
     function onDisk(spec, extra = {}) {
         const root = scratch();
         const dir = path.join(root, ".portulan");
@@ -460,21 +367,11 @@ describe("the pre-state gate — which direction the workspace is off in", () =>
         return dir;
     }
 
-    // These two assert on THIS TOOL'S OWN sentence, and say so, because a looser assertion was
-    // measured to pass for the wrong reason. `doctor` also refuses a workspace from the future, and
-    // once its refusal was taught to say "upgrade the CLI" (a later adjustment in this same session),
-    // disabling `upgrade`'s gate entirely STILL produced exit 2 with those words — `doctor`'s throw
-    // leaking through the `inspect` call further down. The test could no longer fail for its reason.
-    // Caught by re-running the mutation harness after the tree changed under it.
-    //
-    // So: match what only `upgrade` says, and prove the gate fired BEFORE anything reached `doctor`.
+    // `doctor` refuses a future workspace too, so only this tool's own sentence shows its gate fired.
     const OWN = /this bundle is OLDER than the workspace/;
     const VIA_DOCTOR = /doctor could not grade/;
 
     test("a workspace from the FUTURE is could-not-run, never a green `nothing owed`", async () => {
-        // The defect the session-open checkpoint caught. Branching on the FACT of doctor's throw
-        // sent a 3.0 workspace into the plan, where every step answered `not owed`, and the run
-        // exited 0 — a green rendered by a tool that could not read the workspace.
         for (const spec of ["3.0", "9.9"]) {
             const h = harness();
             assert.equal(await run([onDisk(spec, { tree: "../" })], h.options), 2, `${spec} must be could-not-run`);
@@ -492,8 +389,7 @@ describe("the pre-state gate — which direction the workspace is off in", () =>
     });
 
     test("a workspace doctor already REDS is refused before anything is planned", async () => {
-        // `repository` with no `tree` is a fail at the version it declares — not something a
-        // migration should layer a second problem onto.
+        // A `repository` with no `tree` is red at the version it declares.
         const dir = onDisk(`${bundleSpec().major}.${bundleSpec().minor}`);
         const h = harness();
         assert.equal(await run([dir, "--write"], h.options), 1);
@@ -502,10 +398,6 @@ describe("the pre-state gate — which direction the workspace is off in", () =>
     });
 
     test("behind by a MAJOR that NO step reaches is could-not-run, not `nothing owed`", async () => {
-        // The same false green from the other end. `0.9` is below this bundle, so the pre-state gate
-        // is skipped and doctor will not grade it — and no step in the chain claims it, so the plan
-        // is empty. Reporting that as `current` would be the exact defect adjustment 1 names,
-        // reached by a workspace from the PAST instead of the future.
         const h = harness();
         assert.equal(await run([onDisk("0.9", { tree: "../" })], h.options), 2);
         assert.match(h.text(), /no migration in this chain reaches it/i);
@@ -563,8 +455,7 @@ describe("exit codes, which are the house three", () => {
         await assert.rejects(() => inspect(dir), /MAJOR|migration/i, "doctor must refuse the pre-state — that refusal is why this tool exists");
         assert.equal(await run([dir, "--write"], harness().options), 0);
         const after = JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8"));
-        // 0001 moved it to 2.0; in the same run the steps moving the form were asked again, and 0006
-        // drafted its card, whose slot arrived in 2.10 (2026-09-24).
+        // `0001` gives 2.0, and in the same run `0006` drafts the card, stamping the 2.10 its slot needs.
         assert.equal(after.portulan.spec, "2.10");
         assert.equal(after.slots.context, "context/");
         assert.equal(after.tree, "../");
@@ -575,9 +466,6 @@ describe("exit codes, which are the house three", () => {
 
 describe("the repaired rail is still a rail", () => {
     test("the executable bit survives the rewrite — rename(2) replaces the inode", async () => {
-        // A repair that left `verify/index.sh` unexecutable would have broken the thing it exists to
-        // fix, and every assertion about the file's TEXT would still have passed. Behaviour, not
-        // content: the file is run.
         const { major, minor } = bundleSpec();
         const root = scratch();
         fs.mkdirSync(path.join(root, ".git"));
@@ -602,8 +490,6 @@ describe("rollback, and the arm where the rollback itself fails", () => {
         const root = scratch();
         const dir = path.join(root, ".portulan");
         fs.mkdirSync(dir, { recursive: true });
-        // No `.git`, so `../` cannot be derived; an explicit --tree that doctor will REJECT is the
-        // cleanest way to force a post-state red through the real validator.
         for (const f of ["identity.md", "principles.md", "gate-map.md"]) fs.writeFileSync(path.join(dir, f), `# ${f}\n`);
         fs.mkdirSync(path.join(dir, "verify"), { recursive: true });
         fs.writeFileSync(path.join(dir, "verify", "workspace.sh"), "#!/usr/bin/env bash\nexit 2\n", { mode: 0o755 });
@@ -618,13 +504,12 @@ describe("rollback, and the arm where the rollback itself fails", () => {
     });
 
     test("restore() reports what it did NOT restore rather than claiming the tree is clean", () => {
-        // The promise "the workspace is exactly as it was" is one a mid-restore EACCES breaks.
         const dir = scratch();
         const good = path.join(dir, "a.txt");
         fs.writeFileSync(good, "new\n");
         const result = restore(dir, [
             { file: "a.txt", previous: "old\n" },
-            { file: "nested/b.txt", previous: "old\n" }, // no such directory — the restore fails
+            { file: "nested/b.txt", previous: "old\n" },
         ]);
         assert.equal(result.ok, false);
         assert.deepEqual(result.restored, ["a.txt"]);
@@ -634,14 +519,6 @@ describe("rollback, and the arm where the rollback itself fails", () => {
 });
 
 describe("either residence", () => {
-    /**
-     * A host record with `name` installed at `root`, in the shape `cli/discover.mjs` actually reads.
-     *
-     * The record maps `<plugin>@<marketplace>` to an **array** — one entry per install scope — and
-     * the path key is `installPath`. Written from `readInstalls` rather than from memory: a fixture
-     * shaped by guesswork would have made every case here vacuously `not-installed`, which is the
-     * failure this suite's own header is about.
-     */
     function host(name, root) {
         const config = scratch();
         fs.mkdirSync(path.join(config, "plugins"), { recursive: true });
@@ -686,11 +563,6 @@ describe("either residence", () => {
     });
 
     test("the resides-here sentence claims no OWNERSHIP it did not check", async () => {
-        // `discover` says "this repository's workspace resides here" because it is asked about a
-        // repository's own `.portulan`. This tool takes any workspace directory — `examples/`, a
-        // portfolio, a typed path — so borrowing that sentence would infer ownership from the mere
-        // absence of `kind: pointer`, which is a different fact from the one checked.
-        // Copilot, round 1 on #231.
         for (const kind of ["repository", "demo", "portfolio"]) {
             const dir = path.join(scratch(), ".portulan");
             fs.mkdirSync(dir, { recursive: true });
@@ -720,9 +592,6 @@ describe("either residence", () => {
     });
 
     test("--write REFUSES to write into a resolved install, and says why", async () => {
-        // A cache install is a materialisation whose identity is a version claim, not one of the
-        // two residences. Migrating it in place would leave a directory that no longer matches the
-        // version the host's record names for it.
         const gov = governing();
         const config = host("acme-platform", path.dirname(gov));
         const before = fs.readFileSync(path.join(gov, "workspace.json"), "utf8");
@@ -734,9 +603,7 @@ describe("either residence", () => {
     });
 
     test("an installed copy is never offered the cache lifetime: nothing is declared there", async () => {
-        // The governing workspace is a `repository` that declares no lifetime, so only the guard on a resolved
-        // install keeps the offer out: the copy read here is not the manifest a person edits, and a run in
-        // the workspace's own directory prints the offer.
+        // The governing workspace declares no lifetime, so only the guard on a resolved install keeps the offer out.
         const gov = governing();
         const { name } = JSON.parse(fs.readFileSync(path.join(gov, "workspace.json"), "utf8"));
         const config = host(name, path.dirname(gov));
@@ -748,16 +615,10 @@ describe("either residence", () => {
 });
 
 describe("the cache lifetime's offer, printed after each closing line and never written", () => {
-    // Proposal 0038, item 4 of its order of work (2026-09-24): `init` offers five-minute cache writes to a
-    // repository it drafts, and `upgrade` prints the same offer to one drafted before, until its manifest
-    // declares a lifetime.
     const OFFER = offerLines().map((l) => `upgrade: ${l}\n`);
     const quiet = { say: () => {}, warn: () => {} };
 
-    /**
-     * A repository workspace that owes nothing, drafted by the real `init`: its form is the new one, card
-     * included, which a manifest written here would owe `0006` for. `edit` changes the manifest afterwards.
-     */
+    // Drafted by the real `init`: a manifest written here would owe `0006` its card.
     async function drafted(flags = [], edit = null) {
         const root = scratch();
         fs.mkdirSync(path.join(root, ".git"));
@@ -770,7 +631,6 @@ describe("the cache lifetime's offer, printed after each closing line and never 
         return dir;
     }
 
-    /** A green workspace of another kind at the bundle's own version, which owes no step of the form. */
     function current(extra = {}) {
         const { major, minor } = bundleSpec();
         const root = scratch();
@@ -783,7 +643,6 @@ describe("the cache lifetime's offer, printed after each closing line and never 
         return dir;
     }
 
-    /** A 1.0 workspace, which owes `0001` and the steps after it. */
     function behind() {
         const root = scratch();
         fs.mkdirSync(path.join(root, ".git"));
@@ -795,7 +654,6 @@ describe("the cache lifetime's offer, printed after each closing line and never 
         return dir;
     }
 
-    /** The lines printed after `closing`, which must be the offer and nothing else. */
     const after = (h, closing) => {
         const at = h.out.findIndex((l) => closing.test(l));
         assert.ok(at >= 0, `no closing line matching ${closing}:\n${h.text()}`);
@@ -861,10 +719,6 @@ describe("the cache lifetime's offer, printed after each closing line and never 
 
 describe("the three rules a tool writing into somebody's tree owes", () => {
     test("a borrowed refusal keeps its owner's words, and this tool's frame says who declined", async () => {
-        // The first cut substituted `vendor`'s verb — and the pattern said `refusing to copy through`
-        // while the message says `refuses`, so the rewrite was INERT under a comment asserting it
-        // worked. Rewriting was the wrong shape regardless: matching another module's sentence makes
-        // this file a second carrier of that module's wording. Copilot's promoted note, round 2.
         const root = scratch();
         const dir = path.join(root, ".portulan");
         fs.mkdirSync(dir, { recursive: true });
@@ -874,14 +728,10 @@ describe("the three rules a tool writing into somebody's tree owes", () => {
         assert.equal(result.ok, false);
         assert.match(result.reason, /could not be read for migration/, "the frame must say what THIS tool declined to do");
         assert.match(result.reason, /symlink/i);
-        // The owner's sentence, verbatim — no half-substituted verb, and no claim that it was reworded.
         assert.doesNotMatch(result.reason, /migrate through/, "a rewrite that half-fires is worse than none");
     });
 
     test("applyEdits creates a parent directory an edit names, and a rollback removes it again", () => {
-        // No step shipped today writes a new file, so nothing exercises this in production — which is
-        // why it is worth a test rather than a comment: a later step adding a nested file would have
-        // failed ENOENT on a valid edit. Copilot's promoted note, round 2.
         const dir = scratch();
         const applied = applyEdits(dir, [{ file: "nested/deeper/new.md", next: "# new\n" }]);
         assert.equal(applied.ok, true, applied.reason);
@@ -893,18 +743,7 @@ describe("the three rules a tool writing into somebody's tree owes", () => {
     });
 
     test("an edit naming a path OUTSIDE the workspace is refused, absolute or climbing", () => {
-        // A step's `edit.file` is text this tool did not author, and nothing in the step contract
-        // stops it naming `../` or `/etc`. This repository has paid for the class once already, at a
-        // persona's free-text `name`, where `../../poison` had `doctor` read, grade and GREEN a file
-        // outside the tree. Resolution rather than pattern-matching: every interesting escape parses
-        // fine and only fails once resolved. Copilot, round 4.
-        // **Every escaping path here is unique to this test's own scratch directory**, and that is not
-        // tidiness. A first version used `../escaped.md`, which resolves to `<tmpdir>/escaped.md` —
-        // the very path `cli/feedback.test.mjs` asserts must not exist. Refused, this test writes
-        // nothing; but a MUTATION run disables the guard on purpose, the write lands, and the file is
-        // left at a shared path where it fails an unrelated suite on the next run. Measured twice
-        // before the cause was found, and mistaken for a pre-existing flake both times, because the
-        // other test's own cleanup deletes the file and the failure self-heals on re-run.
+        // Each escape is unique to this scratch directory: a mutant's write must not land where another suite looks.
         const dir = scratch();
         const tag = path.basename(dir);
         const outside = path.join(dir, "..", `escaped-${tag}.md`);
@@ -914,19 +753,14 @@ describe("the three rules a tool writing into somebody's tree owes", () => {
             assert.equal(applied.ok, false, `${bad} was allowed`);
             assert.match(applied.reason, /outside/i);
         }
-        // Cleaned up regardless, so a mutation run that defeats the guard cannot poison a later one.
         for (const stray of [outside, absolute]) {
             assert.equal(fs.existsSync(stray), false, "a refused edit still wrote outside the workspace");
             fs.rmSync(stray, { force: true });
         }
-        // And the ordinary case still works, so the guard is not simply refusing everything.
         assert.equal(applyEdits(dir, [{ file: "inside.md", next: "ok\n" }]).ok, true);
     });
 
     test("ws.read() refuses an escaping path — the READ sibling of the write guard", () => {
-        // `list()` only yields what `walk` enumerated inside the workspace, so a step iterating it is
-        // safe. `read` takes whatever a step hands it, and the step contract does not constrain that.
-        // Guarding the write and not the read would be one rule at one of its two halves.
         const root = scratch();
         const dir = path.join(root, ".portulan");
         fs.mkdirSync(dir, { recursive: true });
@@ -941,10 +775,6 @@ describe("the three rules a tool writing into somebody's tree owes", () => {
     });
 
     test("restore() refuses an escaping snapshot too — the guard's sibling site", () => {
-        // `applyEdits` got containment and `restore` did not: one rule at one of its two sites, in
-        // the change whose commit message was about sweeping for siblings. Copilot found it; my sweep
-        // did not. `restore` is exported and takes snapshots from its caller, so the guard has to
-        // hold here on its own rather than by trusting where the values came from.
         const dir = scratch();
         const outside = path.join(dir, "..", `restored-${path.basename(dir)}.md`);
         fs.rmSync(outside, { force: true });
@@ -955,16 +785,7 @@ describe("the three rules a tool writing into somebody's tree owes", () => {
     });
 
     test("a write that fails AFTER creating directories leaves none of them behind", () => {
-        // The snapshot is pushed only on success, so a failure between `mkdir` and `rename` orphans
-        // every directory it made — created, unrecorded, invisible to `restore`. That is the leak in
-        // the fix that ADDED the directories, one round earlier. Copilot's promoted note, round 3.
-        //
-        // The window is `mkdir` succeeding and the write then failing — a disk-full or permissions
-        // race, which cannot be staged honestly on a real filesystem. So the writer is injected,
-        // which is the seam `init` and `skills-set` already use for exactly this reason. A first
-        // attempt at this test tried to force it with a directory in the target's place and proved
-        // nothing: the edit that created the directories SUCCEEDED, so they were recorded and
-        // `restore` owned them — the failure was a later edit's, and nothing was orphaned.
+        // Injected: a write failing after its `mkdir` succeeded cannot be staged on a real filesystem.
         const dir = scratch();
         const boom = () => {
             throw Object.assign(new Error("no space left on device"), { code: "ENOSPC" });
@@ -977,10 +798,6 @@ describe("the three rules a tool writing into somebody's tree owes", () => {
     });
 
     test("two edits in ONE new directory still unwind it — the rollback runs in reverse", () => {
-        // The directory is recorded as `created` on the first snapshot only. Unwound forwards, that
-        // snapshot's `rmdir` fails because the second file is still there and the directory survives
-        // a rollback that reported success. Found by sweeping for the sibling of the note that added
-        // the directories, not by a review round.
         const dir = scratch();
         const applied = applyEdits(dir, [
             { file: "fresh/one.md", next: "1\n" },
@@ -994,13 +811,7 @@ describe("the three rules a tool writing into somebody's tree owes", () => {
     });
 
     test("a directory that already existed is NOT removed by a rollback", () => {
-        // The unwind stops at what it did not create. Removing a directory the workspace already had
-        // would be the rollback causing damage of its own.
-        //
-        // **The pre-existing directory is left EMPTY on purpose.** A first version put a file in it,
-        // which made the assertion unfalsifiable: a non-empty directory defeats `rmdir` regardless of
-        // whether the unwind was correctly scoped, so the test would have passed over exactly the
-        // defect it names. Found by mutating the scope and watching it stay green.
+        // Left empty: a file in it would defeat `rmdir` however the unwind was scoped.
         const dir = scratch();
         fs.mkdirSync(path.join(dir, "kept"), { recursive: true });
         const applied = applyEdits(dir, [{ file: "kept/new.md", next: "# new\n" }]);
@@ -1036,17 +847,13 @@ describe("the three rules a tool writing into somebody's tree owes", () => {
     });
 });
 
-// ===========================================================================================
-// A step is somebody else's code — Copilot round 6 on #231
-// ===========================================================================================
+// ---------------------------------------------------------------- a step is somebody else's code
 
 describe("a step that misbehaves degrades to a verdict, never to a crash", () => {
     const ctx = () => ({ bundle: REPO, spec: bundleSpec(), tree: null });
     const ws = () => view(manifest("2.8", { tree: "../" }));
 
     test("a step whose `owed` THROWS is `could not tell`, not an exception out of the tool", async () => {
-        // The three-valued answer exists so that "this step could not work out whether it applies"
-        // has somewhere to go other than a green. An unhandled throw routed around it entirely.
         const boom = { id: "9999-boom", kind: "repair", from: null, to: null, title: "t", why: "w",
             owed() { throw new Error("a bug in a step"); }, plan: () => ({ ok: true, edits: [] }) };
         const planned = await planFor(ws(), ctx(), [boom]);
@@ -1055,8 +862,6 @@ describe("a step that misbehaves degrades to a verdict, never to a crash", () =>
     });
 
     test("a step whose `owed` returns nothing usable is `could not tell` too", async () => {
-        // `undefined.owed` is neither true, false nor null — and would have been counted as NOT owed
-        // by the arithmetic, which is the same false green from a third direction.
         for (const bad of [undefined, null, 42, {}]) {
             const junk = { id: "9998-junk", kind: "repair", from: null, to: null, title: "t", why: "w",
                 owed: () => bad, plan: () => ({ ok: true, edits: [] }) };
@@ -1067,10 +872,6 @@ describe("a step that misbehaves degrades to a verdict, never to a crash", () =>
 });
 
 describe("resolveTarget keeps read and parse apart, like readWorkspace does", () => {
-    // `0020`, at the second site inside the file whose own contract states the distinction: a
-    // SyntaxError carries no `.code`, so a malformed manifest fell through to "could not be read"
-    // and sent the reader to look at permissions instead of at their JSON.
-    // Copilot's suppressed note, round 7 on #231.
     test("a manifest that does not parse says so, and does not blame the read", async () => {
         const dir = scratch();
         fs.writeFileSync(path.join(dir, "workspace.json"), "{ not json");
@@ -1107,14 +908,11 @@ describe("a field that exists is not a value this contract defines", () => {
         owed: () => ({ owed: true, because: "b" }), plan: () => ({ ok: true, edits: [] }), ...over });
 
     test("`owed` must be exactly true, false or null — a truthy string is could-not-tell", async () => {
-        // The guard added in round 6 checked that the KEY existed. `{ owed: "yes" }` is neither true
-        // nor null, so it was counted as NOT owed — a false green through the guard meant to stop one.
         for (const bad of ["yes", 1, 0, "", undefined, {}]) {
             const planned = await planFor(view(manifest("2.8", { tree: "../" })), ctx(), [mk({ owed: () => ({ owed: bad, because: "b" }) })]);
             assert.equal(planned.unknown, 1, `${JSON.stringify(bad)} was accepted as a verdict`);
             assert.equal(planned.owed, 0);
         }
-        // …and the three legal values still pass through untouched.
         for (const [value, o, u] of [[true, 1, 0], [false, 0, 0], [null, 0, 1]]) {
             const planned = await planFor(view(manifest("2.8", { tree: "../" })), ctx(), [mk({ owed: () => ({ owed: value, because: "b" }) })]);
             assert.equal(planned.owed, o, `${value} changed the owed count`);
@@ -1131,7 +929,6 @@ describe("a field that exists is not a value this contract defines", () => {
 });
 
 describe("the apply loop refuses a plan a step did not describe", () => {
-    /** A workspace `doctor` grades green, so the run reaches the apply loop. */
     function green() {
         const { major, minor } = bundleSpec();
         const root = scratch();
@@ -1143,36 +940,31 @@ describe("the apply loop refuses a plan a step did not describe", () => {
         fs.writeFileSync(path.join(dir, "workspace.json"), `${JSON.stringify(manifest(`${major}.${minor}`, { tree: "../" }), null, 2)}\n`);
         return dir;
     }
-    // Owed until it has run, as a step whose edits are on disk owes nothing.
-    const owed = (plan) => {
+    const owedUntilRun = (plan) => {
         let ran = false;
         return [{ id: "9996-badplan", kind: "repair", from: null, to: null, title: "t", why: "w",
             owed: () => ({ owed: !ran, because: ran ? "ran" : "forced" }), plan: (...args) => ((ran = true), plan(...args)) }];
     };
 
     test("`{ ok: true }` with no edits array is a refusal, not a throw past the rollback", async () => {
-        // Previously `applyEdits(current.dir, undefined)` threw, which bypassed `undo()` entirely —
-        // the exact outcome the try/catch around the call exists to prevent. Copilot, round 8.
         const h = harness();
-        const code = await run([green(), "--write"], { ...h.options, steps: owed(() => ({ ok: true })) });
+        const code = await run([green(), "--write"], { ...h.options, steps: owedUntilRun(() => ({ ok: true })) });
         assert.equal(code, 2, h.text());
         assert.match(h.text(), /no `edits` array|did not describe/);
     });
 
     test("`{ ok: false }` with no reason does not print `undefined` at the user", async () => {
         const h = harness();
-        assert.equal(await run([green(), "--write"], { ...h.options, steps: owed(() => ({ ok: false })) }), 2);
+        assert.equal(await run([green(), "--write"], { ...h.options, steps: owedUntilRun(() => ({ ok: false })) }), 2);
         assert.match(h.text(), /without giving a reason/);
         assert.doesNotMatch(h.text(), /undefined/);
     });
 
     test("a well-formed empty plan is still applied and still lands green", async () => {
-        // The guards must refuse what is malformed, not what is merely empty.
         const h = harness();
-        assert.equal(await run([green(), "--write"], { ...h.options, steps: owed(() => ({ ok: true, edits: [] })) }), 0, h.text());
+        assert.equal(await run([green(), "--write"], { ...h.options, steps: owedUntilRun(() => ({ ok: true, edits: [] })) }), 0, h.text());
     });
 
-    // A step owed once a LATER one has run: as `0007` compiles the card `0008` edits.
     const pair = () => {
         const has = (ws, file) => fs.existsSync(path.join(ws.dir, file));
         const step = (id, owes, file) => ({ id, kind: "form", from: null, to: null, title: id, why: "w",
@@ -1195,7 +987,7 @@ describe("the apply loop refuses a plan a step did not describe", () => {
             plan: () => { throw new Error("a step owed by hand was planned"); } };
         const h = harness();
         const dir = green();
-        assert.equal(await run([dir, "--write"], { ...h.options, steps: [byHand, ...owed(() => ({ ok: true, edits: [{ file: "done.md", next: "x\n" }] }))] }), 1, h.text());
+        assert.equal(await run([dir, "--write"], { ...h.options, steps: [byHand, ...owedUntilRun(() => ({ ok: true, edits: [{ file: "done.md", next: "x\n" }] }))] }), 1, h.text());
         assert.ok(fs.existsSync(path.join(dir, "done.md")), "the rest of the chain did not run");
         assert.match(h.text(), /9992-by-hand \(form, by hand\) — t\n/);
         assert.match(h.text(), /applied 1 step\(s\) to [^\n]* — done\.md\. doctor is green\n[\s\S]*9992-by-hand is owed and not placed — add the line by hand\n/);
@@ -1249,9 +1041,6 @@ describe("the apply loop refuses a plan a step did not describe", () => {
 
 describe("the staging path is a path the containment guard never saw", () => {
     test("it is created EXCLUSIVELY, so a symlink there cannot be followed", () => {
-        // `walk` validates what exists when the workspace is read; the staging path does not exist
-        // then, so the containment guard says nothing about it. With default flags a symlink planted
-        // there is FOLLOWED and the write lands outside the workspace. Copilot, round 10 on #231.
         const dir = scratch();
         const seen = [];
         applyEdits(dir, [{ file: "a.md", next: "x\n" }], {
@@ -1288,8 +1077,7 @@ describe("the staging path is a path the containment guard never saw", () => {
 
 describe("containment is a property of the path on DISK, not of the string", () => {
     test("a symlinked PARENT is refused, though the string resolves inside", () => {
-        // `<root>/link/a.md` passes every character-level test and lands wherever `link` points.
-        // `wx` guards only the final component. Copilot, round 11 on #231.
+        // `wx` guards only the final component, so a symlinked parent is still followed.
         const root = scratch();
         const outside = scratch();
         fs.symlinkSync(outside, path.join(root, "link"));
@@ -1331,10 +1119,6 @@ describe("containment is a property of the path on DISK, not of the string", () 
 });
 
 test("a component that cannot be EXAMINED is refused, never assumed absent", (t) => {
-    // Rule 3, at the containment walk. Reaching it needs a directory whose children cannot be
-    // stat'd, which root can read regardless — so the case is SKIPPED there rather than passing
-    // vacuously, since a green that proves nothing is what this suite exists to avoid. Found by
-    // mutating the branch and watching every test stay green.
     if (typeof process.getuid === "function" && process.getuid() === 0) {
         t.skip("running as root: a 0o000 directory is still traversable, so this branch is unreachable here");
         return;
@@ -1353,9 +1137,6 @@ test("a component that cannot be EXAMINED is refused, never assumed absent", (t)
 });
 
 describe("`--tree` refuses what the other three parsers refuse", () => {
-    // `cli/init.mjs`, `cli/new.mjs` and `cli/vendor.mjs` each refuse a missing value, a value that
-    // reads as another flag, and an empty one. This parser took only the first, so `--tree --write`
-    // swallowed the write and silently reported instead of migrating. Copilot, round 12 on #231.
     const dir = () => scratch();
 
     test("a flag as the value is refused rather than swallowed", async () => {
@@ -1378,7 +1159,7 @@ describe("`--tree` refuses what the other three parsers refuse", () => {
         const h = harness();
         assert.equal(await run(["--tree"], h.options), 2);
         assert.match(h.text(), /needs a value/);
-        // A legitimate value reaches the step: a 1.0 repository workspace with no derivable root.
+        // A 1.0 repository with no `.git`, so the `../` it gets can only be the flag's.
         const root = scratch();
         const ws = path.join(root, ".portulan");
         fs.mkdirSync(path.join(ws, "verify"), { recursive: true });
@@ -1391,9 +1172,7 @@ describe("`--tree` refuses what the other three parsers refuse", () => {
     });
 });
 
-// ===========================================================================================
-// The steps that move a consumer's records and boot to the new form (2026-09-24)
-// ===========================================================================================
+// ---------------------------------------------------------------- the steps that move a consumer to the new form
 
 const TODAY = "2026-09-24";
 const TODAY_CHANGELOG = [
@@ -1420,11 +1199,7 @@ const TODAY_NOTES = "# Notes\n\nSome notes.\n\n## Session log\n\n- 2026-09-20: d
 
 const git = (repo, ...args) => execFileSync("git", ["-C", repo, ...args], { encoding: "utf8" });
 
-/**
- * A consumer in today's form, committed: drafted by the real `init`, then put back the way `init` drafted
- * before the new form, with a kept and tracked handoff index, no card, no fragments, a changelog with
- * entries under Unreleased and a document carrying a Session log.
- */
+// The real `init`'s draft, put back to the form `init` drafted before the new one.
 function todayForm({ spec = "2.7", changelog = TODAY_CHANGELOG, extra = {} } = {}) {
     const repo = scratch();
     git(repo, "init", "-q");
@@ -1478,11 +1253,9 @@ describe("the steps that move a consumer to the new form, on a real repository i
         assert.equal(await run([ws, "--write"], { ...h.options, today: TODAY }), 0, h.text());
         assert.match(h.text(), /applied 5 step\(s\)[\s\S]*doctor is green/);
 
-        // The index: deleted, and git-ignored, so none is committed again.
         assert.equal(fs.existsSync(path.join(ws, "handoffs-index.md")), false);
         assert.equal(git(repo, "check-ignore", "--no-index", ".portulan/handoffs-index.md").trim(), ".portulan/handoffs-index.md");
 
-        // The changelog: its entries are fragments, and they print back as it held them.
         const changelog = fs.readFileSync(path.join(repo, "CHANGELOG.md"), "utf8");
         assert.match(changelog, /## \[Unreleased\]\n\nEach entry for the next release is a file in \[`changes\/`\]\(changes\/\)/);
         assert.match(changelog, /## \[0\.1\.0\] - 2026-09-01\n\n- First\.\n/, "a released section is not touched");
@@ -1493,12 +1266,10 @@ describe("the steps that move a consumer to the new form, on a real repository i
         assert.match(printed, /### Added\n\n- A thing that links \[the guide\]\(docs\/guide\.md\) and\n  carries a second line\.\n\n- Another thing\.\n/);
         assert.match(printed, /### Fixed\n\n- A fix\.$/);
 
-        // The Session log: two lines naming the commit that holds its entries; the rest of the file stays.
         const notes = fs.readFileSync(path.join(repo, "docs", "notes.md"), "utf8");
         assert.match(notes, new RegExp(`## Session log\\n\\nRetired ${TODAY}: a change's record is its commit message[^\\n]*\\nlanded\\. The entries written until then are at \`git show ${sha}:docs/notes\\.md\`\\.\\n\\n## Later\\n\\nStays\\.\\n$`));
         assert.equal(git(repo, "show", `${sha}:docs/notes.md`), TODAY_NOTES, "the pointer names where the entries are");
 
-        // The card: drafted, declared at 2.10, and compiled into what the host loads.
         const manifest = JSON.parse(fs.readFileSync(path.join(ws, "workspace.json"), "utf8"));
         assert.equal(manifest.portulan.spec, "2.10");
         assert.equal(manifest.slots.context, "context/");
@@ -1568,9 +1339,6 @@ describe("the steps that move a consumer to the new form, on a real repository i
         assert.equal(await run([ws, "--write"], { ...again.options, today: TODAY }), 0, again.text());
         assert.match(again.text(), /owes nothing/);
 
-        // A card lacking the section under a head its workspace rewrote is owed it by hand: the run names the
-        // head the step looks for and the line to add, rather than guess where the section goes or skip the
-        // card, and applies the rest of the chain, here `0007` compiling the card as its workspace wrote it.
         const rewritten = before.replace("Each section names its file: an", "Our own words: an");
         fs.writeFileSync(source, rewritten);
         const dry = harness();
@@ -1599,7 +1367,6 @@ describe("the steps that move a consumer to the new form, on a real repository i
 describe("0009 — a section a team marks in its instruction file moves to an on-read unit", () => {
     const FILE = "# Desk\n\nThe desk lends books to every member.\n\n## Loans\n<!-- portulan: on-read -->\n\nA loan lasts three weeks. It renews twice.\n\n## Rooms\n\nRooms are booked a week ahead.\n";
 
-    /** A consumer as `init` drafts one today, in the new form, whose CLAUDE.md is `claude`, committed. */
     function marked(claude, more = {}) {
         const repo = scratch();
         git(repo, "init", "-q");
@@ -1675,7 +1442,6 @@ describe("0009 — a section a team marks in its instruction file moves to an on
 });
 
 describe("0010 — a `comments` recipe, offered where `init` drafted none", () => {
-    /** A consumer `init` drafted where git listed no files, then committed once git did. */
     function draftedBeforeGit() {
         const repo = scratch();
         fs.writeFileSync(path.join(repo, "a.js"), "// Added 2026-09-01: the first thing.\nexport const a = 1;\n");

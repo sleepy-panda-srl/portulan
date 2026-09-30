@@ -1,11 +1,4 @@
-// The gate-corpus rail's suite. Every contracted state is exercised POSITIVELY — green, a missing
-// fixture, a regression, a hole that closed, every malformed-fixture refusal, and could-not-run —
-// because a failure path nobody has run is one nobody has seen work.
-//
-// Three cases exist because this repository's own history refutes the naive design: the entry guard
-// must survive a path containing a space (this file's subject shipped the broken spelling and exited
-// 0 having run nothing, which is the third time here), the denominator must be the YIELDED policy
-// rather than the declared file, and a fixture's command string must never reach a subprocess.
+// Tests for `goldens` — the gate-corpus rail: the exemption, both rails, every corpus refusal and the CLI.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -19,18 +12,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-// A HERMETIC HOST, the three-line block `pinned-roots.live.test.mjs` sweeps for — asserted WHOLE, so
-// that copying the two lines which neutralise the host and dropping the one that tidies up is caught.
-// This suite reaches `compile.mjs`, which consults the host's installed-plugin record on the unasked
-// path, so without it a fixture's verdict would move with what somebody has installed.
-//
-// **Needed even though `goldens.mjs` refuses discovery outright.** The sweep derives membership from
-// IMPORTS rather than from what a module currently does, which is the right rule: an internal refusal
-// is one edit from being relaxed, and the containment should not have to be re-added on that day.
-//
-// The block is spelled with namespace imports because the sweep compares it as literal text. Written
-// once from the sibling rather than re-derived — this file's first attempt used the named-import
-// spelling, was semantically identical, and went red, which is the sweep doing exactly its job.
+// The imports reach `./compile.mjs`, which can read the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -50,9 +32,6 @@ const CASE = (over = {}) => ({
     id: "c",
     class: "holds",
     tool: "Bash",
-    // `shell-prefix` is the default because the default rule is `gate-a`, a `shell:` rule reached
-    // through Bash. A case overriding the rule or the tool overrides this too — and if it forgets,
-    // the mislabel rail below catches it, which is the rail testing itself.
     path: "shell-prefix",
     input: { command: "git push --force origin main" },
     expect: true,
@@ -62,10 +41,7 @@ const CASE = (over = {}) => ({
 const WRITE_CASE = (over = {}) =>
     CASE({ path: "shell-write", input: { command: "cp /tmp/x docs/vision.md" }, ...over });
 
-// The filename is derived from the doc's own `rule`, because the corpus reader enforces that they
-// match — so a helper naming files by object key would trip the convention check on every fixture and
-// hide the shape refusal each case is actually about. The key is the fallback for a doc that declares
-// no rule, which is the one case that must still reach the missing-`rule` refusal.
+// Each file is named for its doc's `rule`, as the reader requires; the key names only a doc with none.
 function corpus(files) {
     const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
     const dir = join(root, CORPUS_DIR);
@@ -77,7 +53,6 @@ function corpus(files) {
     return root;
 }
 
-/** A corpus whose file deliberately does NOT match its `rule` — the convention check's own fixture. */
 function misfiledCorpus(name, doc) {
     const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
     const dir = join(root, CORPUS_DIR);
@@ -87,9 +62,7 @@ function misfiledCorpus(name, doc) {
 }
 const cleanup = (root) => rmSync(root, { recursive: true, force: true });
 
-// ---------------------------------------------------------------------------------------------
-// partition — the exemption, which is the obvious way to dodge this rail
-// ---------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------- partition: the exemption
 
 test("a rule with no matchable action is exempt, and is RETURNED rather than dropped", () => {
     const { matchable, exempt } = partition(RULES);
@@ -99,9 +72,6 @@ test("a rule with no matchable action is exempt, and is RETURNED rather than dro
 });
 
 test("every action kind matchesRule can answer for is in MATCHABLE", () => {
-    // Derived from the matcher's own branches rather than hand-listed. If `matchesRule` grows a
-    // fourth action kind and this list does not, rules of that kind become silently exempt — the
-    // exact failure the exemption census exists to make loud.
     const source = readFileSync(join(HERE, "compile.mjs"), "utf8");
     for (const kind of MATCHABLE) {
         assert.match(source, new RegExp(`action\\.${kind}`), `matchesRule must actually read action.${kind}`);
@@ -109,9 +79,7 @@ test("every action kind matchesRule can answer for is in MATCHABLE", () => {
     assert.deepEqual([...MATCHABLE].sort(), ["read", "shell", "write"]);
 });
 
-// ---------------------------------------------------------------------------------------------
-// grade — the two rails
-// ---------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------- grade: the two rails
 
 test("green when every matchable rule carries fixtures and every case answers as recorded", () => {
     const root = corpus({
@@ -153,14 +121,11 @@ test("RED on a `holds` regression, naming both answers", () => {
 });
 
 test("RED when a DOCUMENTED HOLE has closed — the staleness rail runs in both directions", () => {
-    // The half that is easy to leave out. A hole record that still lists a closed hole is as wrong as
-    // one that hides an open one, and only this direction catches it.
     const root = corpus({
         "gate-a": {
             rule: "gate-a",
             cases: [
                 CASE(),
-                // Claims the matcher misses a mid-line command. It does not — that hole closed in 2026-07-28.
                 CASE({ id: "stale", class: "documented-hole", hole: "gate-map entry 2", input: { command: "ls && git push --force origin main" }, expect: false }),
             ],
         },
@@ -189,8 +154,6 @@ test("RED when a fixture attacks a rule the yielded policy does not declare", ()
 });
 
 test("a fixture attacking a none-shaped rule is refused with the RIGHT sentence", () => {
-    // Two different mistakes must not print one message: a fixture for a renamed rule is stale, a
-    // fixture for a rule with no tool-level surface is a category error, and the repairs differ.
     const root = corpus({
         "gate-a": { rule: "gate-a", cases: [CASE()] },
         "gate-b": { rule: "gate-b", cases: [WRITE_CASE()] },
@@ -203,9 +166,7 @@ test("a fixture attacking a none-shaped rule is refused with the RIGHT sentence"
     } finally { cleanup(root); }
 });
 
-// ---------------------------------------------------------------------------------------------
-// readCorpus — every shape refusal, exercised
-// ---------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------- readCorpus: every shape refusal
 
 for (const [label, doc, expected] of [
     ["no `rule`", { cases: [CASE()] }, /names no `rule`/],
@@ -228,11 +189,6 @@ for (const [label, doc, expected] of [
 }
 
 test("a MISFILED fixture is could-not-run — one file per rule, named for it", () => {
-    // The convention was documented in three places and enforced in none: the missing-fixture red
-    // prints `add evals/goldens/gates/<rule-id>.json`, evals/README.md gives the layout, and a
-    // renamed file validated cleanly and graded anyway. A mandate nothing checks is already broken,
-    // and this module was carrying one while its whole subject is mandates that need checkers.
-    // Reported as a suppressed note by Copilot, round 5 on #336.
     const root = misfiledCorpus("not-the-rule-name", { rule: "gate-a", cases: [CASE()] });
     try {
         assert.throws(
@@ -243,8 +199,6 @@ test("a MISFILED fixture is could-not-run — one file per rule, named for it", 
 });
 
 test("the repository's own corpus obeys the convention it documents", () => {
-    // The other direction, and the one that would have caught the gap earlier: assert the tree, not
-    // just the refusal. Every file here is named for the rule it declares.
     const dir = join(REPO, CORPUS_DIR);
     for (const name of readdirSync(dir)) {
         const doc = JSON.parse(readFileSync(join(dir, name), "utf8"));
@@ -267,9 +221,7 @@ test("a fixture file that is not JSON is could-not-run, and names the file", () 
     } finally { cleanup(root); }
 });
 
-// ---------------------------------------------------------------------------------------------
-// The corpus this repository actually ships
-// ---------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------- the corpus this repository ships
 
 test("this repository's own corpus is green against its own yielded policy", () => {
     const { rules } = yieldedRules(REPO, { packRoots: [join(REPO, "packs")] });
@@ -279,10 +231,7 @@ test("this repository's own corpus is green against its own yielded policy", () 
 });
 
 test("the corpus's denominator is the YIELDED policy, not the declared file", () => {
-    // The class dod.md condition 1 names: a rail scoped to the declared list lets a composed gate
-    // ship with no fixtures while the check stays green. Both of this workspace's pack-contributed
-    // rules are none-shaped today, so the outcome coincides — which is exactly how this defect goes
-    // unnoticed, and exactly why the assertion is on the CENSUS rather than on the verdict.
+    // Asserted on the census: while every pack-contributed rule is none-shaped, the verdicts coincide.
     const { rules } = yieldedRules(REPO, { packRoots: [join(REPO, "packs")] });
     const declared = JSON.parse(readFileSync(join(REPO, ".portulan/gates.json"), "utf8")).rules;
     assert.ok(rules.length > declared.length, "composed fragments must reach the census");
@@ -293,9 +242,7 @@ test("the corpus's denominator is the YIELDED policy, not the declared file", ()
 });
 
 test("every fixture file is free of raw control characters", () => {
-    // control-chars.mjs refuses a raw CR anywhere in this tree by decision, and exempting a growing
-    // adversarial-content directory is the allow-list defect that same file names. So byte-level
-    // attacks are stored ESCAPED — JSON's own `\r` and `\u0000` — and decoded by JSON.parse.
+    // `control-chars.mjs` refuses a raw CR in this tree, so byte-level attacks are stored as JSON escapes.
     const dir = join(REPO, CORPUS_DIR);
     for (const name of readdirSync(dir)) {
         const bytes = readFileSync(join(dir, name));
@@ -306,38 +253,22 @@ test("every fixture file is free of raw control characters", () => {
 });
 
 test("the escaped bytes really do decode — the corpus carries a CR and a NUL", () => {
-    // The control on the test above. A corpus that passed the byte scan because it contained no
-    // byte-level attacks at all would prove nothing.
     const doc = JSON.parse(readFileSync(join(REPO, CORPUS_DIR, "change-the-constitution.json"), "utf8"));
     const crlf = doc.cases.find((c) => c.id === "a-CRLF-continuation");
-    // **"one of the eight bypasses" is a HISTORICAL membership, and it stays worded that way on
-    // purpose.** The set is the one `../docs/milestones/m08.md` fixed; what has since changed is the
-    // reason this member was ever in it. Its `cp`-shaped payload was called a bypass on the strength of
-    // a reachability claim that no shell measured reproduces — see `shellWords` in ./compile.mjs, and
-    // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md`, which asks whether the branch
-    // catching it should go. The fixture is a live assertion either way; the pointer is here so the
-    // next reader does not inherit the retired framing from a line of running code.
+    // "The eight bypasses" names a set: no shell measured joins a line at a backslash-CRLF.
     assert.ok(crlf, "the CRLF continuation is one of the eight bypasses and must be in the corpus");
     assert.ok(crlf.input.command.includes("\r\n"), "it must decode to real CRLF, or it is testing a different string");
 });
 
-// ---------------------------------------------------------------------------------------------
-// The contract: fixtures are data
-// ---------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------- the contract: fixtures are data
 
 test("the runner cannot execute a fixture — it imports no process-spawning API", () => {
-    // The corpus contains `git push --force`, `rm -rf docs` and constitution-write spellings by
-    // design. Running one would be somewhere between tripping the gate under test and destroying the
-    // tree it runs in. Asserted statically because the guarantee is structural: there is no code path
-    // from a fixture to a subprocess, and this is what keeps it that way under a later edit.
     const source = readFileSync(join(HERE, "goldens.mjs"), "utf8");
     assert.doesNotMatch(source, /node:child_process/, "a fixture's command string is DATA");
     assert.doesNotMatch(source, /\bexecSync\b|\bexecFileSync\b|\bspawnSync\b|\bspawn\(/);
 });
 
-// ---------------------------------------------------------------------------------------------
-// The CLI
-// ---------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------- the CLI
 
 function cli(args, cwd = REPO) {
     return spawnSync(process.execPath, [join(HERE, "goldens.mjs"), ...args], { cwd, encoding: "utf8" });
@@ -362,10 +293,7 @@ test("a green NAMES every exempt rule, so the exemption cannot be silent", () =>
 });
 
 test("the CLI RUNS from a path containing a space, and says so", () => {
-    // This module shipped `import.meta.url === \`file://${process.argv[1]}\`` for exactly one
-    // measurement: the first run printed nothing and exited 0, on a corpus that did not exist yet.
-    // `import.meta.url` percent-encodes and this working copy lives under a path with spaces. A green
-    // that is the tool never starting — the third time this repository has met it.
+    // `import.meta.url` percent-encodes a space: an entry guard comparing it with `process.argv[1]` never fires.
     const root = mkdtempSync(join(tmpdir(), "portulan gold "));
     try {
         const dest = join(root, "copy");
@@ -389,19 +317,11 @@ test("an unknown argument is could-not-run, not a red", () => {
 });
 
 test("--pack-root pointing at a FILE is could-not-run, never a misleading green", () => {
-    // The third carrier of one rule, found by Copilot on #117: a file-valued root made resolution
-    // fail and produced a green that had simply ignored the intended root, and a green is what a
-    // session acts on.
     const r = cli(["--pack-root", join(REPO, "package.json")]);
     assert.equal(r.status, 2);
     assert.match(r.stderr, /is not a directory/);
 });
 
-// Three fallback states, three sentences — because "workspace.json declares none" was printed for all
-// three and is FALSE for two of them: a manifest that does not exist declared nothing, and a manifest
-// whose named policy was refused declared one and was overruled. Both send a reader to audit the one
-// file that is not at fault. `compile.mjs` had already learned this at `undeclaredPolicyMessage`; this
-// module copied that call site's shape and not its discipline. Copilot, round 8 on #336.
 for (const [label, build, expected] of [
     [
         "no workspace.json at all",
@@ -425,7 +345,6 @@ for (const [label, build, expected] of [
             assert.equal(r.status, 2, r.stderr);
             assert.match(r.stderr, /no gate policy/);
             assert.match(r.stderr, expected);
-            // The control: the one sentence that must NOT be printed for a missing manifest.
             if (label.startsWith("no workspace.json")) {
                 assert.doesNotMatch(r.stderr, /declares no `gates` key/, "a file that does not exist declared nothing");
             }
@@ -433,8 +352,6 @@ for (const [label, build, expected] of [
     });
 }
 
-// As `compile` stops at a refused value beside a `gates.json` at the default path: that file is not the
-// policy the manifest names, so fixtures graded against it would grade a policy nothing compiles.
 test("a refused `gates` value is could-not-run even beside a `gates.json` at the default path", () => {
     const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
     try {
@@ -448,8 +365,6 @@ test("a refused `gates` value is could-not-run even beside a `gates.json` at the
     } finally { cleanup(root); }
 });
 
-// As `compile` stops on a manifest that does not parse: read as one declaring nothing, it would have fixtures
-// graded against a `gates.json` found by convention, which it may not name.
 test("a manifest that does not parse is could-not-run, naming it, even beside a `gates.json` at the default path", () => {
     const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
     try {
@@ -468,8 +383,6 @@ test("a red exits 1 and prints every finding on stderr", () => {
         cpSync(join(REPO, ".portulan"), join(root, ".portulan"), { recursive: true });
         cpSync(join(REPO, "packs"), join(root, "packs"), { recursive: true });
         mkdirSync(join(root, CORPUS_DIR), { recursive: true });
-        // Named for the rule it declares, because the reader now enforces that — the fixture for a RED
-        // must not accidentally be a fixture for a could-not-run.
         writeFileSync(join(root, CORPUS_DIR, "tag-a-release.json"), `${JSON.stringify({ rule: "tag-a-release", cases: [CASE({ input: { command: "git tag v1" } })] }, null, 2)}\n`);
         const r = spawnSync(process.execPath, [join(HERE, "goldens.mjs"), "--workspace", root, "--pack-root", join(root, "packs")], { encoding: "utf8" });
         assert.equal(r.status, 1, r.stderr);
@@ -479,9 +392,7 @@ test("a red exits 1 and prints every finding on stderr", () => {
 });
 
 
-// ---------------------------------------------------------------------------------------------
-// The matcher-path field — session-open adjustment 3, derived rather than declared
-// ---------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------- the matcher-path field, derived rather than declared
 
 for (const [kind, tool, expected] of [
     ["shell", "Bash", "shell-prefix"],
@@ -502,9 +413,6 @@ for (const [kind, tool, expected] of [
 }
 
 test("`no-branch` is a real answer, not a fallthrough for anything unrecognised", () => {
-    // It names a combination the matcher has no code for. If an unknown kind quietly answered
-    // `no-branch` too, a rule of a NEW action kind would look deliberately unreachable rather than
-    // uncovered — which is the same silence the exemption census exists to break.
     assert.equal(matcherPath("read", "Bash"), "no-branch", "a real combination with no branch");
     for (const kind of MATCHABLE) {
         assert.notEqual(matcherPath(kind, "Bash"), undefined);
@@ -512,8 +420,6 @@ test("`no-branch` is a real answer, not a fallthrough for anything unrecognised"
 });
 
 test("a MISLABELLED path is a finding, and the message says it is a mislabel", () => {
-    // The field would be decoration if nothing checked it, and a decoration on 212 cases is a
-    // second carrier that goes wrong. This is what makes it a record rather than a comment.
     const root = corpus({
         "gate-a": { rule: "gate-a", cases: [CASE({ path: "shell-write" })] },
         "gate-b": { rule: "gate-b", cases: [WRITE_CASE()] },
@@ -527,8 +433,6 @@ test("a MISLABELLED path is a finding, and the message says it is a mislabel", (
 });
 
 test("a mislabelled case is NOT also graded — one defect, one finding", () => {
-    // A mislabel plus a wrong `expect` would otherwise print two findings for one broken case, and
-    // the second would send a reader to debug a matcher that is behaving.
     const root = corpus({
         "gate-a": { rule: "gate-a", cases: [CASE({ path: "no-branch", expect: false })] },
         "gate-b": { rule: "gate-b", cases: [WRITE_CASE()] },
@@ -541,8 +445,6 @@ test("a mislabelled case is NOT also graded — one defect, one finding", () => 
 });
 
 test("the per-path census counts every case, and prints a path at ZERO", () => {
-    // A corpus can carry 200 cases and exercise one branch of four. The total says nothing about
-    // that; this line is the one that does, which is why it prints the zeroes too.
     const root = corpus({
         "gate-a": { rule: "gate-a", cases: [CASE()] },
         "gate-b": { rule: "gate-b", cases: [WRITE_CASE()] },
@@ -564,9 +466,7 @@ test("this repository's corpus exercises EVERY matcher path, not just the cheap 
 });
 
 test("the two segmenters disagree about one leader, and the corpus records BOTH answers", () => {
-    // The asymmetry the path field exists for. A `then` leader is CAUGHT on the write path, because
-    // `shellSegments` knows SEGMENT_LEADERS, and ESCAPES on the shell path, because `commandSegments`
-    // does not. Without the field a reader meets two cases that look like a contradiction.
+    // A `then` leader: `shellSegments` knows SEGMENT_LEADERS and `commandSegments` does not.
     const constitution = JSON.parse(readFileSync(join(REPO, CORPUS_DIR, "change-the-constitution.json"), "utf8"));
     const force = JSON.parse(readFileSync(join(REPO, CORPUS_DIR, "force-push-without-a-lease.json"), "utf8"));
     const caught = constitution.cases.find((c) => c.id === "a-then-branch-leader");
@@ -579,15 +479,11 @@ test("the two segmenters disagree about one leader, and the corpus records BOTH 
 });
 
 test("an UNEXPECTED throw is could-not-run, never a red", () => {
-    // The first draft rethrew, so a ReferenceError from a typo crashed the process, node exited 1,
-    // and the recipe faithfully printed "RED — verify recipe failed" about a corpus nothing had
-    // finished grading. Measured on this module, not reasoned about.
     const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
     try {
-        // A directory where a fixture file must be: readdirSync lists it, readFileSync raises EISDIR,
-        // which is neither of the two errors `run` translates.
         cpSync(join(REPO, ".portulan"), join(root, ".portulan"), { recursive: true });
         cpSync(join(REPO, "packs"), join(root, "packs"), { recursive: true });
+        // A directory where a fixture must be: readFileSync throws EISDIR, an error `run` does not expect.
         mkdirSync(join(root, CORPUS_DIR, "not-a-file.json"), { recursive: true });
         const r = spawnSync(process.execPath, [join(HERE, "goldens.mjs"), "--workspace", root, "--pack-root", join(root, "packs")], { encoding: "utf8" });
         assert.equal(r.status, 2, `exit 1 would read as a corpus finding — got ${r.status}: ${r.stderr}`);

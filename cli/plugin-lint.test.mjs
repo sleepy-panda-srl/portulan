@@ -1,18 +1,4 @@
 // Tests for `plugin-lint` — the packaging validator.
-//
-// Written before the validator, per ../core/operating/verification.md: the failing test is the spec.
-// Zero dependencies, node's own runner, same as ./doctor.test.mjs — and run by the same recipe.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// Fixtures are built in temp directories at run time rather than committed under ./fixtures/. Two
-// reasons, both forced by checks that already run here: a committed known-bad manifest must still be
-// well-formed JSON (`json.sh` parses every tracked .json), which rules out the malformed-manifest
-// cases outright; and most of what this validator judges is a *tree shape* — a path that resolves, a
-// directory that contains a SKILL.md — which a single committed file cannot express.
-//
-// What it does NOT test, deliberately: that Claude Code accepts the plugin. That is the platform's
-// contract and `claude plugin validate --strict` is its authority. See the header of ./plugin-lint.mjs.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -23,10 +9,7 @@ import { fileURLToPath } from "node:url";
 
 import { PluginLintError, inspect, run, parseFrontmatter } from "./plugin-lint.mjs";
 
-// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
-// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
-// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
-// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+// Hermetic host: the tools read its installed-plugin record unasked; a case that wants a host passes `env:`.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -34,22 +17,7 @@ process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
 
-// One exit handler for every scratch directory, not one per directory. The per-directory form
-// exceeds node's default limit of ten listeners partway through this suite and prints a
-// MaxListenersExceededWarning — noise that trains a reader to skim warnings from a test run, which
-// is where a real listener leak would then hide. Found by review on the pull request.
-//
-// The per-directory `try` is not defensive habit: five cases chmod a NON-EMPTY scratch child to
-// `0o000`, and one chmods the scratch ROOT to `0o600` (3 entries, no search bit), each restoring in
-// `finally` — so a case dying before its `finally` leaves a directory `rmSync` cannot enter. `force:
-// true` suppresses ENOENT, not EACCES. Naked, that throw aborts the loop inside an `exit` handler and
-// abandons every directory after it.
-//
-// Which locks actually bite was measured, not assumed, because a hazard claimed where none exists
-// is the same defect as one missed: an EMPTY directory still removes if it is READABLE, so only an
-// unreadable one blocks while empty; a NON-EMPTY one additionally needs write and search. The errno
-// follows readability, not position: an UNREADABLE root gives EACCES, while everything else — a
-// locked child, or a readable-but-unwritable root — gives ENOTEMPTY.
+// One exit handler for every scratch directory: one per directory passes node's default of ten listeners.
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) {
@@ -61,7 +29,6 @@ process.on("exit", () => {
     }
 });
 
-/** A throwaway directory, removed when the process exits. */
 function scratch() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-plugin-"));
     SCRATCH.push(dir);
@@ -81,10 +48,7 @@ const SKILL = (name, description) =>
 const AGENT = (name, description) =>
     `---\nname: ${name}\ndescription: ${description}\n---\n\n# Agent\n\nBody.\n`;
 
-/**
- * A minimal plugin tree that lints clean, so each test can break exactly one thing.
- * Overrides are applied to the two manifests before they are written.
- */
+// Fixtures are built at run time: `json.sh` parses every tracked .json, so a malformed one cannot be committed.
 function fixture({ plugin = {}, marketplace = {}, skip = [] } = {}) {
     const root = scratch();
     const pluginJson = {
@@ -115,11 +79,8 @@ function fixture({ plugin = {}, marketplace = {}, skip = [] } = {}) {
     return root;
 }
 
-/** Every failing finding's message, joined — for asserting on what was reported. */
 const fails = (findings) => findings.filter((f) => f.severity === "fail");
 const messages = (findings) => fails(findings).map((f) => f.message).join("\n");
-
-// ===========================================================================================
 
 describe("a clean tree", () => {
     test("the fixture plugin lints green", () => {
@@ -133,11 +94,6 @@ describe("a clean tree", () => {
     });
 
     test("a relative root behaves like an absolute one", () => {
-        // The defect this test was written from: every fixture here passes an absolute temp
-        // directory, while the verify recipe calls `node cli/plugin-lint.mjs .`. The declared
-        // skills resolved absolute and the walked ones stayed relative, so nothing matched and
-        // every shipped skill was reported as undeclared. A suite that only ever exercises one
-        // shape of an argument has not exercised the argument.
         const absolute = inspect(REPO);
         const cwd = process.cwd();
         try {
@@ -153,8 +109,6 @@ describe("a clean tree", () => {
     });
 
     test("green means something was actually checked", () => {
-        // A validator that resolves nothing and reports nothing is the fail-open this repository
-        // has minted three rules about. Counts are asserted, not just the absence of failures.
         const { stats } = inspect(fixture());
         assert.ok(stats.skills >= 1, "no skills were checked");
         assert.ok(stats.agents >= 1, "no agents were checked");
@@ -220,8 +174,7 @@ describe("plugin.json", () => {
     });
 
     test("an absent version is not a failure", () => {
-        // The platform falls back to the git commit SHA. Demanding a version would be this
-        // validator legislating where the contract does not.
+        // The host falls back to the git commit SHA when no version is declared.
         const root = fixture({
             plugin: { version: undefined },
             marketplace: { plugins: [{ name: "demo", source: "./" }] },
@@ -247,9 +200,7 @@ describe("marketplace.json", () => {
     });
 
     test("an empty plugins array is a failure", () => {
-        // The whole point of the file. A repository that calls itself a marketplace and ships
-        // nothing is the fail-open here: `claude plugin validate` reports it as a warning, which
-        // is exactly the severity that gets ignored for a milestone.
+        // Stricter than `claude plugin validate`, which only warns on an empty plugins array.
         const root = fixture({ marketplace: { plugins: [] } });
         assert.match(messages(inspect(root).findings), /plugins/);
     });
@@ -275,8 +226,6 @@ describe("marketplace.json", () => {
     });
 
     test("a non-string source is reported, not assumed", () => {
-        // Object sources (github, url, git-subdir, npm) are legal and point outside this tree,
-        // so they are noted as unverifiable rather than failed — never silently skipped.
         const root = fixture({
             marketplace: {
                 plugins: [{ name: "demo", source: { source: "github", repo: "a/b" } }],
@@ -326,11 +275,7 @@ describe("component paths", () => {
     });
 
     test("an `agents` key is a failure whatever it names, because declaring one loads nothing", () => {
-        // Measured 2026-07-26 against Claude Code v2.1.215, with a positive control: files at the
-        // default ./agents/ and NO key register (`Agents (1)`); the same files named explicitly
-        // register `Agents (0)`; a directory value refuses the whole plugin. So the key does not
-        // merely fail to help — it suppresses the scan that works. A path that resolves is exactly
-        // as dead as one that does not, which is why this fails on the key rather than on its value.
+        // Claude Code 2.1.215: an `agents` key suppresses the ./agents/ scan, so a resolving path loads nothing.
         const resolves = fixture({ plugin: { agents: ["./agents/worker.md"] } });
         assert.match(messages(inspect(resolves).findings), /agents/);
         const dangling = fixture({ plugin: { agents: ["./agents/ghost.md"] } });
@@ -338,10 +283,6 @@ describe("component paths", () => {
     });
 
     test("a symlink out of the plugin root is a failure, not merely a lexical pass", () => {
-        // The lexical containment check reads "./outside/" as inside the root; only canonicalising
-        // the target catches that the files are somewhere else. A plugin's contract is that its
-        // components live inside it, and this repository rejected a symlinked payload for its own
-        // packaging — so the shape is one it actively considered, not a hypothetical.
         const root = fixture();
         const elsewhere = scratch();
         fs.mkdirSync(path.join(elsewhere, "smuggled"), { recursive: true });
@@ -356,9 +297,7 @@ describe("component paths", () => {
     });
 
     test("a symlink that stays inside the plugin root is fine", () => {
-        // The other half, so the check above cannot be satisfied by refusing every symlink: the
-        // platform dereferences in-marketplace symlinks, and rejecting them would fail a layout it
-        // supports.
+        // The host dereferences in-marketplace symlinks, so refusing them would fail a supported layout.
         const root = fixture();
         fs.mkdirSync(path.join(root, "real", "greet"), { recursive: true });
         write(root, "real/greet/SKILL.md", SKILL("greet", "Greets."));
@@ -386,25 +325,13 @@ describe("the skills the plugin declares", () => {
         assert.match(messages(inspect(root).findings), /hollow/);
     });
 
-    // ../.portulan/tasks/0008-a-declared-skills-path-sees-one-level-down.md. The declared root was
-    // resolved exactly two ways — itself, or its immediate children — so the shape a pack actually
-    // ships was reported as a skill directory with no SKILL.md. Its three acceptance criteria are the
-    // three tests below, in order: resolve at depth, keep the real failure loud, and report the bound.
     test("a pack-shaped tree resolves skills nested below the declared root — and says the host will not", () => {
         const root = fixture({ skip: ["skills"] });
         write(root, "skills/rituals-demo/skills/greet/SKILL.md", SKILL("greet", "Greets. Use when greeting."));
-        // The half this test was written for at milestone 6 is unchanged: the walk RESOLVES the skill
-        // rather than failing `rituals-demo/` with `has no SKILL.md`, and it is counted.
         assert.equal(inspect(root).stats.skills, 1);
         assert.doesNotMatch(messages(inspect(root).findings), /has no SKILL\.md/);
 
-        // **And it asserted zero failures until 2026-08-07, which was the false green.** Resolving is
-        // this validator's; registering is the host's, and the host expands a declared root exactly one
-        // level. Measured on Claude Code 2.1.224 against a local marketplace built from this
-        // repository: `./packs/rituals/` registered 0 of the pack's 3 skills and
-        // `./packs/rituals/checkpoints/skills/` registered all 3. So a skill at this depth is packaged,
-        // counted, and inert on every install — and the test that said the shape was fine is the reason
-        // it stayed that way for a milestone (#134).
+        // Claude Code 2.1.224 expands a declared skills root one level, so a deeper skill ships inert.
         const text = messages(inspect(root).findings);
         assert.match(text, /sits more than 1 level below the declared root/);
         assert.match(text, /Declare skills\/rituals-demo\/skills\/ instead/);
@@ -413,8 +340,6 @@ describe("the skills the plugin declares", () => {
     test("a directory under the declared root holding no skill at any depth still fails", () => {
         const root = fixture();
         fs.mkdirSync(path.join(root, "skills", "hollow", "deeper"), { recursive: true });
-        // Attributed to the immediate child rather than to every level of the branch, and still in
-        // the words the one-level version used — depth must not buy silence.
         const text = messages(inspect(root).findings);
         assert.match(text, /hollow\/ has no SKILL\.md/);
         assert.doesNotMatch(text, /hollow\/deeper\/ has no SKILL\.md/);
@@ -427,27 +352,11 @@ describe("the skills the plugin declares", () => {
         assert.match(text, /did not search/);
         assert.match(text, /a\/b\/c\//);
 
-        // **#108's negative assertion, and it is the one that was red.** This test asserted only that
-        // the truncation line was PRESENT, which is why the second, false line rode alongside it for a
-        // milestone: `walk()` returned `false` for *stopped searching* exactly as it did for *searched
-        // and found nothing*, so the caller also reported `skills/a/ has no SKILL.md`. It is not
-        // barren — the validator stopped looking. One defect wore two failures and one of them was a
-        // false claim about the tree.
         assert.doesNotMatch(text, /a\/ has no SKILL\.md/);
-        // The widened sentence, so a reader is not left to infer "empty" from "did not search".
         assert.match(text, /did not finish and find nothing/);
     });
 
     test("an UNREADABLE branch says so, and is never reported as barren", () => {
-        // The third outcome folded into `barren`, and the one with no report at all before #108: the
-        // `readdirSync` catch was silent, so a subtree nobody could read arrived as a subtree somebody
-        // had searched. *Could not look* is not *nothing there*.
-        //
-        // chmod rather than a stub here, because the failure has to come out of the real `readdirSync`
-        // inside the walk — ./compile.test.mjs:2117 prefers a stub where the call is reachable from the
-        // test, and this one is three frames inside a closure. The root guard below is this suite's own
-        // shape (`:1491`, `../cli/pack-version.test.mjs:292`): root traverses a 0o000 directory, so the
-        // probe cannot bite there and a silent pass would be a check that stops checking in CI.
         const root = fixture({ skip: ["skills"] });
         write(root, "skills/reachable/SKILL.md", SKILL("reachable", "Findable. Use when findable."));
         const dark = path.join(root, "skills", "locked");
@@ -469,13 +378,8 @@ describe("the skills the plugin declares", () => {
             const text = messages(inspect(root).findings);
             assert.match(text, /locked\/ could not be read/, text);
             assert.match(text, /could-not-look is not nothing-there/);
-            // The whole point: the unreadable branch must not ALSO be called barren.
             assert.doesNotMatch(text, /locked\/ has no SKILL\.md/);
-            // And it must not borrow the truncation sentence, which would name the depth bound as the
-            // cause of a permission error — a confident wrong reason.
             assert.doesNotMatch(text, /locked\/ has subdirectories this validator did not search/);
-            // The readable sibling is still resolved, so the failure did not discard the findings
-            // around it — ./plugin-lint.test.mjs's own "failing closed" rule.
             assert.equal(inspect(root).stats.skills, 1);
         } finally {
             fs.chmodSync(dark, 0o755);
@@ -485,17 +389,12 @@ describe("the skills the plugin declares", () => {
     test("a skill at exactly the bound is found, and reported as out of the host's reach", () => {
         const root = fixture({ skip: ["skills"] });
         write(root, "skills/a/b/c/SKILL.md", SKILL("c", "At the limit. Use at the limit."));
-        // Found, not truncated — the bound is what this test guards.
         assert.equal(inspect(root).stats.skills, 1);
         assert.doesNotMatch(messages(inspect(root).findings), /did not search/);
-        // But three levels down is two past what the host loads, so it fails rather than passing.
         assert.match(messages(inspect(root).findings), /sits more than 1 level below the declared root/);
     });
 
     test("a skill exactly one level below the declared root is what the host loads, and passes clean", () => {
-        // The positive control, and the reason the rail is a depth comparison rather than a ban on
-        // nesting: this is the shape `./core/skills/` and `./plugin/skills/` already ship, and the two
-        // of them account for exactly the 4 the host registered before the pack path was corrected.
         const root = fixture({ skip: ["skills"] });
         write(root, "skills/greet/SKILL.md", SKILL("greet", "Greets. Use when greeting."));
         assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
@@ -503,8 +402,6 @@ describe("the skills the plugin declares", () => {
     });
 
     test("the `./` form — a declared root that IS one skill — is not reported as out of reach", () => {
-        // Depth 0, not depth 2. The rail must not fire on the form packs use to point at a single
-        // skill, which was measured working and is asserted elsewhere in this file.
         const root = fixture({ skip: ["skills"], plugin: { skills: ["./solo-reach/"] } });
         write(root, "solo-reach/SKILL.md", SKILL("solo-reach", "One skill at the declared path."));
         assert.doesNotMatch(messages(inspect(root).findings), /sits more than 1 level/);
@@ -513,8 +410,6 @@ describe("the skills the plugin declares", () => {
     test("the one-skill `./` form keeps working, and a root that is itself a skill stays one skill", () => {
         const root = fixture({ skip: ["skills"], plugin: { skills: ["./solo/"] } });
         write(root, "solo/SKILL.md", SKILL("solo", "One skill at the declared path."));
-        // A subdirectory beside it must not turn one skill into two — the root's own SKILL.md is
-        // checked before the expansion for exactly this.
         fs.mkdirSync(path.join(root, "solo", "reference"), { recursive: true });
         assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
         assert.equal(inspect(root).stats.skills, 1);
@@ -545,10 +440,7 @@ describe("the skills the plugin declares", () => {
     });
 
     test("a SKILL.md with no name is a failure", () => {
-        // Stricter than the platform, deliberately, and the reason is in plugin-lint.mjs beside the
-        // call: without `name` the invocation name is inherited from the layout, and for a path
-        // pointing straight at a skill that means the install directory — a version string that
-        // changes on every marketplace update.
+        // Stricter than the host: with no `name`, a `./`-form skill takes its versioned install directory's name.
         const root = fixture();
         write(root, "skills/greet/SKILL.md", "---\ndescription: Greets.\n---\n\nBody.\n");
         assert.match(messages(inspect(root).findings), /name/);
@@ -561,9 +453,6 @@ describe("the skills the plugin declares", () => {
     });
 
     test("a block-scalar description is accepted", () => {
-        // The conservative half of the parse policy: a description written across lines is legal
-        // YAML and common in long skill descriptions. Failing it would be a false red, and a false
-        // red is what gets a whole recipe switched off (../.portulan/verify/README.md).
         const root = fixture();
         write(
             root,
@@ -574,8 +463,7 @@ describe("the skills the plugin declares", () => {
     });
 
     test("a skill outside every declared path is not silently shipped", () => {
-        // `skills` on a marketplace-root entry replaces the default scan, so a directory nobody
-        // declared is a directory nobody ships — and the author will believe otherwise.
+        // `skills` on a marketplace-root entry replaces the default scan, so an undeclared skill ships nothing.
         const root = fixture();
         write(root, "extra/lonely/SKILL.md", SKILL("lonely", "Never declared."));
         const { findings } = inspect(root);
@@ -589,13 +477,6 @@ describe("the skills the plugin declares", () => {
 });
 
 describe("the agents nothing declares", () => {
-    // Agents are found by convention rather than by declaration, and that is not a style choice:
-    // the only form the host loads is `./agents/` with no `agents` key at all. So the coverage the
-    // milestone-3 criterion asks for — "CI checks every declared skill and agent" — cannot be
-    // reached through the manifest for agents, and is reached through the convention instead.
-    // Without these tests the criterion degrades silently: the recipe printed `0 agent(s)` and
-    // GREEN the moment the key came out.
-
     test("an agent file with no frontmatter is a failure", () => {
         const root = fixture();
         write(root, "agents/worker.md", "# Worker\n\nNo frontmatter.\n");
@@ -627,28 +508,16 @@ describe("the agents nothing declares", () => {
     });
 
     test("a plugin that ships no agents at all is not a failure", () => {
-        // Generic validator, not a mirror of this repository: shipping no agents is legitimate — for a
-        // plugin that ships no personas either, which this fixture is. Where a plugin DOES ship
-        // `core/personas/`, the correspondence added at milestone 7 session 7 fails every unbound one,
-        // so the residual hole this comment used to name — deleting `agents/` degrading to a note — is
-        // closed exactly where it mattered and left open exactly where it is legitimate.
         const root = fixture({ skip: ["agents"] });
         assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
         assert.equal(inspect(root).stats.agents, 0);
     });
 
     test("this repository's three personas are found and checked", () => {
-        // The count is asserted against this tree on purpose. `0 agent(s)` read as GREEN once and
-        // the personas had silently stopped shipping; a bare "no failures" assertion would have
-        // agreed with it.
         assert.equal(inspect(REPO).stats.agents, 3);
     });
 
     test("an agent stranded outside the loadable directory is reported", () => {
-        // The failure this whole pull request is about, generalised past this repository: an agent
-        // file its author believes is shipping, sitting where the platform will never load it.
-        // `plugin/agents/` is the shape that bit here, and it is the natural one to reach for
-        // because *skills* do load from custom declared paths — the asymmetry is the trap.
         const root = fixture();
         write(root, "plugin/agents/stranded.md", AGENT("stranded", "Believes it is loading."));
         const notes = inspect(root)
@@ -656,40 +525,21 @@ describe("the agents nothing declares", () => {
             .map((f) => f.message)
             .join("\n");
         assert.match(notes, /stranded/);
-        // And the loadable ones are NOT reported. Asserting only that the stranded file is named
-        // passes just as happily when *every* agent is named, which is what the first version of
-        // this rule did — it reported the three agents at the location it exists to point people
-        // toward. A test that cannot fail on the opposite answer is not testing the answer.
         assert.doesNotMatch(notes, /worker/);
     });
 
     test("a stranded agent is a note, not a failure", () => {
-        // Same reasoning as the undeclared-SKILL.md report beside it: a `.md` under some other
-        // `agents/` may legitimately be a fixture, an example, or another host's binding, and this
-        // validator cannot tell which. Reporting beats both failing and skipping.
         const root = fixture();
         write(root, "packs/demo/agents/example.md", AGENT("example", "A pack's example binding."));
         assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
     });
 
     test("this repository's agents/ is a real directory, not a symlink", () => {
-        // A repository-anchored assertion rather than a rule in the lint, because the shape it
-        // refuses is one the platform *accepts*: a symlinked `agents/` was built during this
-        // session, loaded correctly through two of the three install paths, and passed every check
-        // here. It was rejected on the maintainer's direction because the third path — a clone from
-        // the remote — was never measured, which makes it an untested behaviour resting on a
-        // platform quirk. Nothing stopped it coming back: one `ln -s` restored it and the whole
-        // suite, the lint and the map check all stayed green. So the ruling is written where it
-        // binds this tree and nowhere else. A generic refusal would be this repository encoding its
-        // own risk appetite into a tool other plugins run.
+        // This tree's rule, not the lint's: the host accepts a symlinked agents/, so other plugins may ship one.
         assert.equal(fs.lstatSync(path.join(REPO, "agents")).isSymbolicLink(), false);
     });
 
     test("a filesystem error is not reported as 'this plugin ships no agents'", () => {
-        // Round 2 of the same finding: the probe that replaced `existsSync` caught *every* error and
-        // called it absent, so EACCES on the plugin root became the benign note. Only ENOENT means
-        // absent. Everything else means the question could not be answered, and answering an
-        // unanswerable question with the reassuring option is the whole defect class.
         const root = fixture();
         fs.chmodSync(root, 0o600); // parent loses +x, so lstat of any child gives EACCES
         try {
@@ -704,21 +554,13 @@ describe("the agents nothing declares", () => {
     });
 
     test("a broken agents/ symlink is a failure, not 'this plugin ships no agents'", () => {
-        // Found by review. `existsSync` **follows** the link, so a broken `agents` entry answered
-        // "absent" and took the note branch — GREEN, `0 agent(s)`, exit 0, over a tree that plainly
-        // contains an `agents` entry and cannot use it. Absent and unusable are different verdicts
-        // and only one of them is benign; deciding between them with a dereferencing call is the
-        // same short-input-set defect this whole session is about, in the code written to fix it.
         const root = fixture({ skip: ["agents"] });
         fs.symlinkSync("./nowhere", path.join(root, "agents"));
         assert.notEqual(fails(inspect(root).findings).length, 0, "a broken agents/ link passed");
     });
 
     test("an agent reached by a symlink is checked, not silently skipped", () => {
-        // `readdirSync(…, { withFileTypes: true })` reports a symlink as neither a file nor a
-        // directory, so the obvious `isFile()` filter drops it — and a dropped agent is exactly the
-        // failure this whole session is about: present in the tree, absent from the count, nothing
-        // saying so. Here the target is inside the root and broken, so it must be *reported*.
+        // A `Dirent` for a symlink is neither a file nor a directory, so an `isFile()` filter drops it.
         const root = fixture();
         fs.symlinkSync("./nowhere.md", path.join(root, "agents", "linked.md"));
         assert.notEqual(fails(inspect(root).findings).length, 0, "a symlinked agent was skipped");
@@ -727,8 +569,6 @@ describe("the agents nothing declares", () => {
 
 describe("failing closed", () => {
     test("an unreadable SKILL.md is a failure, not an exit 2", () => {
-        // doctor's own defect, tested here before it can be repeated: an unguarded read turned a
-        // workspace already judged red into "could not run", discarding every finding so far.
         const root = fixture();
         const file = path.join(root, "skills", "greet", "SKILL.md");
         fs.chmodSync(file, 0o000);
@@ -747,11 +587,6 @@ describe("failing closed", () => {
     });
 
     test("a declared path that cannot be read is a verdict, not could-not-run", () => {
-        // Review'd point, and the right one: a declared-but-unreadable component path must arrive as
-        // a packaging failure (exit 1), never as exit 2 discarding the findings around it. The fix
-        // was structural rather than another try/catch — `resolve()` now reads the path's kind once,
-        // inside its own guard, so the loops below it have no second unguarded `statSync` to throw
-        // from.
         const root = fixture({ plugin: { skills: ["./locked/inner/"] } });
         fs.mkdirSync(path.join(root, "locked", "inner"), { recursive: true });
         fs.chmodSync(path.join(root, "locked"), 0o000);
@@ -842,12 +677,6 @@ describe("the frontmatter parser", () => {
 // -------------------------------------------------------------- the one-way rule between the feeds
 
 describe("a public marketplace entry may not point into a private feed", () => {
-    // The reverse direction of the maintainer's #113 ruling. The feed points at the public repository;
-    // the public repository must never point back. Two reasons, and the second is the one that makes it
-    // a rail rather than a preference: a public entry sourced from `portulan-internal` is a **dead
-    // pointer for every stranger** — the fetch 404s on a repository they cannot see — and it leaks the
-    // private feed's internal structure into a manifest anyone can read. Preventive: no such entry
-    // exists today, which is exactly when a rule is cheap.
     test("a `github` source naming the private feed is refused", async () => {
         const root = fixture({
             marketplace: {
@@ -882,10 +711,6 @@ describe("a public marketplace entry may not point into a private feed", () => {
     });
 
     test("an ordinary off-tree source is still a note, not a failure", async () => {
-        // The rule is narrow on purpose. Pointing at some other public repository is a real shape the
-        // platform supports and this lint cannot resolve — it stays counted-and-reported, which is the
-        // answer it already gave. Widening the refusal to every off-tree source would forbid a shape
-        // nobody has ruled against.
         const root = fixture({
             marketplace: {
                 name: "demo-market",
@@ -908,10 +733,6 @@ describe("a public marketplace entry may not point into a private feed", () => {
 
 describe("the private-feed refusal matches a name, not a substring", () => {
     test("a public repo whose name merely CONTAINS the feed's is not refused", async () => {
-        // Copilot, round 5 on #117. `target.includes(feed)` false-positives on an unrelated public
-        // repository — the intent is to block a pointer TO the private feed by name, and a substring
-        // match blocks anything whose name happens to contain it. A false red in a rail is how the
-        // whole rail gets switched off.
         const root = fixture({
             marketplace: {
                 name: "demo-market",
@@ -947,11 +768,6 @@ describe("the private-feed refusal matches a name, not a substring", () => {
 
 describe("the private-feed refusal cannot be bypassed by case", () => {
     test("GitHub repo names are case-insensitive, so the rail must be too", async () => {
-        // Copilot, round 6 on #117 — a bypass of the rail added one round earlier. `Sleepy-Panda-Srl/
-        // Portulan-Internal` resolves to the same repository and would have passed a case-sensitive
-        // membership test. A rail that a different capitalisation walks through is not a rail, which is
-        // why this went past the review loop's two-fix-round bound rather than to triage: the precedent
-        // is #105, which did the same to close a genuine fail-open.
         for (const repo of [
             "Sleepy-Panda-Srl/Portulan-Internal",
             "sleepy-panda-srl/PORTULAN-INTERNAL",
@@ -987,9 +803,6 @@ describe("the private-feed refusal cannot be bypassed by case", () => {
 
 describe("the private-feed rail names an owner as well as a repo", () => {
     test("an unrelated PUBLIC repo with the same name is a note, not a failure", async () => {
-        // Copilot, round 8. Matching the repo-name segment alone refused `someone-else/portulan-internal`,
-        // contradicting this rail's own stated narrowness — other public repositories stay counted and
-        // reported. The feed is an owner AND a name, so the rail matches the pair.
         const root = fixture({
             marketplace: {
                 name: "demo-market",
@@ -1023,17 +836,7 @@ describe("the private-feed rail names an owner as well as a repo", () => {
     });
 });
 
-// ---------------------------------------------------------------------------------------------
-// `packs/` is itself a plugin payload, and the feed ships it as one.
-//
-// The private feed's `portulan-checkpoints` entry is a `git-subdir` source rooted at `packs/`, so a
-// host installs the contents of that directory and reads a manifest from `packs/.claude-plugin/`.
-// Until 2026-08-09 there was no manifest there at all: the payload declared nothing, registered
-// nothing, and reported `Skills (0)` on every install — #134's own measurement, whose stated cause
-// (a declared path one level too high) was a different trap from the real one (no declaration).
-//
-// These pin the payload rather than the fixture, because the defect was in the tree and no fixture
-// would have caught it. They are deliberately narrow: this file's own suite covers the general rules.
+// ------------------------------------------------------------- `packs/` is itself a plugin payload
 
 describe("the packs/ payload the private feed ships", () => {
     const PAYLOAD = path.join(REPO, "packs");
@@ -1047,9 +850,6 @@ describe("the packs/ payload the private feed ships", () => {
     });
 
     test("every SKILL.md in the payload is within ONE level of a declared root — the host's reach", () => {
-        // The host expands a declared skills path exactly one level. A skill deeper than that is
-        // packaged, counted by a validator, and inert on every install — which is how three skills
-        // shipped for a milestone while the inventory said zero.
         const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
         const roots = manifest.skills.map((s) => path.resolve(PAYLOAD, s));
 
@@ -1077,8 +877,6 @@ describe("the packs/ payload the private feed ships", () => {
     });
 
     test("the repository's own manifest declares the same skills from ITS root, not this one", () => {
-        // Two manifests, two roots, and the paths differ by exactly the prefix the roots differ by.
-        // Asserted so a later edit cannot quietly make one a copy of the other.
         const repoManifest = JSON.parse(fs.readFileSync(path.join(REPO, ".claude-plugin", "plugin.json"), "utf8"));
         const payloadManifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
         for (const declared of payloadManifest.skills) {
@@ -1091,17 +889,9 @@ describe("the packs/ payload the private feed ships", () => {
     });
 });
 
-// The RELAXATION's own forced reds. `--payload` makes a missing marketplace.json a counted note rather
-// than a failure, and `../.portulan/gate-map.md` holds that relaxing a check is the case to scrutinise
-// hardest — so the opt-in, its boundary, and its failure modes are asserted rather than described.
-// Added at the pre-commit checkpoint, which observed that the mode had shipped with no test at all.
-
 describe("payload roots — the opt-in relaxation", () => {
     const payloadTree = () => {
         const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-payload-"));
-        // Registered with the suite's own scratch list, or every run leaves a directory behind — a
-        // real leak, and the one thing in this file that grows without bound. The helper above does
-        // this; this one was written beside it and did not. (Copilot, on the round reviewing it.)
         SCRATCH.push(root);
         fs.mkdirSync(path.join(root, ".claude-plugin"), { recursive: true });
         fs.writeFileSync(
@@ -1117,15 +907,11 @@ describe("payload roots — the opt-in relaxation", () => {
         const root = payloadTree();
         const relaxed = inspect(root, { payload: true });
         assert.equal(relaxed.findings.filter((f) => f.severity === "fail").length, 0, messages(relaxed.findings));
-        // Read the findings directly: `messages()` surfaces failures only, so asserting the NOTE
-        // through it passed vacuously in both directions — caught by the note test failing on an
-        // empty string, which is the useful accident.
+        // `messages()` holds failures only, so a note is read from the findings themselves.
         const owed = (f) => f.some((x) => /none is owed/.test(x.message));
         assert.equal(owed(relaxed.findings), true, "the exemption must SAY it is one");
         assert.equal(relaxed.stats.unverifiable >= 1, true, "the gap is COUNTED, not merely worded");
 
-        // The opt-in invariant: the same tree, unmarked, still fails. If this ever passes, the mode
-        // stopped being an opt-in and became an inference from an absent file.
         const strict = inspect(root);
         assert.match(messages(strict.findings), /marketplace\.json is missing/);
         assert.equal(strict.findings.filter((f) => f.severity === "fail").length > 0, true);
@@ -1135,7 +921,6 @@ describe("payload roots — the opt-in relaxation", () => {
         const root = payloadTree();
         fs.writeFileSync(path.join(root, ".claude-plugin", "marketplace.json"), JSON.stringify({ name: "m" }));
         const { findings } = inspect(root, { payload: true });
-        // Present-but-invalid must not ride the exemption: the note is for ABSENCE only.
         assert.equal(findings.some((f) => /none is owed/.test(f.message)), false);
         assert.equal(findings.filter((f) => f.severity === "fail").length > 0, true, messages(findings));
     });
@@ -1154,10 +939,6 @@ describe("payload roots — the opt-in relaxation", () => {
 });
 
 test("a marketplace.json that cannot be EXAMINED fails, payload or not — the third verdict", () => {
-    // ENOENT is the only absence. An unreadable directory makes `lstatSync` answer EACCES, and the
-    // first cut fell through to `manifest()`, whose `existsSync` also cannot stat it and calls the
-    // file MISSING — the conflation this block exists to prevent, one branch further out.
-    // (Copilot, final round on #188.) Skipped as root, where permissions do not bite.
     const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-unexaminable-"));
     SCRATCH.push(root);
     const meta = path.join(root, ".claude-plugin");
@@ -1180,16 +961,8 @@ test("a marketplace.json that cannot be EXAMINED fails, payload or not — the t
 // ===============================================================================================
 // compose — the workspace's `packs` array and plugin.json's `skills` are one fact
 // ===============================================================================================
-//
-// Row 7 clause (b) asks for PARITY: a composed pack's skill invoked the way a core skill is, because
-// the workspace composed it. Registration is a property of plugin.json alone — measured 2026-08-09
-// on Claude Code 2.1.226 by deleting the `packs` key outright and reinstalling, which left the host's
-// inventory identical — so until this check nothing made composition load-bearing.
-//
-// Written red first, both directions, and the tree's real manifests were forced red both ways before
-// these existed: a check nobody has seen fail is a check nobody has seen work.
+// Claude Code 2.1.226 registers from plugin.json alone: deleting the `packs` key left its inventory unchanged.
 
-/** A plugin bundle that both composes a pack and registers it — the aligned state. */
 function composed({ packs = ["rituals/checkpoints"], declare = true, governing = true } = {}) {
     const root = fixture({
         plugin: declare
@@ -1219,7 +992,6 @@ describe("compose — composition and registration are pinned to each other", ()
         const bad = fails(findings).filter((f) => f.check === "compose");
         assert.equal(bad.length, 1, messages(findings));
         assert.match(bad[0].message, /no plugin\.json `skills` path reaches it/);
-        // The repair is in the message, at the depth the HOST expands — not the skill's own directory.
         assert.match(bad[0].message, /Declare \.\/packs\/rituals\/checkpoints\/skills\/$/);
     });
 
@@ -1263,7 +1035,6 @@ describe("compose — composition and registration are pinned to each other", ()
     });
 
     test("skills OUTSIDE ./packs/ are none of this check's business", () => {
-        // `./skills/greet/` is core-shaped: registered, composed by nothing, and correct.
         const { findings } = inspect(composed());
         assert.equal(
             findings.some((f) => f.check === "compose" && /greet/.test(f.message)),
@@ -1272,18 +1043,8 @@ describe("compose — composition and registration are pinned to each other", ()
         );
     });
 
-    // --- the DECLARATION side, added milestone 7 session 8 --------------------------------------
-    //
-    // Everything above asks about the TREE. These ask what each composed pack's own `pack.json`
-    // NOMINATES through `contributes.skills`, which is the key `spec/pack.schema.json` had already
-    // undertaken to open — *"Reaching parity means reading this key"* — and which nothing folded into
-    // registration until `cli/skills-set.mjs`.
-    //
-    // Written after discovering the fixtures above declare no `contributes` at all, so the whole
-    // suite passed green over a check it never once exercised. That is the same shape as every other
-    // blind-spot finding here, arriving in the change that cites them.
+    // ---- the DECLARATION side: what each composed pack's pack.json nominates ----------------------
 
-    /** A bundle whose composed pack NOMINATES a skills root, as a real pack manifest does. */
     function nominating({ declare = true, skills = ["skills/"], populate = true } = {}) {
         const root = fixture({
             plugin: declare
@@ -1319,9 +1080,6 @@ describe("compose — composition and registration are pinned to each other", ()
     });
 
     test("a nominated root that does not EXIST fails — the walk finds nothing and would have been silent", () => {
-        // The case this half exists for. With no `skills/` directory at all, the tree walk has no
-        // skill to compare and says nothing, so a pack that registers nothing passed green. What the
-        // declaration side has that the walk does not is a claim to check against.
         const root = nominating({ declare: false, populate: false });
         const bad = fails(inspect(root).findings).filter((f) => f.check === "compose" && /nominates/.test(f.message));
         assert.equal(bad.length, 1, messages(inspect(root).findings));
@@ -1336,20 +1094,13 @@ describe("compose — composition and registration are pinned to each other", ()
     });
 
     test("a pack with NO pack.json is skipped — this check does not invent a second answer to `what is a pack`", () => {
-        // `plugin-lint` deliberately refuses to require a `pack.json` of a `packs` entry, because that
-        // question is `doctor`'s. A declaration check failing on its absence would be that rule
-        // arriving through the back door.
-        const root = composed(); // its pack.json carries no `contributes` — and none is owed
+        const root = composed();
         fs.rmSync(path.join(root, "packs", "rituals", "checkpoints", "pack.json"));
         const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
         assert.equal(bad.length, 0, messages(inspect(root).findings));
     });
 
     test("a pack.json that will not PARSE says so, and does not blame the read", () => {
-        // Absent, unreadable and unparseable are three answers. This asserted the *read* message for a
-        // parse failure and passed while the diagnosis pointed at permissions — the same conflation
-        // `cli/skills-set.mjs` carried for `workspace.json`, fixed there a round earlier and left
-        // standing here. Raised as a promoted low-confidence note on #229.
         const root = composed();
         fs.writeFileSync(path.join(root, "packs", "rituals", "checkpoints", "pack.json"), "{ not json");
         const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
@@ -1366,8 +1117,6 @@ describe("compose — composition and registration are pinned to each other", ()
     });
 
     test("a manifest naming each skill individually satisfies the nomination — that registers them too", () => {
-        // The `"./"` form. Refusing it would be a false red on a bundle that is correct, so the check
-        // asks whether the skills are reachable rather than whether one exact string is present.
         const root = fixture({ plugin: { skills: ["./skills/", "./packs/rituals/checkpoints/skills/pre-commit/"] } });
         write(
             root,
@@ -1386,8 +1135,6 @@ describe("compose — composition and registration are pinned to each other", ()
 });
 
 test("compose refuses a composed pack that is a symlink out of the bundle", () => {
-    // Lexical containment is not containment: `escapes()` alone passed a `packs/<name>` whose target
-    // was anywhere on disk, and `statSync`/`readdirSync` follow it. Copilot, #195.
     const root = composed();
     const outside = scratch();
     write(outside, "skills/smuggled/SKILL.md", SKILL("smuggled", "Not part of this bundle at all."));
@@ -1397,12 +1144,9 @@ test("compose refuses a composed pack that is a symlink out of the bundle", () =
     const manifest = path.join(root, ".portulan", "workspace.json");
     fs.writeFileSync(manifest, JSON.stringify({ name: "demo", packs: ["rituals/elsewhere"] }, null, 2));
 
-    // One `inspect` run, reused: a second call re-walks the tree and a failure message describing a
-    // different run than the assertion is a debugging trap. Copilot, #195.
     const { findings } = inspect(root);
     const bad = fails(findings).filter((f) => f.check === "compose");
     assert.equal(bad.some((f) => /resolves outside \.\/packs\//.test(f.message)), true, messages(findings));
-    // And it must say nothing was walked rather than going quiet — refusing is not the same as passing.
     assert.match(bad.find((f) => /resolves outside/.test(f.message)).message, /composition is unchecked for it/);
 });
 
@@ -1416,16 +1160,12 @@ describe("compose fails closed on what it could not evaluate", () => {
     });
 
     test("a `packs` entry inside the bundle but OUTSIDE ./packs/ is refused, not walked", () => {
-        // `../plugin` stays inside the plugin root and escapes `./packs/`. The first cut compared
-        // against the root, so this passed the guard and was walked as though it were a composed
-        // pack. Copilot, #195 round 2 — the hole the previous round's fix left one directory up.
         const root = composed({ packs: ["rituals/checkpoints", "../../plugin"] });
         write(root, "plugin/skills/smuggled/SKILL.md", SKILL("smuggled", "Not a pack, and not composed."));
         const { findings } = inspect(root);
         const bad = fails(findings).filter((f) => f.check === "compose");
         assert.equal(bad.length, 1, messages(findings));
         assert.match(bad[0].message, /names a path outside \.\/packs\//);
-        // And it must not be mistaken for a pack that is merely missing — that is a note, not a failure.
         assert.equal(findings.some((f) => f.severity === "note" && /does not resolve under/.test(f.message)), false);
     });
 
@@ -1448,10 +1188,6 @@ describe("compose fails closed on what it could not evaluate", () => {
     });
 
     test("a governing manifest that parses to JSON `null` fails closed — the sentinel collision", () => {
-        // `null` was the sentinel for "no governing workspace here" AND what `JSON.parse("null")`
-        // returns, so a present, invalid manifest was indistinguishable from an absent one and skipped
-        // the whole check without a word. A sentinel that collides with a legal value of the thing it
-        // describes cannot report on that thing. Copilot, #195.
         const root = composed();
         fs.writeFileSync(path.join(root, ".portulan", "workspace.json"), "null");
         const { findings } = inspect(root);
@@ -1461,7 +1197,6 @@ describe("compose fails closed on what it could not evaluate", () => {
     });
 
     test("a `packs` of null is reported as null, not as an object", () => {
-        // `typeof null === "object"` sent a reader looking for a key that was not there.
         const root = composed();
         fs.writeFileSync(path.join(root, ".portulan", "workspace.json"), JSON.stringify({ name: "demo", packs: null }, null, 2));
         const { findings } = inspect(root);
@@ -1480,8 +1215,6 @@ describe("compose fails closed on what it could not evaluate", () => {
 });
 
 test("a `packs` value that is not an array fails closed — present is not absent", () => {
-    // `"packs": "rituals/checkpoints"` iterated zero times and reported nothing, so the check's own
-    // invariant went unestablished while the run looked clean. Copilot, #195.
     const root = composed();
     const manifest = path.join(root, ".portulan", "workspace.json");
     fs.writeFileSync(manifest, JSON.stringify({ name: "demo", packs: "rituals/checkpoints" }, null, 2));
@@ -1491,9 +1224,6 @@ test("a `packs` value that is not an array fails closed — present is not absen
 });
 
 test("a composed pack that exists but is a FILE is a NOTE — seen, and doctor's verdict", () => {
-    // A failure here would claim a hazard nobody could demonstrate: the checkpoint on #195 tried to
-    // build a false green through a regular file and could not, since a file holds no SKILL.md for
-    // the two walks to disagree about. So it matches the ENOENT branch: say it was seen, pass it on.
     const root = composed({ packs: ["rituals/checkpoints", "rituals/afile"] });
     write(root, "packs/rituals/afile", "not a pack\n");
     const { findings } = inspect(root);
@@ -1507,10 +1237,6 @@ test("a composed pack that exists but is a FILE is a NOTE — seen, and doctor's
 
 describe("compose cannot go quiet on what the walk could not see", () => {
     test("a SYMLINKED SKILL.md in a composed, undeclared pack is named — the walks disagreed", () => {
-        // `Dirent.isFile()` is false for a symlink, so the sweep could not see it, while the
-        // declared-side walk reaches the same file through `existsSync`, which follows links. One
-        // shape, three behaviours across this repository — `doctor`'s `walkSkills` lstat-refuses it.
-        // Found by the pre-commit checkpoint on #195, which built the silent green.
         const root = composed({ declare: false });
         const real = path.join(root, "skills", "greet", "SKILL.md");
         const link = path.join(root, "packs", "rituals", "checkpoints", "skills", "linked");
@@ -1523,9 +1249,6 @@ describe("compose cannot go quiet on what the walk could not see", () => {
     });
 
     test("a composed pack dir that is a symlink INSIDE ./packs/ does not read as undeclared", () => {
-        // The declared side is canonicalised by `resolve()`; the composed side was not, so one
-        // directory reached by two path forms compared unequal and produced a false "composed but
-        // undeclared" failure on a correct bundle. Copilot, #195, twice in one round.
         const root = composed();
         const realDir = path.join(root, "packs", "rituals", "checkpoints");
         const alias = path.join(root, "packs", "rituals", "alias");
@@ -1555,16 +1278,10 @@ describe("compose cannot go quiet on what the walk could not see", () => {
 
 // ---------------------------------------------------------------- the persona ↔ binding correspondence
 
-// `.portulan/tasks/0005-lint-the-persona-agent-binding.md`, opened 2026-07-26 on the maintainer's ruling
-// that settled the persona/agent separation — "separation is load-bearing, and separation must never
-// become duplication" — and unbuilt until milestone 7 session 7. The two mechanical halves are these;
-// the task's third criterion, that a binding restating its persona's charter should be reported, stays
-// open on its own terms, because its measurable form is an open question that nothing has settled.
 describe("a shipped persona and its host binding must correspond", () => {
     const PERSONA = (name) =>
         ["---", `name: ${name}`, "description: A role.", "tools: [read]", "---", "", `# Persona — ${name}`, "", "## Charter", "It does one thing.", ""].join("\n");
 
-    /** A fixture that also ships core personas, which is the layout this correspondence is about. */
     function withPersonas(personas, agents) {
         const root = fixture({ skip: ["agents"] });
         for (const name of personas) write(root, `core/personas/${name}.md`, PERSONA(name));
@@ -1599,22 +1316,16 @@ describe("a shipped persona and its host binding must correspond", () => {
     });
 
     test("a plugin shipping no core personas is untouched by this check", () => {
-        // A legitimate shape — most plugins ship no doctrine layer at all — and a check that failed it
-        // would be this tool inventing a requirement nobody declared.
         const { findings } = inspect(fixture());
         assert.equal(fails(findings).length, 0, said(findings));
     });
 
     test("this repository's own three personas are each bound", () => {
-        // The live half: the correspondence is asserted against the tree that ships, not only against a
-        // fixture built to satisfy it.
         const { findings } = inspect(REPO);
         assert.equal(fails(findings).filter((f) => /persona|binds no/.test(f.message)).length, 0, said(findings));
     });
 });
 
-// Raised by Copilot as a suppressed note on round 3 of #227 and promoted to a thread by the channel
-// proposal 0021 built — which is the first time that promotion has caught a defect here.
 describe("an unreadable agents directory is not evidence that personas are unbound", () => {
     const PERSONA = (name) =>
         ["---", `name: ${name}`, "description: A role.", "tools: [read]", "---", "", `# Persona — ${name}`, "", "## Charter", "It does one thing.", ""].join("\n");
@@ -1630,8 +1341,7 @@ describe("an unreadable agents directory is not evidence that personas are unbou
         fs.chmodSync(dir, 0o000);
         try {
             const { findings } = inspect(root);
-            // Root ignores the mode bits, so the assertion is conditional on the read actually
-            // failing — a test that passes for the wrong reason in a container is worse than none.
+            // Root ignores mode bits, so this asserts only where the read actually failed.
             if (/could not be read|could not be examined/.test(said(findings))) {
                 assert.match(said(findings), /correspondence went unchecked/);
                 assert.equal(
@@ -1646,7 +1356,6 @@ describe("an unreadable agents directory is not evidence that personas are unbou
     });
 
     test("an ABSENT agents directory still fails every unbound persona — absence is an answer", () => {
-        // The distinction the gate turns on: nothing there is a finding, nothing looked is not.
         const root = fixture({ skip: ["agents"] });
         write(root, "core/personas/worker.md", PERSONA("worker"));
         const { findings } = inspect(root);

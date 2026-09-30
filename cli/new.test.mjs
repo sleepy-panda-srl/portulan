@@ -1,33 +1,8 @@
-// Tests for `new` — the authoring subcommand that scaffolds an artifact from a core template into the
-// user's OWN layer.
-//
-// Written before the generator, per ../core/operating/verification.md: the failing test is the spec.
-// Zero dependencies, node's own runner, same as ./init.test.mjs and ./doctor.test.mjs.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// ## What this suite establishes, and what it cannot
-//
-// It establishes the one property row 7 states in the imperative — **never into `core/`** — and it
-// establishes it against the filesystem rather than against an argument check, because the interesting
-// escapes (`--into ../core`, a symlinked destination, a `..` segment buried mid-path) all parse fine and
-// only fail a resolution check. It establishes that what `new` writes **validates**: the last group runs
-// the real `doctor` and the real `plugin-lint` against real directories, since a scaffold nothing
-// validates is a scaffold nobody can trust — and it is the same group that caught the drafted policy
-// `init` shipped at session 1, so it earns its cost twice.
-//
-// It cannot establish that a scaffold is any GOOD. Whether a team reads the drafted persona and
-// recognises a role they actually have is the milestone-7 demonstration's question, not an assertion's.
-//
-// **Every refusal here is asserted on its sentence as well as its code**, on session 1's finding that a
-// refusal which misdescribes what it found is worth less than no refusal — it sends the reader somewhere
-// real and wrong.
+// Tests for `new`: scaffolds that validate, written into the user's own layer and never into `core/`.
 
 import { test, describe } from "node:test";
 
-// The gate-policy spec at which `floor` became part of the shape — `../spec/slots.md`, `### floor`:
-// "Added in 2.2, optional". Named here rather than inlined so the assertion below reads as the
-// invariant it is, and so the next reader is sent to the document that decides it.
+// The first gate-policy spec with a `floor`, per `spec/slots.md`.
 const FLOOR_MIN_SPEC = "2.2";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -37,10 +12,7 @@ import { fileURLToPath } from "node:url";
 
 import { NewError, KINDS, parseArgs, template, destination, collisions, run } from "./new.mjs";
 
-// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
-// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
-// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
-// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+// No host plugins reach this suite; `pinned-roots.live.test.mjs` requires these three lines verbatim.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -48,27 +20,14 @@ process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
 
-// ONE exit handler for every scratch directory, not one each — the per-directory form exceeds node's
-// default ten-listener limit partway through a suite this size. The reason is not mine: ./doctor.test.mjs
-// records it, and ./init.test.mjs records what ignoring it cost (2375 leaked directories).
-//
-// The per-directory `try` is not defensive habit: a case chmods a nested scratch child to `0o000`
-// while EMPTY — unreadable, so still a hazard — and restores it in `finally`, so a case dying before
-// its `finally` leaves a directory `rmSync` cannot enter. `force: true` suppresses ENOENT, not EACCES.
-// Naked, that throw aborts the loop inside an `exit` handler and abandons every directory after it.
-//
-// Which locks actually bite was measured, not assumed, because a hazard claimed where none exists
-// is the same defect as one missed: an EMPTY directory still removes if it is READABLE, so only an
-// unreadable one blocks while empty; a NON-EMPTY one additionally needs write and search. The errno
-// follows readability, not position: an UNREADABLE root gives EACCES, while everything else — a
-// locked child, or a readable-but-unwritable root — gives ENOTEMPTY.
+// One exit handler for every scratch directory: one each would pass node's ten-listener limit.
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) {
         try {
             fs.rmSync(dir, { recursive: true, force: true });
         } catch {
-            /* a case died before restoring a mode — sweep what is left rather than abandoning it */
+            /* a dying case can leave a directory unreadable, and `force` suppresses ENOENT, not EACCES */
         }
     }
 });
@@ -84,14 +43,12 @@ function scratch(seed = {}) {
     return dir;
 }
 
-/** Collects what a run said, so a refusal can be asserted on its sentence and not only on its code. */
 function harness() {
     const said = [];
     const warned = [];
     return { said, warned, options: { say: (l) => said.push(l), warn: (l) => warned.push(l) } };
 }
 
-/** A minimal workspace `new` can scaffold into. Enough slots to be a destination, not a whole fixture. */
 function workspace(dir, extra = {}) {
     const manifest = {
         portulan: { spec: "2.7" },
@@ -106,12 +63,10 @@ function workspace(dir, extra = {}) {
     return path.join(dir, ".portulan");
 }
 
-// ------------------------------------------------------------------ the six kinds row 7 names
+// ------------------------------------------------------------------ the six kinds
 
 describe("the six kinds are exactly the ones row 7 names", () => {
     test("all six are known", () => {
-        // Asserted as a set rather than a count, because a count passes while a name is wrong — and the
-        // row names them, so the row is the authority this compares against.
         assert.deepEqual(
             [...KINDS].sort(),
             ["gate-policy", "pack", "persona", "repo-card", "skill", "workspace"],
@@ -119,8 +74,6 @@ describe("the six kinds are exactly the ones row 7 names", () => {
     });
 
     test("every kind resolves to a core template that exists", () => {
-        // The row says "from a core template". Five of the six templates did not exist when this suite
-        // was written; this is the assertion that made that a red rather than a discovery at the close.
         for (const kind of KINDS) {
             const file = template(kind);
             assert.ok(fs.existsSync(file), `core template for \`${kind}\` is missing: ${file}`);
@@ -138,8 +91,6 @@ describe("the six kinds are exactly the ones row 7 names", () => {
     });
 
     test("no kind at all prints usage and exits 2, never 0", () => {
-        // A generator that exits 0 having written nothing is the fail-open shape session 0 shipped in the
-        // entry point and had to fix: a caller cannot distinguish it from success.
         const { options } = harness();
         assert.equal(run([], options), 2);
     });
@@ -156,9 +107,6 @@ describe("never into `core/` — the one property row 7 states in the imperative
     });
 
     test("a `..` segment that climbs into core/ is refused after resolution, not by pattern", () => {
-        // The pattern check is not the guard and never was: `packs/../core` matches every path rule in
-        // the two schemas and still lands in core. Resolution is what answers it — the same conclusion
-        // spec/pack.schema.json's `$defs/filePath` reaches from the other side.
         const { said, options } = harness();
         const code = run(["skill", "my-skill", "--into", path.join(REPO, "packs", "..", "core")], options);
         assert.equal(code, 2);
@@ -166,10 +114,6 @@ describe("never into `core/` — the one property row 7 states in the imperative
     });
 
     test("a symlink pointing into core/ is refused rather than resolved and permitted", () => {
-        // Session 1 paid for this twice — rounds 4 and 6 on #154, the write path and then the read path.
-        // `existsSync`/`statSync` follow symlinks; `lstatSync` does not. A link is treated as a refusal
-        // rather than followed, because deciding whether a destination is "really" inside core is a
-        // containment judgement with a bad failure mode, where refusing has none.
         const dir = scratch();
         const link = path.join(dir, "sneaky");
         fs.symlinkSync(path.join(REPO, "core"), link);
@@ -179,33 +123,18 @@ describe("never into `core/` — the one property row 7 states in the imperative
         assert.match(said.join("\n"), /symlink|link/i);
     });
 
-    // Is THIS filesystem case-insensitive? Probed rather than assumed from `process.platform`, because
-    // the property belongs to the volume and not to the OS — macOS can be formatted case-sensitively and
-    // Linux can mount a case-insensitive volume. The probe is what the code's own existence check is
-    // implicitly asking, so the test asks it the same way.
+    // Probed, not read from `process.platform`: case sensitivity belongs to the volume, not the OS.
     const caseInsensitiveFS = (() => {
         const dir = scratch({ "probe/x": "" });
         return fs.existsSync(path.join(dir, "PROBE", "x"));
     })();
 
     test("a case-variant spelling of core/ is refused where the filesystem does not distinguish case", () => {
-        // Found by the pre-commit checkpoint, MEASURED on this machine: `--into <repo>/CORE/templates/x`
-        // exited 0 and put a directory inside the shipped `core/`. macOS is case-insensitive and
-        // `realpathSync` does not canonicalise case, so a case-sensitive compare is not a compare at all
-        // here. The comparison is case-insensitive now, which on a case-SENSITIVE filesystem also refuses
-        // a directory genuinely named `CORE` — a conservative refusal, and refusing costs the user one
-        // corrected path while permitting costs an edit to a layer this project ships.
         const dir = scratch({ "core/engine.md": "# kernel\n", "core/templates/skill.md": "# t\n" });
         const { said, options } = harness();
         const code = run(["skill", "evil", "--into", path.join(dir, "CORE", "templates", "x")], options);
 
-        // **This assertion is conditional, and the first version was not — CI caught it.** It passed on
-        // macOS and failed on Linux, and the failure was the *test's*, not the code's: on a
-        // case-sensitive filesystem `CORE` is a genuinely different directory from `core`, holds no
-        // `engine.md`, and writing there escapes nothing. The code decides by probing for a core's
-        // contents, which gives the right answer on both platforms; the test had baked in one of them.
-        // What is asserted on every platform is the part that is actually invariant: **nothing lands
-        // inside the real `core/`.**
+        // A case-sensitive volume keeps `CORE/` apart from `core/`, so only the exit code is conditional.
         assert.ok(!fs.existsSync(path.join(dir, "core", "templates", "x")), "it wrote into core/ anyway");
         if (caseInsensitiveFS) {
             assert.equal(code, 2, `a case-variant path reaches core/ on this filesystem and must be refused: ${said.join("\n")}`);
@@ -213,11 +142,6 @@ describe("never into `core/` — the one property row 7 states in the imperative
     });
 
     test("a symlinked ancestor is resolved even when the destination does not exist yet", () => {
-        // The second escape the checkpoint measured, and the more serious of the two because a
-        // destination that does not exist yet is the ORDINARY case for a scaffolding tool. `realOrSelf`
-        // caught the `realpathSync` failure and returned the UNRESOLVED path, so the header's promise —
-        // "the check resolves first and compares after" — held only when the leaf already existed. The
-        // resolver now realpaths the nearest existing ancestor and re-appends the unresolved tail.
         const dir = scratch({ "core/engine.md": "# kernel\n", "core/templates/skill.md": "# t\n" });
         const link = path.join(dir, "mylayer");
         fs.symlinkSync(path.join(dir, "core"), link);
@@ -228,8 +152,6 @@ describe("never into `core/` — the one property row 7 states in the imperative
     });
 
     test("core/ is refused even when it is the caller's own copy rather than this checkout", () => {
-        // The rule is about the LAYER, not about this repository. A vendored or installed copy of core is
-        // still core, and a scaffold landing there is still an edit to a file the project ships.
         const dir = scratch({ "core/engine.md": "# kernel\n", "core/templates/skill.md": "# t\n" });
         const { said, options } = harness();
         const code = run(["skill", "my-skill", "--into", path.join(dir, "core")], options);
@@ -242,8 +164,6 @@ describe("never into `core/` — the one property row 7 states in the imperative
 
 describe("it refuses ahead of the first byte, the way `init` does", () => {
     test("an existing file is never written over", () => {
-        // Session 1's most destructive finding, arriving one tool over: a hand-written file silently
-        // overwritten. `new` writes into a layer a human curates, so the same rule binds harder here.
         const dir = scratch();
         const ws = workspace(dir, { slots: { identity: "identity.md", principles: "principles.md", gates: "gate-map.md", repos: "repos/" } });
         fs.mkdirSync(path.join(ws, "repos"), { recursive: true });
@@ -256,8 +176,6 @@ describe("it refuses ahead of the first byte, the way `init` does", () => {
     });
 
     test("a collision is reported with every colliding path, grouped by cause", () => {
-        // Session 1's round-4 follow-on: one symlinked directory made the refusal name the same cause ten
-        // times, and a refusal nobody finishes reading is a refusal that failed to explain.
         const dir = scratch();
         const ws = workspace(dir);
         fs.mkdirSync(path.join(ws, "..", "packs", "rituals", "mine", "skills", "a"), { recursive: true });
@@ -266,8 +184,6 @@ describe("it refuses ahead of the first byte, the way `init` does", () => {
     });
 
     test("only ENOENT means absent — EACCES refuses rather than reporting nothing there", () => {
-        // Session 1, round 7: reading any lstat failure as "absent" is "nothing looked" recorded as
-        // "nothing wrong", which is the fail-open that ../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md governs.
         const dir = scratch();
         const locked = path.join(dir, "locked");
         fs.mkdirSync(locked, { recursive: true });
@@ -287,21 +203,14 @@ describe("it refuses ahead of the first byte, the way `init` does", () => {
 
 describe("the argument surface refuses what it cannot act on", () => {
     test("an empty flag value is refused at the command line", () => {
-        // Session 1: `--summary ""` reached a manifest and failed `minLength: 1` there — a workspace red
-        // on the run that reported writing it. No flag here has a meaningful empty value either.
         assert.throws(() => parseArgs(["skill", "x", "--into", ""]), NewError);
     });
 
     test("any leading `-` is a missing value, so a help request is not eaten as one", () => {
-        // Session 1, round 9: `--residence -h` consumed `-h` as the value and then blamed the user for a
-        // token they typed as a flag. `-` is the likeliest thing to land there and the likeliest to be a
-        // help request.
         assert.throws(() => parseArgs(["skill", "x", "--into", "-h"]), NewError);
     });
 
     test("an unknown option names a command that can actually be run", () => {
-        // #155: `init`'s refusal named `init --help`, which nobody can run. Both real invocations are
-        // named here instead — through the entry point, and from a checkout.
         const { said, options } = harness();
         const code = run(["skill", "x", "--flavour", "vanilla"], options);
         assert.equal(code, 2);
@@ -355,8 +264,6 @@ describe("what `new` scaffolds validates — the real tools, against real direct
         const pack = path.join(dir, "rituals", "mine");
         assert.equal(run(["persona", "my-role", "--into", pack], harness().options), 0);
         const text = fs.readFileSync(path.join(pack, "personas", "my-role.md"), "utf8");
-        // The five parts core/personas/README.md fixes. Asserted individually so a failure names which
-        // part is missing rather than reporting that "the contract" is unmet.
         assert.match(text, /tools:/, "no `tools:` allow-list");
         assert.match(text, /##\s*Charter/i, "no charter");
         assert.match(text, /##\s*Autonomy reach/i, "no autonomy reach");
@@ -365,16 +272,6 @@ describe("what `new` scaffolds validates — the real tools, against real direct
     });
 
     test("a scaffolded persona's reach section does not contain the fourth tier's name at all", () => {
-        // core/personas/README.md: Prohibited is the one tier no role may act in, so a persona declaring
-        // it claims a permission that does not exist for anyone.
-        //
-        // **This assertion moved once, and the move is the point.** The first cut of the persona template
-        // explained the rule *inside* the Autonomy reach section, so every scaffolded persona contained
-        // the word — and this test went red against a file that was obeying the rule while describing it.
-        // The fix was not to weaken the assertion: it was to move the explanation above the template's
-        // separator, where it reaches the author and not the artifact, and to put the actual enforcement
-        // in `doctor` where a rule belongs. A generated file that has to be distinguished from a
-        // violation by reading its prose is a generated file that will eventually be misread.
         const dir = scratch();
         assert.equal(run(["pack", "mine", "--category", "rituals", "--into", dir], harness().options), 0);
         const pack = path.join(dir, "rituals", "mine");
@@ -387,26 +284,12 @@ describe("what `new` scaffolds validates — the real tools, against real direct
     });
 
     test("a scaffolded gate policy parses AND compiles — parsing is not the bar", async () => {
-        // Session 1's sharpest lesson: the drafted policy parsed cleanly and compiled to a floor no rule
-        // reached, so `doctor` failed the adopter's very first run. The test that missed it asserted
-        // `parse()`. This one reaches the backend.
-        //
-        // **And for a year it did not.** This test's NAME said "AND compiles" while its body asserted
-        // two object keys and never called the compiler — so the skeleton drifted to a `portulan.gates`
-        // version key `compile` does not read, a `floor` block of two keys it has never read, and no
-        // rule the floor backend could reach, and every run of this suite was green.
-        // [#329](https://github.com/sleepy-panda-srl/portulan/issues/329) found it by hand. A test whose
-        // name claims the bar its body skips is worse than an absent one: it occupies the slot where
-        // the missing check would have been noticed.
         const dir = scratch();
         assert.equal(run(["gate-policy", "gates", "--into", dir], harness().options), 0);
         const policy = JSON.parse(fs.readFileSync(path.join(dir, "gates.json"), "utf8"));
         assert.ok(Array.isArray(policy.rules) && policy.rules.length > 0, "a policy with no rules gates nothing");
         assert.ok(policy.why, "a policy with no rationale is taste — dod.md condition 3");
 
-        // Now actually compile it. The scaffold is a DRAFT, so filling the `{braces}` is the step `new`
-        // itself tells the human to take — this fills them and nothing else, so what is graded is the
-        // skeleton rather than a policy the test wrote.
         const ws = scratch();
         fs.mkdirSync(path.join(ws, ".portulan"), { recursive: true });
         fs.writeFileSync(
@@ -424,10 +307,6 @@ describe("what `new` scaffolds validates — the real tools, against real direct
         const { run: compile } = await import("./compile.mjs");
         assert.equal(compile(["--workspace", ws], { quiet: true }), 0, "the next step `new` names must succeed on what `new` just wrote");
 
-        // **Exit 0 is not the whole promise.** The floor backend refuses only when NO rule reaches it,
-        // so dropping either scaffold rule leaves the other reaching the floor and this stays green —
-        // measured. The skeleton promises the force-push/deletion PAIR, so the pair is what gets
-        // pinned, in the emitted artifact rather than in the exit code. Copilot, round 2.
         const ruleset = JSON.parse(fs.readFileSync(path.join(ws, ".portulan", "compile", "github-ruleset.json"), "utf8"));
         assert.deepEqual(
             ruleset.rules.map((r) => r.type).sort(),
@@ -437,29 +316,10 @@ describe("what `new` scaffolds validates — the real tools, against real direct
     });
 
     test("the scaffolded policy declares a gate-policy spec the compiler implements", async () => {
-        // The narrow rail under the broad one above. #329's root cause was one string: the skeleton
-        // said `"portulan": { "gates": "1.0" }` — the wrong KEY and a value no compiler has known — so
-        // `compile` read `undefined`.
-        //
-        // **Asserted against the compiler's own exported set, not a literal.** A first draft of this
-        // test checked `typeof spec === "string"` under a comment claiming it checked membership —
-        // which `"1.0"`, the exact root cause, satisfies. That is the defect this whole change is
-        // about, written into the rail meant to catch it; the pre-commit checkpoint caught it by
-        // reading the body against its own comment.
-        //
-        // **What this assertion does and does not do**, stated because the first correction of it
-        // overstated in the other direction: it rejects a value the compiler does not know. It does
-        // NOT keep the scaffold level with the compiler — adding `2.3` to the set leaves `2.2` in it,
-        // so the scaffold could stay behind and this would still pass. The two assertions below carry
-        // that: equality with `init.mjs`'s constant, and the floor-bearing minimum.
         const dir = scratch();
         assert.equal(run(["gate-policy", "gates", "--into", dir], harness().options), 0);
         const policy = JSON.parse(fs.readFileSync(path.join(dir, "gates.json"), "utf8"));
         const { KNOWN_GATE_POLICY_SPECS } = await import("./compile.mjs");
-        // The RAW type as well as the coerced membership. `compile` compares `String(spec)`, so a
-        // numeric `2.2` in the skeleton would pass a membership check alone — and the trap is sharper
-        // than it looks: a future `2.10` written as a JSON number is `2.1` by the time either side
-        // sees it, which is a DIFFERENT spec that happens to be known. Copilot, round 1.
         assert.equal(typeof policy.portulan?.spec, "string", "`portulan.spec` is a string-valued contract");
         assert.ok(
             KNOWN_GATE_POLICY_SPECS.has(policy.portulan.spec),
@@ -467,36 +327,16 @@ describe("what `new` scaffolds validates — the real tools, against real direct
         );
         assert.equal(policy.portulan.gates, undefined, "`portulan.gates` is not a key anything reads");
 
-        // **Membership is necessary and not sufficient.** `2.1` is in the set and is the NO-FLOOR
-        // shape; `floor` arrived at 2.2, and `parseFloor` is not version-gated, so a skeleton
-        // regressing to `"2.1"` while still emitting a floor compiles green — measured. Pinned to
-        // `init.mjs`'s constant rather than to a literal: those two are the only carriers that
-        // GENERATE a gate policy, #329 was them disagreeing, and a literal here would let them
-        // disagree again while both sides read `"2.2"`. Copilot, round 2.
         const { GATE_POLICY_SPEC } = await import("./init.mjs");
         assert.equal(
             policy.portulan.spec,
             GATE_POLICY_SPEC,
             "the two policy-generating carriers must declare the same gate-policy spec",
         );
-        // **Agreement is not enough, and the round-2 reasoning that stopped here was wrong.** Pinning
-        // the two carriers to each other prevents them DIVERGING and permits them regressing TOGETHER
-        // — to `2.1`, which is in the compiler's set and is the no-floor shape, while this skeleton
-        // emits a floor and `parseFloor` is not version-gated. `floor` arrived at 2.2
-        // (`../spec/slots.md`, "Added in 2.2, optional"), so a floor-bearing skeleton needs at least
-        // that. The objection to a literal was that it would be a third place SPELLING the version;
-        // this is a rail ASSERTING an invariant, which is a different thing and is what a rail is for.
-        // Copilot, round 3, having been right about it in round 2 as well.
         assert.equal(policy.portulan.spec, FLOOR_MIN_SPEC, "a skeleton that emits a `floor` must declare a spec that has one");
     });
 
     test("the scaffolded floor declares exactly the four keys the compiler reads", async () => {
-        // **The compile rail cannot catch this half, and that is the point.** `parseFloor` validates
-        // the four keys it reads and IGNORES unknown ones — measured: a floor carrying `branch`,
-        // `checks`, `reviews`, `resolve_conversations` AND the dead `require_pull_request` /
-        // `block_force_push` compiles exit 0. So half of #329 could return, in the same file, and the
-        // broad rail above would stay green. An exact-key assertion is the only thing that sees it.
-        // Copilot, round 1 — it read what the broad rail does NOT cover rather than what it does.
         const dir = scratch();
         assert.equal(run(["gate-policy", "gates", "--into", dir], harness().options), 0);
         const policy = JSON.parse(fs.readFileSync(path.join(dir, "gates.json"), "utf8"));
@@ -527,9 +367,6 @@ describe("what `new` scaffolds validates — the real tools, against real direct
 
 describe("the destination is derived from the workspace's own slots", () => {
     test("a repo card refuses when the workspace declares no repos slot", () => {
-        // Deriving a path the manifest does not declare would be `new` inventing a slot, and a workspace
-        // that disagrees with its own manifest on the day it was scaffolded is the drift `doctor` exists
-        // to catch.
         const dir = scratch();
         const ws = workspace(dir);
         const { said, options } = harness();
@@ -546,10 +383,6 @@ describe("the destination is derived from the workspace's own slots", () => {
 
 describe("a scaffolded pointer is a pointer, not a governing workspace with a label", () => {
     test("`--kind pointer --governed-by` is green under the real doctor", async () => {
-        // Copilot's suppressed notes on #156, twice on one file: the scaffolder always wrote the governing
-        // shape — slots, verify — while the help screen advertised `pointer` as supported. A pointer needs
-        // `governed_by` and must carry NONE of the governing keys, so what it emitted was red on the run
-        // after it was written. Third instance this session of a scaffold failing the validation beside it.
         const dir = scratch();
         assert.equal(run(["workspace", "ptr", "--kind", "pointer", "--governed-by", "sleepy-panda", "--into", dir], harness().options), 0);
         const manifest = JSON.parse(fs.readFileSync(path.join(dir, "ptr", "workspace.json"), "utf8"));
@@ -574,10 +407,6 @@ describe("a scaffolded pointer is a pointer, not a governing workspace with a la
 
 describe("a slot value cannot walk a scaffold out of its own workspace", () => {
     test("a `repos` slot containing `..` is refused after resolution", () => {
-        // Copilot, round 3 on #156. The slot value belongs to the WORKSPACE, not to this tool, and
-        // `path.join("/ws/sub", "../../evil")` is `/evil` — measured. (An absolute slot does NOT escape
-        // `join`; that is `resolve`'s behaviour. Only the `..` half of the report was right, and the fix
-        // is written against what was measured.)
         const dir = scratch();
         const ws = workspace(dir, {
             slots: { identity: "i.md", principles: "p.md", gates: "g.md", repos: "../../escaped/" },
@@ -591,16 +420,11 @@ describe("a slot value cannot walk a scaffold out of its own workspace", () => {
 
 describe("a directory where a file must be written", () => {
     test("is refused upfront rather than thrown at mid-write", () => {
-        // The sibling of the same hole in `cli/vendor.mjs`, which is where this shape was copied from and
-        // where Copilot found it (#164, round 4). `plan()` only ever yields files, so a directory sitting
-        // at one of their paths is something already there — and the header's promise is that every
-        // refusal stands ahead of the first byte, which an `EISDIR` from `writeFileSync` is not.
         const dir = scratch();
         fs.mkdirSync(path.join(dir, "personas", "reviewer.md"), { recursive: true });
         const h = harness();
         assert.equal(run(["persona", "reviewer", "--into", dir], h.options), 2);
         assert.match(h.said.join("\n"), /is a directory where a file has to be written/);
-        // And an ordinary existing FILE still reports as an existing file, not as a directory.
         const dir2 = scratch();
         fs.mkdirSync(path.join(dir2, "personas"), { recursive: true });
         fs.writeFileSync(path.join(dir2, "personas", "reviewer.md"), "mine\n");

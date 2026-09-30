@@ -1,40 +1,4 @@
-// Tests for `vendor` — the subcommand that materialises a workspace where it is needed, and carries
-// the residence switch in both directions.
-//
-// Written before the tool, per ../core/operating/verification.md: the failing test is the spec. Zero
-// dependencies, node's own runner, same as ./init.test.mjs, ./new.test.mjs and ./doctor.test.mjs.
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// ## What this suite establishes, and what it cannot
-//
-// It establishes the property the residence ruling exists to protect and that can go wrong **silently**:
-// one repository is governed by exactly one workspace, at every point where this tool can stop. That is
-// asserted by *forcing* the stops — `options.faultAt` throws after a named step — because an ordering
-// nothing can interrupt is an ordering nobody has checked. Reading the code establishes that the writes
-// are in the intended order; only running it establishes what a failure between two of them leaves
-// behind, and this milestone's every real finding came from running rather than reading.
-//
-// It establishes that green means green **through the real `doctor`**: every end-state assertion below
-// runs `inspect` from ./doctor.mjs against the directory that was actually written, rather than
-// re-deriving what a valid workspace looks like. A second opinion about validity is a second carrier of
-// the Workspace Definition, which is the class `0020` names: one rule, two enforcement sites.
-//
-// It establishes the three rules `cli/init.mjs` and `cli/new.mjs` paid for — refuse an existing file,
-// refuse a symlink at or below the named destination, and treat only `ENOENT` as absent — against a
-// third tool that writes into somebody's tree. Missing a sibling is issue #91's class and it has bitten
-// every session of this milestone.
-//
-// **What it cannot establish** is the one window that is irreducible. Governance lives in two manifests
-// in two directories and no POSIX primitive changes both, so between the two renames there is a moment
-// with two governors. The suite pins the moment to exactly one rename, pins every *handled* failure to
-// exactly one governor, and asserts that the state a crash there would leave is one `doctor` REFUSES
-// rather than one it passes over. It cannot make the moment not exist — that needs the mechanism
-// `.portulan/proposals/0017-one-repository-one-governing-workspace.md` defers under *Retire when*.
-//
-// Every refusal is asserted on its **sentence** as well as its code, on session 1's finding that a
-// refusal which misdescribes what it found is worth less than no refusal: it sends the reader somewhere
-// real and wrong.
+// Tests for `vendor` — a workspace materialised where it is needed, and the residence switch in both directions.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -47,19 +11,14 @@ import { inspect } from "./doctor.mjs";
 import { READING_LINE } from "./form.mjs";
 import { VendorError, RESIDENCES, parseArgs, residenceOf, retarget, walk, directories, escapingSlots, collisions, agentsMd, run } from "./vendor.mjs";
 
-// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
-// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
-// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
-// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+// The tools read the host's plugin record, so every case gets an empty host unless it passes `env:`.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-// ONE exit handler for every scratch directory, not one each — the per-directory form exceeds node's
-// default ten-listener limit partway through a suite this size. ./doctor.test.mjs records the reason and
-// ./init.test.mjs records what ignoring it cost (2375 leaked directories).
+// One exit handler for every scratch directory: one each would pass node's default limit of ten listeners.
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
@@ -90,13 +49,7 @@ function write(dir, rel, contents, mode) {
 
 const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
 
-/**
- * A whole, `doctor`-green workspace on disk — the fixture every switch test moves.
- *
- * It is deliberately a REAL one rather than a manifest stub: this tool copies a directory, and a
- * fixture with no `verify/` or `repos/` would let a bug that drops non-manifest files pass every
- * assertion here. One repo card, because the scope bound below refuses more than one.
- */
+/** A whole `doctor`-green workspace, not a manifest stub, so a copy that drops any other file is caught. */
 function seedWorkspace(dir, { name = "acme", kind = "repository", tree = "../", card = "acme-app", extra = {} } = {}) {
     const manifest = {
         portulan: { spec: "2.7" },
@@ -104,9 +57,7 @@ function seedWorkspace(dir, { name = "acme", kind = "repository", tree = "../", 
         summary: `The ${name} workspace.`,
         kind,
         ...(tree === null ? {} : { tree }),
-        // The `repos` slot is declared only when a card exists. A declared slot whose directory is not
-        // there is a `paths` failure, and a fixture that shipped one would have made every assertion
-        // below fail for a reason that has nothing to do with `vendor`.
+        // `repos` is declared only with a card: a declared slot with no directory fails `doctor`'s `paths` check.
         slots: { identity: "identity.md", principles: "principles.md", gates: "gate-map.md", ...(card ? { repos: "repos/" } : {}) },
         verify: {
             default: "workspace",
@@ -124,7 +75,6 @@ function seedWorkspace(dir, { name = "acme", kind = "repository", tree = "../", 
     return manifest;
 }
 
-/** A repository directory whose `.portulan/` holds a full workspace. Returns the workspace directory. */
 function inRepo(root, repoName = "acme-app", opts = {}) {
     const repo = path.join(root, repoName);
     const ws = path.join(repo, ".portulan");
@@ -133,7 +83,6 @@ function inRepo(root, repoName = "acme-app", opts = {}) {
     return ws;
 }
 
-/** A repository directory whose `.portulan/` holds a pointer — exactly what `init --residence pointer` writes. */
 function pointerRepo(root, repoName = "acme-app", governor = "acme") {
     const ws = path.join(root, repoName, ".portulan");
     fs.mkdirSync(ws, { recursive: true });
@@ -145,34 +94,13 @@ function pointerRepo(root, repoName = "acme-app", governor = "acme") {
 const readManifest = (dir) => JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8"));
 const exists = (p) => fs.existsSync(p);
 
-/** GREEN by the real validator, never by a second opinion about what valid means. */
 async function green(dir, options = {}) {
-    // `env` points `doctor`'s pointer resolution at an EMPTY host, and it is not optional hygiene.
-    // Since milestone 7 a `kind: pointer` manifest has its `governed_by` dereferenced against the
-    // host's installed-plugin record (`cli/discover.mjs`), and half the directories this helper grades
-    // are pointers. Un-injected, these cases read the machine the suite runs on — and this project's
-    // own maintainer has the workspace these fixtures name installed — so the suite would behave one
-    // way on his laptop and another in CI. `cli/doctor.test.mjs` carries the same injection with the
-    // same reasoning. A fresh directory per call, so no record exists and the `absent` branch answers.
-    //
-    // **`CLAUDE_CONFIG_DIR` wins over anything a caller passes**, and the ordering is the whole point:
-    // written as `{ env: …, ...options }` the injection was the first word rather than the last, so any
-    // caller supplying `env` silently replaced it and got the machine's real host back — a helper whose
-    // comment called the injection load-bearing while the code made it a default. Other env keys still
-    // pass through, because a caller may legitimately need one; the config directory is the one this
-    // helper exists to pin. (Copilot, round 1.)
+    // Pointers resolve against the host, so each call gets an empty one, set last so a caller's `env` cannot undo it.
     const { env: callerEnv, ...rest } = options;
     const { findings } = await inspect(dir, { ...rest, env: { ...callerEnv, CLAUDE_CONFIG_DIR: scratch() } });
     return findings.filter((f) => f.severity === "fail");
 }
 
-/**
- * How many workspaces govern `repoName`, counted the way `doctor` keys governance.
- *
- * Two coordinates and no others: a non-pointer manifest in the repository, and a feed-side workspace
- * whose `repos/` slot carries a card naming it. The invariant every ordering test below asserts is that
- * this is exactly 1 at every point this tool can stop.
- */
 function governors(repoDir, feedWorkspaceDirs = []) {
     let count = 0;
     const manifest = path.join(repoDir, ".portulan", "workspace.json");
@@ -180,9 +108,7 @@ function governors(repoDir, feedWorkspaceDirs = []) {
         try {
             if (JSON.parse(fs.readFileSync(manifest, "utf8")).kind !== "pointer") count += 1;
         } catch {
-            // An unreadable manifest is not evidence of governance either way. Counted as absent here
-            // and asserted nowhere — the tool never leaves one, and a test that counted it would be
-            // asserting a shape nothing produces.
+            // Counted as absent: the tool never leaves an unreadable manifest.
         }
     }
     for (const ws of feedWorkspaceDirs) {
@@ -217,9 +143,6 @@ describe("parseArgs", () => {
     });
 
     test("a value beginning with `-` is a missing value, not a value", () => {
-        // `init`'s round 9 and `new`'s parser both hold this rule: `-h` is the likeliest token to land
-        // in a value slot and it is a help request, so consuming it blames the user for a flag they
-        // typed as a flag.
         assert.throws(() => parseArgs(["/src", "--into", "-h"]), (e) => e instanceof VendorError && /needs a value/.test(e.message));
     });
 
@@ -228,7 +151,6 @@ describe("parseArgs", () => {
     });
 
     test("an unknown option names both ways this tool is reachable", () => {
-        // #155: a usage line naming only one spelling is wrong for whoever arrived the other way.
         assert.throws(
             () => parseArgs(["/src", "--nope", "x"]),
             (e) => e instanceof VendorError && /portulan vendor --help/.test(e.message) && /node cli\/vendor\.mjs --help/.test(e.message),
@@ -236,8 +158,6 @@ describe("parseArgs", () => {
     });
 
     test("`--pack-root` and `--repo-root` are repeatable and stay separate lists", () => {
-        // Separate because they answer different questions: one holds `category/name` pack directories,
-        // the other holds repositories. `doctor` keeps them apart for the same reason.
         const p = parseArgs(["/src", "--pack-root", "/a", "--pack-root", "/b", "--repo-root", "/c"]);
         assert.deepEqual(p.packRoots, ["/a", "/b"]);
         assert.deepEqual(p.repoRoots, ["/c"]);
@@ -252,18 +172,12 @@ describe("parseArgs", () => {
 
 describe("the residence transformation", () => {
     test("residenceOf keys on `tree`, which is the one thing keyed to location", () => {
-        // Proposal 0017: every feature keys to a SLOT and never to a residence; `tree` is the single
-        // exception it names. So `tree` is what this reads, not `kind` — a manifest whose `kind` and
-        // `tree` disagree is `doctor`'s problem and this tool must not invent a second verdict on it.
         assert.equal(residenceOf({ kind: "repository", tree: "../" }), "in-repo");
         assert.equal(residenceOf({ kind: "portfolio" }), "feed-side");
         assert.equal(residenceOf({ kind: "demo" }), "feed-side");
     });
 
     test("retarget changes exactly two keys and copies the rest untouched", () => {
-        // 0017's parity argument, made executable: "one artifact in two residences, differing in reach
-        // and delivery, never in content-kind". If this ever has to touch a third key, the proposal's
-        // central claim is wrong and that is a finding, not a patch.
         const source = { portulan: { spec: "2.7" }, name: "acme", kind: "repository", tree: "../", slots: { identity: "identity.md" }, verify: { default: "x", recipes: [] }, packs: ["rituals/checkpoints"] };
         const feed = retarget(source, "feed-side");
         assert.equal(feed.kind, "portfolio");
@@ -278,8 +192,6 @@ describe("the residence transformation", () => {
     });
 
     test("a `demo` workspace keeps its kind when it moves feed-side", () => {
-        // `demo` is already a feed-side shape — it declares no `tree` — so rewriting it to `portfolio`
-        // would change what the workspace IS in order to move it, which is not a move.
         assert.equal(retarget({ kind: "demo" }, "feed-side").kind, "demo");
     });
 
@@ -307,11 +219,6 @@ describe("the three refusals `init` and `new` paid for", () => {
     });
 
     test("a DIRECTORY where a file must be written is refused upfront, not thrown at mid-copy", async () => {
-        // The exemption for existing directories is right for the intermediate segments and wrong at the
-        // leaf: `walk()` only yields files, so a directory sitting at one is something already there.
-        // Preflight passed and the write phase threw `EISDIR` mid-loop — which breaks the one promise
-        // this check exists to keep, that every refusal stands ahead of the first byte.
-        // Copilot's suppressed note, round 4 on #164.
         const root = scratch();
         const src = path.join(root, "src");
         fs.mkdirSync(src, { recursive: true });
@@ -322,7 +229,6 @@ describe("the three refusals `init` and `new` paid for", () => {
         const h = harness();
         assert.equal(await run([src, "--into", dst, "--residence", "in-repo", "--host", "generic"], h.options), 2);
         assert.match(text(h), /is a directory, and a file has to be written there/);
-        // Nothing was written: the refusal is a refusal, not a partial copy with an error on the end.
         assert.equal(exists(path.join(dst, "workspace.json")), false);
         assert.equal(exists(path.join(root, "repo", "AGENTS.md")), false);
     });
@@ -341,8 +247,6 @@ describe("the three refusals `init` and `new` paid for", () => {
         const h = harness();
         assert.equal(await run([src, "--into", dst, "--residence", "in-repo", "--host", "generic"], h.options), 2);
         assert.match(text(h), /symlink/);
-        // Measured on `init`: nine files written outside a repository through a `.portulan` link, and
-        // reported as success. Nothing may land beyond the link.
         assert.deepEqual(fs.readdirSync(elsewhere), []);
     });
 
@@ -364,10 +268,7 @@ describe("the three refusals `init` and `new` paid for", () => {
     });
 
     test("a symlink ABOVE the named destination is resolved, not refused", () => {
-        // The boundary `new`'s `chain()` records, and it was found by running: on macOS `os.tmpdir()`
-        // resolves under `/var`, which is a symlink to `/private/var`. A check that walked to the
-        // filesystem root refused every scratch directory in this suite — and every user whose home
-        // sits on a linked volume. The user named that path; resolving it is obeying them.
+        // On macOS `os.tmpdir()` is under `/var`, a link to `/private/var`, so a link above the path must not be refused.
         const root = scratch();
         const real = path.join(root, "real");
         fs.mkdirSync(path.join(real, "repo"), { recursive: true });
@@ -377,11 +278,6 @@ describe("the three refusals `init` and `new` paid for", () => {
     });
 
     test("an unreadable staging path is refused, not treated as clear", async (t) => {
-        // `existsSync` answers **false** on `EACCES`, so the staging check reported "clear" for a path
-        // whose state nobody could read and the run proceeded into `mkdirSync`, failing later with an
-        // error about the wrong thing. The only-`ENOENT` rule, stated three times in this tool's header
-        // and broken in the one call written as a convenience rather than as a check.
-        // Copilot's suppressed notes, round 10 on #164.
         const root = scratch();
         const src = path.join(root, "feed", "acme");
         fs.mkdirSync(src, { recursive: true });
@@ -407,12 +303,7 @@ describe("the three refusals `init` and `new` paid for", () => {
     });
 
     test("a leaf that is neither a file nor a directory is refused, even where the carve-out allows the path", () => {
-        // `walk()` refuses these in the SOURCE; the destination's ALLOWED leaves were the half that did
-        // not, so the carve-out could permit a FIFO named `README.md` and the later read would BLOCK
-        // rather than fail. Checked before `allow` is consulted, for the same reason the symlink test
-        // is: an exemption is about replacing a file, and a FIFO is not one.
-        // Copilot's suppressed notes, round 13 on #164. Stubbed rather than made with `mkfifo`, which
-        // needs a shell-out and is not portable to every runner this suite has to pass on.
+        // A stub, not `mkfifo`, which needs a shell-out and is not on every runner.
         const fifo = { isSymbolicLink: () => false, isDirectory: () => false, isFile: () => false };
         const found = collisions("/dest", ["README.md"], {
             allow: new Set(["README.md"]),
@@ -423,9 +314,7 @@ describe("the three refusals `init` and `new` paid for", () => {
     });
 
     test("an lstat failure that is not ENOENT is a collision, never an absence", () => {
-        // Only `ENOENT` means absent. `EACCES` means the question could not be answered, and answering
-        // *nothing there* to an unanswerable question is the fail-open — "nothing looked" reported as
-        // "nothing wrong". Forced with a stub rather than with chmod, which root ignores and CI often runs as root.
+        // A stub, not chmod: root ignores modes, and CI often runs as root.
         const failing = () => {
             const error = new Error("permission denied");
             error.code = "EACCES";
@@ -437,18 +326,10 @@ describe("the three refusals `init` and `new` paid for", () => {
     });
 
     test("a symlinked SWITCH destination is refused before its manifest is read", async () => {
-        // The read side of the destination, which the `--host` cases above do not reach: only a switch
-        // consults the carve-out, and the carve-out read `destDir` and its `workspace.json` with calls
-        // that FOLLOW links — so a verdict about "this destination" could be drawn from a manifest
-        // outside the tree entirely. The collision check would still have stopped the write, which is
-        // why nothing escaped; but a containment guarantee that depends on which check runs first is not
-        // a guarantee. `cli/init.mjs` shipped this exact defect and records the fix in the same words.
-        // Copilot, round 5 on #164.
         const root = scratch();
         const src = path.join(root, "feed", "acme");
         fs.mkdirSync(src, { recursive: true });
         seedWorkspace(src, { name: "acme", kind: "portfolio", tree: null, card: "acme-app" });
-        // A real pointer somewhere else entirely, and a link to it where the destination should be.
         const elsewhere = pointerRepo(root, "somebody-elses-repo", "acme");
         const dst = path.join(root, "acme-app", ".portulan");
         fs.mkdirSync(path.dirname(dst), { recursive: true });
@@ -457,17 +338,12 @@ describe("the three refusals `init` and `new` paid for", () => {
         const h = harness();
         assert.equal(await run([src, "--into", dst, "--residence", "in-repo", "--switch"], h.options), 2);
         assert.match(text(h), /symlink/);
-        // The refusal must be about the LINK, never about the workspace it happens to point at.
         assert.doesNotMatch(text(h), /somebody-elses-repo/);
-        // And nothing was written through it.
         assert.equal(readManifest(elsewhere).kind, "pointer");
         assert.deepEqual(fs.readdirSync(elsewhere).sort(), ["README.md", "workspace.json"]);
     });
 
     test("a symlink inside the SOURCE is refused — the read path, not only the write path", async () => {
-        // Issue #91's class, and session 1 hit it twice: a guard on the write path and not the read.
-        // Copying through a link would materialise a file from outside the workspace and record it as
-        // part of the workspace, which is the escape arriving by the one route nothing was watching.
         const root = scratch();
         const src = path.join(root, "src");
         fs.mkdirSync(src, { recursive: true });
@@ -496,11 +372,6 @@ describe("the three refusals `init` and `new` paid for", () => {
 
 describe("slots that escape the workspace directory", () => {
     test("are refused, because a copy of them dangles", async () => {
-        // Customer zero is exactly this shape — `"constitution": "../docs/vision.md"` — and it is why
-        // this repository's own workspace is not the subject of the parity demonstration. A slot
-        // pointing outside the workspace resolves against the workspace's neighbours, and a workspace
-        // materialised somewhere else has different neighbours. `doctor` would red the copy on a path
-        // slot that does not resolve; this refuses ahead of writing it rather than producing it.
         const root = scratch();
         const src = path.join(root, "repo", ".portulan");
         fs.mkdirSync(src, { recursive: true });
@@ -535,10 +406,6 @@ describe("the scope bound, refused in both its shapes", () => {
         ]) {
             const h = harness();
             assert.equal(await run(argv, h.options), 2);
-            // Named rather than half-done: extracting one repository from a portfolio edits another
-            // workspace's curated card set and its `products` entries, which is the rule `init` and
-            // `new` both hold — a generator that edits a manifest it did not write is the generator
-            // that eventually edits the wrong one.
             assert.match(text(h), /2 repositor/);
             assert.match(text(h), /one, two/);
         }
@@ -562,7 +429,6 @@ describe("the scope bound, refused in both its shapes", () => {
     });
 
     test("options that do nothing are refused rather than accepted and dropped", async () => {
-        // `init`'s rule: an option accepted and then not honoured is one you will believe had an effect.
         const root = scratch();
         const src = inRepo(root);
         const h = harness();
@@ -587,37 +453,25 @@ describe("vendoring into a host", () => {
 
         assert.ok(exists(path.join(host, "AGENTS.md")), "AGENTS.md lands beside the workspace, at the host root");
         assert.deepEqual(await green(path.join(host, ".portulan")), []);
-        // The materialised copy is a full workspace, not a reference: 0017's step 1 says "the whole
-        // thing, not a reference", and a vendored standards tree that pointed back at a feed would be
-        // the opposite of self-contained.
         assert.equal(readManifest(path.join(host, ".portulan")).kind, "repository");
         assert.equal(readManifest(path.join(host, ".portulan")).tree, "../");
-        // The source is untouched: vendoring for a host is a rendering, never a move.
         assert.deepEqual(await green(src), []);
     });
 
     test("AGENTS.md names only what the manifest actually declares", async () => {
-        // A vendored standards file that listed slots the workspace does not carry would be the
-        // condition-4 defect — a document describing capability the tree does not have — emitted into
-        // somebody else's repository, which is the worst shape available for it.
         const manifest = { portulan: { spec: "2.7" }, name: "acme", summary: "One line.", kind: "repository", tree: "../", slots: { identity: "identity.md", gates: "gate-map.md" }, verify: { default: "workspace", recipes: [{ id: "workspace", run: "./verify/workspace.sh" }] } };
         const md = agentsMd(manifest, "generic");
         assert.match(md, /identity\.md/);
         assert.match(md, /gate-map\.md/);
         assert.doesNotMatch(md, /principles\.md/);
         assert.match(md, /workspace/);
-        // What a vendored copy does NOT carry, said in the artifact rather than left to be discovered:
-        // compiled host enforcement is `compile`'s output and no copy of files produces it.
+        // It names what no copy carries: compiled enforcement, which is `compile`'s output.
         assert.match(md, /compile/);
-        // And when the kernel could not be read, the artifact says the gap exists rather than reading
-        // as a complete standards file that is quietly missing its universal half.
+        // Given no kernel, it says the kernel is not inlined.
         assert.match(md, /not\*\* inlined/);
     });
 
     test("the engine kernel is inlined, because `core/engine.md` says the CLI composes it", () => {
-        // `core/engine.md` claims the CLI "composes it with the pack and workspace layers into a
-        // vendored AGENTS.md for any host". Two thirds of that is true here and the third is named:
-        // a pack resolves from a feed at a pinned version and vendoring resolves nothing.
         const manifest = { portulan: { spec: "2.7" }, name: "acme", kind: "repository", tree: "../", slots: { identity: "identity.md" }, verify: { default: "w", recipes: [] }, packs: ["rituals/checkpoints"] };
         const md = agentsMd(manifest, "generic", fs.readFileSync(path.join(HERE, "..", "core", "engine.md"), "utf8"));
         assert.match(md, /Resolution cascade/, "the kernel's own headings are present, so it is really inlined");
@@ -626,8 +480,6 @@ describe("vendoring into a host", () => {
         assert.match(md, /Their files are not here/, "the pack layer is named as NOT composed");
     });
 
-    // Proposal `0036`: the vendored file inherits the tiers. It is the one file its hosts are sure to load, so
-    // the always units ride in it whole and every other unit is a one-line pointer to its file.
     test("AGENTS.md inherits the guidance's tiers: always inline, the rest as one-line pointers", async () => {
         const root = scratch();
         const src = path.join(root, "feed", "acme");
@@ -648,9 +500,6 @@ describe("vendoring into a host", () => {
         assert.deepEqual(await green(path.join(host, ".portulan")), []);
     });
 
-    // The boot card's imports are loads this file's hosts do not make, so each degrades as a tier does: to a
-    // pointer naming the file where the vendored tree holds it. The tree holds only the workspace, so an
-    // import leaving it would dangle, and stops the vendoring.
     test("an always unit's import rides in AGENTS.md as a pointer to the vendored file, and one leaving the workspace stops the vendoring", async () => {
         const root = scratch();
         const src = path.join(root, "feed", "acme");
@@ -726,13 +575,6 @@ describe("vendoring into a host", () => {
     });
 
     test("a failure after AGENTS.md moves leaves no AGENTS.md behind", async (t) => {
-        // The undo was registered AFTER the last write rather than before the first, so every failure
-        // *between* the two renames was uncovered: `AGENTS.md` landed, the workspace rename then failed,
-        // and the rollback removed the staging directory while leaving the file — a run that reported
-        // could-not-run having vendored half of something into somebody's tree. Copilot, round 1 on #164.
-        //
-        // Forced by making the destination rename fail: `dest`'s parent is a FILE, so `mkdirSync` of it
-        // throws after `AGENTS.md` is already in place.
         const root = scratch();
         const src = path.join(root, "feed", "acme");
         fs.mkdirSync(src, { recursive: true });
@@ -757,10 +599,6 @@ describe("vendoring into a host", () => {
     });
 
     test("refuses `--host` feed-side, because the standards file it writes would name paths that do not exist", async () => {
-        // `agentsMd()` writes `.portulan/<slot>` paths and says to run `portulan doctor .portulan`. That
-        // is true by construction in-repo — the destination basename is already refused if it is not
-        // `.portulan` — and false anywhere else, which would put a document describing a tree it is not
-        // in into somebody else's repository. Copilot's suppressed notes, round 11 on #164.
         const root = scratch();
         const src = path.join(root, "repo", ".portulan");
         fs.mkdirSync(src, { recursive: true });
@@ -788,14 +626,6 @@ describe("vendoring into a host", () => {
 // ------------------------------------------------------------------ job two: the switch, both directions
 
 describe("an empty declared slot directory", () => {
-    // A copy driven only by the file list creates a directory as a side effect of a file landing in it,
-    // so an EMPTY one never arrives — and `doctor` requires a declared directory slot to exist. The
-    // effect, measured before the fix: a workspace GREEN at its source produced a copy `doctor` refused,
-    // and because the copy is staged and validated first, the switch was **declined** and nothing moved.
-    // Fail-closed, so never corruption — but a valid workspace could not be moved at all, and the only
-    // way to act on the refusal was to put a file into every empty directory you own.
-    // `memory/` and `proposals/` are empty in every workspace that has not earned a record yet, which is
-    // most of them on the day they are switched. Copilot's suppressed notes, round 8 on #164.
     const withEmptySlot = (dir, name = "acme", kind = "portfolio") => {
         const manifest = {
             portulan: { spec: "2.7" },
@@ -832,7 +662,7 @@ describe("an empty declared slot directory", () => {
         assert.ok(fs.statSync(path.join(dst, "memory")).isDirectory(), "the empty slot arrived");
         assert.deepEqual(await green(dst), []);
 
-        // And home again — the return leg lands on an existing destination, which is the other copy path.
+        // The return leg lands on an existing destination, the other copy path.
         const back = path.join(root, "feed2", "acme");
         assert.equal(await run([dst, "--into", back, "--residence", "feed-side", "--switch", "--leave", "nothing"], harness().options), 0);
         assert.ok(fs.statSync(path.join(back, "memory")).isDirectory(), "and survived the way home");
@@ -862,25 +692,21 @@ describe("the switch, in-repo → feed-side", () => {
         const h = harness();
         assert.equal(await run([src, "--into", feed, "--residence", "feed-side", "--switch", "--repo-root", root], h.options), 0);
 
-        // The new residence carries the whole workspace, retargeted in exactly two keys.
         const moved = readManifest(feed);
         assert.equal(moved.kind, "portfolio");
         assert.equal("tree" in moved, false);
         assert.ok(exists(path.join(feed, "verify", "workspace.sh")));
         assert.ok(exists(path.join(feed, "repos", "acme-app.md")));
 
-        // The old residence is a pointer naming the workspace that now governs from the feed.
         const left = readManifest(src);
         assert.equal(left.kind, "pointer");
         assert.equal(left.governed_by.workspace, "acme");
 
-        // Green at BOTH ends, through the real validator — and the feed end with `--repo-root`, which
-        // is the only way the cross-repository refusal looks at anything at all.
+        // `repoRoots` is what lets `doctor`'s cross-repository check look at anything.
         assert.deepEqual(await green(feed, { repoRoots: [root] }), []);
         assert.deepEqual(await green(src), []);
         assert.equal(governors(repo, [feed]), 1);
 
-        // The moved material is retired from the old residence — accounted for, never guessed at.
         assert.equal(exists(path.join(src, "identity.md")), false);
         assert.equal(exists(path.join(src, "verify")), false);
     });
@@ -893,25 +719,15 @@ describe("the switch, in-repo → feed-side", () => {
     });
 
     test("a file the old residence holds that the switch did not move is left and named", async () => {
-        // Accountable retirement: this deletes only what it can prove it materialised at the other end.
-        // Anything else is somebody's, and a tool that tidies up what it does not understand is the tool
-        // that eventually deletes the wrong thing.
         const root = scratch();
         const src = inRepo(root, "acme-app");
-        // Written after the walk would have seen it — simulated by seeding it and telling the tool to
-        // stop before the retire step would reach it is not possible, so instead: a file that IS moved
-        // is deleted, and this asserts the reporting path with an untracked extra.
+        // A file landing after the walk cannot be staged from here, so this holds only what `--leave pointer` leaves.
         const h = harness();
         assert.equal(await run([src, "--into", path.join(root, "feed", "acme"), "--residence", "feed-side", "--switch", "--leave", "pointer"], h.options), 0);
-        // The pointer's own two files remain and are the residence, not leftovers.
         assert.deepEqual(fs.readdirSync(src).sort(), ["README.md", "workspace.json"]);
     });
 
     test("compiled enforcement does not travel, and is retired with the residence that produced it", async () => {
-        // Found by RUNNING the parity demonstration, not by reading anything: the return leg carried a
-        // feed-side `.claude/settings.json` into `<repo>/.portulan/.claude/settings.json`, where the
-        // in-repo `compile` neither reads it nor sweeps it. A settings file naming paths for the
-        // residence it left, sitting where nothing looks — enforcement claimed and not carried.
         const root = scratch();
         const src = inRepo(root, "acme-app");
         write(src, ".claude/settings.json", '{"hooks":{}}\n');
@@ -922,30 +738,13 @@ describe("the switch, in-repo → feed-side", () => {
         assert.equal(await run([src, "--into", feed, "--residence", "feed-side", "--switch"], h.options), 0);
         assert.equal(exists(path.join(feed, ".claude", "settings.json")), false, "the settings did not travel");
         assert.equal(exists(path.join(feed, "compile", "github-ruleset.json")), false, "nor did the ruleset");
-        // Retired rather than left beside the pointer: they are `compile`'s and reproducible by
-        // definition, which is the licence `compile` states for deleting its own output.
         assert.equal(exists(path.join(src, ".claude")), false);
         assert.equal(exists(path.join(src, "compile")), false);
         assert.match(text(h), /compiled artifact/);
-        // And the one it must NOT reach for, because it is outside the directory it was given.
         assert.match(text(h), /nothing here writes outside/);
     });
 
     test("`--leave nothing` does NOT delete an old residence it could not scan", async (t) => {
-        // The destructive one, and the shape is this repository's own fail-open: a scan that FAILED was
-        // read as an EMPTY directory, `leftovers` came back empty, and the `--leave nothing` branch then
-        // removed the whole tree — deleting exactly the files the sentence beside it promises never to
-        // delete, in the one branch where being wrong cannot be undone. Copilot, round 1 on #164.
-        //
-        // Forced by making the old residence unreadable at exactly the moment the RETIRE scan runs.
-        // The trigger is STATE, not a call count: once the destination manifest exists, governance has
-        // moved and every later read of the source is the retire pass. A counter was the first cut and
-        // it was brittle for a reason worth keeping — adding the directory scan changed how many reads
-        // the materialise phase makes, and the test silently started forcing the failure in the wrong
-        // phase. A fixture keyed to the number of syscalls is a fixture that tests the implementation.
-        //
-        // `chmod` would be the obvious lever and is the wrong one: root ignores it, CI often runs as
-        // root, and a test that silently stops testing where it matters is worse than no test.
         const root = scratch();
         const src = inRepo(root, "acme-app");
         const feed = path.join(root, "feed", "acme");
@@ -954,6 +753,7 @@ describe("the switch, in-repo → feed-side", () => {
 
         const h = harness();
         const original = fs.readdirSync;
+        // Keyed on state, not a call count: once the new manifest exists, every read of the source is the retire scan.
         t.mock.method(fs, "readdirSync", (target, ...rest) => {
             if (String(target) === src && fs.existsSync(path.join(feed, "workspace.json"))) {
                 const error = new Error("permission denied");
@@ -967,7 +767,6 @@ describe("the switch, in-repo → feed-side", () => {
         assert.ok(exists(keep), "a file the run could not account for must survive");
         assert.match(text(h), /could NOT be scanned/);
         assert.match(text(h), /nothing there was removed/);
-        // Governance still moved — the switch completed; only the cleanup did not.
         assert.equal(exists(path.join(src, "workspace.json")), false);
         assert.equal(governors(path.dirname(src), [feed]), 1);
     });
@@ -1003,24 +802,16 @@ describe("the switch, feed-side → in-repo", () => {
         assert.ok(exists(path.join(dst, "verify", "workspace.sh")));
         assert.deepEqual(await green(dst), []);
 
-        // The old residence — the feed slot — is a pointer naming the workspace, now resident in-repo.
-        // A shape nothing had written before, so it is asserted green rather than assumed valid.
         const retired = readManifest(feed);
         assert.equal(retired.kind, "pointer");
         assert.equal(retired.governed_by.workspace, "acme");
         assert.deepEqual(await green(feed), []);
         assert.equal(governors(repo, [feed]), 1);
 
-        // The pointer's README asserted "this repository's workspace lives elsewhere". It does not any
-        // more, and a false sentence left in an adopter's tree is this milestone's own recurring defect.
         assert.doesNotMatch(fs.readFileSync(path.join(dst, "README.md"), "utf8"), /lives elsewhere/);
     });
 
     test("a symlinked pointer README is refused — the file the switch SYNTHESISES, not one it copies", async () => {
-        // The preflight was built from the SOURCE's file list. When the source carries no `README.md`
-        // the switch synthesises one at the destination, so that leaf was never lstat'd — and the write
-        // followed a symlink straight out of the tree. The containment rule refused by the one path the
-        // check could not see. Copilot, round 9 on #164.
         const root = scratch();
         const feed = path.join(root, "feed", "acme");
         fs.mkdirSync(feed, { recursive: true });
@@ -1041,12 +832,6 @@ describe("the switch, feed-side → in-repo", () => {
     });
 
     test("a SOURCE directory named README.md is refused before the write that would throw on it", async () => {
-        // Round 4's finding from the other end. A source directory named `README.md` yields no
-        // `README.md` in the file list, so the switch decides to synthesise one, `directories()`
-        // faithfully creates the directory in staging, and the write throws EISDIR — recovered, because
-        // the undo is registered first, but reported as an unanticipated failure rather than as the
-        // plain fact it is. Every refusal ahead of the first byte, on both sides of the copy.
-        // Copilot's suppressed notes, round 12 on #164.
         const root = scratch();
         const feed = path.join(root, "feed", "acme");
         fs.mkdirSync(feed, { recursive: true });
@@ -1091,6 +876,7 @@ describe("the switch, feed-side → in-repo", () => {
 
 // ------------------------------------------------------------------ the ordering, forced rather than read
 
+// No POSIX call changes two manifests at once, so between the two renames two workspaces govern: the window.
 describe("the ordering, and what a failure at each step leaves behind", () => {
     const faults = ["materialise:files", "materialise:manifest", "retire:manifest", "retire:material"];
 
@@ -1122,9 +908,6 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
     }
 
     test("the manifest is written LAST, so a half-materialised destination is not a residence", async () => {
-        // 0017 defines it: "A `.portulan/` directory holding files but NO manifest is not a residence".
-        // That definition is what makes the copy safe — until the manifest lands there is no second
-        // governor, however many files are on disk.
         const root = scratch();
         const src = inRepo(root, "acme-app");
         const feed = path.join(root, "feed", "acme");
@@ -1134,9 +917,6 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
     });
 
     test("the manifest is retired FIRST, so cleanup can fail without minting a second governor", async () => {
-        // The reverse of the materialise order, for the reverse reason: removing the moved files before
-        // flipping the manifest would leave a governing manifest over a workspace with holes in it —
-        // a governor that no longer works, which is worse than either honest end state.
         const root = scratch();
         const src = inRepo(root, "acme-app");
         const feed = path.join(root, "feed", "acme");
@@ -1146,11 +926,6 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
     });
 
     test("a failed manifest retirement leaves no `.vendoring` temp file behind", async (t) => {
-        // The SIBLING of the `AGENTS.md` leak, one function over, and it was missed inside the fix for
-        // that one — issue #91's class exactly. The pointer manifest is staged beside the old one and
-        // renamed into place; a failure in that rename left the temp file in a residence a later run
-        // walks, where it reads as an unaccounted leftover and blocks the cleanup it came from.
-        // Copilot's suppressed notes, round 2 on #164.
         const root = scratch();
         const src = inRepo(root, "acme-app");
         const feed = path.join(root, "feed", "acme");
@@ -1167,18 +942,11 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
         });
         assert.equal(await run([src, "--into", feed, "--residence", "feed-side", "--switch"], h.options), 2);
         assert.equal(exists(path.join(src, "workspace.json.vendoring")), false, "no temp file survives a failed retirement");
-        // And the invariant the whole ordering exists for: the flip did not happen, so the old residence
-        // still governs and there is exactly one governor.
         assert.equal(readManifest(src).kind, "repository");
         assert.equal(governors(path.dirname(src), [feed]), 1);
     });
 
     test("a rolled-back switch does not wedge its own retry", async () => {
-        // "Rolled back" has to mean entry for entry, not merely byte for byte. The in-place path removed
-        // the files it wrote and left the DIRECTORIES it created, so the destination came back with a
-        // `verify/` beside the pointer — and the next run's carve-out refuses exactly that, which means
-        // a rollback reporting success made the retry impossible. `init`'s partial write, one layer out.
-        // Copilot, round 6 on #164.
         const root = scratch();
         const feed = path.join(root, "feed", "acme");
         fs.mkdirSync(feed, { recursive: true });
@@ -1190,22 +958,13 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
         assert.equal(await run([feed, "--into", dst, "--residence", "in-repo", "--switch"], { ...h.options, faultAt: "materialise:manifest" }), 2);
         assert.deepEqual(fs.readdirSync(dst).sort(), before, "the destination is restored entry for entry, not only file for file");
 
-        // And the proof that it matters: the same command runs again and is not refused for what the
-        // rollback left behind.
         const again = harness();
         assert.equal(await run([feed, "--into", dst, "--residence", "in-repo", "--switch"], again.options), 0);
         assert.deepEqual(await green(dst), []);
     });
 
     test("a red `doctor` at the new residence rolls back and never opens the window", async () => {
-        // The new end is validated BEFORE the rename that transfers governance, so a destination that
-        // would not have been green never becomes a second governor at all.
-        //
-        // Forced with a `verify.default` naming no declared recipe. The first attempt used an
-        // unresolvable pack, and it did not red: a workspace with no `tree` has no packs root to
-        // search, so `doctor` reports the pack *unverifiable* rather than failing — and a feed-side
-        // destination never has a `tree`. A forcing device that stops forcing at exactly the residence
-        // under test is worse than none, because the test still passes.
+        // Forced by a `verify.default` naming no recipe: with no `tree`, an unresolvable pack is only unverifiable.
         const root = scratch();
         const src = inRepo(root, "acme-app", { extra: { verify: { default: "nope", recipes: [{ id: "workspace", run: "./verify/workspace.sh", requires: ["bash"], doc: "verify/README.md" }] } } });
         const feed = path.join(root, "feed", "acme");
@@ -1219,15 +978,6 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
     });
 
     test("the recovery sentence points at the end that can actually SEE two governors", async () => {
-        // Visibility is one-way (0017): the cross-repository refusal runs from the **naming** workspace
-        // outward, so only the feed-side end — the one whose `repos/` card names the repository — can
-        // report the two-governor state. Which end that is flips with the direction, and this line had
-        // it inverted: switching in-repo → feed-side it named the in-repo `source`, where `doctor` finds
-        // only itself and says nothing. Copilot's suppressed notes on #164, whose own prescription
-        // ("always `dest`") is right for one direction and wrong for the other, for the same reason.
-        //
-        // Asserted by RUNNING the sentence's own command, not by matching a string: a recovery
-        // instruction nobody executed is a recovery instruction nobody has checked.
         const root = scratch();
         const src = inRepo(root, "acme-app");
         const feed = path.join(root, "feed", "acme");
@@ -1244,9 +994,7 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
         await run([feed2, "--into", dst, "--residence", "in-repo", "--switch"], { ...b.options, faultAt: "materialise:manifest" });
         assert.match(text(b), new RegExp(`doctor ${feed2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`), "in-repo destination: the naming workspace is the `source` being moved out of");
 
-        // And the end it names really does REFUSE the state, rather than the sentence merely being
-        // printed. Built directly rather than reused from above, because the rollback correctly removed
-        // the destination — which is the behaviour the other tests assert.
+        // Built afresh: the rollbacks above removed their destinations.
         const both = scratch();
         const repo = inRepo(both, "acme-app");
         const naming = path.join(both, "feed", "acme");
@@ -1254,25 +1002,16 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
         seedWorkspace(naming, { name: "acme", kind: "portfolio", tree: null, card: "acme-app" });
         const fromNaming = await green(naming, { repoRoots: [both] });
         assert.ok(fromNaming.some((f) => /governed by exactly one workspace/.test(f.message)), `the feed-side end must REFUSE two governors; got ${JSON.stringify(fromNaming)}`);
-        // The other end cannot see it, which is the asymmetry the sentence has to respect.
         assert.deepEqual(await green(repo, { repoRoots: [both] }), [], "the in-repo end sees only itself — visibility is one-way");
     });
 
     test("the recovery sentence is printed BEFORE the window opens, and names the `--repo-root` form", async () => {
-        // Without `--repo-root`, `doctor` REPORTS that the cross-repository check did not run rather
-        // than failing — so a recovery instruction that omitted the flag would send a reader to a
-        // command that cannot see the state they are recovering from.
         const root = scratch();
         const src = inRepo(root, "acme-app");
         const feed = path.join(root, "feed", "acme");
         const h = harness();
         await run([src, "--into", feed, "--residence", "feed-side", "--switch"], { ...h.options, faultAt: "materialise:manifest" });
         assert.match(text(h), /--repo-root/);
-        // And the deletion it names is CONDITIONAL. It was not: "removing <dest>/workspace.json reverts
-        // it" is only true once the new manifest has landed, and before that the file at that path is
-        // absent — or, switching feed-side → in-repo, still the POINTER, whose deletion destroys the one
-        // record of who governs and leaves governance unreportable from the repository. That is the
-        // silent state 0017 names, reached by following this tool's own advice. Copilot, round 3 on #164.
         assert.match(text(h), /ONLY if it reports two governors/);
         assert.match(text(h), /delete nothing/);
     });
@@ -1324,11 +1063,6 @@ describe("the surface", () => {
 
 describe("parity across residences", () => {
     test("the same workspace, both residences, the same operations, no functionality difference", async () => {
-        // Row 7's fourth demonstration in miniature — the full one runs against the real
-        // `portulan-internal` feed and is recorded in the milestone evidence, because a demonstration
-        // that only ever runs against a fixture is a demonstration about the fixture. What this asserts
-        // is the property the demonstration shows: `doctor`'s verdict, the resolved slot set and the
-        // runnable recipe set are identical at both ends, and the switch runs in both directions.
         const root = scratch();
         const src = inRepo(root, "acme-app");
         const repo = path.dirname(src);
@@ -1344,7 +1078,6 @@ describe("parity across residences", () => {
         assert.deepEqual(before.workspace.verify.recipes.map((r) => r.id), after.workspace.verify.recipes.map((r) => r.id));
         assert.equal(before.workspace.verify.default, after.workspace.verify.default);
 
-        // And back, which is what makes it a choice rather than a migration.
         assert.equal(await run([feed, "--into", src, "--residence", "in-repo", "--switch", "--repo-root", root], harness().options), 0);
         const returned = await inspect(src, {});
         assert.deepEqual(returned.findings.filter((f) => f.severity === "fail"), []);
@@ -1356,16 +1089,6 @@ describe("parity across residences", () => {
 });
 
 test("`env` reaches `doctor` through `verdict`, at BOTH ends of the switch", async () => {
-    // **`vendor` acquired unasked discovery without a line of it being edited**, because `verdict` calls
-    // `doctor`'s `inspect`, which builds its own resolution plan and wires its own thunk. `verdict` took
-    // no `env`, so from 2026-08-13 every vendor run — this suite's included — would have read whatever
-    // was installed on the machine. Found at the session-open checkpoint, which went and traced the call
-    // rather than reading the tool's own flags.
-    //
-    // Bound by making the host DECIDE the outcome: a workspace composing a pack that only the host
-    // carries is green when `env` names that host and red when it names an empty one. Remove the `env`
-    // spread in `vendor.mjs` and the second half resolves against the real machine instead of the
-    // fixture, which is the leak this asserts against.
     const packInHost = () => {
         const config = scratch();
         const installPath = path.join(config, "plugins", "cache", "feed", "carrier", "0.1.0");
@@ -1384,26 +1107,20 @@ test("`env` reaches `doctor` through `verdict`, at BOTH ends of the switch", asy
         const root = scratch();
         const src = inRepo(root, "acme-app", { extra: { packs: ["rituals/checkpoints"] } });
         const h = harness();
-        // `--into` must end in `.portulan` for an in-repo residence — the tool refuses otherwise, and a
-        // fixture tripping that refusal would have asserted exit 2 for a reason with nothing to do with
-        // discovery.
+        // `--into` must end in `.portulan` for an in-repo residence, or the tool refuses before discovery matters.
         return run([src, "--into", path.join(root, "vendored", ".portulan"), "--residence", "in-repo", "--host", "generic"], { ...h.options, ...(env ? { env } : {}) }).then((code) => ({ code, said: text(h) }));
     };
 
     const carrying = await stage(packInHost());
     assert.equal(carrying.code, 0, carrying.said);
 
-    // The control. An empty host cannot answer for the pack, the staged copy's own tree does not carry
-    // it, so `doctor` FAILs it and the switch is refused before it begins.
+    // The control: an empty host cannot answer for the pack, so `doctor` fails it.
     const empty = await stage({ CLAUDE_CONFIG_DIR: scratch() });
     assert.equal(empty.code, 1, empty.said);
     assert.match(empty.said, /rituals\/checkpoints/);
 });
 
 test("vendor refuses a named root combined with `--pack-root auto`", async () => {
-    // It forwards both to `doctor`, which would refuse a moment later — but by then this tool has
-    // begun reporting about a workspace, and a refusal wearing `doctor`'s name reads as a verdict
-    // about the copy rather than as an answer about the command line.
     const h = harness();
     const src = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "vendor-bothroots-"));
     SCRATCH.push(src);
@@ -1411,13 +1128,9 @@ test("vendor refuses a named root combined with `--pack-root auto`", async () =>
     assert.match(text(h), /never both/);
 });
 
-// ------------------------------------------------------------------ the new form, carried (2026-09-24)
+// ------------------------------------------------------------------ the new form, carried
 
-// A workspace that declares a boot card boots from it, on any host: the vendored file leads with the card
-// and names the slots as files to open, the host's tree gets the records the new form keeps, and a switch
-// into a repository compiles the card where it arrives.
 describe("the new form, carried by vendor", () => {
-    /** A feed-side workspace whose `context/` holds a boot card importing its identity. */
     function carded(root, extra = {}) {
         const src = path.join(root, "feed", "acme");
         fs.mkdirSync(src, { recursive: true });

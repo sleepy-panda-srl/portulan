@@ -1,9 +1,4 @@
 // Tests for `rule-carriers` — the rail that keeps a reduced rule reduced.
-//
-// The fixtures here ARE this instrument's control cases, in proposal 0028's sense: a counter with no
-// control is a claim rather than a measurement, and a fixture test is the control made permanent. The
-// two that matter most are `normalise`'s — a markdown link inside the phrase and a wrapped line — both
-// of which this instrument got wrong on its first real run and both of which the dead-tell audit caught.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -13,22 +8,7 @@ import path from "node:path";
 
 import { parseRegistry, RegistryError, inDomain, scan, auditCarriers, normalise, run } from "./rule-carriers.mjs";
 
-// This suite created no temp directory until the `run` case below, which makes it a NEW scratch site —
-// the 24th, and the one [#244](https://github.com/sleepy-panda-srl/portulan/issues/244) records that
-// nothing rails. Registered here rather than trusted to memory, in the shape session 14 settled: one
-// exit handler for the whole list, because the per-directory form exceeds node's default ten-listener
-// limit.
-//
-// THE BARE `rmSync` IS CORRECT ONLY BECAUSE EVERY CHMOD HERE IS RESTORED BEFORE CLEANUP RUNS, and that
-// is now a load-bearing sentence rather than a note. This header used to read "nothing here chmods a
-// directory", which the EACCES case below made false the moment it was added — it drops a directory to
-// `0o000` to deny the stat. Measured rather than reasoned about: a `0o000` subdirectory defeats
-// `rmSync(dir, { recursive: true, force: true })` with **ENOTEMPTY**, so the handler above would leak
-// the scratch directory it exists to remove — one of the 24 sites #244 already records as unrailed.
-// What keeps it correct is the `t.after` restore in that test, which the runner runs even when an
-// assertion throws. Any future case that chmods must restore in a hook, not at the end of a body.
-// Copilot, #249 round 1, suppressed and promoted — the comment was falsified by the change that added
-// the case, which is the class this repository keeps finding in its own prose.
+// A case that chmods restores in `t.after`: a `0o000` directory makes this `rmSync` fail with ENOTEMPTY.
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
@@ -56,13 +36,11 @@ const reader = (map) => (f) => {
 
 describe("normalise — what the first real run taught", () => {
     test("a markdown link is collapsed to its label, so a tell reads as a human reads it", () => {
-        // `.portulan/dod.md` really said: run each recipe [`workspace.json`](workspace.json) declares
         const text = "run each recipe [`workspace.json`](workspace.json) declares, and read the output";
         assert.ok(normalise(text).includes(normalise("recipe `workspace.json` declares")));
     });
 
     test("a wrapped line matches a tell written on one line", () => {
-        // `spec/slots.md` really broke this sentence across a newline.
         const text = "This repository's CI reads\n`verify.recipes` from the manifest and runs each one, so";
         assert.ok(normalise(text).includes(normalise("from the manifest and runs each one")));
     });
@@ -72,7 +50,6 @@ describe("normalise — what the first real run taught", () => {
     });
 
     test("a link's URL cannot itself satisfy a tell", () => {
-        // The inverse trap: the URL must not be searched, or a path would match prose.
         assert.equal(normalise("see [docs](the-retired-sentence.md)"), "see docs");
     });
 });
@@ -99,14 +76,6 @@ describe("parseRegistry — every unusable registry is could-not-run, never a gr
         assert.throws(() => parseRegistry(`{"rules":[${one},${one}]}`), RegistryError);
     });
 
-    // Found by Copilot on #224, which was RIGHT that the top-level `exclude` needed validating and
-    // WRONG about why. Measured: `String.prototype.startsWith` coerces and never throws for any value
-    // JSON can carry — 1, null, true, {} and ["x"] all return false quietly.
-    //
-    // The real mechanism is worse than the crash it described. `[]` coerces to `""`, and every path
-    // starts with `""`, so a single empty-array or empty-string entry in `exclude` would exclude the
-    // WHOLE TREE and the rail would report green having examined nothing — a silent fail-open in the
-    // allow-list, which is the defect this repository has already paid for once.
     const badExclude = [
         ["a non-array exclude", '{"exclude":"docs/","rules":[{"id":"r","carrier":"c","summary":"s","incident":"i","tells":["t"],"cites":["x"],"scope":["/"]}]}'],
         ["a non-string entry in exclude", '{"exclude":[1],"rules":[{"id":"r","carrier":"c","summary":"s","incident":"i","tells":["t"],"cites":["x"],"scope":["/"]}]}'],
@@ -118,9 +87,6 @@ describe("parseRegistry — every unusable registry is could-not-run, never a gr
         });
     }
 
-    // Untrimmed entries: refused rather than trimmed, matching `cli/compile.mjs`. The failure they
-    // cause is silent — a `scope` of "docs/ " is a prefix no path can start with, so the rule covers
-    // nothing and the registry still reports green.
     for (const key of ["tells", "cites", "scope"]) {
         test(`refuses an untrimmed entry in \`${key}\``, () => {
             const rule = { id: "r", carrier: "c", summary: "s", incident: "i", tells: ["t"], cites: ["x"], scope: ["/"] };
@@ -145,7 +111,6 @@ describe("parseRegistry — every unusable registry is could-not-run, never a gr
             () => parseRegistry('{"exclude":[""],"rules":[{"id":"r","carrier":"c","summary":"s","incident":"i","tells":["t"],"cites":["x"],"scope":["/"]}]}'),
             RegistryError,
         );
-        // The mechanism, pinned so the reason cannot be lost: "" is a prefix of everything.
         assert.equal("docs/a.md".startsWith(""), true);
         assert.equal("docs/a.md".startsWith([]), true, "and [] coerces to the same empty string");
     });
@@ -201,14 +166,7 @@ describe("scan — restatement, citation, and the carrier itself", () => {
         assert.equal(findings.length, 0);
     });
 
-    // #225's first gap. `parseRegistry` accepts any non-empty string for `carrier`, and
-    // `./cli/carrier.mjs` resolves perfectly well on disk — so it passed the carrier audit and then
-    // failed to equal the listed `cli/carrier.mjs`, and the rail flagged the carrier as a restatement
-    // of its own rule: the one file allowed to spell it, reported for spelling it.
-    //
-    // The scope override is load-bearing. `isCarrier` short-circuits AHEAD of `inDomain`, so with the
-    // carrier outside the rule's scope this case would pass for the wrong reason — green whether or
-    // not the comparison was ever repaired. Checked by mutation, not by reading.
+    // `scope` covers the carrier on purpose: out of scope it is never flagged, whatever the carrier comparison says.
     test("a carrier written in a non-canonical spelling is still its own carrier", () => {
         const rule = { ...RULE, carrier: "./cli/carrier.mjs", scope: ["cli/"] };
         const { findings } = scan({
@@ -292,10 +250,6 @@ describe("the three audits — each exit 2, never a quiet green", () => {
         assert.deepEqual(auditCarriers(registryOf(RULE), { state: () => "file" }), []);
     });
 
-    // #225's second gap. `existsSync` answers true for a directory, so a directory carrier passed the
-    // audit, matched no file in the scan, and left the rule covering nothing under a green recipe.
-    // Reported SEPARATELY from absent, because "does not resolve" about a directory that is sitting
-    // right there sends a maintainer hunting for a missing file.
     test("a carrier that resolves to a directory is unusable, and says so in its own words", () => {
         const unusable = auditCarriers(registryOf(RULE), { state: () => "not-a-file" });
         assert.deepEqual(unusable, [{ rule: "example-rule", carrier: "cli/carrier.mjs", state: "not-a-file" }]);
@@ -304,10 +258,6 @@ describe("the three audits — each exit 2, never a quiet green", () => {
 });
 
 describe("the dead-tell audit does not depend on a separator", () => {
-    // The audit once keyed on `${rule.id}<sep>${tell}` and split on the same separator to report, which
-    // a tell CONTAINING that separator corrupts — and a JSON registry can carry one as a legal escape
-    // that `control-chars` never sees, because it is an escape in the file rather than a raw byte.
-    // Nested maps remove the failure mode instead of validating against it.
     const withNasty = (tell) => ({
         rules: [{ ...RULE, tells: [tell] }],
         exclude: [],
@@ -332,10 +282,7 @@ describe("the dead-tell audit does not depend on a separator", () => {
 });
 
 describe("the registry is excluded from the scan by identity, not by spelling", () => {
-    // `git ls-files -z` emits `/` on every platform; `path.relative` emits the platform separator. A
-    // string comparison between the two matched on POSIX and would not on Windows — where the registry
-    // would be scanned, every tell would find itself, and the dead-tell audit would go back to being
-    // self-satisfied. Pinned as resolved paths so the two spellings cannot drift apart again.
+    // `git ls-files` emits `/` on every platform, while `path.relative` emits the platform's separator.
     test("every spelling of the registry path resolves to the same absolute path", async () => {
         const path = await import("node:path");
         const cwd = "/repo";
@@ -375,9 +322,6 @@ describe("this repository's own registry", () => {
 });
 
 describe("run — the carrier audit reaching the real filesystem", () => {
-    // `auditCarriers` is unit-tested with `state` injected, which says nothing about the wiring that
-    // decides `file` from `not-a-file` on disk. An injected capability with no test over its real
-    // caller is this repository's twice-bitten defect, so the stat itself is exercised here.
     const registryFor = (carrier) => JSON.stringify({
         rules: [{
             id: "example-rule",
@@ -404,8 +348,6 @@ describe("run — the carrier audit reaching the real filesystem", () => {
 
     test("a carrier that resolves to a DIRECTORY is could-not-run, and is not called missing", () => {
         const root = scratch("rule-carriers-dircarrier-");
-        // A directory named exactly like a source file: `existsSync` answers true, and the old audit
-        // let it through to match no file at all.
         fs.mkdirSync(path.join(root, "cli", "carrier.mjs"), { recursive: true });
         fs.writeFileSync(path.join(root, "registry.json"), registryFor("cli/carrier.mjs"));
 
@@ -425,16 +367,6 @@ describe("run — the carrier audit reaching the real filesystem", () => {
         assert.doesNotMatch(err, /is not a file/, "absent and not-a-file are different findings and must read differently");
     });
 
-    // #249 round 1, Copilot. The audit caught every `statSync` failure with a bare `catch` and called
-    // all of them "absent", so a carrier the process could not LOOK at was reported as one it had
-    // looked at and not found. The exit code was right either way — this is entirely about the
-    // sentence, which is what this change is for. The rule already existed on a sibling noun:
-    // `control-chars.mjs`'s `bytesOf` returns null for ENOENT alone and refuses every other errno.
-    //
-    // EACCES is injected by chmod rather than mocked, so the test exercises the real `statSync`. The
-    // PRECONDITION is asserted rather than assumed: if the platform (or a root test runner) does not
-    // actually deny the stat, the injection never reached the code and a passing assertion below would
-    // mean nothing — the failure mode this repository has hit three times.
     test("a carrier the run could not examine is not called missing", (t) => {
         const root = scratch("rule-carriers-unreadable-");
         const dir = path.join(root, "cli");

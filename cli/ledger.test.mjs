@@ -1,14 +1,4 @@
 // Tests for `ledger` — what a change spends, from the host's own usage records.
-//
-// Zero dependencies, node's own runner, and run by the same recipe as every suite here:
-//
-//   node --test "cli/**/*.test.mjs"
-//
-// Every case builds its records in a temporary directory or reads the committed fixture under
-// `./fixtures/ledger/`; **none reads this machine's host records**, which is the ledger's own rule for a
-// recipe (proposal `0038`, ruling 4) and holds for its suite too. What the suite pins is the reader's
-// arithmetic — one request per message id, the classes, the attribution, the rebuilds and their causes,
-// the threshold — and the exit code each refusal owes. The fixture's own totals are the recipe's to rail.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -49,8 +39,7 @@ import {
     worktrees,
 } from "./ledger.mjs";
 
-// A HERMETIC HOST: the ledger's defaults read the host's configuration home, so this suite points it at
-// an empty directory that exists, as every suite that can reach the host does.
+// The ledger's defaults read the host's configuration home: point it at an empty one.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -159,8 +148,7 @@ describe("reading one transcript", () => {
     test("a compaction with no request after it yet leaves no threshold, not the one it replaced", () => {
         withTemp((dir) => {
             const file = path.join(dir, "s.jsonl");
-            // Past its threshold of 80,000 before the compaction: the context the figures hold until the
-            // next request is the one the compaction replaced, so a figure from it would be wrong.
+            // Past its threshold of 80,000 before the compaction, so a figure from the replaced context would show.
             write(file, [...blocks({ id: "one", w1h: 39999 }), ...blocks({ id: "two", w1h: 49999, read: 40000 }), boundary()]);
             const t = readTranscript(file);
             assert.deepEqual([t.figures.compactions, t.figures.pending], [1, true]);
@@ -214,8 +202,7 @@ describe("reading one transcript", () => {
     });
 
     test("a request written in more blocks than the running figures keep ids for is still one request", () => {
-        // They keep the latest 16 distinct ids, and a repeat is passed over before anything is kept, so a
-        // request's own blocks never push its id out, nor do a subagent's requests written between them.
+        // The figures keep the latest 16 distinct ids, and a repeat is passed over before anything is kept.
         withTemp((dir) => {
             const toolResult = JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", content: "never read" }] } });
             const inline = Array.from({ length: 20 }, () => blocks({ sidechain: true, agentId: "q", read: 3 })).flat();
@@ -399,7 +386,7 @@ describe("the restart threshold", () => {
     });
 
     test("declared multipliers take the write of the lifetime the host recorded, as the general ones do, and say so", () => {
-        // Workspace Definition 2.12's `spend`: a declaration prices both lifetimes, and the records say which one applies.
+        // A declaration prices both lifetimes, and the records say which one applies.
         const declared = { read: 0.05, write: { "5m": 1.25, "1h": 2 } };
         assert.deepEqual(multipliers({ declared, lifetime: "1h" }), { read: 0.05, write: 2, lifetime: "1h", recorded: true, source: "declared" });
         assert.deepEqual(multipliers({ declared }), { read: 0.05, write: 1.25, lifetime: "5m", recorded: false, source: "declared" });
@@ -412,9 +399,7 @@ describe("the restart threshold", () => {
 });
 
 describe("a declared `spend`, as a manifest carries it", () => {
-    // Workspace Definition 2.12, proposal `0038`'s ruling 2. `readSpend` is what `compile` and `--workspace`
-    // read a manifest through, so it refuses what the schema and `doctor` refuse rather than trusting that
-    // `doctor` ran: the first fault, naming the manifest.
+    // `compile` reads a manifest through `readSpend` without `doctor` having run, so it refuses what `doctor` refuses.
     const write = { "5m": 1.25, "1h": 2 };
 
     test("undeclared, either half alone, or both, each read as the shape the threshold takes", () => {
@@ -424,13 +409,11 @@ describe("a declared `spend`, as a manifest carries it", () => {
         assert.deepEqual(readSpend({ multipliers: { read: 0.05, write }, horizon: { requests: 30 } }, "w.json"), { multipliers: { read: 0.05, write }, horizon: 30, restart: null });
         // The bounds themselves: a read at the cost of an uncached token, and writes at it.
         assert.deepEqual(readSpend({ multipliers: { read: 1, write: { "5m": 1, "1h": 1 } } }, "w.json").multipliers, { read: 1, write: { "5m": 1, "1h": 1 } });
-        // A horizon past 2^53 is still a whole number, and `doctor`'s positive-integer check passes it, so it is
-        // taken here too: a manifest `doctor` passes must not stop `compile`.
+        // `doctor`'s positive-integer check passes a horizon past 2^53, so it is taken here too.
         assert.equal(readSpend({ horizon: { requests: 1e16 } }, "w.json").horizon, 1e16);
     });
 
     test("what a crossed threshold does is read as declared, alone or beside the figures", () => {
-        // Workspace Definition 2.13: `compile` writes the block from it, and the ledger prices nothing by it.
         for (const restart of ["advise", "block"]) {
             assert.deepEqual(readSpend({ restart }, "w.json"), { multipliers: null, horizon: null, restart });
             assert.equal(readSpend({ multipliers: { read: 0.05, write }, horizon: { requests: 30 }, restart }, "w.json").restart, restart);
@@ -598,7 +581,7 @@ describe("the command", () => {
             assert.equal(restart([]), `${unjudged}20 requests and the general multipliers, undeclared: read 0.1×, writes 1.25× for five minutes and 2× for an hour`);
             fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify({ portulan: { spec: "2.12" }, spend: { multipliers: { read: 0.05, write: { "5m": 1.25, "1h": 2 } }, horizon: { requests: 30 } } }));
             assert.equal(restart(["--workspace", ws]), `${unjudged}30 requests and the declared multipliers: read 0.05×, writes 1.25× for five minutes and 2× for an hour`);
-            // A request with no time is counted, and still leaves no session to judge: the second exit says the same.
+            // A request with no time is counted, and still leaves no session to judge.
             write(path.join(dir, "projects", projectKey(dir), "s.jsonl"), blocks({ cwd: dir, at: null }));
             const out = say();
             assert.equal(run(["--branch", "b", "--workspace", ws], out.fn, host), 0, out.lines.join("\n"));
@@ -663,7 +646,7 @@ describe("the command", () => {
             // The host's own default may be absent, which is a machine where it never ran: a report of none.
             const out = say();
             assert.equal(run(["--branch", "b"], out.fn, host), 0, out.lines.join("\n"));
-            // And a file where the host keeps its records is read as nothing at all.
+            // A file in its place, though, is could-not-run.
             fs.writeFileSync(path.join(dir, "projects"), "");
             assert.equal(run(["--branch", "b"], say().fn, host), 2);
         });
@@ -684,7 +667,6 @@ describe("the command", () => {
     test("a repository git cannot list the worktrees of is could-not-run, never a report of the one directory", () => {
         withTemp((dir) => {
             assert.equal(worktrees(dir), null, "no .git in it or above it: outside a repository");
-            // A worktree whose .git file names a directory that is gone.
             const broken = path.join(dir, "broken");
             fs.mkdirSync(broken);
             fs.writeFileSync(path.join(broken, ".git"), `gitdir: ${path.join(dir, "gone")}\n`);

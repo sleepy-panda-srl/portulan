@@ -1,26 +1,4 @@
-// Tests for the Stop-gate runner's cap and date handling.
-//
-// These exist because a pre-commit supervisor found two defects in `../.portulan/compile/stop.mjs`
-// that no test could have caught, because nothing tested it at all. Both were fail-opens in the
-// scaffolding around a check rather than in the check — the eighth and ninth of that shape here
-// (`../.portulan/tasks/0004-a-harness-for-the-verify-recipes.md`).
-//
-//   1. The cap counted every Stop event rather than every refusal, so an ordinary session spent its
-//      budget on green turns and a genuine red then passed with a note.
-//   2. The unwritable-counter fallback returned exactly the cap, which is not ABOVE it — so a red
-//      tree blocked forever, the precise opposite of the comment beside it.
-//
-// What is tested here is the arithmetic that decides whether this gate can be talked past — and,
-// since #220, the DID-WORK signals, which are I/O against a real tree and are pinned at the bottom of
-// this file by spawning the real binary against real git fixtures. That half used to say it was
-// deliberately untested, resting on the demonstration in
-// `../.portulan/handoffs/2026-07-27-the-enforcement-compiler.md` where a planted dead link held a
-// live session. The demonstration was real and is still cited; what it could not do was notice that
-// one of those signals had been answering a rebase-merging repository wrongly since it was written.
-// Reading git is no longer untested here. Running a recipe is exercised only as a PRECONDITION of the
-// cases below — a green recipe so `handoff` is the only live reason — and has no directed case: a recipe
-// that reds or cannot run through the spawned binary is still nobody's. Which dated handoff answers for
-// the work has its own cases.
+// Tests for the Stop-gate runner: its per-reason caps, the handoff date, its verdicts, the did-work signals and the tree it answers about.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -32,10 +10,7 @@ import { fileURLToPath } from "node:url";
 
 import { bumpChain, bumpCount, clearReason, today, verdict, REASONS, MAX_BLOCKS, MAX_CHAIN_BLOCKS, MAX_TOTAL_BLOCKS } from "./stop-gate.mjs";
 
-// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
-// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
-// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
-// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+// `./stop-gate.mjs` imports `./recipe-set.mjs`, which can read the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -51,11 +26,6 @@ function scratch() {
 }
 
 describe("the block counter — one count PER REASON, since task 0007", () => {
-    // The gate refuses for two independent reasons: a default recipe not observed green, and a
-    // missing dated handoff. One shared counter gave them one shared budget, and the maintainer's
-    // ruling of 2026-07-27 named the asymmetry that produced: a missing five-line handoff rode to
-    // the ceiling of nine while a failing suite got three. Each reason now has its own.
-
     test("counts up from one, per session, per reason", () => {
         const dir = scratch();
         assert.equal(bumpCount("s1", ["recipe"], dir).counts.recipe, 1);
@@ -65,9 +35,6 @@ describe("the block counter — one count PER REASON, since task 0007", () => {
     });
 
     test("two reasons in ONE session share a session and a tree and still not a count", () => {
-        // The trap task 0007 names. The key already carried session and tree; adding a reason
-        // dimension must not collapse either, and must not let the two reasons collapse into each
-        // other — the original defect lived exactly in the interaction.
         const dir = scratch();
         bumpCount("s", ["recipe"], dir);
         bumpCount("s", ["recipe"], dir);
@@ -78,9 +45,6 @@ describe("the block counter — one count PER REASON, since task 0007", () => {
     });
 
     test("one stop refused for BOTH reasons charges each reason once and the ceiling once", () => {
-        // A stop is refused once however many reasons it names, so the ceiling — which exists to
-        // guarantee the gate can always stop — must count refusals rather than reasons. Charging it
-        // twice would make a two-reason session reach the ceiling in half the attempts.
         const dir = scratch();
         const v = bumpCount("s", ["recipe", "handoff"], dir);
         assert.equal(v.counts.recipe, 1);
@@ -96,9 +60,6 @@ describe("the block counter — one count PER REASON, since task 0007", () => {
     });
 
     test("two WORKTREES of one repository do not share a budget either", () => {
-        // Several worktrees of this repository are routinely checked out at once. Sharing a counter
-        // across them would let one session disarm another's gate — which is why the key carries the
-        // tree as well as the session.
         const dir = scratch();
         bumpCount("same-session", ["recipe"], dir, "/repo/worktree-a");
         bumpCount("same-session", ["recipe"], dir, "/repo/worktree-a");
@@ -106,10 +67,6 @@ describe("the block counter — one count PER REASON, since task 0007", () => {
     });
 
     test("ids that both sanitise to EMPTY still get their own counters", () => {
-        // Found by review. Sanitising alone collapses any id made entirely of characters outside the
-        // allowed class to "", so every such session shared one counter and they charged each other's
-        // cap — or released each other early. Silent in both directions. Re-asserted after the reason
-        // dimension arrived, because a key change is exactly when this collapses again.
         const dir = scratch();
         bumpCount("!!!", ["recipe"], dir);
         bumpCount("###", ["handoff"], dir);
@@ -135,9 +92,6 @@ describe("the block counter — one count PER REASON, since task 0007", () => {
     });
 
     test("an unwritable counter releases the session rather than trapping it", () => {
-        // The direction matters more than the number. An un-capped gate is the one failure here that
-        // a human cannot escape from inside the session, so "cannot count" must mean "let it end" —
-        // for EVERY reason, or a session refused for the one reason left under its cap still hangs.
         const v = bumpCount("s", ["recipe"], path.join(scratch(), "does", "not", "exist"));
         for (const reason of REASONS) {
             assert.ok(v.counts[reason] > MAX_BLOCKS, `${reason}: expected above the cap of ${MAX_BLOCKS}, got ${v.counts[reason]}`);
@@ -155,17 +109,7 @@ describe("the block counter — one count PER REASON, since task 0007", () => {
 });
 
 describe("the reason list and the counter file cannot drift apart", () => {
-    // Found by a Copilot review, in the *suppressed* half — the low-confidence section of the review
-    // body, which carries no Resolve control and blocks nothing, so it is only read by someone who
-    // goes looking. It was right, and it is the same defect `REASONS` was introduced to prevent,
-    // one layer down: the constant exists so the counter, the clearing rule and the message agree
-    // about what a reason is, and `readCount` filtered by it while `bumpCount` accepted anything.
-
     test("a stored reason outside REASONS is preserved, counted, and still capped", () => {
-        // The failure it produces is silent and weakening: the count resets to 0 on every read, so
-        // that reason can never reach its own cap and the gate keeps arguing until the ceiling of
-        // nine. A gate that is quietly three times more patient about one reason is the exact
-        // asymmetry task 0007 existed to remove, reintroduced through a drifted list.
         const dir = scratch();
         assert.equal(bumpCount("s", ["surprise"], dir).counts.surprise, 1);
         assert.equal(bumpCount("s", ["surprise"], dir).counts.surprise, 2, "the count survives the round trip");
@@ -177,16 +121,11 @@ describe("the reason list and the counter file cannot drift apart", () => {
             "release",
             "an unlisted reason must still reach its own cap, not ride to the ceiling",
         );
-        // And the known reasons are still defaulted, so nothing else changes shape.
         for (const reason of REASONS) assert.equal(past.counts[reason], 0);
     });
 
     test("every reason the runner can emit is declared in REASONS", () => {
-        // The runtime now degrades safely, which is not the same as the lists agreeing. This binds
-        // them at test time so a new refusal reason added to `collectProblems` without being added to
-        // `REASONS` is RED in CI rather than a gate quietly becoming more patient about it. A source
-        // check rather than a behavioural one, deliberately: `collectProblems` needs a real tree and
-        // a real recipe run, and the thing worth binding is the declaration, not the run.
+        // A source check, since `collectProblems` needs a real tree and a real recipe run.
         const source = fs.readFileSync(new URL("./stop-gate.mjs", import.meta.url), "utf8");
         const emitted = [...source.matchAll(/reason:\s*"([a-z-]+)"/g)].map((m) => m[1]);
         assert.ok(emitted.length >= 2, "the parser must be finding the reasons at all");
@@ -206,9 +145,6 @@ describe("consecutive semantics — a reason's counter clears only when THAT rea
     });
 
     test("a green recipe does NOT clear the handoff count — the ruling, stated as a test", () => {
-        // This is the whole of task 0007. Before it, the single counter reset on the recipe while the
-        // gate refused for two reasons, so a green recipe beside a missing handoff reset the count on
-        // every attempt and the cap was never reached — a hang the ceiling of nine had to paper over.
         const dir = scratch();
         bumpCount("s", ["handoff"], dir);
         bumpCount("s", ["handoff"], dir);
@@ -217,13 +153,10 @@ describe("consecutive semantics — a reason's counter clears only when THAT rea
     });
 
     test("the handoff caps at THREE with the recipe green throughout — no longer riding to nine", () => {
-        // The green recipe is part of the criterion rather than scenery: with a red fixture the
-        // release could come from the recipe cap while a handoff counter still rode to the ceiling,
-        // and this test would pass without exercising the ruling at all.
         const dir = scratch();
         let counts;
         for (let i = 0; i < MAX_BLOCKS; i += 1) {
-            clearReason("s", "recipe", dir); // the recipe is observed green on every attempt
+            clearReason("s", "recipe", dir);
             counts = bumpCount("s", ["handoff"], dir).counts;
             assert.equal(verdict({ problems: [{ reason: "handoff", text: "no handoff" }], counts, total: i + 1 }).action, "block");
         }
@@ -237,7 +170,6 @@ describe("consecutive semantics — a reason's counter clears only when THAT rea
     });
 
     test("the clear does not touch the running total", () => {
-        // The total is what guarantees the gate can still stop whatever the per-reason counts do.
         const dir = scratch();
         bumpCount("s", ["recipe"], dir);
         bumpCount("s", ["recipe"], dir);
@@ -250,7 +182,7 @@ describe("consecutive semantics — a reason's counter clears only when THAT rea
         for (let episode = 0; episode < 3; episode += 1) {
             assert.equal(bumpCount("s", ["recipe"], dir).counts.recipe, 1);
             assert.equal(bumpCount("s", ["recipe"], dir).counts.recipe, 2);
-            clearReason("s", "recipe", dir); // the red was found and fixed; the recipe ran green
+            clearReason("s", "recipe", dir);
         }
         assert.equal(bumpCount("s", ["recipe"], dir).counts.recipe, 1, "three fixed reds later, the gate is still willing to argue");
     });
@@ -269,9 +201,7 @@ describe("consecutive semantics — a reason's counter clears only when THAT rea
 
 describe("the handoff date", () => {
     test("is the LOCAL date, not UTC", () => {
-        // 2026-07-27 at 01:00 local. In any timezone east of UTC — the maintainer's is one such —
-        // `toISOString()` would say the 26th, and the gate would demand yesterday's handoff from a
-        // session that had just written today's. A false red is what gets a rail switched off.
+        // 01:00 local: east of UTC, `toISOString()` would say the 26th.
         const stamp = today(new Date(2026, 6, 27, 1, 0, 0));
         assert.equal(stamp, "2026-07-27");
     });
@@ -289,9 +219,6 @@ describe("the verdict — both directions, because only one of them is tested by
     const red = (text = "recipe red") => [{ reason: "recipe", text }];
 
     test("no problems means allow, and allow never charges the budget", () => {
-        // The false-RED direction. A Stop-gate that blocks on green gets switched off by an annoyed
-        // human, and then it guards nothing — the `json.sh` false-red lesson, applied to the gate
-        // rather than to a recipe.
         assert.equal(verdict({ problems: [], counts: {}, total: 0 }).action, "allow");
         assert.equal(
             verdict({ problems: [], counts: { recipe: 99, handoff: 99 }, total: 99 }).action,
@@ -308,7 +235,6 @@ describe("the verdict — both directions, because only one of them is tested by
     });
 
     test("past a reason's cap the session is released, and the message says RED rather than done", () => {
-        // The cap bounds how long the gate argues, never whether red can become done.
         const v = verdict({ problems: red(), counts: { recipe: MAX_BLOCKS + 1 }, total: MAX_BLOCKS + 1 });
         assert.equal(v.action, "release");
         assert.match(v.message, /ending \*\*RED\*\*, not done/);
@@ -321,9 +247,6 @@ describe("the verdict — both directions, because only one of them is tested by
     });
 
     test("the release names WHICH bound released it — a reason's cap, or the ceiling", () => {
-        // Session 0 shipped this misreporting once and fixed it: saying "cap of 3" after nine
-        // refusals sends a reader to the wrong constant. Per-reason counters give it one more way to
-        // be wrong — naming the cap without naming the reason — so both halves are pinned.
         const byCap = verdict({ problems: red(), counts: { recipe: MAX_BLOCKS + 1 }, total: MAX_BLOCKS + 1 });
         assert.match(byCap.message, /`recipe`/, "name the reason whose patience ran out");
         assert.match(byCap.message, new RegExp(`${MAX_BLOCKS}`));
@@ -335,14 +258,8 @@ describe("the verdict — both directions, because only one of them is tested by
     });
 
     // ---- the two-reason interaction, tested directly ------------------------------------------
-    //
-    // Task 0007: "a per-reason design that is only tested one reason at a time has not been tested
-    // at all — the original defect lived exactly in the interaction."
 
     test("one reason over its cap releases the stop even while the other is still under", () => {
-        // A stop cannot be half-released. Once the gate has argued four times about anything, it has
-        // argued four times — and the session ends RED naming both problems, so nothing is laundered
-        // by the reason that had not yet been argued to exhaustion.
         const v = verdict({
             problems: [{ reason: "recipe", text: "recipe red" }, { reason: "handoff", text: "no handoff" }],
             counts: { recipe: MAX_BLOCKS + 1, handoff: 1 },
@@ -365,10 +282,6 @@ describe("the verdict — both directions, because only one of them is tested by
     });
 
     test("a cleared reason's counter does not vote — only what is wrong NOW can release the gate", () => {
-        // A reason that cleared has its counter zeroed, so a stale over-cap count cannot release a
-        // session for a problem that no longer exists. Asserted rather than assumed, because the
-        // alternative reading — remembering that the recipe was once red four times — would release
-        // every later stop for free.
         const v = verdict({
             problems: [{ reason: "handoff", text: "no handoff" }],
             counts: { recipe: 0, handoff: 1 },
@@ -379,13 +292,6 @@ describe("the verdict — both directions, because only one of them is tested by
 });
 
 describe("a recipe that cannot run is not a verdict about the repository", () => {
-    // Found by review: the Stop-gate ran the recipe through `bash -c` and read every non-zero status
-    // except 2 as RED. A missing script exits 127 and was therefore reported as a red verdict about a
-    // tree nothing had looked at — the exact laundering the recipes' three-code contract exists to
-    // prevent, reaching the gate that contract is for.
-    //
-    // Asserted against real shell behaviour rather than against a copy of the constant, because the
-    // premise ("a missing command exits 127") is a fact about the shell and is the part worth pinning.
     const CANNOT_RUN = new Set([2, 126, 127]);
 
     function statusOf(command) {
@@ -420,26 +326,10 @@ describe("a recipe that cannot run is not a verdict about the repository", () =>
     });
 });
 
-// ---------------------------------------------------------------------------------------------
-// The DID-WORK signals, driven as the host drives them — real git, real binary, real fixtures.
-//
-// **Every case here spawns `node cli/stop-gate.mjs`** with a payload on stdin and
-// `CLAUDE_PROJECT_DIR` pointed at a fixture repository, rather than importing `didWork` and handing
-// it a stubbed runner. The shape is `./gate.test.mjs`'s and the reason is the same one, sharpened by
-// what is under test here: **the defect is that real git, in a repository that rebase-merges,
-// behaves otherwise than the signal assumed.** A stubbed runner is a copy of that assumption, so it
-// would pass on every day the gate was wrong. The arm withheld from `#208` was rejected for the
-// neighbouring reason — a test-only export adds a surface whose only caller is the entry block — and
-// shipped by injecting the fault from outside instead.
-//
-// `#220`: a rebase-merge rewrites commits, so a merged branch's originals are on no remote; once the
-// remote branch is deleted they never will be. `HEAD --not --remotes` therefore reports did-work
-// **permanently** for any checkout left on such a branch, and the gate demands a handoff from a
-// session that did nothing.
+// ---------------------------------------------------------------- the did-work signals, driven as the host drives them
 
 const RUNNER = fileURLToPath(new URL("./stop-gate.mjs", import.meta.url));
 
-/** Git with a fixed identity, so the suite does not read the machine's. */
 function git(cwd, args) {
     return execFileSync(
         "git",
@@ -448,27 +338,14 @@ function git(cwd, args) {
     );
 }
 
-/**
- * Drive the gate as the host does: one process, payload on stdin, decision on stdout.
- *
- * `spawnSync` rather than `execFileSync` because **this runner always exits 0** — it reports a
- * refusal in its stdout JSON, not in its status — so the stderr this suite asserts on would be
- * unreachable through the throw path `./gate.test.mjs` reads it from.
- */
+/** `spawnSync`: the runner exits 0 either way, and `execFileSync` returns stderr only through a throw. */
 function gate(project, sessionId, env = {}, payload = {}) {
     const run = spawnSync("node", [RUNNER], {
-        // `...payload` FIRST, so the explicit `sessionId` argument always wins. Spread last, a caller
-        // passing `{ session_id }` in the payload would silently override it, and these tests key
-        // their counters off that id — a future case would run under someone else's counter and the
-        // cap arithmetic it was written to check would be measuring the wrong file. Copilot.
         input: JSON.stringify({ ...payload, session_id: sessionId }),
         env: { ...process.env, CLAUDE_PROJECT_DIR: project, ...env },
         encoding: "utf8",
     });
-    // **A crash must never read as an allow.** This runner reports a refusal in stdout and exits 0
-    // either way, so "no JSON" means allow — but it ALSO means "node could not start" and "the runner
-    // threw". Without this assertion the one case that expects `allow` would pass on a broken runner,
-    // which is a fail-open in the harness that tests a gate for fail-opens. Copilot, round 1.
+    // No output reads as an allow, so a runner that could not start or that threw must fail here.
     assert.equal(run.error, undefined, `the runner could not be spawned: ${run.error?.message}`);
     assert.equal(run.status, 0, `the runner exited ${run.status} — stderr: ${run.stderr}`);
     const out = run.stdout.trim() ? JSON.parse(run.stdout) : null;
@@ -478,28 +355,18 @@ function gate(project, sessionId, env = {}, payload = {}) {
 const MANIFEST = JSON.stringify({
     spec: "2.1",
     name: "fixture",
-    // A green recipe, so `handoff` is the only reason that can be live and every assertion below is
-    // about the did-work question rather than about a red tree.
+    // A green recipe, so `handoff` is the only reason a case can be refused for.
     verify: { default: "always-green", recipes: [{ id: "always-green", run: "true" }] },
 });
 
-/**
- * A repository whose branch was REBASE-MERGED and whose remote branch was then deleted — #220's
- * shape, built by cloning a scratch origin so `origin/HEAD` exists as it did in the incident.
- */
+/** A clone whose branch was rebase-merged, then deleted: `HEAD --not --remotes` lists its original commits for good. */
 function rebaseMerged({ genuinelyUnmerged = false } = {}) {
     const root = scratch();
     const origin = path.join(root, "origin.git");
     const work = path.join(root, "work");
     const hub = path.join(root, "hub");
     execFileSync("git", ["init", "-q", "--bare", origin]);
-    // **The bare repository's HEAD is set EXPLICITLY, not inherited.** `git init --bare` points HEAD at
-    // whatever `init.defaultBranch` says, which is the HOST's setting: `main` on this machine, `master`
-    // on a stock CI runner. The fixture then pushes `main` and `git remote set-head origin -a` fails
-    // with *"Cannot determine remote HEAD"* wherever the two disagree — so `origin/HEAD` never exists,
-    // and the very base this suite's subject resolves is missing. Measured: the first version of this
-    // fixture passed on this machine and took the whole did-work block red on CI, which is `./gate.mjs`'s
-    // `#131` — paths resolved against the author's layout — in another spelling.
+    // `git init --bare` follows the host's init.defaultBranch, and `set-head -a` fails where that is not `main`.
     execFileSync("git", ["--git-dir", origin, "symbolic-ref", "HEAD", "refs/heads/main"]);
     execFileSync("git", ["clone", "-q", origin, work], { stdio: ["ignore", "pipe", "pipe"] });
     fs.mkdirSync(path.join(work, ".portulan", "handoffs"), { recursive: true });
@@ -513,13 +380,9 @@ function rebaseMerged({ genuinelyUnmerged = false } = {}) {
     fs.appendFileSync(path.join(work, "f.txt"), "one\n");
     git(work, ["commit", "-am", "feat one"]);
     git(work, ["push", "-q", "origin", "feat"]);
-    // The platform rebase-merges: the same patches land on main under NEW shas, then the branch goes.
     execFileSync("git", ["clone", "-q", origin, hub], { stdio: ["ignore", "pipe", "pipe"] });
     git(hub, ["checkout", "-q", "main"]);
-    // A FIXED, DIFFERENT committer date, because that is what makes this a rebase-merge rather than a
-    // no-op. Cherry-picking the same patch onto the same parent with the same identity inside the same
-    // second reproduces the ORIGINAL sha exactly — measured: the first draft of this fixture did that,
-    // and its own premise assertion caught it, since a fixture with no orphan tests nothing.
+    // Another committer date: a pick with the same parent, identity and second reproduces the original sha.
     execFileSync(
         "git",
         ["-c", "user.name=portulan-test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false",
@@ -541,10 +404,6 @@ function rebaseMerged({ genuinelyUnmerged = false } = {}) {
 describe("did-work, in a repository that rebase-merges (#220)", () => {
     test("a rebase-orphaned branch whose every patch is upstream owes no handoff", () => {
         const repo = rebaseMerged();
-        // The premise, measured against real git rather than asserted: reachability finds the orphaned
-        // commit this fixture makes, patch-id finds nothing unmerged. Asserted as non-empty rather than
-        // as a count, so the fixture may grow a commit without this going red for the wrong reason. If
-        // this premise ever stops holding the case below is testing nothing.
         assert.notEqual(git(repo, ["log", "--oneline", "HEAD", "--not", "--remotes"]).trim(), "", "premise: orphans exist by reachability");
         assert.equal(git(repo, ["cherry", "origin/main", "HEAD"]).split("\n").filter((l) => l.startsWith("+")).length, 0, "premise: every patch is upstream");
         assert.equal(git(repo, ["status", "--porcelain"]).trim(), "", "premise: the tree is clean");
@@ -563,9 +422,6 @@ describe("did-work, in a repository that rebase-merges (#220)", () => {
     });
 
     test("the refusal offers committing and pushing as the other way out, and names no Session log", () => {
-        // The rule since 2026-09-23: committed work carries its why in its commit message, and a handoff
-        // is owed only for work not committed and pushed. A refusal that still asked for a handoff per
-        // session, or pointed at the retired log, would teach the rule this gate no longer holds.
         const repo = rebaseMerged({ genuinelyUnmerged: true });
         const { decision, reason } = gate(repo, "open-work-names-both-exits");
         assert.equal(decision, "block");
@@ -581,16 +437,11 @@ describe("did-work, in a repository that rebase-merges (#220)", () => {
     });
 
     test("with several remotes, the base is `origin` — not whichever git lists first", () => {
-        // `git remote` lists alphabetically, so a `backup` remote sorts ahead of `origin`. Comparing
-        // patch-ids against a non-canonical remote is a wrong VERDICT, not a clumsy message: here
-        // `backup` carries none of the work, so a gate that chose it would see the branch as entirely
-        // unmerged and demand a handoff from a session that owes none.
         const repo = rebaseMerged();
         const root = path.dirname(repo);
         execFileSync("git", ["init", "-q", "--bare", path.join(root, "backup.git")]);
         execFileSync("git", ["--git-dir", path.join(root, "backup.git"), "symbolic-ref", "HEAD", "refs/heads/main"]);
         git(repo, ["remote", "add", "backup", path.join(root, "backup.git")]);
-        // `backup` gets only the base commit, so it shares no patch with the rebase-merged work.
         git(repo, ["push", "-q", "backup", `${git(repo, ["rev-list", "--max-parents=0", "HEAD"]).trim()}:refs/heads/main`]);
         git(repo, ["fetch", "-q", "backup"]);
         git(repo, ["remote", "set-head", "backup", "-a"]);
@@ -603,10 +454,7 @@ describe("did-work, in a repository that rebase-merges (#220)", () => {
     });
 
     test("when patch-id cannot answer, the gate keeps the coarse reading and SAYS the refinement failed", () => {
-        // A remote is configured and has never been fetched, so `origin/HEAD` does not resolve — the
-        // innocent shape `git init` + `git remote add` produces. Reading that as "no work" would turn a
-        // case that blocks today into a pass, which is the direction this gate's own message says to
-        // scrutinise hardest. It blocks, and the sentence names what it could not refine.
+        // A remote added and never fetched: `origin/HEAD` does not resolve, so patch-id cannot answer.
         const root = scratch();
         const repo = path.join(root, "repo");
         fs.mkdirSync(path.join(repo, ".portulan", "handoffs"), { recursive: true });
@@ -650,10 +498,6 @@ describe("the handoff question names the tree it answered about (#220, second ha
     });
 
     test("one date per verdict — the refusal never carries two", () => {
-        // There were four independent `today()` calls on this path: the tree check, the history query,
-        // and both halves of the sentence. A stop spanning local midnight could check one date and
-        // report another, and search history for a date nobody checked the tree for. `today()`'s own
-        // header records that this file has already produced one false red from a date disagreement.
         const repo = rebaseMerged({ genuinelyUnmerged: true });
         const stamp = today();
         git(repo, ["checkout", "-q", "-b", "carries-the-handoff"]);
@@ -665,16 +509,13 @@ describe("the handoff question names the tree it answered about (#220, second ha
         const { reason } = gate(repo, "one-date-per-verdict");
         const dates = [...new Set(reason.match(/\d{4}-\d{2}-\d{2}/g) ?? [])];
         assert.deepEqual(dates, [stamp], `every date in one refusal must be the same one: ${dates.join(", ")}`);
-        // Both halves must actually be present, or this passes by having nothing to disagree with.
+        // Both halves must be there, or a lone date passes with nothing to disagree with.
         assert.match(reason, /no handoff dated/, "the check half");
         assert.match(reason, /does exist elsewhere/, "the elsewhere half");
     });
 
     test("the history lookup survives a host that reads `*` literally", () => {
-        // `GIT_NOGLOB_PATHSPECS` makes a bare `*` literal, which would match nothing and return null —
-        // silently reinstating the gap this arm closes, on a host that looks fine. Measured on git
-        // 2.50.1: the bare pattern matches 1 normally and 0 under this variable. The pathspec carries
-        // `:(glob)` magic so the answer does not depend on the host's pathspec defaults.
+        // Under `GIT_NOGLOB_PATHSPECS` a bare `*` is literal (git 2.50.1), so the runner's pathspec carries `:(glob)`.
         const repo = rebaseMerged({ genuinelyUnmerged: true });
         const stamp = today();
         git(repo, ["checkout", "-q", "-b", "carries-the-handoff"]);
@@ -690,10 +531,6 @@ describe("the handoff question names the tree it answered about (#220, second ha
     });
 
     test("a DETACHED tree is named by its commit, never as a branch called HEAD", () => {
-        // Not an exotic case here: this repository routinely has several detached worktrees checked out
-        // at once, and `git rev-parse --abbrev-ref HEAD` answers the literal string `HEAD` in every one
-        // of them. Naming a branch that does not exist, in the sentence added so a reader could identify
-        // the tree, would be the same defect this half of #220 is about.
         const repo = rebaseMerged({ genuinelyUnmerged: true });
         git(repo, ["checkout", "-q", "--detach"]);
         assert.equal(git(repo, ["rev-parse", "--abbrev-ref", "HEAD"]).trim(), "HEAD", "premise: git says the branch is `HEAD`");
@@ -706,10 +543,6 @@ describe("the handoff question names the tree it answered about (#220, second ha
     });
 
     test("a handoff dated today in fetched history, absent from THIS tree, is reported rather than hidden", () => {
-        // The 2026-08-10 incident's shape: the handoff was written, committed and merged; the tree the
-        // gate happened to read did not carry it. The gate still blocks — it cannot know this session
-        // wrote that file — but "no handoff dated X" alone sent a reader to write a duplicate. The
-        // sentence is the repair.
         const repo = rebaseMerged({ genuinelyUnmerged: true });
         const stamp = today();
         git(repo, ["checkout", "-q", "-b", "carries-the-handoff"]);
@@ -725,10 +558,7 @@ describe("the handoff question names the tree it answered about (#220, second ha
     });
 });
 
-/**
- * A clone whose base branch carries a handoff dated today that another session committed and pushed, and
- * whose tree holds this session's work, staged and uncommitted, with no handoff of its own.
- */
+/** A clone whose pushed `main` carries another session's handoff dated today, and whose tree holds staged work. */
 function mergedHandoff(workspace = ".portulan") {
     const stamp = today();
     const root = scratch();
@@ -750,11 +580,7 @@ function mergedHandoff(workspace = ".portulan") {
     return { work, stamp };
 }
 
-/**
- * A clone on a branch whose commit carries this session's handoff, pushed and then merged by a rebase: the
- * base branch holds the handoff in a commit of its own, the branch is gone from the remote, and the tree
- * holds the session's next work, staged and uncommitted, with no handoff beyond the merged one.
- */
+/** A clone whose handoff commit was rebase-merged and its branch deleted, with the next work staged in the tree. */
 function rebaseMergedHandoff() {
     const stamp = today();
     const root = scratch();
@@ -861,22 +687,11 @@ describe("a handoff answers for the work only while this tree has not pushed it"
     });
 });
 
-// ---------------------------------------------------------------------------------------------
-// WHICH TREE the gate answers about — #220's second arm.
-//
-// The first arm made the refusal NAME the tree it read. That is invisible on the path that matters:
-// both naming sentences live inside `!handoffPresent && didWork()`, so they fire only when the gate
-// BLOCKS. Where the told root is clean and the session's own tree carries unrecorded work, the gate
-// allowed **in silence** — a false green, which this runner's doctrine ranks worse than the false red
-// the first arm removed. These cases lead with that shape deliberately: a suite exercising only the
-// block path would pass without touching the defect.
+// ---------------------------------------------------------------- which tree the gate answers about
 
-/** ONE repository, TWO working trees — the 2026-08-10 incident's actual shape. */
+/** One repository, two working trees: the root the hook is told, and the session's own. */
 function twoTrees({ toldCarriesHandoff = true, sessionDirty = true } = {}) {
-    // **ONE stamp for the whole fixture**, for the reason the runner itself was corrected on: four
-    // `today()` calls across a build that spans local midnight create one dated filename and then
-    // remove — or assert — another, and the case fails for a reason that has nothing to do with the
-    // property under test. Returned, so a test naming the same day names this one. Copilot.
+    // One date for the whole fixture: a build spanning local midnight would otherwise name two days.
     const stamp = today();
     const root = scratch();
     const origin = path.join(root, "origin.git");
@@ -888,17 +703,14 @@ function twoTrees({ toldCarriesHandoff = true, sessionDirty = true } = {}) {
     fs.mkdirSync(path.join(told, ".portulan", "handoffs"), { recursive: true });
     fs.writeFileSync(path.join(told, ".portulan", "workspace.json"), MANIFEST);
     fs.writeFileSync(path.join(told, "f.txt"), "base\n");
-    // COMMITTED, so the told tree is genuinely clean — an untracked handoff would make
-    // `git status --porcelain` non-empty and `didWork()` true, which is not the shape under test.
+    // Committed: an untracked handoff would leave the told tree dirty, which reads as work done.
     if (toldCarriesHandoff) fs.writeFileSync(path.join(told, ".portulan", "handoffs", `${stamp}-told.md`), "why\n");
     git(told, ["add", "-A"]);
     git(told, ["commit", "-m", "base"]);
     git(told, ["branch", "-M", "main"]);
     git(told, ["push", "-q", "-u", "origin", "main"]);
 
-    // The session's tree: the SAME repository, a second working tree on its own branch. The handoff
-    // is removed **and the removal committed**, so this tree lacks one without being dirty for that
-    // reason — the dirt below is the unrecorded work, which is the thing under test.
+    // The session's worktree commits the handoff's removal, so its only dirt is the unrecorded work below.
     git(told, ["worktree", "add", "-q", session, "-b", "session-branch"]);
     if (toldCarriesHandoff) {
         git(session, ["rm", "-q", path.join(".portulan", "handoffs", `${stamp}-told.md`)]);
@@ -912,7 +724,6 @@ function twoTrees({ toldCarriesHandoff = true, sessionDirty = true } = {}) {
 describe("which tree the gate answers about (#220, second arm)", () => {
     test("THE CRITERION — work in the session's tree is not allowed to pass in silence", () => {
         const { told, session, stamp } = twoTrees();
-        // Premises, measured: the told tree is clean and fully recorded, so the OLD gate saw nothing.
         assert.equal(git(told, ["status", "--porcelain"]).trim(), "", "premise: told tree clean");
         assert.notEqual(git(session, ["status", "--porcelain"]).trim(), "", "premise: session tree dirty");
         assert.ok(fs.existsSync(path.join(told, ".portulan", "handoffs", `${stamp}-told.md`)), "premise: told carries today's handoff");
@@ -943,11 +754,6 @@ describe("which tree the gate answers about (#220, second arm)", () => {
     });
 
     test("a SYMLINKED told root is one tree, not two — the sentence must not invent a divergence", () => {
-        // `resolveSessionTree` realpaths; a divergence check that merely `path.resolve`s the told root
-        // then reads one directory under two spellings as two trees, and the refusal says the session
-        // worked somewhere it did not. The fixture makes its own symlink so this runs on CI too, and
-        // the verdict must be a BLOCK — an allow would make the assertion on `reason` vacuous, which
-        // is why the subdirectory case above cannot catch this.
         const { told } = twoTrees({ toldCarriesHandoff: false });
         fs.appendFileSync(path.join(told, "f.txt"), "unrecorded\n");
         const link = path.join(path.dirname(told), "told-by-another-name");
@@ -962,11 +768,6 @@ describe("which tree the gate answers about (#220, second arm)", () => {
     });
 
     test("the degraded path SPEAKS on an allow too — and still cannot see the session's tree", () => {
-        // Two halves, and the second is the honest residue rather than a feature: the note is printed
-        // whatever the verdict, because it explains an allow as much as a refusal; and on this path
-        // #220's silent-allow gap REMAINS by construction — the told root answers, so unrecorded work
-        // in the session's real tree is invisible here. Forcing a block instead would manufacture an
-        // obligation from no evidence and leave the removed-worktree case permanently blocking.
         const { told } = twoTrees();
         const nowhere = path.join(scratch(), "not-a-repository");
         fs.mkdirSync(nowhere, { recursive: true });
@@ -977,9 +778,6 @@ describe("which tree the gate answers about (#220, second arm)", () => {
     });
 
     test("THE BYPASS CONTROL — a foreign repository cannot answer for this one", () => {
-        // `cwd` is the one input a gated agent can steer. Preferring any tree it names would let a
-        // session point the gate at a clean unrelated clone and be allowed in silence — the defect,
-        // one remove away. The told tree answers, and the degradation is spoken.
         const { told } = twoTrees({ toldCarriesHandoff: false });
         fs.appendFileSync(path.join(told, "f.txt"), "unrecorded work in the governed tree\n");
         const foreign = path.join(scratch(), "elsewhere");
@@ -995,48 +793,23 @@ describe("which tree the gate answers about (#220, second arm)", () => {
     });
 
     test("THE KNOWN HOLE (#307) — a clean recorded sibling named in cwd silences a dirty told root; pinned, not endorsed", () => {
-        // **This records a gap. It does not bless one.**
-        //
-        // It is the DUAL of THE CRITERION above. Under an honest `cwd` this allow is exactly the
-        // per-session scoping #220 asked for: the session working in the sibling owes nothing, and the
-        // session that dirtied the told root still blocks on its own stops. The defect is only that
-        // `cwd` reports where a session ENDED, never where it worked — stated at `./stop-gate.mjs`'s
-        // `resolveSessionTree` docblock — and `cwd` is the one payload field a gated agent can move.
-        // The same-repository guard stops a FOREIGN tree answering; it does not stop steering within
-        // this repository, and the failure direction here is a SILENT allow.
-        //
-        // Pinned the way the degraded-path residue above is pinned: a recorded, guarded shape rather
-        // than an undocumented one, so it cannot drift in either direction unnoticed.
-        //
-        // **The closure contract, so a later reader does not mistake this for a wanted property:** when
-        // a mechanism closes #307, this case must be FLIPPED to expect a block — deliberately, citing
-        // #307 — never deleted, and never loosened into passing both ways.
+        // `cwd` says where a session ended, never where it worked, and it is the one field a gated agent can move.
         const { told, session, stamp } = twoTrees({ toldCarriesHandoff: false, sessionDirty: false });
         fs.appendFileSync(path.join(told, "f.txt"), "unrecorded work in the tree this hook governs\n");
         fs.writeFileSync(path.join(session, ".portulan", "handoffs", `${stamp}-session.md`), "why\n");
         git(session, ["add", "-A"]);
         git(session, ["commit", "-m", "the sibling records its own day"]);
 
-        // Premises, measured — a rotten fixture would let this pass for the wrong reason.
         assert.notEqual(git(told, ["status", "--porcelain"]).trim(), "", "premise: the told tree is dirty");
         assert.ok(!fs.existsSync(path.join(told, ".portulan", "handoffs", `${stamp}-told.md`)), "premise: the told tree has no handoff today");
         assert.equal(git(session, ["status", "--porcelain"]).trim(), "", "premise: the sibling is clean");
         assert.ok(fs.existsSync(path.join(session, ".portulan", "handoffs", `${stamp}-session.md`)), "premise: the sibling carries today's handoff");
 
-        // **The control comes first, and it is what makes this pin the FLIP rather than an endpoint.**
-        // Without it the allow below could come from a broken fixture and the case could never fail for
-        // the right reason.
         assert.equal(gate(told, "known-hole-control", {}).decision, "block",
             "with no cwd the told tree answers and its unrecorded work is caught");
 
         const { decision, reason, stderr } = gate(told, "known-hole", {}, { cwd: session });
         assert.equal(decision, "allow", "naming the clean sibling silences it — this is the hole, recorded");
-        // **The SILENCE is asserted as silence, not as the absence of two phrases.** Forbidding only
-        // the degradation sentences would let any OTHER stderr — "cannot determine whether this session
-        // did work", or a message not yet written — pass while the test still claimed to pin a silent
-        // allow. The shape being recorded is *nothing is said*, so that is what is checked; if a future
-        // change makes this path speak, this case should go red, because the shape will have changed —
-        // which is the closure contract above doing its job rather than a nuisance. Copilot.
         assert.equal(stderr, "", `the hole is that nothing is said — got: ${JSON.stringify(stderr)}`);
         assert.equal(reason, "", "no refusal text at all");
     });
@@ -1052,8 +825,6 @@ describe("which tree the gate answers about (#220, second arm)", () => {
     });
 
     test("a payload with NO cwd behaves exactly as before, and says nothing", () => {
-        // The control that keeps every pre-existing case meaningful: a host that never offered the
-        // datum has degraded nothing, so it must not be handed a degradation sentence.
         const { told } = twoTrees({ toldCarriesHandoff: false });
         fs.appendFileSync(path.join(told, "f.txt"), "unrecorded\n");
         const { decision, stderr, reason } = gate(told, "no-cwd", {});
@@ -1066,12 +837,7 @@ describe("which tree the gate answers about (#220, second arm)", () => {
 // ---------------------------------------------------------------- the chain bound
 
 test("a host that rotates session_id per retry is bounded — the defect this closes", () => {
-    // **Measured 2026-09-02 on Claude Code 2.1.251, inside an A/B arm.** The gate refused, the agent
-    // retried, and the retry arrived under a NEW session id — so `counterFile()` opened a fresh counter
-    // and every consecutive count restarted at zero. 85,839 hook invocations and 6,985 distinct counter
-    // files from one probe, never a fourth consecutive refusal. Both existing caps are keyed to an
-    // identity the host was free to rotate, and this module's own words name the result: *a Stop-gate
-    // that cannot stop is not a gate, it is a hang.*
+    // Claude Code 2.1.251 can send a refused stop's retry under a new session id, restarting every per-session count.
     const problems = [{ reason: "handoff", text: "no handoff" }];
     for (let chain = 0; chain <= MAX_CHAIN_BLOCKS; chain += 1) {
         assert.equal(verdict({ problems, chain }).action, "block", `chain ${chain} is within the bound`);
@@ -1080,8 +846,6 @@ test("a host that rotates session_id per retry is bounded — the defect this cl
 });
 
 test("the chain bound is a BACKSTOP — a stable session still meets its specific cap first", () => {
-    // If this ever inverted, every release message would name the wrong bound and send a reader to the
-    // wrong constant, which is a defect this message has already had fixed twice.
     const problems = [{ reason: "handoff", text: "no handoff" }];
     const both = verdict({ problems, counts: { handoff: MAX_BLOCKS + 1 }, chain: MAX_CHAIN_BLOCKS + 1 });
     assert.equal(both.action, "release");
@@ -1100,18 +864,12 @@ test("the chain release says what it means: the per-session counters could not s
 });
 
 test("the chain is keyed to the tree being JUDGED, not to this module's own repo", () => {
-    // The first cut called `chainFile(dir)` with no root, so every session shared one file whatever
-    // `resolveSessionTree(payload.cwd)` had resolved — and this gate answers about another worktree often
-    // enough to carry a branch for it. Two arms, or an arm and this repository, contended on one chain:
-    // one tree's retries could spend another's budget or release it early. The docblock said *keyed to
-    // the tree* while the code keyed to a constant. Copilot round 2 on #406.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-chainkey-"));
     try {
         assert.deepEqual([1, 2, 3].map(() => bumpChain(true, dir, "/tmp/tree-a")), [1, 2, 3]);
         assert.deepEqual([1, 2].map(() => bumpChain(true, dir, "/tmp/tree-b")), [1, 2], "a second tree starts its own chain");
         assert.equal(bumpChain(true, dir, "/tmp/tree-a"), 4, "and the first tree's chain is untouched by it");
         assert.equal(fs.readdirSync(dir).length, 2, "one file per tree, not one file shared");
-        // Clearing one tree's chain must not clear another's.
         assert.equal(bumpChain(false, dir, "/tmp/tree-a"), 0);
         assert.equal(bumpChain(true, dir, "/tmp/tree-b"), 3, "tree B kept counting while tree A was cleared");
     } finally {
@@ -1120,10 +878,6 @@ test("the chain is keyed to the tree being JUDGED, not to this module's own repo
 });
 
 test("bumpChain does not advance past a write it could not make", () => {
-    // The first cut returned the increment whether or not the write succeeded, so the value it returned
-    // diverged from what the next invocation would read: on an unwritable directory the chain appeared
-    // to climb within a call and reset on every following one. The comment beside it asserted the
-    // opposite of what the code did — the class this whole change is about. Copilot round 1 on #406.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-chain-ro-"));
     try {
         fs.chmodSync(dir, 0o500);
@@ -1136,7 +890,6 @@ test("bumpChain does not advance past a write it could not make", () => {
 });
 
 test("bumpChain follows stop_hook_active and is keyed to the tree, not the session", () => {
-    // The whole point: it must count a chain that no session id survives.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-chain-"));
     try {
         assert.equal(bumpChain(false, dir), 0, "an unprovoked stop starts no chain");
