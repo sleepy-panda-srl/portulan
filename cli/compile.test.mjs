@@ -758,7 +758,8 @@ function workspaceWithSpend(spend, p = policy()) {
     const dir = workspace(p);
     const file = path.join(dir, ".portulan", "workspace.json");
     const m = JSON.parse(fs.readFileSync(file, "utf8"));
-    m.portulan.spec = "2.12";
+    // The version whose validator takes the declaration: `spend` is 2.12's, and `spend.restart` 2.13's.
+    m.portulan.spec = spend?.restart === undefined ? "2.12" : "2.13";
     m.spend = spend;
     fs.writeFileSync(file, JSON.stringify(m, null, 2));
     return dir;
