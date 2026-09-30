@@ -47,12 +47,12 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | File | What it is |
 |---|---|
 | [`ab-grade.mjs`](ab-grade.mjs) | The A/B graders — what an arm's tree says it did, and the discrimination that proves a grader read it. Not shipped. |
-| [`ab-run.mjs`](ab-run.mjs) | The A/B run — the only module in this family that spawns an agent, and the only one that records a figure about behaviour. Not shipped. |
+| [`ab-run.mjs`](ab-run.mjs) | The A/B runner: spawns the agent turns of both arms and records the baseline they measure. Not shipped. |
 | [`ab.mjs`](ab.mjs) | The A/B arm builder — what "Portulan on" is made of, built rather than described. Not shipped. |
 | [`comments.mjs`](comments.mjs) | `comments` — the comments in a tree that record a change's history instead of what the code cannot show. |
-| [`context.mjs`](context.mjs) | What a context loads, measured — the measurement module proposal `0036` names. |
+| [`context.mjs`](context.mjs) | What a context loads, measured: what a boot reads in full, and what the host loads into every context. |
 | [`control-chars.mjs`](control-chars.mjs) | `control-chars` — the rail on bytes a reader cannot see. |
-| [`discover.mjs`](discover.mjs) | Host plugin-cache discovery — reading a host's installed-plugin record so a POINTER can be resolved to the workspace it names. |
+| [`discover.mjs`](discover.mjs) | Host plugin-cache discovery: reads a host's installed-plugin record to resolve a pointer and find pack roots. |
 | [`drills.mjs`](drills.mjs) | The forced-red drill harness — every rail broken on purpose, and required to fire. |
 | [`eval-bundle.mjs`](eval-bundle.mjs) | Cut a named-recipient evaluation bundle of Portulan from a commit. Not shipped. |
 | [`finish.mjs`](finish.mjs) | The finishing command — one call closes a change: its recipes, its changelog fragment, its commit, its push. |
@@ -61,7 +61,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`goldens.mjs`](goldens.mjs) | Grade this workspace's compiled gates against a corpus of adversarial fixtures. |
 | [`inside.mjs`](inside.mjs) | Is one path inside another? One predicate, one file, no dependencies. |
 | [`instructions.mjs`](instructions.mjs) | `instructions` — the sections a team marks in its own instruction file, moved to on-read units and proved. |
-| [`ledger.mjs`](ledger.mjs) | What a change spends, measured — the ledger proposal `0038` names. |
+| [`ledger.mjs`](ledger.mjs) | What a change spends, measured from the host's own usage records. |
 | [`librarian.mjs`](librarian.mjs) | `librarian` — the scheduled pass over the curated layer: reindex, staleness, nags, demotion drafts. |
 | [`manifest.mjs`](manifest.mjs) | The two facts every tool here needs out of `package.json`, read once and in a module that imports nothing of ours. |
 | [`mutants.mjs`](mutants.mjs) | Mutation-test this repository's two gate matchers against the corpus that claims to cover them. |
@@ -69,18 +69,18 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`pack-version.mjs`](pack-version.mjs) | A change to a pack's `contributes` must move that pack's `portulan.version`. |
 | [`payload.mjs`](payload.mjs) | Every `cli/*.mjs` the npm payload carries is classified, and nothing arrives in it unclassified. Not shipped. |
 | [`plugin-lint.mjs`](plugin-lint.mjs) | `plugin-lint` — the packaging validator. |
-| [`recipe-set.mjs`](recipe-set.mjs) | The recipe set — the one carrier of *what this workspace runs*. |
+| [`recipe-set.mjs`](recipe-set.mjs) | The recipe set: the verify recipes a workspace yields, its own plus each composed pack's, namespaced by pack. |
 | [`release-eval.mjs`](release-eval.mjs) | Portulan — the eval result a release carries. |
-| [`review-meter.mjs`](review-meter.mjs) | The review-loop meter — the three figures that bound this repository's review loop, derived instead of counted by hand. |
+| [`review-meter.mjs`](review-meter.mjs) | The review-loop meter: the figures that bound this repository's review loop, derived from its reviews. |
 | [`roster.mjs`](roster.mjs) | The cli roster: `cli/README.md`, rendered from the files it lists and never edited by hand. Not shipped. |
 | [`rule-carriers.mjs`](rule-carriers.mjs) | `rule-carriers` — the rail that keeps a reduced rule reduced. |
-| [`sessions.mjs`](sessions.mjs) | The session switches' texts: the five-minute cache lifetime `init` offers and `upgrade` prints, and the one line `doctor` reports on every session switch a manifest declares. |
+| [`sessions.mjs`](sessions.mjs) | The session switches' texts: the cache-lifetime offer `init` and `upgrade` print, and the one line `doctor` reports on them. |
 | [`skill-goldens.mjs`](skill-goldens.mjs) | The core-skill golden corpus — every mandate a core skill states, bound to the live artifacts it governs, and graded. |
-| [`skills-set.mjs`](skills-set.mjs) | The registrable set — the one carrier of *what a host must declare so a composed pack's skills register*. |
-| [`symbols.mjs`](symbols.mjs) | A code file's outline, one line per symbol, and a Markdown file's, one line per heading with its size, printed from the file at read time. |
-| [`telemetry.mjs`](telemetry.mjs) | The OTel emitter — milestone 8's *OTel opt-in config*, and the first thing in this repository that can send anything anywhere on purpose. |
-| [`version-carriers.mjs`](version-carriers.mjs) | Portulan — every prose statement of the CURRENT version agrees with `package.json`. |
-| [`warm.mjs`](warm.mjs) | The warm-start A/B: what a fresh session costs when an earlier session left its prefix in the prompt cache, against the same session priced cold. [`../core/operating/sessions.md`](../core/operating/sessions.md) is the doctrine this measures, and [`../evals/ab/warm.md`](../evals/ab/warm.md) its specification and record. Not shipped. |
+| [`skills-set.mjs`](skills-set.mjs) | The registrable set: the `skills` paths a plugin manifest must declare so a composed pack's skills register. |
+| [`symbols.mjs`](symbols.mjs) | A code file's outline, one line per symbol, and a Markdown file's, one line per heading with its size. |
+| [`telemetry.mjs`](telemetry.mjs) | The OTel emitter: the review-loop figures as OTLP/HTTP JSON, sent only when a committed config opts in. |
+| [`version-carriers.mjs`](version-carriers.mjs) | Every prose statement of the current version agrees with `package.json`. |
+| [`warm.mjs`](warm.mjs) | The warm-start A/B: a fresh session's cost when an earlier one left its prefix in the prompt cache, against cold. Not shipped. |
 
 ### Tests
 

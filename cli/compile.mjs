@@ -1,58 +1,17 @@
 #!/usr/bin/env node
-// `compile` — the enforcement compiler.
+// `compile` — the enforcement compiler: it turns a workspace's gate policy into Claude Code settings and a GitHub
+// ruleset, and its guidance into each host's load tiers.
 //
 //   node cli/compile.mjs [--workspace <dir>] [--check] [--matrix]
 //
 // Exit 0 wrote (or, with --check, agrees) · 1 an artifact has drifted · 2 could not run.
-//
-// Reads a workspace's gate policy (`gates.json`) and emits enforcement, for two backends: the Claude
-// Code host (`permissions` + `hooks`) and the GitHub repository ruleset that is the platform floor.
-// `--matrix` prints every rule against both. The tier vocabulary and the action vocabulary are the
-// WORKSPACE's, never a host's — a rule says `{"shell": "git push"}`, not `Bash(git push:*)` — which is
-// what let the second backend translate the same policy instead of forcing every adopter to rewrite
-// theirs. That separation is the whole of "LLM-agnostic by construction" (../docs/vision.md) at this
-// layer, and the second backend is where it stopped being a claim.
-//
-// It compiles a workspace's **guidance** too, since Workspace Definition 2.10: the units in `slots.context`,
-// each to the Claude Code form of the load tier it declares, and none of them enforcement. Section 3c.
-//
-// ## Two layers, and which one is load-bearing
-//
-// Every gate is emitted TWICE: as a permission rule and as a hook. That is not belt-and-braces for
-// its own sake — it was measured. On CLI 2.1.220 a hook that CRASHES fails OPEN: the tool runs
-// normally, on the identical wiring that blocked when the hook was healthy. A permission rule does
-// not fail open. So the permission rule is the gate and the hook is the sentence a human reads;
-// a design resting on hooks alone would be a gate that a syntax error silently removes.
-//
-// ## Why `ask` rather than `deny` for the Gated tier
-//
-// ../.portulan/gate-map.md defines Gated as "explicit human approval, per action, before it
-// happens" — which is what `ask` is: interactively it prompts; headless, where nobody can approve,
-// it blocks. Compiling Gated to `deny` would be the *prohibition* semantics wearing the Gated
-// tier's name, and it would make the tier above it — a rule with no approval path at all —
-// indistinguishable from an ordinary push.
-//
-// ## What this file cannot tell you
-//
-// That the host honours what it emits. A schema-valid settings file the host ignores is
-// indistinguishable, from in here, from one it enforces — see
-// ../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md, which cost a milestone.
-// The host behaviours above were measured against a running host on 2026-07-27, and
-// ../.portulan/gate-map/compiler.md carries the probe that re-measures each. Re-measure on upgrade.
-//
-// Zero dependencies, no network, no install step — same constraints as ./doctor.mjs.
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-// Host plugin-cache discovery (#123). The record reader, the config directory and the version refusal
-// all live there, once — see that file's pack-root section for why this half arrived separately.
 import { AUTO, discoverPackRoots, namedWithAuto, resolutionRoots } from "./discover.mjs";
 import { isInside } from "./inside.mjs";
-// A heading's section, for a list named by `#heading`: the one reader of Markdown sections.
 import { CannotOutline, sectionOf } from "./symbols.mjs";
-// A workspace's `spend` is read by the ledger's own reader, so the figures `compile` writes onto the restart
-// advisory's commands are held to the ranges the ledger prices by, and not to a second copy of them.
 import { HORIZON, LedgerError, readSpend } from "./ledger.mjs";
 
 /** Raised when `compile` cannot run, or cannot compile honestly. Always exit 2, never 1. */
@@ -63,62 +22,22 @@ export class CompileError extends Error {
     }
 }
 
-// The GATE-POLICY spec versions this compiler understands — `gates.json`'s `portulan.spec`, which is a
-// different train from the Workspace Definition's despite the overlapping numbers. Checked
-// rather than ignored: `doctor` shipped for a day reading no version at all, so a manifest naming a
-// spec that had never existed validated green. Same class of hole, closed at birth this time.
-//
-// 2.1 stays known: the `floor` key 2.2 adds is optional, so a 2.1 policy is still a policy this
-// compiler reads correctly — it simply declares no floor, which is a legitimate shape and the one
-// every workspace had yesterday.
-//
-// **These are GATE-POLICY versions, not Workspace Definition versions**, and the name is about to be
-// misread by someone: the numbers overlap (`gates.json` is on 2.x and so is the Workspace Definition),
-// the constant is spelled the same as ./index.mjs's and ./librarian.mjs's, and those two DO track the
-// Workspace Definition. A fresh reviewer at milestone 6 session 1 sight-read this as a carrier left
-// stale by the 2.5 → 2.6 bump and had to measure to clear it. It is correctly untouched by any
-// Workspace Definition bump; renamed to say so, because the next reader may not measure.
-// Exported so a test can assert MEMBERSHIP against it rather than restate the literal. The
-// scaffold `new gate-policy` emits must declare a spec THIS set contains (#329), and a rail
-// spelling `"2.2"` on its own side would pass while the two drifted apart — which is the
-// shape #329 was.
+/** The `portulan.spec` versions of `gates.json`: a train separate from the Workspace Definition's, though the numbers overlap. */
 export const KNOWN_GATE_POLICY_SPECS = new Set(["2.1", "2.2"]);
 
 const TIERS = new Set(["auto", "propose", "gated", "prohibited"]);
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
-// The `filePath` shape from ../spec/workspace.schema.json, carried here rather than imported because
-// this file has no dependencies by design. Relative, no fragment/query/colon, not a directory.
+// spec/workspace.schema.json's `filePath`, copied: relative, no `#`, `?` or `:`, and not a directory.
 const FILE_PATH = /^[^#?:/]([^#?:]*[^#?:/])?$/;
 
-/** The tools that can write a path, and the tools that can read one. */
-// Exported since 2026-08-24 so `./goldens.mjs` can DERIVE which branch of `matchesRule` a fixture
-// exercises instead of a corpus author declaring it from memory. A hand-declared path would be a
-// second carrier of what these two tables already decide, and the fixture format asks for the path on
-// every case — which is exactly the volume at which a hand-copied answer goes wrong.
 export const WRITE_TOOLS = ["Edit", "Write", "NotebookEdit"];
 export const READ_TOOLS = ["Read"];
 
-// ===========================================================================================
-// 1. Parse: policy -> validated, normalised rules. NO backend opinion lives here.
-// ===========================================================================================
+// ---------------------------------------------------------------- parse: validated rules, no backend's opinion
 
-/**
- * Read a gate policy and hand back `{ rules, floor }` — validated and normalised, with every rule
- * carrying its `kind` and `target` resolved, and nothing yet decided about enforcement.
- *
- * Anything it cannot understand refuses the WHOLE policy rather than dropping one rule — skipping
- * and enforcing are indistinguishable from outside
- * (../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md).
- *
- * **Why this stage holds no tier partition.** For one session it did: `auto` and `propose` were
- * refused here, before any backend ran, with a sentence saying `propose` "is enforced by the
- * platform floor". That sentence was right and its location was wrong — it names the *other*
- * backend, and when that backend arrived it needed to compile exactly the rules this stage had
- * already thrown away. A partition that is one backend's opinion must live in that backend, or the
- * second one is structurally incapable of disagreeing.
- */
+/** The policy as `{ rules, floor }`, validated and normalised; anything unreadable throws, since a skipped rule looks enforced. */
 export function parse(policy) {
     if (!policy || typeof policy !== "object" || Array.isArray(policy)) {
         throw new CompileError("the gate policy is not a JSON object");
@@ -173,32 +92,6 @@ export function parse(policy) {
         if (typeof action[kind] !== "string" || action[kind].trim() === "") {
             throw new CompileError(`rule \`${id}\`'s action \`${kind}\` has no value`);
         }
-        // ONE REGEX WAS CARRYING TWO DIFFERENT JUSTIFICATIONS, and only one of them reaches every kind.
-        //
-        // For `shell`, `write` and `read` the value is interpolated into the host's permission DSL —
-        // `Bash(prefix:*)`, `Edit(./path)`. Characters structural THERE would emit a rule the host
-        // parses differently from what the policy meant, and an ambiguous gate is indistinguishable
-        // from an absent one. Refuse rather than escape: a workspace needing a gate on a command
-        // containing `(` or `:` needs this compiler extended deliberately, not quietly reinterpreted.
-        // Found by review on the pull request.
-        //
-        // **A `none` value is never interpolated into a permission pattern.** It is PROSE: the sentence
-        // the policy gives for why there is no surface, which the compiler reports verbatim rather than
-        // inventing its own — see the `kind === "none"` arm of the emitter, which pushes it as `why`,
-        // and the `refused` loop in the reporter, which prints it. (An earlier draft of this comment
-        // cited `describeRefusal`, a function that does not exist in this file — a name asserted without
-        // being looked up, in the same change whose subject is tracing what a value actually reaches.
-        // The nearest real thing is `floorRefusal`, which answers a different question.) So the DSL
-        // justification above does not reach it, and
-        // applying the DSL regex to it forbade **parentheses in an English sentence** — a gate refusing
-        // to compile over an aside. #205.
-        //
-        // What DOES still reach it is narrower and worth stating rather than folding back in: that
-        // sentence is printed into a LINE-BASED report — `refused ${id.padEnd(38)} ${why}` — so a
-        // newline or a tab in it breaks the column and splits one refusal across two lines. That is a
-        // different defect with a different fix, and it is the reason `none` keeps `\n\r\t` while
-        // losing `()` and `:`. Two justifications, two scopes, stated separately so the next reader
-        // cannot collapse them again.
         const RESERVED = kind === "none" ? /[\n\r\t]/ : kind === "shell" ? /[()\n\r\t:]/ : /[()\n\r\t]/;
         if (RESERVED.test(action[kind])) {
             throw new CompileError(
@@ -211,15 +104,6 @@ export function parse(policy) {
                           `differently from what this policy says, which is worse than refusing to compile.`,
             );
         }
-        // THE SAME OVER-REACH, NINE LINES BELOW THE SPLIT THAT FIXED IT. This message told every kind
-        // that the host "would not match" its value — and nothing about a `none` value is ever matched
-        // by the host, for the reason set out directly above. Surrounding whitespace on a `none` value
-        // is still worth refusing, but for a reason this comment got wrong once: the report's padding
-        // comes from `r.id.padEnd(38)`, not from `why`, so whitespace on the sentence cannot misalign a
-        // column. What it does do is shift the sentence out of line with every other refusal, and hide
-        // itself in the record. The message says that now — a refusal's stated reason must match its
-        // actual mechanism, which is this change's own subject, missed nine lines below its own fix. Found by Copilot on #256 round 1, in the change that had just split the
-        // reserved-character check on exactly this distinction: `0020` at its shortest range yet.
         if (action[kind] !== action[kind].trim()) {
             throw new CompileError(
                 kind === "none"
@@ -229,24 +113,6 @@ export function parse(policy) {
                     : `rule \`${id}\`'s ${kind} target has leading or trailing whitespace, which the host would not match`,
             );
         }
-        // A path target that leaves the workspace is refused rather than normalised, for the reason
-        // directly above. Two spellings, one defect: `pattern()` and `matchesPath()` compare against a
-        // workspace-relative TAIL, so neither an absolute target nor one climbing out with `..` means
-        // at enforcement time what it says in the policy.
-        //
-        //   "/etc/passwd"  -> emits `Edit(./etc/passwd)` and matches any file whose path ends
-        //                     `/etc/passwd`, anywhere on the machine — broader than declared.
-        //   "../secrets/"  -> emits `Edit(./../secrets/**)`, which the host may resolve against the
-        //                     PARENT tree, while `matchesPath` can never match a `/../`-bearing tail
-        //                     against a resolved absolute path — narrower than declared, and the
-        //                     emitter and matcher disagree about which.
-        //
-        // Broader and narrower are both wrong, and the second is worse: it is a gate that reads as
-        // present and holds nothing. A workspace needing to gate a path outside its own tree needs
-        // this compiler extended deliberately. Shell targets are exempt: `/usr/bin/git` is a command
-        // spelling, not a path this compiler rewrites. Absolute found by review on #31; the `..`
-        // sibling by the fresh-context supervisor reviewing that fix, which is the same defect one
-        // spelling over.
         if (kind === "write" || kind === "read") {
             const escapes = action[kind].startsWith("/")
                 ? "is an absolute path"
@@ -268,21 +134,7 @@ export function parse(policy) {
     return { rules, floor: parseFloor(policy.floor) };
 }
 
-/**
- * The platform-floor declaration: the facts a floor backend would otherwise have to invent.
- *
- * Optional — a workspace that has declared no floor is a legitimate shape, and it is what every
- * workspace was before this key existed. Present, it is validated whole: a half-declared floor is
- * the one input from which a backend could emit something importable, valid, and weaker than the
- * settings already in force.
- *
- * Four keys, and each is here because it varies per repository and the export would otherwise guess:
- * which ref the floor protects, which status checks must be green, how many approving reviews are
- * required, and whether review threads must be resolved. What is deliberately NOT declarable is
- * `strict` — a pull request may not merge from behind its base
- * (`../.portulan/proposals/0011-no-merge-from-behind-main.md`, applied live on 2026-07-27), so a
- * policy able to declare `strict: false` would be a compiled artifact quietly undoing a ruling.
- */
+/** The optional `floor`, validated whole, or null; `strict` is not declarable, as no pull request merges from behind its base. */
 function parseFloor(floor) {
     if (floor === undefined || floor === null) return null;
     if (typeof floor !== "object" || Array.isArray(floor)) {
@@ -295,11 +147,6 @@ function parseFloor(floor) {
                 `Refusing rather than defaulting to \`main\`: a compiler that invents the ref it gates has stopped compiling policy.`,
         );
     }
-    // A branch NAME, never a full ref. The emitter prefixes `refs/heads/` unconditionally, so
-    // `refs/heads/main` here produced `refs/heads/refs/heads/main` — a ruleset GitHub accepts and
-    // that matches no ref in any repository. Importable, valid, enforcing nothing, in the one field
-    // that names what the floor protects. Found by review on the pull request. (`release/2026` is an
-    // ordinary branch name and stays legal; only a `refs/` prefix is refused.)
     if (/^refs\//.test(branch)) {
         throw new CompileError(
             `\`floor.branch\` is ${JSON.stringify(branch)} — declare a branch NAME, not a full ref. This compiler emits ` +
@@ -314,20 +161,13 @@ function parseFloor(floor) {
         if (!c || typeof c !== "object" || typeof c.context !== "string" || c.context.trim() === "") {
             throw new CompileError(`\`floor.checks[${i}]\` declares no \`context\` — a required check with no name cannot be required`);
         }
-        // Refused rather than normalised, exactly as a rule target is a few lines up: a context
-        // stored with its surrounding whitespace is emitted with it, and GitHub then requires a
-        // check no job reports. Trimming it silently would hide a policy error in the file a human
-        // reviews. Found by review on the pull request.
         if (c.context !== c.context.trim()) {
             throw new CompileError(
                 `\`floor.checks[${i}].context\` is ${JSON.stringify(c.context)} — it has leading or trailing whitespace, which no ` +
                     `status check will report. Fix the policy rather than having this quietly trim it.`,
             );
         }
-        // The app pin is optional and its absence is a real weakening rather than a style choice: a
-        // context with no `integration_id` is satisfiable by ANY app reporting that name. Permitted,
-        // because a workspace may legitimately not know its app id, and reported by `doctor` rather
-        // than refused here. Recorded in ../.portulan/gate-map.md, which learned it the same way.
+        // Without `integration_id`, any app reporting the name satisfies the check: allowed, and reported by `doctor`.
         const pin = c.integration_id;
         if (pin !== undefined && !Number.isInteger(pin)) {
             throw new CompileError(`\`floor.checks[${i}].integration_id\` is not an integer — an app pin GitHub cannot read is not a pin`);
@@ -343,44 +183,15 @@ function parseFloor(floor) {
     return { branch, checks, reviews: floor.reviews, resolve_conversations: floor.resolve_conversations };
 }
 
-// ===========================================================================================
-// 2. What an action MEANS — shared by the compiler and the runtime gate
-// ===========================================================================================
-//
-// The emitter and the hook runner must agree about what `{"shell": "git push"}` covers, and the
-// only way to guarantee that is one definition. Two implementations of one matcher is the drift
-// this repository keeps finding, and a *matcher* that drifts does not look wrong — it looks like a
-// gate that quietly stopped covering something.
-//
-// `./gate.mjs` imports these. It is the only thing outside this file that may.
+// ---------------------------------------------------------------- what an action means, to the compiler and the gate alike
 
-/**
- * The spellings of a shell command a gate will match against: the command itself, and the same
- * command with one `sh -c` / `bash -c` / `zsh -c` wrapper peeled off.
- *
- * The permission rule this compiles to sees only the first — `Bash(git push:*)` is a literal
- * prefix match, so `bash -c "git push …"` is invisible to it. Measured, not assumed. The hook
- * runner sees both, which is the one thing it does that the permission layer cannot, and therefore
- * the reason it is emitted at all.
- *
- * **One level, and no more.** This closes the spelling reached for by accident or convenience, not
- * one constructed on purpose: deeper nesting, a heredoc, an interpolated variable, or a command
- * assembled at runtime all still escape. No amount of parsing here would close that, and an
- * ambitious parser would buy false confidence with false reds. What must not happen regardless of
- * spelling belongs on the platform floor — see ../core/operating/autonomy.md, which calls the floor
- * the gate that holds when this layer fails.
- */
+/** The command and, under one leading `sh -c`-style wrapper, the command inside, which no `Bash(prefix:*)` rule sees; one level only. */
 export function spellings(raw) {
     const command = String(raw ?? "").trim();
     const out = [command];
     const wrapper = /^(?:\/usr\/bin\/env\s+)?(?:ba|z|da)?sh\s+-[a-zA-Z]*c\s+(.*)$/s.exec(command);
     if (wrapper) {
         let inner = wrapper[1].trim();
-        // The same `$'…'` / `$"…"` forms `shellWords` strips, at the other site that reads a quote.
-        // Two sites, because a wrapped command is unwrapped HERE and a word is tokenised THERE, and
-        // fixing one left `bash -c $'git push --force origin main'` still stepping aside while
-        // `cp /tmp/x $'docs/vision.md'` had started denying — measured, and the reason this is not
-        // one edit. Found by Copilot on #60.
         if (inner[0] === "$" && (inner[1] === "'" || inner[1] === '"')) inner = inner.slice(1);
         const quote = inner[0];
         if ((quote === '"' || quote === "'") && inner.endsWith(quote) && inner.length > 1) {
@@ -391,75 +202,29 @@ export function spellings(raw) {
     return out;
 }
 
-// The shell spellings of a write, recognised by table. Below, `shellWrites` asks one question of a
-// command — *does it name the protected path in a position where that path is being written* — and
-// these are the two ways it can answer yes without parsing a shell.
-//
-// A table rather than a parser, for the reason `REF_RULES` further down is a table: recognition by
-// exact spelling is a limit a reader can measure, and a matcher clever enough to generalise is clever
-// enough to be wrong quietly.
-
-// `git` is deliberately absent, though `git checkout -- <path>` and `git restore` both overwrite a file.
-// The head of those commands is `git`, so admitting it would gate `git diff <path>` and `git log` in the
-// same stroke — and a gate on READING a path is a rule no policy here declares. It is the likeliest
-// uncovered writer in this repository, which is why ../.portulan/gate-map.md names it rather than leaving
-// it inside "any writer outside the table".
-/** Commands whose job is to write, replace or remove a file they NAME on their own command line. */
+/** Commands that write, replace or remove a file named on their command line; not `git`, which would gate `git diff <path>` too. */
 export const FILE_WRITERS = new Set(["cp", "mv", "ln", "rm", "tee", "dd", "install", "truncate", "shred", "patch"]);
 
-/**
- * Editors that READ their arguments by default and write them only under an in-place flag.
- *
- * Separated from the table above rather than folded into it, because folding them in would gate
- * `sed -n '1,5p' docs/vision.md` — which is a *read*, and which this policy declares Auto. A matcher
- * that contradicts a declared tier is worse than one that admits a gap.
- */
+/** Editors that write their arguments only under an in-place flag; `sed -n '1,5p' <path>` is a read. */
 export const IN_PLACE_EDITORS = new Set(["sed", "gsed", "perl", "ruby"]);
 
-/** Words that stand in front of the command that actually runs. Recognised, not parsed: `sudo cp …` is seen, `sudo -u someone cp …` is not. */
+/** Words before the command that runs, recognised and not parsed: `sudo cp …` is seen, `sudo -u someone cp …` is not. */
 const COMMAND_PREFIXES = new Set(["sudo", "env", "command", "builtin", "exec", "nohup", "nice", "time"]);
 
 const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 
-// A NEWLINE is a command separator and belongs in this class, which it did not for one review round.
-// The Bash tool receives multi-line scripts constantly, so
-//
-//     git status
-//     cp /tmp/x docs/vision.md
-//
-// folded into ONE segment whose head was `git` — not a writer — and the whole table half fell through
-// to false. The most ordinary spelling there is, and it defeated the gate while the redirection half
-// (which reads no head) kept working, so the coverage looked alive. Found by the fresh-context
-// supervisor at the pre-merge checkpoint.
 const OPERATOR = /[|&;<>()\n\r]/;
 
-// Words that lead a segment without being the command in it. `{ cp … ; }`, `if …; then cp …`, and
-// `for …; do cp …` all put one of these where the head goes, which hid a writer behind it. Not a
-// grammar — a list of leaders, and `find -exec cp` / `xargs cp` stay uncovered because parsing THEIR
-// flags to find the real command is the ambitious parser this file keeps refusing to become.
 const SEGMENT_LEADERS = new Set(["{", "}", "!", "then", "else", "elif", "do", "done", "fi", "esac"]);
 
-/**
- * Drop heredoc BODIES, keeping the line that opens them.
- *
- * A heredoc body is data being written, not commands being run, so reading it as commands is simply
- * wrong — and it became wrong the moment a newline started separating commands, because that is what
- * turned each body line into its own segment. Measured immediately and expensively: this change's own
- * commit, whose message quoted `cp /tmp/x docs/vision.md` as the escape being fixed, was refused by the
- * gate it was adding. A matcher that blocks you from describing an attack is not being cautious.
- *
- * The opening line stays, so `cat > docs/vision.md <<'EOF'` still gates — the redirection is on it.
- * What is dropped is the text between the delimiter and its terminator, which no shell executes.
- */
+/** The command without its heredoc bodies, which are data; each opening line stays, so a redirection on it still counts. */
 function stripHeredocs(command) {
     const out = [];
     let delimiter = null;
-    let held = []; // lines after an opener whose terminator has not been seen yet
+    let held = [];
     for (const line of command.split("\n")) {
         if (delimiter !== null) {
             if (line.trim() === delimiter) {
-                // A real heredoc. Its body is data, not command text, so both the body and the
-                // terminator line go.
                 delimiter = null;
                 held = [];
                 continue;
@@ -471,32 +236,16 @@ function stripHeredocs(command) {
         const opened = /<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1/.exec(line);
         if (opened) delimiter = opened[2];
     }
-    // **An opener with no terminator was not an opener.** The regex reads a raw line, so `<<EOF`
-    // inside a quoted string or after a `#` sets `delimiter` on text that opens nothing — and the
-    // loop above would then swallow every remaining line looking for a word that never comes.
-    //
-    // That is a FAIL-OPEN manufactured by a defensive step, which is worse than the parsing gap it
-    // was added to close: a gated command on any later line becomes invisible to every matcher
-    // downstream. Measured on the runner before this branch existed —
-    // `echo "not a heredoc <<EOF"\ngit push --force origin main` stepped aside where the bare
-    // command answers `ask`, and `# <<EOF` did the same. Found by Copilot review on #60.
-    //
-    // Giving the lines back is the fail-CLOSED direction and costs only a false red: a genuine
-    // heredoc always has its terminator, so this branch cannot reach one. What it does not close is
-    // a mis-detected opener whose delimiter happens to appear later anyway; that is stated in the
-    // gate map rather than chased with a quote-aware parser this file refuses to grow.
+    // Never terminated, so no heredoc (`<<EOF` in quotes, or after `#`): its lines come back rather than hide a gated command.
     if (delimiter !== null) out.push(...held);
     return out.join("\n");
 }
 
 /** A shell command split into words, with unquoted operators kept as words of their own. */
-// Exported since 2026-08-24 so the suite can hold `REDIRECTION_TARGET` to THIS definition of a word
-// rather than to a reviewer's patience. Three review findings in a row were the same class — the
-// target reader narrower than a shell word — and each was fixed at the instance quoted.
 export function shellWords(command) {
     const words = [];
     let text = "";
-    let open = false; // a word has begun — so an empty `""` argument survives as a word
+    let open = false;
     const flush = () => {
         if (open) words.push({ text, op: false });
         text = "";
@@ -504,35 +253,10 @@ export function shellWords(command) {
     };
     for (let i = 0; i < command.length; i += 1) {
         const c = command[i];
-        // `$'…'` (ANSI-C quoting) and `$"…"` (locale translation) are quoting forms whose `$` is not
-        // part of the word. Without this the `$` glued onto the front — `$'docs/vision.md'` tokenised
-        // as `$docs/vision.md` — and no target matched. Measured on the runner before this branch:
-        // `bash -c $'git push --force origin main'` stepped aside where the plain wrapper answers
-        // `ask`, and `cp /tmp/x $'docs/vision.md'` stepped aside where the plain target denies. So
-        // this was a live bypass of both a Gated shell target and the constitution's write gate,
-        // sitting inside the claim one line down that quoting is honoured. Found by Copilot on #60.
-        //
-        // **Two forms and no more, because this grammar is closed.** `$(…)` is command substitution
-        // and deliberately stays out: its content is a command to run, not a word to read, and
-        // reading it as a word is precisely how a matcher becomes clever and wrong quietly. That one
-        // is hole 1's "command assembled at runtime", where it belongs.
+        // `$'…'` and `$"…"` quote, and their `$` is not part of the word; `$(…)` runs a command and is deliberately not read.
         if (c === "$" && (command[i + 1] === "'" || command[i + 1] === '"')) continue;
         if (c === "'" || c === '"') {
-            // Quoted runs are taken whole, and the quotes are stripped: `cp /tmp/x 'docs/vision.md'`
-            // must reach the gate, which is what goes red if this branch is removed. (An earlier
-            // draft of this comment claimed it was what stops `echo "x > docs/vision.md"` reading as
-            // a redirection. Measured at the pre-merge checkpoint: false — without this branch that
-            // target tokenises as `docs/vision.md"`, trailing quote and all, and fails to match
-            // anyway. Right branch, wrong reason, which `a-stated-enforcer-must-be-the-real-one`
-            // counts as the same defect one size down.)
-            // Scanned rather than `indexOf`, for the escaped-quote reason above: inside `"…"` a
-            // `\"` is a literal quote and must not end the run. The escape is resolved into the word,
-            // so `cp /tmp/x "docs/\"v\".md"` compares as the path a shell would pass.
-            //
-            // `$'…'` reaches here with its `$` already dropped and is read as a single-quoted run, so
-            // ANSI-C escape sequences (`\n`, `\t`, `\x41`) are NOT decoded — a stated limit, and the
-            // ambitious parser this file refuses to become. A path spelled with them escapes; that is
-            // hole 1's "interpolated path" neighbourhood rather than a new one.
+            // A backslash escapes only inside `"…"`; `$'…'` reads as `'…'`, its `\x41`-style escapes undecoded.
             let j = i + 1;
             let run = "";
             while (j < command.length) {
@@ -551,77 +275,8 @@ export function shellWords(command) {
             continue;
         }
         if (c === "\\" && i + 1 < command.length) {
-            // A backslash-newline is a line continuation: both characters vanish, and the word
-            // continues on the next line. Appending the newline instead would have glued it into the
-            // middle of a path, which no target matches.
-            // `\r\n` is consumed as a PAIR, and **the reachability that argued for it has been
-            // retired.** What stood here from 2026-07-28 until 2026-08-25 was: skipping one character
-            // left the `\n` behind, a newline is an operator here, so `cp /tmp/x \\<CRLF>docs/vision.md`
-            // stepped aside where the LF spelling answers `deny` — "the constitution, reachable by
-            // editing the file on Windows". The first half is a true statement about THIS reader. The
-            // second is a claim about a shell, and it did not reproduce on any shell measured.
-            //
-            // **Measured 2026-08-25 on five shells, with a neutral target path — never the
-            // constitution.** `bash 3.2.57(1)` (arm64-apple-darwin25, the maintainer's machine),
-            // `bash 5.2.15(1)` (aarch64-unknown-linux-gnu) and `bash 5.2.37(1)` (x86_64-pc-linux-gnu),
-            // both in containers; `zsh 5.9`; and **the measured host's `/bin/sh`**, which on that macOS host
-            // resolves to bash 3.2.57 in POSIX mode — elsewhere `/bin/sh` is commonly `dash` or `busybox`
-            // and NEITHER was measured, so this row is a fifth reading of bash and zsh rather than a claim
-            // about `/bin/sh` as such.
-            // **All five agree, and none of them joins the pair:** the backslash escapes the `\r`, the
-            // newline then ends the command, and the fragment after it is run as its own command. The
-            // LF spelling in the same harness DID join and DID write the target, so the harness fires
-            // rather than reporting nothing everywhere. For the `cp`-shaped payload the retired
-            // sentence names, the target is left byte-for-byte unchanged on all five — so this branch
-            // is a **false red** there, fail-closed, and worth one prompt.
-            //
-            // **It is not a false red everywhere, which is why the branch is still here.** A shell
-            // applies a redirection BEFORE it looks the command up, so a clobbering `>` or `1>` on the
-            // fragment left by the split still fires and truncates its target to zero bytes — measured
-            // on all three bash builds. `>>` appends and does not. The carriers of that split verdict
-            // are `./fuzz-shell.mjs`'s `crlf-continuation-in-the-payload` EXPECT cells and
-            // `./compile.test.mjs`'s paired CRLF assertions. **Not `../.portulan/gate-map.md`**, which
-            // an earlier draft of this sentence named and which carries no CRLF entry at all — a
-            // citation to a record that does not exist, in the comment repairing exactly that.
-            //
-            // **Removing the branch is fail-OPEN on a gate matcher, so it is the maintainer's and not
-            // this comment's.** Deleting BOTH carriers in a scratch clone and running the recipes moves
-            // **four** surfaces, which is the count an accepting change has to carry:
-            //   1. `fuzz-shell` — the `crlf-continuation-in-the-payload|write-named` EXPECT cell, whose
-            //      recorded divergence CLOSES. Good news, and a red until the record absorbs it.
-            //   2. `goldens` — the `a-CRLF-continuation` fixture in
-            //      `../evals/goldens/gates/change-the-constitution.json` regresses.
-            //   3. `./compile.test.mjs` — **two** direct assertions fail, *a CRLF continuation before
-            //      the path* and *a CRLF continuation after `>`*.
-            //   4. `mutants` — exit **2, could-not-run**, downstream of 2: a census over a red corpus
-            //      measures nothing, so it refuses until the fixture is repaired.
-            // **An earlier draft of this comment said "those two and nothing else" and had counted only
-            // the first two** — an exhaustive claim that had not run the suite it was exhaustive about,
-            // in the comment repairing an unmeasured claim. Reported by Copilot, round 1 on #342.
-            // What does NOT move, **and the reason an earlier draft gave for it was false.** That draft
-            // said "the redirection is recognised off the raw segment text rather than off a joined
-            // word". There is no raw-text path: `shellWrites` iterates `shellSegments`, which is built
-            // from `shellWords`. The real reason is narrower and is a property of WHERE the pair sits.
-            // With the branch gone the newline splits, and for the fuzzer's shape — pair after the head,
-            // `echo \<CRLF>ok > docs/vision.md` — the `> docs/vision.md` lands in a LATER segment whose
-            // `redirects` still name the target, so that cell stays `true`. Put the pair AFTER the `>`
-            // and the opposite happens: the operator takes the escaped `\r` as its target and the path
-            // becomes an ordinary word in the next segment — which is precisely why surface 3's second
-            // assertion fails. **So the true positive survives for this production and NOT for every
-            // redirect spelling**, and generalising it was the overclaim. Reported by Copilot, rounds 2
-            // and 3 on #342. A real LF continuation is untouched either way. Asked at
-            // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md`; until that is ruled, the
-            // branch stays and this comment states what was measured rather than what was argued.
-            //
-            // **The honest limit, and it is the platform the retired sentence named: no Windows-side
-            // bash was measured** — not git-bash, MSYS2, Cygwin (whose `igncr` exists precisely for
-            // this) or WSL. Nor was any bash 4.x. The standing rail is `./fuzz-shell.ground.test.mjs`,
-            // which runs this production under **whatever bash the host running the `tests` recipe
-            // has** and reds if that bash joins the pair — so a joining shell is caught wherever the
-            // recipe runs, CI included, and is caught nowhere the recipe does not run. That boundary is
-            // stated because it is the whole of the enforcement: the container measurements above are a
-            // record, not a recipe, since a recipe that pulled an image would be a network call in CI.
-            // Found by Copilot review on #60; the claim retired by measurement 2026-08-25.
+            // A backslash-newline continues the word. `\r\n` is one pair here, though bash 3.2 and 5.2 and zsh 5.9 end the
+            // command at its `\n` (no Windows bash measured): that fails closed, and dropping the pair fails open.
             if (command[i + 1] === "\r" && command[i + 2] === "\n") {
                 i += 2;
                 continue;
@@ -635,8 +290,7 @@ export function shellWords(command) {
             i += 1;
             continue;
         }
-        // Operators are tested BEFORE whitespace, because a newline is both and the separator reading
-        // is the load-bearing one.
+        // Before the whitespace test: a newline is both, and must separate.
         if (OPERATOR.test(c)) {
             flush();
             let run = c;
@@ -658,7 +312,6 @@ export function shellWords(command) {
     return words;
 }
 
-/** Those words folded into `{ head, args, redirects }` per command in a pipeline or list. */
 function shellSegments(command) {
     const segments = [];
     let current = { head: null, args: [], redirects: [] };
@@ -669,14 +322,6 @@ function shellSegments(command) {
     };
     for (const word of shellWords(command)) {
         if (word.op) {
-            // `>` `>>` `2>` `&>` — whatever follows is written, whatever the command is. `<` and `<<`
-            // introduce something READ, so the word after them is SKIPPED rather than ending the
-            // segment: `tee < /tmp/in docs/vision.md` keeps `tee` as the head and its real argument
-            // as an argument, which is what goes red if this branch is removed. (An earlier draft
-            // justified it with `patch f < d.diff` instead. Measured: that one is safe either way,
-            // because without this branch the `<` merely closes the segment and `d.diff` becomes a
-            // head rather than an argument. A branch defended by a hazard that cannot happen is a
-            // branch nobody can review.)
             if (word.text.includes(">")) pending = "written";
             else if (word.text.includes("<")) pending = "read";
             else {
@@ -702,23 +347,13 @@ function shellSegments(command) {
     return segments;
 }
 
-/** Does this segment write the files it names? */
 function writesWhatItNames({ head, args }) {
     if (head === null) return false;
     if (FILE_WRITERS.has(head)) return true;
-    // `-i`, `-i.bak`, `-pi`, `--in-place`, `--in-place=.bak`. A long option other than `--in-place`
-    // cannot match, because the single-dash form requires a letter run and `-` is not one.
     return IN_PLACE_EDITORS.has(head) && args.some((a) => /^--in-place(=|$)/.test(a) || /^-[a-zA-Z]*i/.test(a));
 }
 
-/**
- * A path as typed on a command line, reduced to the spelling the tail comparison can read.
- *
- * `matchesPath` compares tails literally, which is right for the host's own clean absolute paths and
- * wrong for anything a person types: `docs/./vision.md` and `docs//vision.md` are the constitution
- * and neither ends with `/docs/vision.md`. Both were live escapes for one review round. `..` is
- * resolved for the same reason and in the same place — `foo/../docs/vision.md` is the file too.
- */
+/** A typed path with its `.`, empty and `..` segments resolved, since `matchesPath` compares tails literally. */
 function normalisePath(p) {
     const absolute = p.startsWith("/");
     const out = [];
@@ -730,169 +365,48 @@ function normalisePath(p) {
     return (absolute ? "/" : "") + out.join("/");
 }
 
-/**
- * Does this target match NO path a host actually submits? `true` means none can — the rule matches
- * nothing, whatever it says.
- *
- * _(That first line asked the inverse question until 2026-09-09 — "can any path fall under this target?
- * `false` means none can" — so it described a return value the function does not have. Eight
- * fresh-context gradings read past it, four of them grading this docblock's accuracy: every one checked
- * whether the predicate was right and none checked whether its opening sentence matched its own
- * `return`. Found by Copilot on #408.)_
- *
- * **The predicate is a comparison between two forms of the target, and that is what makes it the
- * class rather than a list.** `matchesPath` compares a *tail* — it strips a leading `./` and any
- * leading `/` and then asks whether the candidate ends with, or contains, what is left. A host is
- * **expected** to hand over a normalised absolute path — no `.` segment, no empty segment, no
- * backslash — and that is an assumption rather than something measured here, argued below. So the
- * target can match only if its comparison form is already normalised. Where the two forms differ, the comparison is against
- * a spelling no candidate can carry, and the rule matches nothing whatever it says.
- *
- * That covers three families at once, which is why it is written as a comparison and not as a list of
- * spellings a reader would have to keep in step:
- *
- * - **The target that reduces to nothing**, which compiles to `Edit(./)`, `Edit(./.)`, or — for one
- *   spelling — the real subtree glob `Edit(././**)`.
- * - **The target with an interior `.` or empty segment**, each compiling to a named surface that reads
- *   like a real gate on a plausible path, and matches nothing.
- * - **The target carrying a backslash**, and this one is why the argument above needs its second half
- *   stated: `matchesPath` normalises the **candidate**'s backslashes to `/` and never the target's, so
- *   a backslash in a target is compared against a character no candidate can still contain, **on every
- *   platform**. Unlike the first two families this one has no conditional reading at all.
- *
- * **The host assumption, named because it is one.** *No `.` segment, no empty segment, no backslash*
- * describes what a host is expected to send, and this repository does not control that and has not
- * measured an unnormalised `file_path` arriving. The refusal does not rest on it: a rule matching only
- * `/repo/x/.` gates nothing anybody meant to gate whichever way the assumption falls.
- *
- * **Four cuts, three of them incomplete, always in the same direction — and that arc is why this is a
- * comparison rather than a list.** Cut 1 lifted `matchesPath`'s own strip and caught two of the first
- * family's five. Cut 2 asked whether the target normalised to **empty**, catching that family alone
- * while three carriers of its prose claimed the class. Cut 3 added the interior family. Cut 4 added the
- * backslashes. Every miss was found by putting neighbouring spellings through the function at a
- * checkpoint, never by re-reading the sentence. A predicate defined by the instances it was written for
- * is ../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md's shape, and **this
- * docblock is the one carrier of that arc** — the records cite it rather than recounting it.
- *
- * The thirteen spellings and the controls that must stay matchable are enumerated **and measured** in
- * `./compile.test.mjs`'s `NEVER` and `CONTROLS` — the only carrier that measures them. Four records
- * enumerate them for a reader; this docblock cites the suite rather than joining them.
- *
- * **`matchesPath` is left byte-identical on purpose**, and that is a decision rather than an omission:
- * its answers are asserted by twelve `documented-hole` cases in ../evals/goldens/gates/ and by
- * `mutants` operators anchored on its text, so moving its strip would move two census anchors and exit
- * the census 2 — could-not-run wearing a pass's clothes. This function re-spells that strip rather than
- * importing it, which is one carrier more than ideal and is pinned by a suite case comparing the two on
- * every target below.
- *
- * The subtree marker is **meaning, not spelling**: exactly one trailing `/` says *the subtree* and is
- * removed before the comparison, which is why `docs/` is a real target and `docs//` is not.
- *
- * What this does NOT answer is what `./` should MEAN as a policy target. That is
- * https://github.com/sleepy-panda-srl/portulan/issues/337's reserved question, and this predicate
- * answers only whether a target can *never* match.
- */
+/** True when no host-submitted path can match: the target is not normalised, or keeps a backslash no candidate can hold. */
 export function neverMatches(target) {
     const clean = String(target ?? "").replace(/^\.\//, "").replace(/^\/+/, "");
-    // `clean === "/"` is UNREACHABLE, and so is the `body === ""` arm below — the strip above removes
-    // every leading slash, so `"/"` arrives here as `""`. Measured, not assumed. They are kept anyway
-    // because `matchesPath` carries the identical pair one screen down and this predicate is meant to be
-    // read beside it: deleting them here would make two functions that answer the same question about
-    // the same string look different, to save two comparisons nobody runs. Copilot raised it on #408;
-    // the answer is that the redundancy is deliberate and now says so, which is the half it was missing.
+    // `clean === "/"` and `body === ""` are unreachable, kept to read line for line with `matchesPath`.
     if (clean === "" || clean === "/") return true;
     const body = clean.endsWith("/") ? clean.slice(0, -1) : clean;
-    // The backslash arm is separate because it is about the CANDIDATE's normalisation rather than the
-    // target's: `matchesPath` rewrites `\\` to `/` in what the host hands over, so a target keeping one
-    // is compared against a character the comparison has already removed from every candidate.
     if (body.includes("\\")) return true;
     return body === "" || normalisePath(body) !== body;
 }
 
-/**
- * The directories a target lives under, as exact paths: `a/b/c.md` -> `a`, `a/b`.
- *
- * No trailing slash, and that is the whole correctness of it. Spelled `a/` these would be SUBTREE
- * patterns, and `matchesPath` would then report every file under the directory as a hit — so
- * `cp foo docs/plan.md` matched a rule protecting `docs/vision.md`, which is a false red on an
- * ordinary edit to an unrelated file. Caught by this change's own probe before it left the worktree.
- */
+/** The directories above a target, `a/b/c.md` -> `a`, `a/b`, with no trailing `/`, which would match every file under each. */
 function ancestors(target) {
     const parts = normalisePath(target.replace(/\/+$/, "")).split("/").filter(Boolean);
     return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join("/"));
 }
 
-/**
- * Does a word name the target — quoted, `./`-prefixed, absolute, messy, or after an `of=`-style `=`?
- *
- * With `orAncestor`, a word naming a DIRECTORY the target lives in counts too. That is what makes
- * `rm -rf docs` and `mv docs docs.bak` reach a rule protecting `docs/vision.md`: destroying the
- * container destroys the file, and a gate that reads `rm -rf docs/` and misses `rm -rf docs` is
- * decided by a trailing slash. Ancestors apply to a writer's arguments only, never to a redirection
- * target — `> docs` writes a file called `docs`, it does not remove a directory.
- */
+/** Whether a word, or its value after an `of=`-style `=`, names the target; with `orAncestor`, a directory above it counts too. */
 function namesTarget(word, target, orAncestor = false) {
     const eq = word.indexOf("=");
     const candidates = eq > 0 ? [word, word.slice(eq + 1)] : [word];
     return candidates.some((c) => {
         const clean = normalisePath(c);
         if (clean === "") return false;
-        // A relative word is given the leading separator the tail comparison needs, rather than a
-        // second matcher being written for it.
         const rooted = clean.startsWith("/") ? clean : `/${clean}`;
-        // The target itself. A subtree target wants the candidate to look like a directory, which is
-        // what lets `rm -rf .portulan` reach a rule written `.portulan/`.
+        // A subtree target needs the word to read as a directory: `rm -rf .portulan` reaches `.portulan/`.
         if (matchesPath(target.endsWith("/") ? `${rooted}/` : rooted, target)) return true;
-        // A directory the target lives in, named EXACTLY — `rm -rf docs`, never `cp x docs/plan.md`.
         return orAncestor && ancestors(target).some((a) => matchesPath(rooted, a));
     });
 }
 
-/**
- * The commands in a shell line, as SOURCE text, split on unquoted separators.
- *
- * The shell matcher below prefix-matches a command string, which meant a gate held only when its
- * command came FIRST: `ls && git push --force origin main` reached no gate, and neither did
- * `git status; gh pr merge 60` or `cd . && gh repo delete foo`. Every Gated outward action in
- * ../.portulan/gates.json was defeated by putting anything in front of it.
- *
- * That is the same defect as the `write:` one this change began with — a matcher reading only the
- * head of a command string — one action kind over, so it is fixed in the same stroke rather than
- * left as a sibling nobody comes back for. Found by the fresh-context supervisor at the pre-merge
- * checkpoint, which is exactly the class it was asked to hunt.
- *
- * Quoting is respected, so `echo "git push --force"` still splits into one segment that no gate
- * matches; and each segment keeps the whitespace boundary the prefix match relies on, so
- * `--force-with-lease` stays Auto.
- */
+/** A shell line's commands as source text, split on unquoted separators, without heredoc bodies or leading redirections. */
 function commandSegments(raw) {
-    // `String(raw ?? "")`, for the reason `spellings` does the same: `matchesRule` promises never to
-    // throw, and a Bash payload carrying no `command` — a malformed host message, a renamed field, a
-    // test — would otherwise reach `stripHeredocs` and die on `.split`.
-    //
-    // What that costs is not an exception some caller reports. ./gate.mjs catches
-    // and steps aside, so the throw would SILENTLY remove the shell-write half of the constitution
-    // gate — hole 3, the half with no permission rule beneath it. Introduced earlier on this branch
-    // by the segment-composition fix, which began passing the raw payload here in place of a spelling
-    // that had already been stringified. Found by Copilot review on #60.
     const command = stripHeredocs(String(raw ?? ""));
     const out = [];
     let start = 0;
     let quote = null;
-    // The index of the character a backslash most recently turned into data. See the `\\` branch.
+    // The last character a backslash made data: `\>` is a literal, not a redirection operator.
     let escaped = -1;
     for (let i = 0; i < command.length; i += 1) {
         const c = command[i];
         if (quote) {
-            // Inside `"…"` a backslash escapes the next character, so `\"` is a literal quote and does
-            // NOT close the run. Without this, `echo "x\""; git push --force …` closed early, the real
-            // closing quote opened a new run, and the `;` was swallowed inside it — no split, no
-            // segment, no gate. Measured stepping aside where the unescaped spelling answers `ask`,
-            // and the same shape reached `cp /tmp/x docs/vision.md`, so it was a false green on the
-            // constitution too. Found by Copilot review on #60.
-            //
-            // Single quotes are deliberately NOT included: POSIX gives `'…'` no escapes at all, so a
-            // backslash there is a literal backslash and honouring it would invent a hole.
+            // A backslash escapes inside `"…"` only: POSIX gives `'…'` no escapes, and honouring one there would open a hole.
             if (quote === '"' && c === "\\" && i + 1 < command.length) {
                 i += 1;
                 continue;
@@ -905,60 +419,13 @@ function commandSegments(raw) {
             continue;
         }
         if (c === "\\") {
-            // The same CRLF pair, in the other reader. No spelling was measured behaving differently
-            // here — a continuation split into two segments still leaves a gated command at the head
-            // of one — so this is fixed for the reason the session kept re-learning rather than for a
-            // failing case: one carrier corrected and its sibling left is how the last three defects
-            // on this branch happened.
-            // **The pair's two carriers are this line and `shellWords`, and the measurement retiring
-            // the reachability claim is written up there once.** No shell measured joins the pair, so
-            // consuming it here is unfaithful to a shell in the same direction — **but this carrier
-            // records no false red of its own, and an earlier draft of this comment said it did.** On
-            // the shell path its `crlf-continuation-in-the-payload|shell` cell answers `false`, the
-            // correct negative: nothing gated runs there. On the write path it is an UNWRAPPER feeding
-            // `shellWrites`, reached through a short-circuiting `||` after the un-peeled spellings, so
-            // the recorded false red — `write-named` — is produced by `shellWords` and not here. **The
-            // reason to keep the two readers in step is synchronisation, not a shared verdict**: a
-            // carrier corrected while its sibling stands is how the last several defects on this line
-            // happened. Reported by Copilot, round 2 on #342. That is why
-            // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md` names both carriers rather
-            // than the one whose comment argued for it. Reported by Copilot, round 1 on #342.
+            // `\r\n` as one pair, in step with `shellWords`.
             i += command[i + 1] === "\r" && command[i + 2] === "\n" ? 2 : 1;
-            // **Remember WHICH character this backslash turned into data.** The redirection-operator
-            // check below reads one raw neighbour, and a raw read cannot tell `>` the operator from
-            // `\>` the literal. Without this, `echo \>| git push --force origin main` — a REAL pipe,
-            // measured in bash delivering bytes downstream — stopped splitting at the `|`, and the
-            // force-push after it went invisible to every matcher. `\>&` did the same across a real
-            // background separator. Both were caught at HEAD and were narrowed by the #71 fix itself;
-            // found by the pre-commit checkpoint, which attacked the change rather than reading it.
             escaped = i;
             continue;
         }
-        // `#` is NOT treated as starting a comment, and that is a decision rather than an oversight.
-        // `echo ok #; git push --force origin main` therefore segments as though the comment were
-        // code and answers `ask`, which a real shell would not — a false RED, measured 2026-07-28.
-        //
-        // Taking it would mean deciding where a comment begins, and the failure mode of getting that
-        // wrong runs the other way. A `#` opens a comment only at a word boundary and only outside
-        // quotes; a reader that skipped from the first `#` would swallow the rest of
-        // `echo "a#b"; git push --force origin main` — a real gated command, measured answering `ask`
-        // today — and turn a false red into a false GREEN. The docblock on `shellWrites` states the
-        // exchange rate: a false red costs one prompt on a rare spelling, a false green costs the
-        // laundering the rule exists to prevent.
-        //
-        // Both spellings are asserted in the suite so this stays a choice rather than drift.
-        // Reported by Copilot review on #60 and declined on those grounds.
-        // An `&` or `|` bound into a redirection OPERATOR is not a separator, and splitting there is
-        // what made the strip below unreachable for three of the four spellings. `2>&1 git push
-        // --force …` split at the `&` into `2>` and `1 git push --force …`, whose head is `1` — the
-        // redirection was already in pieces by the time anything could strip it, and `>| f git push
-        // --force …` broke the same way at the `|`. Both operators are closed forms: `&` preceded by
-        // `>`/`<` or followed by `>`, and `|` preceded by `>`. `a && b`, `a & b` and `a | b` are
-        // untouched — none of them puts a redirection character next to the separator.
-        // `i - 1 !== escaped` on both arms: a `>` or `<` that a backslash turned into DATA is not an
-        // operator, and treating it as one un-splits a real separator. The `command[i + 1]` arm needs
-        // no such guard — an escaped character is always preceded by its own backslash, so the
-        // character after `&` can never be an escaped `>`.
+        // `#` is not read as a comment: a false red on `echo ok #; git push`, where misplacing one would be a false green.
+        // `&` and `|` inside a redirection operator (`2>&1`, `&>`, `>|`) do not separate, unless the `>` or `<` was escaped.
         const opBefore = i - 1 !== escaped && (command[i - 1] === ">" || command[i - 1] === "<");
         if (c === "&" && (opBefore || command[i + 1] === ">")) continue;
         if (c === "|" && i - 1 !== escaped && command[i - 1] === ">") continue;
@@ -971,110 +438,25 @@ function commandSegments(raw) {
     return out.map((s) => stripLeadingRedirections(s.trim())).filter(Boolean);
 }
 
-/**
- * A redirection sitting where the command goes: an optional file descriptor, one of the operators
- * below, and a word.
- *
- * **This is the one leader that is stripped, and the asymmetry is the point** (#71). The other
- * leaders `commandSegments` leaves alone — `env`, `sudo`, `FOO=bar`, `then`, `do`, a brace group —
- * are refused for a reason that does not apply here: a table of command prefixes has no natural edge
- * (`nice`, `time`, `nohup`, `timeout`, `command`, `stdbuf`, `doas`), and one missing entry buys
- * exactly the false confidence a hole list exists to deny. A redirection's grammar is CLOSED, so it
- * can be stripped completely with an edge a reader can check. #60 left it open deliberately, because
- * closing it would have been a matcher change on the same commit that stopped hole 2 overclaiming.
- *
- * **Do not extend this to a named table of command prefixes.** That is the change the paragraph
- * above refuses, and the two look similar enough to be proposed together.
- *
- * Applied repeatedly, because redirections stack: `> /tmp/out 2>&1 git push --force …` carries two.
- */
-/**
- * The redirection TARGET, as one word.
- *
- * `[^\s]+` was wrong and shipped for exactly one review round: a redirection target may contain
- * spaces when it is quoted or escaped, and `> "foo bar" git push --force …` then stripped only
- * `> "foo`, leaving `bar" git push --force …` — head `bar"`, no gate, and the segment text corrupted
- * into the bargain. Measured escaping on five spellings (both quote styles, an escaped space, `2>` and
- * `>|`), and bash confirmed to run the command after each. **A fix that closes a hole by a width its
- * own test never probed**, found by Copilot round 1 — which named the double-quoted case; the other
- * four are its siblings and are closed in the same stroke rather than left for the next round.
- *
- * A word is therefore a run of quoted spans, backslash-escaped characters, and ordinary non-space
- * characters — the same three things `shellWords` recognises, kept to a regex here because this reader
- * needs the target's EXTENT and never its value.
- *
- * **Inside a double-quoted span a backslash escapes the next character, and inside a single-quoted one
- * it does not.** POSIX gives `'…'` no escapes at all, so honouring one there would invent a hole —
- * which is the same asymmetry `commandSegments`'s own quote loop already carries, and the same one
- * `shellWords` carries at its quoted-run branch.
- *
- * **This is the THIRD review finding of one class, and the class is what the suite now pins.** Round 1
- * found `[^\s]+` too narrow for a quoted target; round 3 found `"[^"]*"` too narrow for an escaped
- * quote *inside* one — `> "foo \"bar baz\"" git push --force …`, measured escaping while bash was
- * measured creating the file and running the command. Both times the fix landed at the spelling that
- * was quoted. So `compile.test.mjs` now asserts this pattern against `shellWords` itself: every
- * spelling that reader calls ONE word must be consumed whole here. A fourth sibling cannot be found by
- * a reviewer first.
- *
- * Linear rather than backtracking-prone despite the alternation: the pattern is anchored, the trailing
- * `\s*` matches empty, and the `+` is greedy over a match that always succeeds once an operator has
- * been seen — so there is no failure to backtrack into. Probed to 200KB.
- */
+/** A redirection target: one shell word, as `shellWords` reads it. Linear: once an operator matches, the match cannot fail. */
 const REDIRECTION_TARGET = String.raw`(?:"(?:\\[\s\S]|[^"\\])*"|'[^']*'|\\[\s\S]|[^\s])+`;
 
 const LEADING_REDIRECTION = new RegExp(String.raw`^\d*(?:&>>|&>|>>|>&|>\||<&|<>|<|>)\s*${REDIRECTION_TARGET}\s*`);
 
+// The one segment leader stripped: a redirection's grammar is closed, where a table of command prefixes would have no edge.
 function stripLeadingRedirections(segment) {
     let text = segment;
     for (;;) {
         const shorter = text.replace(LEADING_REDIRECTION, "");
-        // A segment that is ONLY a redirection strips to the empty string and is dropped by the
-        // caller's `filter(Boolean)`, which is correct: a redirection is not a command.
         if (shorter === text) return text;
         text = shorter;
     }
 }
 
 /**
- * Does this shell command write a path a `write:` rule protects?
- *
- * The permission layer cannot ask this. `Bash(prefix:*)` matches a literal command PREFIX and the
- * path sits at an arbitrary position in the command, so there is no pattern in that DSL which means
- * "any command writing this file" — which makes this the hook's coverage alone, exactly like the
- * wrapper spelling above, and it fails open on the same terms.
- *
- * **Stated at its real size, because the boundary is the point.** Two recognitions, both by table:
- * a `>`/`>>` redirection into the path, and a file-writing command that names it — or names a
- * directory the path lives in, since removing the container removes the file.
- *
- * A heredoc is NOT on that list, and the omission is worth stating rather than leaving to be read as
- * one: the body is stripped and the command line survives, so `cat > docs/vision.md <<EOF` is reached
- * and gated — asserted in the suite. What escapes is an interpolated TARGET, heredoc or not, which is
- * the first item below. The emitted note said "a heredoc" flatly until 2026-07-28 and overstated the
- * hole; a gate map that overstates a hole is as wrong as one that hides it, and so is a compiler note.
- *
- * What that leaves open, listed because a hole list that is wrong is worse than none: an
- * interpolated path (`> $VISION`), a command assembled at runtime, a language runtime writing the
- * file itself (`python3 -c`), a writer absent from the table (`ex`, and `git checkout` deliberately
- * — see above), a program that INVOKES a writer (`find -exec cp`, `xargs cp`) because parsing their
- * flags to find the real command is the parser this file refuses to become, and two shell wrappers.
- * Quoting is respected only to one level of nesting, so a write-shaped string inside a `node -e`
- * script can produce a false RED — measured on this repository's own tooling.
- *
- * The first version of this shipped a four-item hole list that was missing five holes, including
- * the plainest spelling there is: a newline. A fresh-context supervisor found them by trying to
- * defeat the matcher rather than by reading it, which is the only way that list gets checked.
- *
- * This closes the spelling reached for by accident or convenience; it does not close one
- * constructed on purpose, and no matcher here could. What must not happen regardless of spelling
- * belongs on the platform floor — ../core/operating/autonomy.md.
- *
- * **Every named argument of a writer counts, not only its destination.** `cp docs/vision.md /tmp/x`
- * reads the protected path rather than writing it, and this matches it anyway. Deliberate: argument
- * grammars differ per command (`dd of=`, `tee f1 f2`, `install -t dir src`), so "the last word is
- * the destination" is true of a subset only, and being wrong about it is a false GREEN on a rule
- * whose whole reason is that the file must not change. A false red here costs one prompt on a rare
- * operation; a false green costs the laundering the rule exists to prevent.
+ * Whether a shell command writes the target: a `>` or `>>` into it, or a writer from the tables naming it or a directory
+ * above it in any argument, its source too. Missed: an interpolated path, a command built at runtime, a runtime writing
+ * the file (`python3 -c`), a writer outside the tables (`ex`, `git checkout`), `find -exec` or `xargs`, a second wrapper.
  */
 export function shellWrites(command, target) {
     for (const segment of shellSegments(stripHeredocs(String(command ?? "")))) {
@@ -1084,108 +466,30 @@ export function shellWrites(command, target) {
     return false;
 }
 
-/** Does a path handed over by the host fall under a policy target? */
+/** Whether a host-submitted path falls under a policy target, compared by tail: the hook knows no reliable repository root. */
 export function matchesPath(candidate, target) {
     if (typeof candidate !== "string" || candidate === "") return false;
     const clean = String(target ?? "").replace(/^\.\//, "").replace(/^\/+/, "");
     if (clean === "" || clean === "/") return false;
-    // Compared against the tail rather than resolved against a root: the host hands over an
-    // absolute path, the policy names a repository-relative one, and the hook has no reliable
-    // repository root at hook time — its cwd is the session's, which need not be the repo.
     const normalised = candidate.replace(/\\/g, "/");
     return clean.endsWith("/") ? normalised.includes(`/${clean}`) : normalised.endsWith(`/${clean}`);
 }
 
-/** Does an attempted tool call fall under this rule? Returns true/false; never throws. */
+/** Whether a tool call falls under the rule; never throws, since the gate steps aside on a throw. */
 export function matchesRule(rule, tool, input = {}) {
     const action = rule?.action ?? {};
     if (typeof action.shell === "string" && tool === "Bash") {
-        // A shell target ending in `/` is a PATH PREFIX covering the subtree — the meaning `pattern()`
-        // already gives a trailing slash for write and read, and the meaning the emitted
-        // `Bash(target:*)` rule already has on the host, which prefix-matches the command string.
-        // Without this branch the two halves this section exists to keep identical disagreed: for
-        // `"./.portulan/verify/"` the emitted rule covers `./.portulan/verify/docs.sh` and this
-        // matcher did not, because a path prefix is never followed by a space.
-        //
-        // **Stated at its real size.** The one target of this shape in ../.portulan/gates.json is
-        // `run-a-verify-recipe`, which is `auto` — refused from compilation, and skipped by
-        // ./gate.mjs, which reads only `gated` and `prohibited`. So nothing was
-        // mis-enforced today; what existed was a divergence between two definitions this file
-        // promises are one, waiting for the first gated rule written in the path form. Fixed on that
-        // basis rather than on an incident. An ordinary command prefix keeps its whitespace boundary,
-        // or `git push` would cover `git pushall`. Found by a Copilot review comment on #31.
-        //
-        // Each spelling is tested WHOLE and per segment. Whole, because a path-prefix target is
-        // matched against the command as written; per segment, because a gated command that is not
-        // the first thing on the line is still that command — see `commandSegments`.
+        // A target ending in `/` is a path prefix, as the host's `Bash(target:*)` reads it; any other ends at a word boundary.
         const hit = (s) =>
             action.shell.endsWith("/") ? s.startsWith(action.shell) : s === action.shell || s.startsWith(`${action.shell} `);
-        // `spellings` is applied to each SEGMENT as well as to the whole line, and the second call is
-        // not redundant. Unwrapping was anchored at the start of the command, so a wrapper that was
-        // not the first thing on the line never got unwrapped: `ls && bash -c "git push --force
-        // origin main"` stepped aside, while both halves of it worked alone — the wrapper spelling is
-        // hole 1's "one level, peeled", and mid-line reach is hole 2. Two claims that each held and
-        // did not compose, which is how a gap survives a reader checking either one.
-        //
-        // Found while writing a regression test for the `$'…'` form Copilot reported; the plain-quote
-        // spelling turned out to escape the same way, so this is wider than the report.
-        //
-        // **Both calls read the RAW command, and that is the whole care in this line.** The first
-        // draft segmented each *spelling* and unwrapped again — which peeled TWO levels for a nested
-        // wrapper and made `bash -c "bash -c 'git push origin HEAD'"` match, contradicting hole 1's
-        // documented and asserted limit. The suite caught it, which is what that counterexample test
-        // is for. Reading the raw command in both branches keeps the budget at exactly one unwrap.
-        //
-        // **A spelling is SEGMENTED as well as tested whole, and that half was missing until
-        // 2026-08-25.** The two calls above unwrap the raw command and unwrap each of its segments,
-        // which closes a wrapper before a separator — `ls && bash -c "git push --force origin main"`
-        // — and leaves a separator inside a wrapper wide open: `bash -c "ls; git push --force origin
-        // main"` answered **false**, and so did every other Gated shell action behind one wrapper and
-        // one separator. Bash runs it; the gate did not see it.
-        //
-        // **The write branch below never had this gap, and the reason is why the fix is shaped like
-        // this.** Its `writes` callback is `shellWrites`, which segments AGAIN internally with
-        // `shellSegments` — so the write half got a third segmentation for free while the shell half,
-        // whose `hit` is a plain prefix test, got none. One fix landing in one carrier and not its
-        // sibling, between two branches of one function, for the second time
-        // (`proposals/0020`). Found by ./fuzz-shell.mjs, which
-        // generates the grammar rather than reading it.
-        //
-        // `reach` is used on BOTH arms deliberately: without it on the second,
-        // `ls && bash -c "x; git push --force …"` — a separator outside AND inside — still escaped.
-        // Fixing only the spelling that was quoted is the class this repository keeps meeting.
-        //
-        // **The unwrap budget is still exactly one level**, which is hole 1's documented and asserted
-        // limit. `spellings` is called once on each path here and `commandSegments` peels nothing, so
-        // `bash -c "sh -c 'git push origin HEAD'"` stays false — asserted, because an earlier draft of
-        // the segment composition did peel twice and the suite is what caught it.
+        // One unwrap, with splitting before and after it: `ls && bash -c "x; git push"` is reached; a second wrapper is not.
         const reach = (s) => hit(s) || commandSegments(s).some(hit);
         return spellings(input.command).some(reach) || commandSegments(input.command).some((seg) => spellings(seg).some(reach));
     }
     if (typeof action.write === "string") {
         if (WRITE_TOOLS.includes(tool)) return matchesPath(input.file_path ?? input.notebook_path, action.write);
-        // A `write:` rule names a PATH, not a tool. For one milestone it reached only the three tools
-        // that carry a `file_path`, so `echo x >> docs/vision.md` through Bash was gated by neither
-        // layer: the permission rule rejects the tool, and this matcher fell through to `false`. The
-        // rule's own sentence was what that cost — an agent that could edit the constitution could launder
-        // any other change past its own grader — and it was reachable inside a session, with only the
-        // platform floor stopping it from landing. See `shellWrites` above for what this covers and,
-        // more to the point, for what it does not.
         if (tool === "Bash") {
-            // Whole line and per segment, exactly as the `shell` branch above — and for the same
-            // reason, arrived at the hard way. That branch grew segment composition when a wrapper
-            // that was not first on the line turned out to escape it. This branch did not, and the
-            // gap it left is the worse of the two: `git status; bash -c "echo x >> docs/vision.md"`
-            // stepped aside where the same wrapper alone answers `deny`, so the CONSTITUTION was
-            // reachable behind any separator plus one wrapper. Measured 2026-07-28.
-            //
-            // A fix landing in one carrier and not its sibling is the defect class this repository
-            // has a standing ruling about; it happened here between two branches of one function,
-            // five commits apart. Found by Copilot review on #60, not by the session that wrote the
-            // first half.
-            //
-            // Both calls read the RAW command so the unwrap budget stays at one level, which is what
-            // keeps hole 1's two-wrapper counterexample true on this side too.
+            // Whole line and per segment, exactly as the `shell` branch above; the two change together.
             const writes = (s) => shellWrites(s, action.write);
             return (
                 spellings(input.command).some(writes) ||
@@ -1199,56 +503,20 @@ export function matchesRule(rule, tool, input = {}) {
     return false;
 }
 
-// ===========================================================================================
-// 3. The backends
-// ===========================================================================================
-//
-// A backend takes the parsed policy and returns one shape, always:
-//
-//   { backend, label, compiled: [{id, tier, surface}], refused: [{id, tier, why}],
-//     notes: [string], artifact: { path, value, text } | null }
-//
-// `compiled` and `refused` together always equal the input, per backend — asserted by the suite,
-// because the distinctive failure of a compiler that emits gate machinery is a rule that goes in
-// and nothing comes out, leaving a gate map that reads as configured and a machine that enforces
-// nothing. The uniform shape is what lets the matrix and `doctor` read every backend the same way
-// without either of them knowing what a backend does.
+// ---------------------------------------------------------------- the backends
+// Each returns `{ backend, label, compiled: [{ id, tier, surface }], refused: [{ id, tier, why }], notes,
+// artifact: { path, value, text } | null }`, and `compiled` with `refused` holds every rule.
 
-/** A workspace-relative path, as the host spells it. A trailing `/` means the subtree. */
 function pathSpec(target) {
     const clean = target.replace(/^\.\//, "").replace(/^\/+/, "");
     return clean.endsWith("/") ? `./${clean}**` : `./${clean}`;
 }
 
-/** A workspace-relative path becomes a host permission pattern. */
 function pattern(tool, target) {
     return `${tool}(${pathSpec(target)})`;
 }
 
-// Which tiers this backend gates. `auto` and `propose` are refused wholesale, on the maintainer's
-// ruling of 2026-07-27: the compiler emits restriction only, never permission. A compiler whose
-// output can only ever ADD a gate cannot loosen an existing check by having a bug.
-//
-// ## What the ruling costs — which this comment used to leave to the reader's imagination
-//
-// Refusing to emit `allow` does not make the Auto tier free. It moves the tier's price off this
-// repository. The host prompts for any command it has not been told about, so every Auto action is
-// answered by hand, and those answers pile up in the host's own settings files, which are
-// per-machine, unreviewable, absent from every diff, and — for a workflow built on throwaway
-// worktrees — lost along with the branch that earned them. Measured on one host, 2026-07-28: 404 hand-added allow
-// entries, of which exactly ONE corresponded to an Auto rule in ../.portulan/gates.json. So the
-// tier is unattended in POLICY and heavily attended in PRACTICE, and those are not the same claim.
-// The refusal string below used to make the first one and read as the second.
-//
-// ## The ruling stands, on a different sentence than before
-//
-// "Emitting `allow` would loosen a check" is not the hazard, or not obviously so: `git push` is
-// Auto and `git push --force` is Gated, and whether a narrower `ask` still outranks a broader
-// `allow` is a host precedence question **this repository has never measured** — so no argument
-// here should rest on it. The hazard that does not depend on that answer: an allow prefix reaches
-// every spelling beneath it, including the ones no rule here names. `git push --mirror` is
-// destructive and appears in no tier of ../.portulan/gates.json. An allow on the prefix would
-// clear it silently, and nothing in this policy would notice.
+// Restriction only, never `allow`: an allow prefix would clear every spelling beneath it, `git push --mirror` included.
 const HOST_GATE_TIERS = new Set(["gated", "prohibited"]);
 
 const HOST_TIER_NOT_A_GATE = {
@@ -1256,77 +524,22 @@ const HOST_TIER_NOT_A_GATE = {
     propose: "tier `propose` is enforced by the platform floor — pull requests, required checks, review — not by a tool-level permission rule on this machine",
 };
 
-/**
- * The compiled-hook runners, in the order `claudeCode` spells them: the PreToolUse gate, the Stop gate,
- * then the restart advisory, which is the `PostToolUse` and `UserPromptSubmit` hooks, the status-line command
- * and, where a workspace declares a block, a second `Stop` command.
- * **This is their one carrier.** They are invoked by generated host configuration rather than
- * imported by anything, so no import graph can find them and every other roster that needs to know
- * which `cli/` modules are runners has to ask here — `./payload.mjs` does. A fourth runner added below
- * without a name added here would classify as unreachable in that rail, which is the direction that
- * fails loudly rather than the one that ships something unnoticed.
- */
+/** The hook runners, in the order `claudeCode` indexes them; generated settings invoke them, so no import graph finds them. */
 export const HOOK_RUNNERS = ["gate.mjs", "stop-gate.mjs", "advisory.mjs"];
 
 /**
- * Translate the policy into a Claude Code settings object.
- *
- * The mapping, each line of it measured against a running host rather than read from documentation:
- *
- *   prohibited -> permissions.deny  + a hook returning `deny`
- *   gated      -> permissions.ask   + a hook returning `ask`
- *
- * The hook returns the SAME decision as the permission rule on purpose. A hook returning `deny` for
- * a Gated action would turn a per-action prompt into a hard block, which is the tier above it.
- *
- * One line of that mapping has no permission half. A `write:` rule also gates the SHELL spellings of
- * a write — see `shellWrites` above — and no `Bash(prefix:*)` pattern can express "a command writing
- * this path", so that half is the hook's alone and fails open with it. Emitted anyway, because the
- * alternative was leaving `echo x >> docs/vision.md` gated by nothing at all, and reported in the
- * backend's `notes` on every run so the weaker layer is never inferred from silence.
+ * The policy as Claude Code settings: each gate a permission rule and a hook with one answer, `deny` for prohibited and
+ * `ask` for gated, a prompt that blocks headless. Two layers, since on Claude Code 2.1.220 a crashing hook fails open.
  */
 export function claudeCode(parsed, options = {}) {
-    // The header names the policy file that was ACTUALLY read. It was a literal for one round, so a
-    // workspace declaring a non-default policy got an artifact claiming it came from somewhere it did
-    // not — in the one field whose entire job is telling a reader what generated this. Found by review.
     const source = options.source ?? ".portulan/gates.json";
-    // **Where the emitted hook finds its runner, and why this is computed rather than written down.**
-    //
-    // Both runners used to live at `.portulan/compile/`, which `package.json`'s `files` has never
-    // shipped — so every adopter's compiled policy named two files they did not receive, and a missing
-    // hook FAILS OPEN. Milestone 7 moves them into `cli/`, which does ship. That fixes what the adopter
-    // has; it does not by itself fix how the hook names it, because `cli/` sits in a different place in
-    // each of the three contexts this must survive:
-    //
-    //   1. this checkout            — `<project>/cli/`
-    //   2. a project-local install  — `<project>/node_modules/@sleepy_panda_srl/portulan/cli/`
-    //   3. a global or npx-only install — NOT under the project at all
-    //
-    // So the path is derived from where THIS file actually is at compile time and expressed relative to
-    // the project when it lands inside it — covering 1 and 2 with one rule rather than two special
-    // cases. For 3 there is no project-relative spelling that exists, so an absolute path is emitted and
-    // a **note** records that the hook is pinned to this machine — see the `pinned` push below. Naming
-    // that is the point: a hook silently pinned to an absolute path is a policy that stops working when
-    // the package moves, and finding out by having no gate is the worst way to find out.
-    //
-    // This sentence said `refused` for one round, and `refused` carries rule-level compilation refusals
-    // only — nothing ever added the runner path to it. The pre-commit checkpoint found the recording
-    // missing entirely; the fix added it on the `notes` channel and left this line still naming the
-    // wrong one, so a reader following the comment would have looked in a place that never holds it.
-    // Copilot's round caught the remainder. A fix that leaves its own explanation pointing elsewhere is
-    // half a fix.
     const runnerDir = path.dirname(fileURLToPath(import.meta.url));
-    // The project this policy is being compiled FOR. `claudeCode` is handed a parsed policy and not a
-    // location, so the caller may say; `cwd` is the honest default because `compile` is run from the
-    // repository it compiles.
     const project = options.root ?? process.cwd();
     const pinned = [];
     const spell = (file) => {
         const abs = path.join(runnerDir, file);
         const rel = path.relative(project, abs);
-        // `rel.split(sep)[0] !== ".."` rather than `!startsWith("..")` — the latter also rejects a
-        // directory literally named `..foo`. Benign in direction (it would fall back to absolute), but
-        // the exact spelling costs nothing and the loose one is copied from here.
+        // Not `startsWith("..")`, which would take a directory named `..foo` for the parent.
         const inside = rel && rel.split(path.sep)[0] !== ".." && !path.isAbsolute(rel);
         if (inside) return `"\${CLAUDE_PROJECT_DIR}/${rel.split(path.sep).join("/")}"`;
         pinned.push({ file, abs });
@@ -1342,7 +555,6 @@ export function claudeCode(parsed, options = {}) {
     const ask = [];
     const matchers = new Set();
     const shellWriteGates = [];
-    // Write gates whose single emitted permission pattern is `Edit(path)` — see the note they produce.
     const editCoveredGates = [];
 
     for (const rule of parsed.rules) {
@@ -1351,53 +563,11 @@ export function claudeCode(parsed, options = {}) {
             continue;
         }
         if (rule.kind === "none") {
-            // The policy itself states why there is no surface. The compiler reports those words
-            // rather than inventing its own — a refusal explained by the tool is a refusal nobody
-            // can review against the policy.
+            // A `none` target is the policy's own sentence for why nothing can be gated.
             refused.push({ id: rule.id, tier: rule.tier, why: rule.target });
             continue;
         }
-        // ---- a path target no path can match, refused HERE and not at `parse`
-        //
-        // **Hole 8 of ../.portulan/gate-map.md, closed at the tier that asks the question.** A
-        // `gated` or `prohibited` rule whose path target can never match — see `neverMatches` for the
-        // three families, of which *reduces to nothing* is only the first — compiles to a named
-        // permission surface (`Edit(./)`, `Edit(./.)`, `Edit(././**)`, `Edit(./docs/./vision.md)`,
-        // `Edit(./docs\\vision.md)`) while `matchesRule` answers `false` for every path a host submits. The compiler then reports the rule COMPILED, and
-        // `doctor` counts it as covered. That is a hollow gate that reads from outside exactly like a
-        // whole one: hole 3's failure mode reached by a different road.
-        //
-        // **Why a throw and not a `refused` row.** `refused` is the accounting for a rule a backend
-        // legitimately declines — an `auto` tier, a `none` kind — and it writes the artifact without
-        // the rule and exits 0. Filing this there would leave `doctor` reporting a gate the policy
-        // declares and nothing enforces as ordinary non-coverage, which is precisely the laundering
-        // `parse`'s own target refusals (absolute, `..`, whitespace) already decline to do. A policy
-        // that cannot be enforced as written is malformed, and malformed is could-not-run.
-        //
-        // **Why here and not at `parse`.** That stage holds no tier partition, by a decision recorded
-        // in its own docblock: *"A partition that is one backend's opinion must live in that backend,
-        // or the second one is structurally incapable of disagreeing."* A session once put the
-        // `auto`/`propose` refusals there and the floor backend then needed the rules it had thrown
-        // away. This is that same shape — the hazard exists only for the tiers THIS backend enforces —
-        // so it lives with `HOST_GATE_TIERS` above it, and the two `auto` rules in
-        // ../.portulan/gates.json — `edit-on-a-working-branch` (`write: "./"`) and
-        // `read-anything-in-the-repository` (`read: "./"`), one of each path kind — keep their spelling
-        // and are refused one line earlier, for their tier, exactly as before.
-        //
-        // **One site, and the predicate exported rather than inlined.** The floor backend compiles no
-        // path target at all (see `floorRefusal`), so there is no second site to sweep today and
-        // saying "the same treatment there" would be a claim about code that does not exist.
-        // `neverMatches` is exported for the backend that does compile one, and for the tests.
-        //
-        // **What this does NOT reach, said here rather than left to be discovered.** ./gate.mjs reads
-        // the policy through `parse`, which this change does not touch, so a workspace that has
-        // committed such a rule still loads it at the hook, `matchesRule` answers `false`, and the
-        // hook steps aside because nothing matched. The rule is refused at COMPILE time — which is
-        // when the artifact that gates the host is written — and the residue is recorded in hole 8.
-        //
-        // Found by the milestone-8 gate corpus on its first run (#336) and put as three options in
-        // #337; this is the third, the narrowest, and it deliberately leaves open what `./` should
-        // MEAN as a policy target.
+        // A throw, not a `refused` row: a gate declared at an enforcing tier that can never match is a malformed policy.
         if ((rule.kind === "write" || rule.kind === "read") && neverMatches(rule.target)) {
             throw new CompileError(
                 `rule \`${rule.id}\` is ${rule.tier} and its ${rule.kind} target ${JSON.stringify(rule.target)} matches no path a host ` +
@@ -1412,120 +582,51 @@ export function claudeCode(parsed, options = {}) {
             );
         }
         const into = rule.tier === "prohibited" ? deny : ask;
-        const emitted = []; // permission patterns — the layer that cannot fail open
-        const hookOnly = []; // coverage the permission DSL cannot express, carried by the hook alone
+        const emitted = []; // permission patterns, the layer that cannot fail open
+        const hookOnly = [];
         if (rule.kind === "shell") {
             emitted.push(`Bash(${rule.target}:*)`);
             matchers.add("Bash");
         } else {
-            // **The PERMISSION pattern narrows to `Edit`; the HOOK matchers keep all three.** These two
-            // lines used to be one loop, and that emitted `Write(path)` and `NotebookEdit(path)` beside
-            // `Edit(path)` — patterns the host **discards**. Measured on Claude Code 2.1.240, printed on
-            // every start of this repository:
-            //
-            //   Permission deny rule (.claude/settings.json): Write(./docs/vision.md) is not matched by
-            //   file permission checks — only Edit(path) rules are. Use Edit(./docs/vision.md) instead
-            //   (Edit rules cover all file-editing tools).
-            //
-            // and the same for the `ask` tier, so this was never a `deny`-only defect. The gate held
-            // throughout — `Edit(path)` is matched for every file-editing tool — so what was wrong was
-            // the compiler's **accounting**: three rules reported compiled where one enforces, plus a
-            // permanent warning, which is `../.portulan/memory/a-stated-enforcer-must-be-the-real-one.md`.
-            //
-            // **`matchers` is a different consumer and must not narrow with it.** It drives the
-            // `PreToolUse` hook, where all three tool names genuinely arrive and `matchesRule` above
-            // answers for each; narrowing it would open a real hole where today there is none. That is
-            // why the repair is not narrowing `WRITE_TOOLS` — two consumers of one constant, one of
-            // which changes. A suite case pins the matcher set for exactly this reason.
-            //
-            // **The dropped patterns are NOT `hookOnly`.** Measured with the pattern alone in `deny` and
-            // `Write` allowed: the host refused the write. So their coverage is carried by the
-            // permission layer, not by the hook, and filing them under a channel documented as *carried
-            // by the hook alone* would be a false claim in the weakening direction. The fact goes on
-            // `notes` instead, where it names its host version.
+            // Claude Code 2.1.240 discards `Write(path)` and `NotebookEdit(path)` and applies `Edit(path)` to every editing
+            // tool; the hook still matches all three names, each of which reaches `PreToolUse` on its own.
             const permissionTools = rule.kind === "write" ? ["Edit"] : READ_TOOLS;
             for (const tool of permissionTools) emitted.push(pattern(tool, rule.target));
             for (const tool of rule.kind === "write" ? WRITE_TOOLS : READ_TOOLS) matchers.add(tool);
             if (rule.kind === "write") {
                 editCoveredGates.push(rule.id);
-                // The hook is wired for Bash so that a shell spelling of this write reaches
-                // `matchesRule`, which now answers for it. **This line is the load-bearing half.**
-                // The matcher alone would be inert in any workspace whose policy declares no shell
-                // gate: `Bash` would be absent from the matchers below, the runner would never be
-                // invoked for a Bash call, and the coverage would exist only in a function nothing
-                // calls — the manifest-field-that-validates-and-loads-nothing defect
-                // (../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md), arriving
-                // this time as a matcher nothing reaches. It changes no artifact in THIS repository,
-                // whose policy already gates shell commands, which is precisely why it would not have
-                // been noticed here.
-                //
-                // No permission pattern joins it, and that is not an omission: `Bash(prefix:*)`
-                // matches a literal command prefix while the path sits at an arbitrary position, so
-                // the DSL has no way to say "any command writing this file". The only patterns that
-                // would fit — `Bash(cp:*)`, `Bash(sed -i:*)` — gate the utility rather than the path,
-                // which is a different and much larger rule than the policy declares.
+                // Without `Bash` among the matchers, a policy with no shell gate would never run the hook on a shell write.
                 matchers.add("Bash");
                 hookOnly.push(`hook: a Bash command writing ${pathSpec(rule.target)}`);
                 shellWriteGates.push(rule.id);
             }
         }
         into.push(...emitted);
-        // The hook-only clause is carried in the SURFACE and not in `into`. It is not a permission
-        // pattern, and a reader of the matrix has to be able to tell which half of a gate would
-        // survive a broken hook.
         compiled.push({ id: rule.id, tier: rule.tier, surface: [...emitted, ...hookOnly].join(" · ") });
     }
 
-    // A policy that declares gates and emits none must not report success. This is the workflow's
-    // "declares no verify recipes — refusing to report green" one level down: the artifact would be
-    // written, the gate map would read as compiled, and nothing would hold.
     if (parsed.rules.some((r) => HOST_GATE_TIERS.has(r.tier)) && compiled.length === 0) {
         throw new CompileError(
             "every gate in this policy refused to compile — refusing to write an artifact that enforces nothing while the policy claims gates",
         );
     }
 
-    // The generation header. An emitted artifact that does not say what generated it invites the
-    // one edit this whole rail exists to catch — a hand-fix that survives until the next compile
-    // silently reverts it.
-    // **What compiled this, recorded beside what generated it** (#264). An unpinned run WOULD read
-    // the host's plugin cache while the rail reads the tree — it now refuses that arrangement outright
-    // (#316) — and until this field the artifact said nothing about which answered, so a drift RED named a difference no reader could find in the repository, because the
-    // deciding input was a directory outside it.
-    //
-    // **Origin and version, never the ROOT PATH.** The discovered root is an absolute path under
-    // somebody's home directory; recording it would make a tracked artifact machine-dependent and red
-    // `verify/compile.sh` for every developer and CI — trading a silent hazard for a permanent false
-    // one. `recordedOrigin` collapses the resolver's three tags to two for the same reason: the pinned
-    // rail and a bare run must agree byte for byte about an identical world.
+    // Each pack's origin and version, never its root: an absolute path would make the tracked artifact differ per machine.
     const packs = (options.packProvenance ?? [])
         .map((c) => ({ pack: c.pack, origin: c.origin, version: c.version ?? null }))
         .sort((a, b) => a.pack.localeCompare(b.pack));
-    // **The session switches, Workspace Definition 2.11's `sessions`, emitted only where declared**, so a
-    // manifest without the key compiles byte for byte as before. Two of the three are project settings on
-    // Claude Code; the third, the dynamic-sections exclusion, is no setting at all, which is why `headless`
-    // is read by the runners that start sessions and never reaches this file. `../core/operating/sessions.md`.
     const sessions = options.sessions ?? null;
     const switches = {};
     if (sessions?.git_instructions !== undefined) switches.includeGitInstructions = sessions.git_instructions;
     if (sessions?.cache_lifetime !== undefined) switches.promptCacheTtl = sessions.cache_lifetime;
     const sessionsFrom = Object.keys(switches).length ? sessions.manifest : null;
-    // **The declared figures, Workspace Definition 2.12's `spend`, written onto every advisory command only where
-    // declared**, so a manifest without the key compiles byte for byte as before. The advisory is handed its
-    // command and the host's payload and nothing else, so the figures ride the command, where this file's drift
-    // rail holds them to the manifest; each command computes the threshold, so each carries them. Proposal
-    // `0038`, ruling 2; `./advisory.mjs` reads them back.
     const spend = options.spend ?? null;
     const figures = [];
     if (spend?.multipliers) figures.push("--read", spend.multipliers.read, "--write-5m", spend.multipliers.write["5m"], "--write-1h", spend.multipliers.write["1h"]);
     if (spend?.horizon) figures.push("--horizon", spend.horizon);
     const spendFlags = figures.map((f) => ` ${f}`).join("");
-    // `spend.restart` `"block"`, Workspace Definition 2.13: the advisory's line also holds the turn's end once,
-    // as a second `Stop` command beside the Stop-gate's rather than inside it, so the gate's counters and caps
-    // stay about the recipe and the handoff. `"advise"` is what an undeclared workspace gets, and compiles as it.
     const restartBlock = spend?.restart === "block";
     const spendFrom = figures.length || restartBlock ? spend.manifest : null;
-    // Both keys come from one manifest when `compile` reads it; an API caller may name two, and each is said.
     const declaredIn =
         sessionsFrom && sessionsFrom === spendFrom
             ? `\`sessions\` and \`spend\` in ${sessionsFrom}`
@@ -1543,10 +644,7 @@ export function claudeCode(parsed, options = {}) {
         },
         permissions: { deny, ask, allow: [] },
         hooks: {
-            // Quoted deliberately: this repository's own working copy lives under a path with
-            // spaces in it, and an unquoted expansion would word-split into a runner nobody can
-            // find. No pipes, redirections or separators — an emitted shell one-liner is where the
-            // next quoting fail-open would live (../.portulan/tasks/0004).
+            // Each command is `node` and a quoted path: no pipe, redirection or separator, where a quoting fail-open would live.
             PreToolUse: [...matchers].sort().map((matcher) => ({
                 matcher,
                 hooks: [{ type: "command", command: `node ${runner}` }],
@@ -1559,33 +657,15 @@ export function claudeCode(parsed, options = {}) {
                     ],
                 },
             ],
-            // **The restart advisory, proposal `0038`'s rule 2**, compiled for every workspace whatever
-            // its policy says, because these two hooks gate nothing: one line where the session's recorded
-            // usage has crossed the restart threshold, once — with the next tool result, on every tool,
-            // since no matcher is match-all, or at the next prompt, whichever comes first. Each enters the
-            // context without an extra turn; a non-blocking Stop hook's output would reach only the host's
-            // debug log. The block, where `spend.restart` declares it, is the `Stop` command above. See
-            // ./advisory.mjs.
+            // No matcher means every tool; a non-blocking `Stop` hook's output would reach only the host's debug log.
             PostToolUse: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} tool${spendFlags}` }] }],
             UserPromptSubmit: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} prompt${spendFlags}` }] }],
         },
-        // The same figure for the human, from the host's own last-call counts, at no token cost.
         statusLine: { type: "command", command: `node ${advisoryRunner} status${spendFlags}` },
         ...switches,
     };
 
-    // The shell half of every write gate, reported on every run rather than left for a reader to
-    // infer from the absence of a `Bash` entry in `deny`. It is the one place in this artifact where
-    // a gate is carried by the layer that fails open, so a note that only appeared when something
-    // went wrong would be a note nobody ever reads.
     const notes = [];
-    // **The promise this comment used to make and the code did not keep.** The fallback above emits an
-    // absolute path when the runner is not under the project — a global or npx-only install — and the
-    // paragraph at the top of this function said `refused` would record that the hook is pinned to this
-    // machine. It recorded nothing: the pre-commit checkpoint compiled from a package outside a project
-    // and got two absolute hooks with **zero output about it**. A hook silently pinned to one machine is
-    // a policy that stops working when the package moves, and finding out by having no gate is the worst
-    // way to find out — so it is said, on the channel that prints every run.
     if (pinned.length) {
         notes.push(
             `${pinned.length} hook(s) are pinned to an ABSOLUTE path on this machine — ` +
@@ -1595,16 +675,11 @@ export function claudeCode(parsed, options = {}) {
                 `project, or pass \`--runner\`/\`--stop-runner\` to name a path you control`,
         );
     }
-    // Said on every run, because it is the one thing here that replaces a setting a person may have made
-    // themselves: a project's `statusLine` outranks the user's, so this one takes the place of theirs in
-    // this repository. `.claude/settings.local.json` outranks the project's, which is where to keep one.
     notes.push(
         `the status line is compiled: it shows the restart threshold (proposal 0038) and takes the place of a status line ` +
             `set in user settings, in this repository only. To keep your own here, set \`statusLine\` in \`.claude/settings.local.json\`, which ` +
             `outranks this file; the restart advisory with a tool result and at the prompt is unaffected`,
     );
-    // The session switches are said on every run that emits one, because each changes what every session
-    // in this repository starts with, and the way back for one session is not in this file.
     if (switches.includeGitInstructions === false) {
         notes.push(
             `the git instructions are compiled off (\`sessions.git_instructions\`): every session here starts without the host's ` +
@@ -1631,8 +706,6 @@ export function claudeCode(parsed, options = {}) {
                 `and the dynamic-sections exclusion it can carry is no host setting`,
         );
     }
-    // Said on every run that writes the figures, because the threshold every session here is told at moves with
-    // them, and nothing but a recompile carries an edit of them to the commands.
     if (figures.length) {
         const m = spend.multipliers;
         const priced = m ? `read ${m.read}×, write ${m.write["5m"]}× for five minutes and ${m.write["1h"]}× for an hour, whichever lifetime the host records` : "the general multipliers";
@@ -1642,7 +715,6 @@ export function claudeCode(parsed, options = {}) {
                 `commands carry them, so an edit to \`spend\` is drift until recompiled`,
         );
     }
-    // Said on every run that compiles it, because it holds a turn's end in every session here.
     if (restartBlock) {
         notes.push(
             `the restart advisory also holds a turn's end (\`spend.restart\` "block"): at the first stop at or past the restart ` +
@@ -1689,42 +761,16 @@ export function claudeCode(parsed, options = {}) {
     };
 }
 
-// ===========================================================================================
-// 3b. The floor backend — a GitHub repository ruleset
-// ===========================================================================================
-//
-// The milestone-4 criterion positions this as **the floor backend**: what every host falls back to,
-// and all that a host with no hook system has. `../core/operating/autonomy.md` says the floor is the
-// floor "because it holds when everything above it fails", and promises that the enforcement compiler
-// reads the workspace's gate policy and generates the host's own enforcement; this is that promise,
-// discharged for the floor half. (Quoted rather than paraphrased-in-quotes, which is the small version
-// of the defect ../.portulan/memory/a-stated-enforcer-must-be-the-real-one.md is about.)
-//
-// It **generates, never applies.** Importing a ruleset is a repository-settings change — outward,
-// Gated, the maintainer's, per the proposal-0001 precedent — so this emits a file and stops.
-//
-// Only the server's *input* fields are emitted: an export carrying an `id` or a `created_at` would be
-// asserting facts it cannot know. The envelope and that omission list were read from two live rulesets
-// on 2026-07-27; the `pull_request` and `required_status_checks` parameter blocks were **not** — neither
-// live ruleset carries those rules — so those come from GitHub's documented schema, and
-// ../.portulan/gate-map/compiler.md marks them as such rather than folding them into "read from live".
-//
-// **Recognition is by exact spelling, and that is a limit rather than an oversight.** The action
-// vocabulary has no `ref` kind — a rule says `{"shell": "git push --force"}` — so this backend
-// matches command strings against a table and refuses everything else out loud. A parser that
-// recognised `git push -f` as the same action would be the ambitious parser `../spec/slots.md`
-// warns against, and it would buy confidence with false reds.
+// ---------------------------------------------------------------- the floor backend: a GitHub repository ruleset
+
+// Exact spellings, never parsed: a rule spelled `git push -f` is refused rather than recognised.
 const REF_RULES = new Map([
     ["git push --force", "non_fast_forward"],
     ["git push --delete", "deletion"],
 ]);
 
-// Which tiers this backend may emit a ref rule for. `prohibited` is included and `auto` is not:
-// a prohibition on a ref operation is a restriction the floor can carry, while an unattended action
-// needs no ref gate by definition.
 const FLOOR_GATE_TIERS = new Set(["gated", "prohibited"]);
 
-/** Commands a *tag* ruleset would reach. Named individually so the refusal can say which mechanism. */
 const TAG_SHAPED = new Set(["git tag", "gh release"]);
 
 export function githubRuleset(parsed, options = {}) {
@@ -1734,9 +780,6 @@ export function githubRuleset(parsed, options = {}) {
     const refused = [];
     const notes = [];
 
-    // No floor declared: refuse everything, by name, and write nothing. Defaulting the branch to
-    // `main` was the obvious alternative and is the exact move this compiler must not make — a
-    // compiler that invents the ref it gates has stopped compiling policy and started writing it.
     if (!floor) {
         for (const rule of parsed.rules) {
             refused.push({
@@ -1749,31 +792,15 @@ export function githubRuleset(parsed, options = {}) {
     }
 
     const rules = [];
-    // Both halves of the condition are load-bearing, and the second was missing for one round. The
-    // pair is **compiled from `propose` rules**, so a policy with none of them asked for no
-    // pull-request requirement — emitting one because `floor.checks` happens to be declared is the
-    // compiler inventing policy, which is the single thing this backend must not do. It also broke
-    // the accounting silently: those two ruleset rules would have sat in the artifact with no policy
-    // rule credited for compiling them, so the matrix and `doctor` would have described a floor
-    // missing two of its own rules. Found by review, round 3.
     const declaresPropose = parsed.rules.some((r) => r.tier === "propose");
     const hasChecks = floor.checks.length > 0;
     const emitPullRequestPair = hasChecks && declaresPropose;
 
-    // The propose tier and the floor's pull-request pair. Emitted together or not at all: a
-    // `pull_request` rule without `required_status_checks` imports cleanly, reads as a configured
-    // floor, and lets a red pull request merge. Half a mapping is the silent weakening this
-    // repository keeps finding, so the refusal names the missing declaration instead.
     if (emitPullRequestPair) {
         rules.push({
             type: "pull_request",
             parameters: {
-                // The five GitHub requires on this rule, and no sixth. `allowed_merge_methods` is a
-                // real optional parameter and was dropped deliberately: nothing in the policy drives
-                // it and the criterion does not name it, so emitting it would widen the part of this
-                // artifact that is invented rather than compiled, to buy nothing. (An earlier draft
-                // also argued it "appears in neither live ruleset" — vacuous, since neither of those
-                // carries a `pull_request` rule at all. Removed rather than kept as decoration.)
+                // GitHub requires all five; the optional `allowed_merge_methods` is left out, as no policy drives it.
                 required_approving_review_count: floor.reviews,
                 dismiss_stale_reviews_on_push: true,
                 require_code_owner_review: false,
@@ -1784,9 +811,7 @@ export function githubRuleset(parsed, options = {}) {
         rules.push({
             type: "required_status_checks",
             parameters: {
-                // Not read from the policy, and deliberately: a pull request may not merge from
-                // behind its base (proposal 0011, applied live 2026-07-27). A declarable `strict`
-                // would let a later policy edit undo a ruling with no diff anyone would read as one.
+                // Not declarable: a pull request may never merge from behind its base.
                 strict_required_status_checks_policy: true,
                 do_not_enforce_on_create: false,
                 required_status_checks: floor.checks,
@@ -1808,12 +833,6 @@ export function githubRuleset(parsed, options = {}) {
             continue;
         }
 
-        // The TIER is consulted before the spelling table, and that order is the whole of it. It was
-        // the other way round for one round, so an `auto` rule spelled exactly `git push --force`
-        // compiled into `non_fast_forward` — a ruleset rule emitted for an action the policy declares
-        // unattended, with `floorRefusal`'s own `auto` branch left unreachable for it. The table is
-        // only how this backend spells a gate; whether there is a gate at all is the policy's answer.
-        // Found by review on the pull request.
         const shell = rule.kind === "shell" && FLOOR_GATE_TIERS.has(rule.tier) ? rule.target : null;
         const refType = shell ? REF_RULES.get(shell) : undefined;
         if (refType) {
@@ -1831,9 +850,6 @@ export function githubRuleset(parsed, options = {}) {
         );
     }
 
-    // The coarseness, recorded in BOTH directions. A backend that reported only where it is weaker
-    // than the policy would be flattering itself, and the stricter direction is the one an adopter
-    // is surprised by.
     if (compiled.some((c) => c.surface === "non_fast_forward")) {
         notes.push(
             `on \`refs/heads/${floor.branch}\` the \`non_fast_forward\` rule is STRICTER than this policy: it blocks every force-push, including \`git push --force-with-lease\`, which the policy classifies Auto. The floor gates a ref and cannot read a command's flags.`,
@@ -1842,8 +858,6 @@ export function githubRuleset(parsed, options = {}) {
     notes.push(
         `every rule here applies to one declared ref, \`refs/heads/${floor.branch}\`, and to nothing else. A policy rule naming an action on any other branch is not covered by this export even where it compiled.`,
     );
-    // A declaration nothing compiles is reported, never dropped in silence — the manifest-field-that-
-    // loads-nothing defect, arriving from the policy side this time.
     if (hasChecks && !declaresPropose) {
         notes.push(
             `this floor declares ${floor.checks.length} status check(s) and the policy carries no \`propose\` rule, so no ` +
@@ -1856,18 +870,13 @@ export function githubRuleset(parsed, options = {}) {
     );
 
     const value = {
-        // JSON has no comments and a GitHub ruleset has no description field, so the name is the
-        // only place a warning survives into the settings UI a maintainer actually reads. Same job
-        // as the `$portulan` header in the other artifact, done in the one field available.
+        // A ruleset has no description field, so its name is where provenance reaches GitHub's settings UI.
         name: `portulan floor — ${floor.branch} (generated from ${source})`,
         target: "branch",
         enforcement: "active",
         conditions: { ref_name: { include: [`refs/heads/${floor.branch}`], exclude: [] } },
         rules,
-        // Unconditional, and the gate map's own sentence is why: a floor carrying an exemption for
-        // the only actor who can act is not a floor. The organisation-level ruleset this repository
-        // sits under does carry an `OrganizationAdmin` always-bypass, which is recorded there as the
-        // unverified layer of the floor — not copied here.
+        // No bypass: a floor exempting the only actor who can act is not a floor.
         bypass_actors: [],
     };
 
@@ -1881,22 +890,9 @@ export function githubRuleset(parsed, options = {}) {
     };
 }
 
-/**
- * Why one rule does not reach the floor.
- *
- * Every sentence here is scoped to *this export* rather than to GitHub, because
- * `../.portulan/memory/a-stated-enforcer-must-be-the-real-one.md` binds any sentence containing
- * "cannot" — and the convenient blanket version ("the platform gates a ref, not a path") is simply
- * false: CODEOWNERS gates owned paths and is named as part of the floor by
- * `../core/operating/autonomy.md`, push rulesets gate file paths, and tag rulesets gate `refs/tags/*`.
- */
+/** Why a rule misses the floor, said of this export and never of GitHub, which can gate paths and tags. */
 function floorRefusal(rule, floor) {
     if (rule.tier === "auto") {
-        // "Unattended by definition" is literally true on THIS backend, and true only here: a branch
-        // ruleset has no prompt to pay, so an Auto rule left out of it costs nobody anything. The
-        // host backend carried the identical phrase and it was false there — see the comment above
-        // `HOST_GATE_TIERS`. Same words, one backend apart, one of them wrong. Do not carry either
-        // version across without re-deriving it for the backend it lands in.
         return "tier `auto` is unattended by definition — the floor exists to refuse what an agent may not do alone, and an action needing nobody's approval needs no ref gate.";
     }
     if (rule.kind === "none") {
@@ -1914,38 +910,14 @@ function floorRefusal(rule, floor) {
     return `no branch-ruleset rule corresponds to \`${rule.target}\`, and recognition here is by EXACT command spelling (\`${[...REF_RULES.keys()].join("`, `")}\`) rather than by parsing — a matcher clever enough to generalise would be clever enough to be wrong quietly.`;
 }
 
-/**
- * Where each backend's artifact lives, whether or not this policy produces one.
- *
- * Declared beside the backends rather than read off a result, because `--check` has to look for an
- * artifact a backend *no longer* owes — and a backend that emits nothing has no result to read a
- * path from. Keyed by backend id so adding a backend without a path here is a `TypeError` at the
- * first check rather than a silently unswept file.
- */
+/** Each backend's artifact path, owed or not: `--check` looks for an artifact a backend no longer emits. */
 const ARTIFACT_PATHS = {
     "claude-code": ".claude/settings.json",
     "github-ruleset": ".portulan/compile/github-ruleset.json",
 };
 
-/**
- * The same map, for a workspace that does not live at `.portulan`.
- *
- * **A feature that dispatches on residence is a parity breach**, and proposal
- * `../.portulan/proposals/0017-one-repository-one-governing-workspace.md` says it is refusable on that
- * sentence alone. This one did: the ruleset's path had `.portulan` written into it, so compiling a
- * feed-side workspace looked for a gate policy at `<feed>/workspaces/.portulan/gates.json` — a
- * directory that does not exist and never would — and exited 2, *could not run*, on a workspace that
- * `doctor`, `index` and its own verify recipe all handled identically at both ends.
- *
- * **Found by running row 7's fourth demonstration, not by reading this file.** Every other line of the
- * compiler already keyed to a slot; this one key was location. The default is unchanged, so a caller
- * that names no workspace directory takes a byte-identical path to the one it took before.
- */
 function artifactPaths(workspaceDir) {
     if (workspaceDir === ".portulan") return ARTIFACT_PATHS;
-    // A workspace directory that IS the root — the feed-side shape, where the workspace ships as the
-    // plugin and the installed plugin's directory is the workspace root (milestone 6 measured that).
-    // Its compiled artifacts belong beside it, because they ship with it.
     const prefix = workspaceDir === "." ? "" : `${workspaceDir}/`;
     return {
         "claude-code": ARTIFACT_PATHS["claude-code"],
@@ -1953,30 +925,12 @@ function artifactPaths(workspaceDir) {
     };
 }
 
-/**
- * The top-level entries of a workspace directory this compiler writes into: `compile/` holds its artifacts,
- * and `.claude/` is the host's own tree where a workspace is its own root. Exported because `./vendor.mjs`
- * never carries them, and because no guidance may be read from them (`guidanceDeclaration`).
- */
 export const GENERATED_DIRS = ["compile", ".claude"];
 
-/** Every backend, run against one parsed policy. The order is the order the matrix prints in. */
 export function backends(parsed, options = {}) {
-    // **Provenance rides in the Claude Code artifact only, and that is an honest limit rather than an
-    // oversight.** `githubRuleset` emits to a fixed external schema that has nowhere to carry a
-    // `$portulan` block; its provenance is the one line it can carry, in `name`. Both backends compile
-    // from ONE root plan per run, so the recorded origins describe the ruleset's inputs too — they are
-    // simply not readable in its file. Stated here and in `../.portulan/gate-map/compiler.md` (#264).
     return [claudeCode(parsed, options), githubRuleset(parsed, options)];
 }
 
-/**
- * The per-host backend matrix: one row per policy rule, one cell per backend.
- *
- * Derived from the backends rather than maintained beside them. A matrix written by hand is a claim
- * about compilers, and this repository has spent two milestones on what claims about machinery are
- * worth — so this one cannot drift from the compilers, because it *is* their accounting transposed.
- */
 export function matrix(parsed, options = {}) {
     const columns = backends(parsed, options);
     return parsed.rules.map((rule) => {
@@ -1991,52 +945,17 @@ export function matrix(parsed, options = {}) {
     });
 }
 
-// ===========================================================================================
-// 3c. The guidance targets — `slots.context`, compiled to each host's load tiers
-// ===========================================================================================
-//
-// Proposal `0036`'s compile targets. `../core/operating/context.md` puts every piece of guidance in one of
-// four load tiers, and Workspace Definition 2.10's `slots.context` is where a workspace keeps it: one unit
-// per Markdown file, each declaring its tier in its own frontmatter (`../spec/slots.md` carries the
-// contract). This section turns those units into what each host loads, and says per host which tiers it
-// can express. A unit in a tier the host cannot express **degrades to an on-read pointer, never to
-// nothing**: a line in the always tier naming the file, one level deep, which is the only index
-// `context.md` allows.
-//
-// **Committed, regenerated from source, byte-compared** — the maintainer's ruling 3 on `0036`, and the
-// reason is a fresh checkout: a desktop session's worktree has only what is tracked, so a gitignored
-// rule would be missing from exactly the contexts this makes cheaper. `--check` compares every file below
-// with what the units compile to, so the existing compile recipe covers them with no edit of its own.
-//
-// **What this cannot tell you** is the sentence at the top of this file, one layer over: that the host
-// loads what is emitted, when the tier says it does. That is row 12's second demonstration, on a running
-// host, and not a test.
+// ---------------------------------------------------------------- guidance: slots.context compiled per host
 
-/** `0036`'s four load tiers, in the order a context meets them, spelled as the proposal spells them. */
 export const LOAD_TIERS = ["always", "on-path", "on-invoke", "on-read"];
 
-/**
- * The directory the Claude Code targets land in. **`compile` shows which rules in it are its own with a
- * marker** (`RULES_MARKER` below) rather than a mark in each file, because every byte of an always-tier
- * file is paid for by every context. It rewrites and removes only the rules the marker lists; anything else
- * there is a team's own, named and left, and a unit that would compile onto one stops the run with exit 2.
- * Where the directory holds Markdown files and no marker in this compiler's form, nothing shows any of them
- * was compiled, so it stops with exit 2 and touches none of them.
- */
+/** Its rules are claimed by `RULES_MARKER`, not a mark in each: every context pays for an always rule's bytes. */
 export const GUIDANCE_RULES_DIR = ".claude/rules/portulan";
 
-/**
- * The marker: a file in that directory no host loads, since Claude Code loads only `.md` files as rules,
- * so it costs no context. Its first line names the compiler and each line after it one rule it wrote.
- * Written after the rules it lists and cut before any is removed, so it never lists a file this compiler
- * has not written (`emitGuidance`). Byte-compared like every other compiled file, and trusted only when it
- * reads exactly as this compiler writes one: a marker not in this compiler's form grants nothing. One in that form is read as the list it
- * is, whoever wrote it, because whoever can edit it can as well remove the files it lists.
- */
+/** Not a `.md` file, so it costs no context: Claude Code loads only `.md` files as rules. */
 export const RULES_MARKER = ".compiled";
 const RULES_MARKER_HEAD = "`portulan compile` wrote the rules listed below from slots.context; it rewrites and removes only these.";
 
-/** The marker a set of rule files is owed: the head line, then one file name per line. */
 const markerText = (names) => `${RULES_MARKER_HEAD}\n${names.map((name) => `${name}\n`).join("")}`;
 
 /** The rule files a marker lists, or null when its text is not one this compiler writes. */
@@ -2048,15 +967,9 @@ function markedRules(text) {
     return new Set(names).size === names.length ? new Set(names) : null;
 }
 
-/** The one file in that directory no unit names: the index of pointers to the on-read units. */
 export const ON_READ_INDEX = "on-read.md";
 
-/**
- * Where an on-invoke unit lands. This directory is shared with skills a team writes by hand, so a
- * compiled skill carries a mark naming its unit, as the line after its frontmatter, and only a skill whose
- * mark reads there exactly as this compiler writes it is ever `compile`'s to rewrite or remove. Text
- * quoting the mark anywhere else grants nothing.
- */
+/** Shared with hand-written skills, so a compiled skill carries a mark naming its unit. */
 export const SKILLS_DIR = ".claude/skills";
 const SKILL_MARK = "<!-- compiled by `portulan compile` from ";
 const SKILL_MARK_TAIL = "; edit that file, then recompile -->";
@@ -2070,15 +983,7 @@ function skillSource(text) {
     return line.slice(SKILL_MARK.length, -SKILL_MARK_TAIL.length) || null;
 }
 
-/**
- * Which tiers each host expresses, and how. `null` is a tier the host cannot express, whose units
- * degrade to an on-read pointer. Exported so a report reads this table rather than restating it.
- *
- * Claude Code expresses all four: an unscoped rule is loaded at launch like `.claude/CLAUDE.md`, a rule
- * with `paths:` when a matching file is first read, and a skill's description is listed in every context
- * while its body loads when it runs. The vendored `AGENTS.md` is one file at a tree's root: the hosts that
- * read nested `AGENTS.md` files would give it an on-path tier, but `vendor` writes only the root one.
- */
+/** `null` is a tier the host cannot express, whose units degrade to an on-read pointer. */
 export const GUIDANCE_HOSTS = {
     "claude-code": {
         label: "Claude Code",
@@ -2096,41 +1001,21 @@ export const GUIDANCE_HOSTS = {
     },
 };
 
-/**
- * A workspace's **boot card**: the always unit a boot reads in place of the slots, cut to what every context
- * needs, naming the file behind each of its lines. Its name is reserved, and so is its first line, which is
- * how the boot skill knows the card is in its context: a line of text it can test, never a guess. (Decided
- * 2026-09-23; `../plugin/skills/portulan/SKILL.md` names the line.)
- */
+/** Both reserved: the boot skill knows the card is in its context by this first line. */
 export const BOOT_CARD_UNIT = "boot";
 export const BOOT_CARD_LINE = "# Portulan boot card";
 
-/**
- * A file this many imports below the rule or instruction file that loads it is not loaded. Read in the
- * program text of Claude Code 2.1.281 and seen on a fixture: a rule goes through the loader `CLAUDE.md`
- * does, which resolves an `@` import against the importing file's directory, follows it only inside the
- * project, and returns nothing at depth 5. **A rule scoped by `paths:` loads on its path, and the files it
- * imports load into every context**: the host keeps each loaded file that carries no globs in its always
- * pass, and an imported file carries none. `./context.mjs` counts by the same figures.
- */
+/** Claude Code 2.1.281 resolves an import from the importing file, inside the project only, and loads nothing this deep. */
 export const IMPORT_DEPTH = 5;
 
-/** A line asking `compile` for the lead sentences of another file's first list, alone on its line. */
 export const LEADS_LINE = /^<!-- leads: (\S+) -->$/;
 
-/**
- * The same, of a file in the engine this compiler ships with, `../core/`, so every card naming it carries
- * one text: Portulan's own and each consumer's. Where that engine is the tree compiled, as it is in
- * Portulan's own repository, `<plugin root>/` is written as nothing, so a command reads as run from the tree.
- */
 export const ENGINE_LINE = /^<!-- engine: (\S+) -->$/;
 const ENGINE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PLUGIN_ROOT = "<plugin root>/";
 
-/** A line asking `compile` for a gate policy's gate ids under their tiers, alone on its line. */
 export const GATES_LINE = /^<!-- gates: (\S+) -->$/;
 
-/** How a card names each tier: core's four, each with what it asks of an agent. */
 const TIER_GLOSS = {
     auto: "**Auto**, unattended",
     propose: "**Propose**, a human decides",
@@ -2138,7 +1023,6 @@ const TIER_GLOSS = {
     prohibited: "**Prohibited**, where no approval exists",
 };
 
-/** Why an import in a unit of each other tier would not load as its unit does, for the refusal. */
 const STRAY_IMPORT = {
     "on-path": "the host loads a path-scoped rule's imports into every context, so the file would not wait for the path",
     "on-invoke": "the unit compiles to a skill in another directory, from which the import names another file",
@@ -2146,33 +1030,16 @@ const STRAY_IMPORT = {
 };
 
 /**
- * The `@` imports in a text, as the host finds them: a token after the start of a line or a space, running
- * to the next space that no `\` escapes, outside fenced blocks, and outside code spans and HTML comments
- * except in a list item's text, each with the offset where its path starts. Claude Code 2.1.281 lexes the
- * file, skips code, and strips `<!-- … -->` before it reads a token, so a path in a comment is no import. A
- * list item's text is the exception: the lexer hands it over as one raw block, which the host reads for
- * tokens before it skips the code spans inside, so there a code span or a comment hides nothing. In a list
- * item, a code span holding `cat @a.md now` imports `a.md`, and one holding just `@a.md` does not, its `@`
- * following the backtick with no space. Tight or loose makes no difference to this host: the lexer it
- * bundles keeps a loose item's text raw too, where marked 18.0.14 would make it a paragraph. `./context.mjs`
- * counts what they load and `compile` checks them where a unit is compiled, so both find the same ones.
- *
- * A line is an item's text when it opens an item, is indented under one, or runs on from one with no indent
- * and opens no block (`OPENS_BLOCK`), and does not itself open a heading, a block quote or a comment. The
- * limits, all rare in an instruction file: a list inside a block quote is read as the quote's text, so an
- * import in a code span there is missed; and a line the host's lexer keeps out of an item's text (a tag or a
- * `#` straight under one, a numbered line inside a paragraph, a paragraph after a list nested in the item,
- * an indented code block or an HTML block) is read as more of it, so there this can find an import the host
- * does not. Found in the coordinator session's review of #452 after its push, and read in the host's own
- * lexer.
+ * The `@` imports Claude Code 2.1.281 finds: none in a fence, nor in a code span or HTML comment outside a list
+ * item's text, which it reads raw. Misread: a list in a block quote, and a line its lexer keeps out of an item.
  */
 export function importSpans(text) {
     const found = [];
     let fence = null;
     let comment = false;
-    let listed = false; // the line is in a list, which a blank line alone does not end
-    let flowing = false; // the line above is a line of that list, which a line with no indent may run on from
-    const opensInItem = /^(?:#{1,6}(?:[ \t]|$)|>|<!--)/; // a heading, a block quote or a comment, read as elsewhere
+    let listed = false; // in a list, which a blank line alone does not end
+    let flowing = false; // the line above is list text, which an unindented line may continue
+    const opensInItem = /^(?:#{1,6}(?:[ \t]|$)|>|<!--)/;
     let offset = 0;
     for (const line of text.split("\n")) {
         const start = offset;
@@ -2200,9 +1067,7 @@ export function importSpans(text) {
                 listed = flowing = false;
             }
         }
-        // The line as the host reads it for imports: in an item's text, whole; elsewhere with each code span and
-        // comment blanked where it stands, so every offset stays put, and a comment still open at the line's end
-        // running on to the one that closes it.
+        // Code spans and comments are blanked, not cut, so every offset stays put; an item's text is read whole.
         let seen = raw ? line : "";
         let at = raw ? line.length : 0;
         while (at < line.length) {
@@ -2239,25 +1104,12 @@ export function importSpans(text) {
     return found;
 }
 
-/**
- * The path the host reads from an import token, or null where it takes the token for no import, as Claude
- * Code 2.1.281 decides it: cut at `#`, each `\ ` read as a space, and opening as a path can.
- */
+/** The path Claude Code 2.1.281 reads from an import token, or null where it reads no import. */
 export const importPath = (target) => {
     const bare = target.split("#")[0].replaceAll("\\ ", " ");
     return bare !== "" && /^(?:\.\/|~\/|\/.|[A-Za-z0-9._-])/.test(bare) ? bare : null;
 };
 
-/**
- * Every import a text makes, resolved from `dir` and followed through the files it names, each checked the
- * way the host would load it: a path it takes for an import must name a file inside `root`, and no file may
- * sit `IMPORT_DEPTH` imports down. An import the host would drop is refused rather than left to load nothing
- * while its author believes it loads.
- *
- * @returns {Array<{ target: string, file: string, nested: Array<{ file: string, from: string }> }>} the
- * text's own imports, in order, each with its file and the files it imports in turn, down to the host's
- * depth, each once and with the file that imports it
- */
 function checkedImports(text, dir, root, where) {
     const own = [];
     const shown = path.relative(process.cwd(), root) || ".";
@@ -2288,8 +1140,7 @@ function checkedImports(text, dir, root, where) {
             if (depth + 1 >= IMPORT_DEPTH) {
                 throw new CompileError(`${spelled} sits ${depth + 1} imports below the rule, and the host loads nothing ${IMPORT_DEPTH} deep — import the file from nearer the rule`);
             }
-            // The queue is breadth-first, so every import the text makes itself is seen before any file one of
-            // them imports is read: a file imported both ways is named once, as the text's own.
+            // Breadth-first, so a file both imported directly and through another is named once, as the text's own.
             if (depth === 0) own.push({ target, file, nested: [] });
             if (seen.has(real)) continue;
             seen.add(real);
@@ -2307,29 +1158,10 @@ function checkedImports(text, dir, root, where) {
     return own;
 }
 
-/**
- * A line with no indent that opens a block of its own, and so ends a list even straight under an item's text,
- * as CommonMark reads it: an ATX heading, a block quote, a thematic break, a list item, or an HTML block that
- * opens with `<!` or `<?`. A fence is met before this is asked. Any other line there is more of the item above
- * it, CommonMark's lazy line. An HTML tag is refused with the lazy lines, though CommonMark ends the list at a
- * tag it counts as a block, such as `<div>`: telling the two apart takes its list of sixty-odd tag names, and
- * a blank line above the tag settles it either way.
- */
+/** An unindented line that ends a list, as CommonMark reads it; a block tag such as `<div>` is read as a lazy line. */
 const OPENS_BLOCK = /^(?:#{1,6}(?:[ \t]|$)|>|([-*_])(?:[ \t]*\1){2,}[ \t]*$|(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)|<(?:!--|\?|![A-Za-z]|!\[CDATA\[))/;
 
-/**
- * The lead sentences of the first list in the file at `file`, as that list numbers them: each item's first
- * sentence, byte for byte, so the file stays the one place the text lives. An item must open with a bold
- * lead, and its first sentence ends at the first `.`, `!` or `?` outside a code span that is followed, past
- * any closing emphasis, by a space or the item's end. A lead carrying a link is refused: the link was written
- * for the file's own directory and would not resolve from where the unit compiles to.
- *
- * The list ends at a line with no indent after a blank one, or at one that opens a block (`OPENS_BLOCK`). A
- * line of text with no indent straight under an item is refused: CommonMark reads it as more of that item,
- * and this reader took it for the list's end and dropped every lead below it without a word. Un-indenting
- * one wrapped line of `../.portulan/principles.md` wrote a card with one of its four leads, and `--check`
- * stayed green. Found in the coordinator session's review of #452 after its push.
- */
+/** Each item's first sentence, byte for byte, from the first list in `file` or under its `#fragment` heading. */
 function leadsOf(file, where, fragment = null, name = path.basename(file)) {
     let text = fs.readFileSync(file, "utf8");
     if (fragment !== null) {
@@ -2343,13 +1175,13 @@ function leadsOf(file, where, fragment = null, name = path.basename(file)) {
     return leadsOfText(text, fragment === null ? name : `${name}#${fragment}`, where);
 }
 
-/** `leadsOf` over a text already read, `name` being the file it came from, as the refusals name it. */
+/** `leadsOf` over a text already read; `name` is how the refusals name its file. */
 export function leadsOfText(source, name, where) {
     const lines = source.split(/\r?\n/);
     const items = [];
     let kind = null;
     let fence = null;
-    let under = false; // the line above is an item's text, which a line with no indent would carry on
+    let under = false;
     for (const [at, line] of lines.entries()) {
         const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
         if (marker) {
@@ -2394,12 +1226,6 @@ export function leadsOfText(source, name, where) {
     });
 }
 
-/**
- * The gate ids of the policy at `file`, one line per tier in the tiers' order, each id as the policy
- * spells it and in its order there, so the policy stays the one place a gate is named, and a line naming
- * the packs the manifest composes. The policy is read by `parse`, the reader every compiled gate goes
- * through; a tier holding no gate says so.
- */
 function gatesOf(file, where, packs = []) {
     let policy;
     try {
@@ -2418,20 +1244,11 @@ function gatesOf(file, where, packs = []) {
         const ids = rules.filter((r) => r.tier === tier).map((r) => `\`${r.id}\``);
         return `- ${TIER_GLOSS[tier]}: ${ids.length ? ids.join(", ") : "none"}.`;
     });
-    // The workspace's own policy is what this reads; a composed pack adds gates of its own, which only a
-    // compile that resolves the pack can list, so the pack is named and the command that lists them with it.
     if (packs.length) lines.push(`- **Packs** add gates of their own, which \`portulan compile --matrix\` lists: ${packs.map((p) => `\`${p}\``).join(", ")}.`);
     return lines;
 }
 
-/**
- * An always unit's text as a host loads it: each `<!-- leads: … -->` line replaced by the lead sentences
- * it names, each `<!-- engine: … -->` line by those of the engine's file, and each `<!-- gates: … -->`
- * line by the policy's gate ids under their tiers. A leads path may end `#<heading>`, for the first list
- * under that heading. Paths resolve against the unit's own directory and stay inside `root`, an engine
- * path against the engine and inside it; each file read is recorded on the unit, so a drifted rule names
- * it beside the unit.
- */
+/** The unit's body with each leads, engine and gates line written out; a leads path may end `#<heading>`. */
 function expandedBody(unit, dir, root, packs = []) {
     unit.leadSources = [];
     unit.written = new Set();
@@ -2465,7 +1282,6 @@ function expandedBody(unit, dir, root, packs = []) {
         .join("\n");
 }
 
-/** The leads an `<!-- engine: … -->` line names, from the engine this compiler ships with. */
 function engineLeads(unit, spelled, root) {
     const hash = spelled.indexOf("#");
     const [named, fragment] = hash === -1 ? [spelled, null] : [spelled.slice(0, hash), spelled.slice(hash + 1)];
@@ -2493,7 +1309,6 @@ const UNIT_KEYS = new Set(["tier", "paths", "description"]);
 /** A line break, by any spelling a host might honour, or another control character. */
 const CONTROL = /[\u0000-\u001f\u007f\u0085\u2028\u2029]/;
 
-/** One scalar, as YAML writes it: double-quoted with JSON's escapes, single-quoted, or plain. */
 function scalar(raw, where) {
     const value = raw.trim();
     if (value.startsWith('"')) {
@@ -2501,12 +1316,11 @@ function scalar(raw, where) {
             const parsed = JSON.parse(value);
             if (typeof parsed === "string") return parsed;
         } catch {
-            // Refused below, with the sentence that says what to write instead.
+            // Refused below.
         }
         throw new CompileError(`${where} is not a string this reader can parse — write it plain, or in double quotes with JSON's escapes`);
     }
     if (value.startsWith("'")) {
-        // Inside single quotes the only escape is a doubled quote, so every `'` in the span comes in a pair.
         const inner = value.length >= 2 && value.endsWith("'") ? value.slice(1, -1) : null;
         if (inner !== null && /^(?:[^']|'')*$/.test(inner)) return inner.replaceAll("''", "'");
         throw new CompileError(`${where} is single-quoted and either not closed or holding a \`'\` not written \`''\``);
@@ -2514,12 +1328,6 @@ function scalar(raw, where) {
     return value;
 }
 
-/**
- * The frontmatter of one unit, read strictly. Three keys and no others; a scalar is plain or quoted, and
- * `paths` is a list, in flow form (`["a/**", "b/*.md"]`, each item in double quotes) or as a block of
- * `- ` items. Anything else is refused rather than guessed at: a key this reader skipped would be one the
- * author believes is in force.
- */
 function unitFrontmatter(lines, where) {
     const fields = {};
     for (let i = 0; i < lines.length; i += 1) {
@@ -2559,10 +1367,6 @@ function unitFrontmatter(lines, where) {
     return fields;
 }
 
-/**
- * Read one unit. `name` is its file's name less `.md`; `text` is the file; `source` is its path as a
- * reader of the repository would type it, which is what a pointer names.
- */
 export function parseUnit(name, text, source = `${name}.md`) {
     const where = source;
     if (!SLUG.test(name)) {
@@ -2591,8 +1395,6 @@ export function parseUnit(name, text, source = `${name}.md`) {
             if (typeof glob !== "string" || glob.trim() === "" || glob !== glob.trim() || CONTROL.test(glob)) {
                 throw new CompileError(`${where}: every item of \`paths\` is a glob on one line with no surrounding space, and ${JSON.stringify(glob)} is not`);
             }
-            // Relative to the repository, and inside it: a glob the host would resolve elsewhere is a rule
-            // that loads for files this workspace does not govern, or for none.
             if (glob.startsWith("/") || /^[A-Za-z]:/.test(glob) || glob.split("/").includes("..") || glob.includes("\\")) {
                 throw new CompileError(`${where}: \`${glob}\` is not a glob relative to the repository and inside it — no leading \`/\`, no \`..\`, and \`/\` as the separator`);
             }
@@ -2611,8 +1413,7 @@ export function parseUnit(name, text, source = `${name}.md`) {
         if (typeof description !== "string" || description.trim() === "") {
             throw new CompileError(`${where}: an ${tier} unit needs a one-line \`description\`: it is what an agent reads to decide whether to open the unit`);
         }
-        // A quoted scalar can spell a line break as an escape, and the description is written as one line
-        // of the index and of `AGENTS.md`: a break would make it two, the second a pointer nobody declared.
+        // A quoted scalar can spell a line break as an escape, and would then add an index line nobody declared.
         if (CONTROL.test(description)) {
             throw new CompileError(`${where}: the \`description\` holds a line break or another control character, and it is written as one line of an index`);
         }
@@ -2622,7 +1423,6 @@ export function parseUnit(name, text, source = `${name}.md`) {
     while (rest.length && rest[0].trim() === "") rest.shift();
     while (rest.length && rest[rest.length - 1].trim() === "") rest.pop();
     if (rest.length === 0) throw new CompileError(`${where}: the unit carries no guidance below its frontmatter`);
-    // The boot card is known by its name and by its first line, and each vouches for the other.
     if (name === BOOT_CARD_UNIT) {
         if (tier !== "always") {
             throw new CompileError(`${where}: \`${BOOT_CARD_UNIT}\` is the name of a workspace's boot card, which every context loads — it is an \`always\` unit, and this one is \`${tier}\``);
@@ -2633,8 +1433,6 @@ export function parseUnit(name, text, source = `${name}.md`) {
     } else if (rest[0] === BOOT_CARD_LINE) {
         throw new CompileError(`${where}: \`${BOOT_CARD_LINE}\` opens the boot card, and only the unit named \`${BOOT_CARD_UNIT}\` is one — the boot skill would take this unit for the card`);
     }
-    // Only an always unit's leads are written out: any other unit compiles to a scoped rule, a skill or a
-    // pointer, and would carry the line as it stands.
     const written = [["leads", LEADS_LINE], ["engine", ENGINE_LINE], ["gates", GATES_LINE]].find(([, line]) => rest.some((text) => line.test(text)));
     if (tier !== "always" && written) {
         const [which] = written;
@@ -2643,20 +1441,7 @@ export function parseUnit(name, text, source = `${name}.md`) {
     return { name, tier, paths, description, body: `${rest.join("\n")}\n`, source, bytes: Buffer.byteLength(text, "utf8") };
 }
 
-/**
- * Where the manifest puts its guidance, if it does. Read as `policyDeclaration` reads `gates`: the value
- * held to the schema's `dirPath` shape and to containment after resolution, because a pattern alone
- * passes a `../` chain. `doctor` refuses such a manifest, but this reader must not depend on `doctor`
- * having run.
- *
- * A manifest that is there and cannot be read as one is refused here rather than read as declaring none,
- * so every tool that compiles or plans guidance through this reader stops on it: `compile`, `init`,
- * `vendor` and `upgrade`'s planner. Read as none, every rule and skill an earlier run compiled would be
- * planned for removal (`unreadableManifest`).
- *
- * @returns {{ dir: string, rel: string } | null} null when the manifest declares no `slots.context`, or
- *   there is no manifest to declare one.
- */
+/** The declared `slots.context`, or null where none is declared or there is no manifest; one that will not parse throws. */
 export function guidanceDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const base = path.join(workspaceRoot, workspaceDir);
     const unreadable = unreadableManifest(workspaceRoot, workspaceDir);
@@ -2681,8 +1466,6 @@ export function guidanceDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     if (dir === path.resolve(base) || !isInside(path.resolve(base), dir)) {
         throw new CompileError(`\`slots.context\` (${declared}) resolves to the workspace directory itself or outside it — guidance is read from a directory of its own inside it, never from elsewhere`);
     }
-    // Nor from where this compiler writes: a unit there would be overwritten by what it compiles to, and
-    // `vendor` carries neither directory, so a pointer to it would dangle in a vendored copy.
     const rel = path.relative(path.resolve(workspaceRoot), dir).split(path.sep).join("/");
     const top = path.relative(path.resolve(base), dir).split(path.sep)[0];
     if (rel.split("/")[0] === ".claude" || GENERATED_DIRS.includes(top)) {
@@ -2694,15 +1477,7 @@ export function guidanceDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     return { dir, rel: `${rel}/`, packs: Array.isArray(manifest.packs) ? manifest.packs.filter((p) => typeof p === "string") : [] };
 }
 
-/**
- * Every unit the workspace declares, read and checked, in code-unit order of name.
- *
- * Only the Markdown files at the top of the directory are units; anything else there is left alone. A
- * unit that is a link out of the workspace is refused, as a copy through a link is in `./vendor.mjs`: it
- * would compile a file the workspace does not hold into the host it governs.
- *
- * @returns {{ source: string, units: object[] } | null} null when no slot is declared.
- */
+/** Every unit, read and checked, or null where no `slots.context` is declared. */
 export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
     const declared = guidanceDeclaration(workspaceRoot, workspaceDir);
     if (declared === null) return null;
@@ -2718,7 +1493,6 @@ export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
     } catch (cause) {
         throw new CompileError(`the workspace directory could not be resolved — ${cause.code ?? cause.message}`);
     }
-    // Where this compiler writes, resolved, so a unit that is a link into it is refused as a slot there is.
     const written = [path.join(workspaceRoot, ".claude"), ...GENERATED_DIRS.map((g) => path.join(workspaceRoot, workspaceDir, g))].flatMap((at) => {
         try {
             return [fs.realpathSync(at)];
@@ -2752,9 +1526,6 @@ export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
             throw new CompileError(`${source} could not be read — ${cause.code ?? cause.message}`);
         }
         const unit = parseUnit(path.basename(file, ".md"), text, source);
-        // An always unit is loaded as its compiled text: its leads written out, and its imports checked
-        // here, before anything is written, against what the host would follow. In any other unit an import
-        // naming a file is refused, because it would not load as its unit does; `@` text naming none is text.
         if (unit.tier === "always") {
             unit.dir = path.dirname(full);
             unit.text = expandedBody(unit, unit.dir, path.resolve(workspaceRoot), declared.packs);
@@ -2776,11 +1547,6 @@ export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
     return { source: declared.rel, units, root: path.resolve(workspaceRoot) };
 }
 
-/**
- * An always unit's compiled text for a file at `to`, a path relative to the root: each import the unit makes
- * spelled again from there, since the host resolves an import against the file that makes it. An import
- * stands alone on its line, so what it names is never in doubt.
- */
 function rebasedText(unit, root, to) {
     if (!unit.imports.length) return unit.text;
     const byLine = new Map();
@@ -2795,17 +1561,11 @@ function rebasedText(unit, root, to) {
         .join("\n");
 }
 
-/** A string as YAML reads it, double-quoted. JSON's escapes are a subset of YAML's double-quoted ones. */
+/** Double-quoted YAML: JSON's escapes are a subset of YAML's. */
 const quoted = (s) => JSON.stringify(s);
 
-/** A unit's size as its index line gives it: in whole KB, and under one as `<1 KB`. */
 const kilobytes = (bytes) => (bytes < 1024 ? "<1 KB" : `~${Math.round(bytes / 1024).toLocaleString("en-US")} KB`);
 
-/**
- * The Claude Code targets of a set of units: one file per unit, in the tier's own form, plus the index
- * of pointers when any unit is on-read. Paths are relative to the repository root, and nothing here
- * names a machine path (ruling 3).
- */
 export function claudeCodeGuidance(guidance) {
     const files = [];
     const pointers = [];
@@ -2825,11 +1585,6 @@ export function claudeCodeGuidance(guidance) {
         }
     }
     if (pointers.length) {
-        // One line per unit and nothing else: the index is an always-tier file, and a pointer may not point
-        // at another pointer. Each line carries its unit's size in whole KB, the order of magnitude a session
-        // needs to know what it passes over and whether to read a large unit by one section (the coordinator
-        // session's delegated calls of 2026-09-24). Rounded, an edit drifts the index only where it moves that
-        // figure, and is drift until recompiled then, as an edit to a file a `leads` line names is.
         files.push({
             unit: null,
             path: `${GUIDANCE_RULES_DIR}/${ON_READ_INDEX}`,
@@ -2839,18 +1594,11 @@ export function claudeCodeGuidance(guidance) {
     return { backend: "claude-code", label: GUIDANCE_HOSTS["claude-code"].label, files };
 }
 
-/**
- * The vendored `AGENTS.md`'s share of the same units: the always units inline, and every other unit as a
- * one-line pointer, because that file is the only tier its hosts are sure to load. `dir` is where the
- * units sit in the vendored tree, as a reader beside `AGENTS.md` would type it.
- */
+/** `dir` is where the units sit in the vendored tree, as typed from beside `AGENTS.md`. */
 export function agentsMdGuidance(guidance, dir) {
     const always = guidance.units.filter((u) => u.tier === "always");
     const pointed = guidance.units.filter((u) => u.tier !== "always");
-    // An import is a load this file's hosts do not make, so it degrades as a tier does: to a pointer line
-    // naming the file where it sits in the vendored tree, and one for each file that file imports in turn,
-    // down to the depth a host that follows imports would load (2026-09-24), since none of them is loaded
-    // here either.
+    // AGENTS.md's hosts follow no import, so each becomes a pointer, as does each file it imports in turn.
     const inline = (u) => {
         if (u.text === undefined) return u.body;
         const vendored = (file) => `\`${path.posix.normalize(path.posix.join(dir, path.relative(u.dir, file).split(path.sep).join("/")))}\``;
@@ -2876,13 +1624,7 @@ export function agentsMdGuidance(guidance, dir) {
     return { inline: always.map(inline), pointers: pointed.map(pointer) };
 }
 
-/**
- * What stops a guidance path being written or tidied as a real `kind`, judged before anything is, part by
- * part from the repository root with `lstat`: `null` when every part of it that exists is a real directory
- * and the last, if it exists, a real `kind`. **A link stops it wherever it stands, even one that stays inside
- * the repository**: writing or removing through it would change whatever it points at, which this compiler
- * cannot show it wrote.
- */
+/** Why `rel` cannot be written as a real `kind`, or null; a link stops it anywhere, even one inside the repository. */
 function landing(workspaceRoot, rel, kind = "file") {
     const parts = rel.split("/");
     let at = workspaceRoot;
@@ -2906,7 +1648,6 @@ function landing(workspaceRoot, rel, kind = "file") {
     return null;
 }
 
-/** What a directory this compiler writes into holds: nothing when it is absent, or when `landing` stops it. */
 function listReal(workspaceRoot, rel) {
     const dir = path.join(workspaceRoot, ...rel.split("/"));
     if (landing(workspaceRoot, rel, "directory") !== null || !fs.existsSync(dir)) return [];
@@ -2917,21 +1658,10 @@ function listReal(workspaceRoot, rel) {
     }
 }
 
-/**
- * Everything the guidance half will write or remove, judged before either half writes anything, so a refusal
- * leaves no gate artifact written beside it: `run` calls this first, under `--check` as under a write.
- *
- * What this compiler cannot show it wrote is not its to replace or remove. A skill shows it by its mark, and
- * a rule by the marker beside it listing its name, so each refusal below is exit 2: a unit that would compile
- * onto a skill or a rule written by hand, Markdown in the rules directory with no marker, a marker not in
- * this compiler's form, and any path that is a link or lies through one.
- *
- * @returns {{ owedFiles: object[], stray: { path: string, removable: boolean }[] }}
- */
+/** Judged before either half writes, so a refusal leaves no gate artifact written beside it. */
 function planGuidance(guidance, workspaceRoot) {
     const files = guidance ? claudeCodeGuidance(guidance).files : [];
     const rules = files.filter((f) => f.path.startsWith(`${GUIDANCE_RULES_DIR}/`));
-    // The marker is judged and checked beside the rules it lists; `emitGuidance` writes it after them.
     const owedFiles = rules.length
         ? [{ unit: null, marker: true, path: `${GUIDANCE_RULES_DIR}/${RULES_MARKER}`, text: markerText(rules.map((f) => path.posix.basename(f.path))) }, ...files]
         : files;
@@ -2973,8 +1703,7 @@ function planGuidance(guidance, workspaceRoot) {
             for (const file of rules) {
                 const name = path.posix.basename(file.path);
                 if (!entries.some((e) => e.name === name) || listed.has(name)) continue;
-                // Byte for byte what its unit compiles to is what a run stopped before its marker leaves, and
-                // taking that back changes nothing. Anything else is a rule written by hand.
+                // A run stopped before its marker leaves exactly its unit's output; anything else was written by hand.
                 let current;
                 try {
                     current = fs.readFileSync(path.join(rulesDir, name), "utf8");
@@ -3006,8 +1735,6 @@ function planGuidance(guidance, workspaceRoot) {
         }
     }
 
-    // What is left where guidance is written, and whether this compiler can show it wrote it. Without a marker
-    // of its own the rules directory is looked at only when a rule is owed there, and then holds no Markdown.
     const stray = [];
     if (listed instanceof Set || rules.length) {
         for (const entry of entries) {
@@ -3031,8 +1758,7 @@ function planGuidance(guidance, workspaceRoot) {
         }
         if (skillSource(text) !== null && !owed.has(rel)) stray.push({ path: rel, removable: true });
     }
-    // What the marker may list while a write is under way: the rules it lists now that are still there and
-    // still owed. Null where there is no marker to write.
+    // What the marker may list mid-write: the rules it lists now that are still there and owed; null with no marker.
     const present = new Set(entries.filter((e) => e.isFile()).map((e) => e.name));
     const kept = listed instanceof Set || rules.length
         ? rules.map((f) => path.posix.basename(f.path)).filter((name) => listed instanceof Set && listed.has(name) && present.has(name))
@@ -3040,11 +1766,6 @@ function planGuidance(guidance, workspaceRoot) {
     return { owedFiles, stray, kept };
 }
 
-/**
- * Compile a workspace's guidance: report it, and check it or write it, as `planGuidance` judged it. Returns
- * how many files drifted under `check`, and 0 otherwise. Reached whether or not the workspace has a gate
- * policy, because a workspace with none is a legitimate shape.
- */
 function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
     const { owedFiles, stray, kept } = plan;
     if (guidance === null && stray.length === 0) return 0;
@@ -3105,15 +1826,7 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
         return drifted;
     }
 
-    // Removing a file this compiler wrote is the one deletion it may do, as for the gate artifacts above: it
-    // is reproducible by definition. A rule is shown to be one by the marker that lists it, and a skill by its
-    // mark; anything else found where it writes is named and left alone.
-    //
-    // **The marker lists a rule only once it is written, and stops listing one before it is removed**, so a
-    // run stopped anywhere leaves no name listed that this compiler did not write, which a file put there
-    // later would inherit. What such a run can leave is a rule of its own that no marker lists: taken back by
-    // the next run where it is byte for byte what its unit compiles to, and otherwise left for a human.
-    // Copilot, round 4 on this change, when the marker was written first.
+    // Listed only once written, unlisted before removal: an interrupted run never lists a file it did not write.
     const markerPath = path.join(workspaceRoot, ...GUIDANCE_RULES_DIR.split("/"), RULES_MARKER);
     if (kept !== null) {
         fs.mkdirSync(path.dirname(markerPath), { recursive: true });
@@ -3161,15 +1874,7 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
     return 0;
 }
 
-/**
- * **The guidance half alone**, for a tool that drafts or migrates a workspace and owes it a compiled card:
- * `init`, `vendor` and `upgrade` (2026-09-24). The units are
- * read, planned and written by this compiler's own reader, planner and emitter, with every refusal they
- * make, and the gate policy is not read: host settings stay the output of a `compile` a human runs.
- *
- * @returns {{ declared: boolean, drifted: number }} whether a slot is declared, and under `check` how many
- * files drifted
- */
+/** The guidance half alone: the gate policy is not read, so host settings stay the output of a `compile` a human runs. */
 export function compileGuidance(named, { check = false, say = () => {} } = {}) {
     const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
     const guidance = guidanceUnits(workspaceRoot, workspaceDir);
@@ -3177,14 +1882,7 @@ export function compileGuidance(named, { check = false, say = () => {} } = {}) {
     return { declared: guidance !== null, drifted: emitGuidance(guidance, plan, { workspaceRoot, check, say }) };
 }
 
-/**
- * What compiling the guidance would change on disk, as whole-file edits relative to the repository root:
- * `{ file, next }`, where `next` is `null` for a file the compiler would remove. Nothing is written. Planned
- * as `compileGuidance` plans it, so a refusal there is a refusal here; a file in the rules directory that
- * this compiler did not write is returned as `left`, since a compile would leave it and its check stay red.
- *
- * @returns {{ root: string, edits: Array<{ file: string, next: string | null }>, left: string[] }}
- */
+/** What compiling the guidance would change, writing nothing: `next` null removes a file, and `left` is what a compile leaves. */
 export function guidanceEdits(named) {
     const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
     const guidance = guidanceUnits(workspaceRoot, workspaceDir);
@@ -3207,25 +1905,9 @@ export function guidanceEdits(named) {
     return { root: path.resolve(workspaceRoot), edits, left: stray.filter((s) => !s.removable).map((s) => s.path) };
 }
 
-// ===========================================================================================
-// 3. The command line
-// ===========================================================================================
+// ---------------------------------------------------------------- the manifest's declarations
 
-/**
- * A manifest that is there and cannot be read as one, or null when it reads or is absent.
- *
- * `compile` and `goldens` stop on it before they ask the manifest anything, because every reader below
- * takes one it cannot parse for one declaring nothing: no guidance, so a write removed every rule and skill
- * an earlier run compiled and the marker with them, and no gate policy, so a `gates.json` found by
- * convention compiled in the manifest's place. `guidanceDeclaration` refuses it as well, for the tools
- * that compile or plan guidance without passing through `compile`'s command line. `resolveWorkspace` refuses such a manifest only where
- * `--workspace` names the workspace directory; named as a repository root, as the `compile` recipe runs
- * it, nothing did. An absent manifest is still a legitimate shape (`policyPath`), and the hook's reader
- * still falls back, because it runs on every tool call. Found 2026-09-24 in the follow-ups to #447, whose
- * tidy made the loss possible.
- *
- * @returns {{ file: string, why: string } | null}
- */
+/** `{ file, why }` for a manifest that is there and will not parse as an object; null when it reads or is absent. */
 export function unreadableManifest(workspaceRoot, workspaceDir = ".portulan") {
     const file = path.join(workspaceRoot, workspaceDir, "workspace.json");
     let raw;
@@ -3245,28 +1927,7 @@ export function unreadableManifest(workspaceRoot, workspaceDir = ".portulan") {
     return null;
 }
 
-/**
- * The same answer as `policyPath`, plus WHICH ARM produced it — and, where the manifest named
- * something unusable, WHY.
- *
- * `policyPath` returns a path either way, which is all a reader of the policy needs and is exactly
- * what made the caller unable to tell two different situations apart: a workspace that NAMES a policy
- * file which is missing (a genuine error — something is declared and absent), and a workspace that
- * names none at all (a legitimate shape, per this function's own note below). Both arrived at
- * `readJson` as `ENOENT` and were reported identically, so the second — documented here as legitimate
- * — surfaced as `cannot read the gate policy at …/gates.json`, which reads like a corrupt or deleted
- * file and sends the reader to look for one that was never supposed to exist.
- *
- * Found 2026-08-22 while booting the `sleepy-panda` workspace, which declares no `gates` key and
- * composes a pack contributing two gate rules: the compiler refused with an ENOENT that mentioned
- * neither fact. Reporting declaredness is what lets the caller say which of the two it is.
- *
- * **`declared: false` is four situations, not one, so it carries a `reason`.** The first cut reported
- * every one of them as "`workspace.json` has no top-level `gates` key", which is false for a manifest
- * that is absent and false for a `gates` value this function refused — the same two-situations-one-
- * sentence defect this change exists to fix, reproduced one level down. `reason` is `no-key`,
- * `no-manifest`, `refused`, or `declared`. Found by Copilot on this pull request.
- */
+/** `{ file, declared, reason }`, `reason` one of `declared`, `no-key`, `no-manifest` or `refused`. */
 export function policyDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const base = path.join(workspaceRoot, workspaceDir);
     const manifest = path.join(base, "workspace.json");
@@ -3275,67 +1936,23 @@ export function policyDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     try {
         declared = JSON.parse(fs.readFileSync(manifest, "utf8")).gates;
     } catch {
-        // No manifest, or unreadable. `doctor` is the tool that judges a manifest; this one only needs
-        // to know where the policy is, and the default is where it is when nothing says otherwise.
-        // `compile` and `goldens` stop on an unreadable one before they ask (`unreadableManifest`), so
-        // here it reaches only the hook's reader, which must not stop.
+        // An unreadable manifest reaches here only from the hook's reader, which must not stop.
         return fallback("no-manifest");
     }
     if (declared === undefined) return fallback("no-key");
-    // Validated against the schema's `filePath` shape before it is used, and containment is
-    // checked after resolution rather than by pattern alone — a `../` chain passes any regex and
-    // still escapes. Without this, a malformed or hand-edited manifest turns a hook that runs on
-    // EVERY tool call into an arbitrary file read outside the workspace. `doctor` would refuse such
-    // a manifest, but this runner must not depend on `doctor` having been run: the two tools have
-    // no ordering between them, and the schema is the contract, not the sequence. Found by review.
-    //
-    // **`isInside`, not another hand-rolled spelling.** The containment test read
-    // `!path.relative(base, resolved).startsWith("..")` until 2026-08-22 — the spelling
-    // `./inside.mjs` exists to replace, which calls an ordinary directory named `..foo` an escape and
-    // falls back for a policy that was inside all along. This module already imports `isInside` and
-    // already carries the same warning at `recordedOrigin`, so the rule was in scope and unread.
-    // Pre-existing, and surfaced by Copilot on the pull request that touched this line.
-    //
-    // **No count is asserted here.** A first draft called this "the fifth copy"; the pre-commit
-    // checkpoint could not reproduce that figure and a census then found more, including one in THIS
-    // module at `resolveWorkspace`. The census is #331 rather than this commit, because the remaining
-    // sites do not share semantics — they disagree on the empty relative path and on absolute paths —
-    // so each needs its own red and green. An unreproducible number is worse than none.
+    // Contained after resolution: a `../` chain passes any pattern, and the hook reads this on every tool call.
     if (typeof declared === "string" && declared.trim() && FILE_PATH.test(declared)) {
         const resolved = path.resolve(base, declared);
         if (resolved !== base && isInside(base, resolved)) return { file: resolved, declared: true, reason: "declared" };
     }
-    // The manifest named something, and nothing it named is usable — a wrong type, an empty string, a
-    // shape the schema refuses, or a path that escapes the workspace. The path returned is the
-    // conventional one, which the hook's reader falls back to; `compile` and `goldens` stop on this
-    // reason whatever sits there (2026-09-24). But this is NOT the state of a manifest that named
-    // nothing, and a message conflating the two is the defect this change is about.
     return fallback("refused");
 }
 
-/**
- * Where a workspace's gate policy lives — the path alone.
- *
- * Kept as the narrow answer because most callers want exactly that, and because every existing caller
- * and test was written against a string. `policyDeclaration` is the one that also says whether the
- * workspace named it, and why when it did not.
- *
- * Read from the manifest's top-level `gates` key, because that is what the key MEANS —
- * `../spec/slots.md` calls it "a path to a JSON file the enforcement compiler reads", and `doctor`
- * resolves it. This compiler hard-coded `.portulan/gates.json` for one round, so a workspace naming a
- * different file would have had `doctor` validate one policy and `compile` compile another, with both
- * reporting green. A manifest key that validates and is never consumed is this repository's most
- * expensive recurring defect, and here it was in the very key this milestone added. Found by review on
- * the pull request.
- *
- * The default survives for a workspace with no manifest or no key — that is a legitimate shape, and
- * refusing it would make the key required, which is a spec change nobody decided.
- */
 export function policyPath(workspaceRoot, workspaceDir = ".portulan") {
     return policyDeclaration(workspaceRoot, workspaceDir).file;
 }
 
-/** The cache lifetimes Claude Code takes, as `../spec/slots.md` spells them for `sessions`. */
+/** The prompt-cache lifetimes Claude Code takes. */
 export const CACHE_LIFETIMES = ["5m", "1h"];
 
 const SESSION_SWITCHES = {
@@ -3344,15 +1961,7 @@ const SESSION_SWITCHES = {
 };
 const HEADLESS_SWITCHES = { ...SESSION_SWITCHES, exclude_dynamic_sections: (v) => typeof v === "boolean" };
 
-/**
- * A workspace's session switches, Workspace Definition 2.11's `sessions`, or null where it declares none.
- *
- * **Refused whole on any shape the schema refuses**, for `policyDeclaration`'s reason: what this returns
- * is written into the settings the host reads on every session, and this runner must not depend on `doctor`
- * having been run. So an unknown key, a switch that is not a boolean, or a lifetime the host does not take
- * stops the run with exit 2 rather than compile a guess. A manifest that cannot be read is not this
- * function's to judge: it answers null, as `policyDeclaration` falls back, and `doctor` names the fault.
- */
+/** The manifest's `sessions`, or null where it declares none or cannot be read; a shape the schema refuses throws. */
 export function sessionsDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
     let declared;
@@ -3379,21 +1988,7 @@ export function sessionsDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     return { manifest: where, ...declared };
 }
 
-/**
- * A workspace's declared multipliers, horizon and restart, Workspace Definition 2.12's `spend` and 2.13's
- * `spend.restart`, or null where it declares none.
- *
- * **Refused whole on any shape or value the ledger refuses**, for `sessionsDeclaration`'s reason: what this
- * returns is written onto the restart advisory's commands, and this runner must not depend on `doctor` having
- * been run. The reader is the ledger's own (`readSpend`), so the ranges written here are the ranges the ledger
- * prices by, and its refusal stops this run with exit 2 before anything is written. A manifest that cannot be
- * read is not this function's to judge: it answers null, as `sessionsDeclaration` does. Proposal `0038`,
- * ruling 2; added 2026-09-24.
- *
- * `spend.restart` is refused, too, in a manifest declaring a MINOR before 2.13, the gate `doctor` puts on it,
- * so no block is compiled from a declaration its own version's validator refuses. A key gated at birth fails
- * no manifest that compiles today; the keys born gated before it stay `doctor`'s alone.
- */
+/** The manifest's `spend` as the ledger reads it, or null where it declares none or cannot be read; a refused one throws. */
 export function spendDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
     let parsed;
@@ -3422,31 +2017,9 @@ export function spendDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     return spend;
 }
 
-/**
- * What to say when a workspace declares no gate policy and none is there by convention.
- *
- * This is a STATE, not a failure to read a file, and the difference is the whole point: `policyPath`'s
- * note calls an absent `gates` key "a legitimate shape, and refusing it would make the key required,
- * which is a spec change nobody decided" — and then the reader refused it anyway, with `ENOENT` on a
- * file the workspace never claimed to have.
- *
- * It stays a refusal (exit 2, nothing written), because nothing was compiled and a compiler that
- * reports success having emitted nothing is the failure this repository keeps writing checks against.
- * What changes is that the refusal names the actual state and what it costs.
- *
- * **The pack count is the load-bearing half.** A workspace in this shape may still compose packs
- * contributing gate fragments — `sleepy-panda` composes `rituals/checkpoints`, which contributes two
- * — and those rules silently reach nothing, because a fragment tightens a policy and there is none to
- * tighten. That is the fact a reader needs and the one the old message could not carry: it threw
- * before `packContributions` was ever called.
- */
+/** `guidanceOnly` is true where guidance still compiles, and `"leftover"` where only an earlier run's is removed. */
 function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, reason = "no-key", guidanceOnly = false) {
     const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
-    // **One opening per arm, because the arm is the reader's first question.** `no-key` is the shape
-    // this whole change defends as legitimate; `no-manifest` is a workspace that has not been
-    // authored yet; `refused` is a manifest that DID name a policy and named one this compiler will
-    // not read, which is neither of the other two and must not be told it has no `gates` key.
-    // A refused key stops the run whatever sits at the conventional path, so the sentence says which it is.
     const conventional = reason === "refused" && fs.existsSync(policyFile);
     const opening =
         reason === "refused"
@@ -3460,9 +2033,6 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
                 `${manifest}, and there is no \`gates.json\` at ${policyFile}.`
               : `this workspace declares no gate policy — \`workspace.json\` has no top-level \`gates\` key, ` +
                 `and there is no \`gates.json\` at ${policyFile}.`;
-    // With guidance to compile, the run goes on without a policy, and the sentence must say so: *nothing was
-    // compiled* would be false about the files it writes next. With only what an earlier run compiled from
-    // guidance no longer declared, it goes on to remove that, and says so as well.
     const outcome =
         guidanceOnly === "leftover"
             ? "No enforcement is compiled, and no guidance is declared: what an earlier run compiled from guidance is this compiler's to remove, and is named below."
@@ -3474,10 +2044,7 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
     try {
         composed = packContributions(workspaceRoot, workspaceDir, packOptions);
     } catch {
-        // The pack layer has refusals of its own — a shadowed pack, a malformed pack manifest, an
-        // unresolvable root. Swallowed HERE and nowhere else: this message is about the missing policy,
-        // and a pack refusal raised from inside a diagnostic would replace the answer with a different
-        // question. Declare a policy and the very next run surfaces it on its own terms.
+        // A pack's refusal would replace this answer; with a policy declared, the next run raises it.
     }
     const contributions = composed?.contributions ?? [];
     const rules = contributions.reduce((n, c) => n + (c.fragments?.length ?? 0), 0);
@@ -3501,168 +2068,54 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
     return lines.join("\n  ");
 }
 
-// ===========================================================================================
-// Pack-contributed gate fragments — the cascade's middle layer
-// ===========================================================================================
-//
-// The cascade is `core < pack < workspace`, and until now no pack contributed to the gate policy —
-// ../packs/tools/README.md called that "the cascade's missing middle". The floor was ruled
-// before any of it was built (../.portulan/proposals/0010-prohibited-as-a-fourth-universal-tier.md,
-// agreed 2026-07-27): **packs may only tighten.** A pack may raise a tier or add a prohibition; it may
-// never demote another layer's classification, because a composed-in third-party artifact able to
-// demote `push` to Auto would be a dependency with the power to disarm the gate containing it — and
-// the demotion would look exactly like configuration.
-//
-// That ruling is why the policy was modelled as a list of id-addressed rules with no dependence on
-// being the only source. This is the merge step it was shaped for: an addition, not a redesign.
+// ---------------------------------------------------------------- pack-contributed gate fragments
 
-/** The tier partial order, weakest to strongest. Tightening moves UP it and never down. */
 const TIER_ORDER = ["auto", "propose", "gated", "prohibited"];
 
-/** Where a tier sits in the partial order; `-1` for anything that is not a tier. */
 export const tierRank = (tier) => TIER_ORDER.indexOf(tier);
 
-/**
- * Resolve one declared pack name — the canonical `category/name` — against a list of roots, in order.
- *
- * Root-parameterized rather than deriving one location, because the two shapes that matter are not
- * the same tree: a workspace composing a pack that ships beside it resolves under its own `packs/`,
- * while an adopter installing from a feed resolves inside the installed plugin. One resolver, told
- * where to look, so the second case is the same code path rather than a parallel one discovered later.
- *
- * Returns `{ name, category, pack, dir, manifest, root }` with `dir` and `root` null when nothing
- * matched. `root` is which root answered — the fact a caller states per pack once the set is a union.
- */
+/** The first of `roots` holding the pack; `dir` and `root` are null, with a `why`, where none does or the name is malformed. */
 export function resolvePack(rawName, roots = []) {
-    // Coerced once, and the COERCED value is what every return carries. This compiler reads
-    // `workspace.json` without validating it — `doctor` is the tool that judges a manifest, and the
-    // two have no ordering between them — so `packs` may hold a number or an object, and the caller
-    // formats what comes back (`.padEnd()`), which on a non-string throws a TypeError that aborts the
-    // whole compile instead of reporting one unresolvable pack. Found by review.
     const name = String(rawName);
     const parts = name.split("/");
     if (parts.length !== 2 || !parts[0] || !parts[1]) {
         return { name, category: null, pack: null, dir: null, manifest: null, root: null, why: "not in `category/name` form" };
     }
     const [category, pack] = parts;
-    // A name is a name, never a path: a `..` segment here would resolve a declared pack outside every
-    // root it was supposed to be searched in.
+    // Slugs, so no `..` segment resolves a pack outside the roots.
     if (!SLUG.test(category) || !SLUG.test(pack)) {
         return { name, category: null, pack: null, dir: null, manifest: null, root: null, why: "`category/name` must both be slugs" };
     }
     for (const root of roots) {
         const dir = path.join(root, category, pack);
         const manifest = path.join(dir, "pack.json");
-        // `root` rides along because the resolution set may now be a union, and *which* root answered
-        // is the fact a caller states per pack. Deriving it afterwards by re-testing the roots would
-        // be a second implementation of this loop, and the two would drift on the first-match rule.
         if (fs.existsSync(manifest)) return { name, category, pack, dir, manifest, root, why: null };
     }
     return { name, category, pack, dir: null, manifest: null, root: null, why: "no pack.json under any resolution root" };
 }
 
-/**
- * The roots a declared pack name is resolved against for a workspace on disk.
- *
- * Derived from the manifest's `tree` rather than declared, because adding a key for it would be a
- * Workspace Definition change nobody decided — and a slot before its consumer is the mistake that
- * specification was written to avoid. A workspace with no `tree` gets no roots, and its declared packs
- * are reported unresolvable rather than failed: the same answer `tree`'s absence already gives every
- * other claim that needs a tree to check.
- */
 export function packRoots(workspaceDir, workspace) {
     const tree = workspace?.tree;
     if (typeof tree === "string" && tree.trim()) return [path.resolve(workspaceDir, tree, "packs")];
     return [];
 }
 
-/**
- * The `options` object for `packContributions` when roots were named on the command line.
- *
- * **Named roots REPLACE the root derived from `tree`; they are not searched ahead of it.** The first
- * implementation appended the derived root after the named ones here, while `doctor` and `index` — both
- * of which spell this as `options.packRoots ?? packRoots(…)` — replaced it. Three tools, two semantics,
- * and every prose carrier described only one of them. The pre-commit checkpoint on the change that added
- * the flag found it by attacking it: a workspace with the pack sitting in its own tree, given
- * `--pack-root <an empty directory>`, compiled **green from the local copy** — which is exactly the thing
- * the flag exists to exclude, since the whole point is that "the pack resolved from the feed" must not be
- * satisfiable by a copy lying around. Replacement is the semantics that serves that, so replacement is
- * what all three now do, and `cli/compile.test.mjs` pins the divergent case rather than trusting the
- * prose to hold the three in line.
- *
- * Returns `{}` when nothing was named, so the derived-only path stays byte-identical to what it was
- * before the flag existed — a caller that passes no roots must not take a different branch, which is the
- * property that keeps the flag a *surface* on the existing behaviour rather than a second one.
- */
-// **No caller since `--pack-root auto` landed** — the command line now passes `named` into `rootPlan`
-// and the precedence rule decides. Kept, exported and documented because four files cite it in prose
-// for the DEFECT it records rather than for the function it is: three tools, two semantics, found by a
-// checkpoint. A reader arriving from one of those citations should find this note rather than infer
-// that the code path is live.
+/** Named roots replace the one derived from `tree` rather than precede it; `{}` where none is named. */
 export function namedRootsOption(workspaceRoot, namedRoots) {
     if (!namedRoots?.length) return {};
     return { packRoots: [...namedRoots] };
 }
 
-/**
- * The one place the three tools agree on where a resolution root comes from.
- *
- * `compile`, `doctor` and `index` each spelled the derived-versus-named choice for themselves, and two
- * of the three spelled it differently — the divergence `namedRootsOption` records, found by a
- * checkpoint rather than by the suite. Discovery adds a third source and a precedence between all
- * three, which is three more chances to diverge, so the ordering is written once in `discover.mjs`'s
- * `resolutionRoots` and **called** by each tool rather than described in three places.
- */
 export function rootPlan(workspaceDir, manifest, { named = [], namedGiven = null, discovery = null, forced = false } = {}) {
     return resolutionRoots({ named, namedGiven, derived: packRoots(workspaceDir, manifest), discovery, forced });
 }
 
-/**
- * What the packs a workspace declares contribute. Reads each resolved `pack.json` and collects its
- * gate fragments. It does NOT validate the manifest against the Pack Definition — `doctor` does that,
- * and this compiler must not depend on `doctor` having been run: the two have no ordering between
- * them. What it depends on instead is `parse`, which validates every composed rule exactly as it
- * validates a hand-written one, so a malformed fragment is refused by the same code either way.
- */
-/**
- * How a resolved pack's ORIGIN is recorded in an emitted artifact — a deliberate collapse of the
- * resolver's three tags into two, and the collapse is the load-bearing part.
- *
- * `resolutionRoots` tags roots `named | derived | discovered`. Recording that raw would be wrong in a
- * way that turns this whole feature into a liability: the PINNED rail spells its root
- * (`--pack-root packs`, tagged `named`) while a bare run derives the same directory (tagged
- * `derived`). Two documented-correct spellings of the same world would emit different bytes, and
- * `verify/compile.sh` would go red on a tree nothing was wrong with — a per-machine false red, which
- * is worse than the silent hazard #264 is about.
- *
- * So: `discovered` iff the answering root came from discovery — **which is a statement about where the
- * root was FOUND, not about where it sits.** Discovery reads a record under `CLAUDE_CONFIG_DIR`, and a
- * hermetic run can point that inside the tree, so a discovered root is not necessarily an external one;
- * the docblock said "a directory outside this repository" until review caught the conflation, and the
- * distinction is this field's whole subject rather than a quibble — it is why `outside-tree` exists as
- * a separate answer below. Otherwise `tree`, when the root is one the repository itself yields. A NAMED root that is not under the workspace root is neither, and is recorded as
- * `outside-tree` rather than flattened into `tree`, because calling somebody's `--pack-root /elsewhere`
- * "the tree" would be this field's first lie.
- */
+/** `discovered` where discovery found the root; else `tree` or `outside-tree` by where it sits, never how it was named. */
 export function recordedOrigin(root, plan, workspaceRoot) {
     const same = (a, b) => path.resolve(a) === path.resolve(b);
     const tagged = (plan?.origins ?? []).find((o) => same(o.root, root));
     if (tagged?.origin === "discovered") return "discovered";
-    // **`derived` and `named` take the SAME inside-the-repository test**, and the first draft trusted
-    // `derived` on its tag alone. It is derived from the manifest's `tree`, which is a string a human
-    // edits: `tree: "../../elsewhere"` resolves a derived root of `/elsewhere/packs` — measured — and
-    // that would have been recorded as `tree`. A tag says where a root CAME FROM; only the path says
-    // whether it is in this repository, and this field's whole job is the second question. Copilot.
-    //
-    // Inside INCLUDES being the repository itself, which the first draft called `outside-tree` on a
-    // `rel` of `""`. By this function's own standard that was the field's first lie.
-    //
-    // **Both sides resolved through `realpathSync`**, because a lexical comparison makes two spellings
-    // of one directory disagree: `--workspace <alias> --pack-root <realpath>` recorded `outside-tree`
-    // for a root plainly inside the tree, which would emit a different artifact for an identical world
-    // — the per-machine false red this whole design refuses. Measured. It is the same trap #220's
-    // second arm repaired in the Stop-gate's divergence sentence, and it is worth stating twice
-    // because the two sites were written a day apart and neither inherits the other's guard.
+    // Real paths on both sides: compared lexically, an alias of the tree would record `outside-tree`.
     const real = (dir) => {
         try {
             return fs.realpathSync(path.resolve(dir));
@@ -3670,28 +2123,10 @@ export function recordedOrigin(root, plan, workspaceRoot) {
             return path.resolve(dir);
         }
     };
-    // **`isInside`, not a fourth hand-rolled spelling.** `!rel.startsWith("..")` calls a directory
-    // literally named `..foo` outside the tree — and this repository has already paid for that exact
-    // reasoning once: `./index.mjs`'s docblock records it as the ninth fail-open found in this
-    // scaffolding, and *the first one written by the change that cites the class*. This was the second.
-    // The helper is exported precisely so a third copy cannot drift into it. Copilot.
     return isInside(real(workspaceRoot), real(root)) ? "tree" : "outside-tree";
 }
 
-/**
- * Two copies of one pack answered, and this says what differs between them.
- *
- * **One carrier, because the comparison has already been wrong twice.** `doctor` grew this first and
- * its history is the argument for not writing a fourth: a first spelling projected `[id, tier, action]`
- * and so read a copy differing in `reason` as agreeing — while `composeFragments` pushes the WHOLE
- * fragment, so those differences do reach the compiled policy; a second compared the whole fragment
- * but claimed *byte-identical*, which `JSON.stringify` of a parsed value cannot promise. This is that
- * third, correct version, moved here so `doctor` and `compile` cannot drift apart about what a shadow
- * IS — proposal `0020`'s rule, applied to a function rather than to a sentence.
- *
- * Parsed and key-order-normalised is the RIGHT comparison: reformatting a `pack.json` changes nothing
- * about what the pack contributes, so reporting it would be noise.
- */
+/** Compared parsed, key-sorted and whole: `composeFragments` takes every field of a fragment. */
 export function packDifferences(mine, other) {
     const canonical = (v) =>
         Array.isArray(v)
@@ -3708,13 +2143,7 @@ export function packDifferences(mine, other) {
     return differs;
 }
 
-/**
- * The non-discovered copy of a pack that a discovered root answered for — or `null` when there is no
- * shadow. `originOf` maps a root to its tag; pass `plan.origins`' lookup.
- *
- * Only a **discovered** answer can be shadowed in the sense that matters: a named root replaces the
- * derived one, so nothing is behind it, and a derived answer is the tree's own copy already.
- */
+/** The copy behind a discovered answer, or null: only a discovered one can shadow, as a named root replaces the derived. */
 export function shadowedCopy(name, answeringOrigin, roots, originOf) {
     if (answeringOrigin !== "discovered") return null;
     const behind = resolvePack(name, roots.filter((r) => originOf(r) !== "discovered"));
@@ -3727,21 +2156,12 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
     try {
         manifest = JSON.parse(fs.readFileSync(path.join(base, "workspace.json"), "utf8"));
     } catch {
-        // No manifest, or unreadable. `doctor` is the tool that judges a manifest; this one only needs
-        // to know what is composed, and with nothing to go on the answer is nothing.
         return { contributions: [], unresolved: [] };
     }
     const declared = manifest?.packs;
     if (!Array.isArray(declared) || declared.length === 0) return { contributions: [], unresolved: [] };
 
-    // `options.packRoots` keeps its pre-discovery meaning — the FINAL root set, replacing the derived
-    // one; a caller passing `[]` means the empty set and still gets it. `options.named` is the
-    // command-line shape. **Both now go through the shared rule**, `namedGiven` carrying the
-    // final-set meaning, because the literal plan this replaces was the sixth site of the defect this
-    // change is about: given `packRoots` AND `forced`, it silently ignored the discovery request, and
-    // it returned a plan with no `origins` and no `refusal` — breaking one file over the uniform shape
-    // `resolutionRoots` exists to guarantee. Found by the pre-commit checkpoint's own sibling sweep,
-    // after the same class had already been found once in `index` inside this change.
+    // `options.packRoots` is the final root set, `[]` included; `options.named` is the command line's.
     const givenPackRoots = options.packRoots !== undefined && options.packRoots !== null;
     const plan = rootPlan(base, manifest, {
         named: givenPackRoots ? [...options.packRoots] : (options.named ?? []),
@@ -3761,37 +2181,6 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
             continue;
         }
         const packManifest = readJson(found.manifest, `the pack manifest for \`${found.name}\``);
-        // **A shadowed pack is a could-not-run, not a resolution** (#316). Two roots answered for one
-        // declared name and the invocation does not say which the caller meant, so this compiler has
-        // no honest way to pick — and unlike `doctor`, which reports and never grades because an
-        // install state is a fact about a machine rather than a verdict about the repository, this one
-        // does not report: it EMITS. Picking silently wrote the discovered copy's fragments into the
-        // artifact while `verify/compile.sh` read the tree's, which on this project's own host meant a
-        // `git commit --no-verify` matcher that the tree had deliberately removed as false coverage.
-        //
-        // **Refused at RESOLUTION, so `--check` and the write path inherit one rule.** Refusing only
-        // on write would make one tool answer one ambiguity two ways: the check would go on adopting
-        // the discovered world and exit 1 — asserting that the *repository* drifted when it had not.
-        // An exit code is the machine-read API, and a false 1 is a false verdict about the tree.
-        //
-        // **Every unasked shadow refuses, including one whose manifests agree**, which reads as
-        // over-strict until you follow the bytes: `recordedOrigin` tags the answering root into
-        // `$portulan.packs[].origin`, so a discovered answer emits `discovered` where the rail's
-        // artifact says `tree`. Agreement in the manifests is therefore not agreement in the artifact,
-        // and a carve-out for it would ship a compile that still reds the recipe it was meant to
-        // reconcile with. The message distinguishes the two cases; the refusal does not.
-        //
-        // **Only where the caller did not choose.** `--pack-root auto` is discovery ELECTED, and
-        // electing it is the choice this refusal exists to ask for. Both spellings are offered in the
-        // message, because naming only the tree would make the refusal decide the question it claims
-        // to be handing back.
-        //
-        // **The `named` half of this guard is defence in depth, and that was measured rather than
-        // assumed.** Forcing the condition to `true` — refuse unconditionally — leaves the named-root
-        // case still passing: a named root REPLACES the derived one, so the plan carries no discovered
-        // root, `shadowedCopy` finds nothing behind, and there is no shadow to refuse. The protection
-        // is structural. The clause stays because it states the intent at the site where a future
-        // change to `resolutionRoots` could quietly make it load-bearing.
         if (!(options.forced ?? false) && plan.source !== "named") {
             const behind = shadowedCopy(found.name, recordedOrigin(found.root, plan, workspaceRoot), roots, (r) =>
                 (plan.origins ?? []).find((o) => path.resolve(o.root) === path.resolve(r))?.origin,
@@ -3809,24 +2198,6 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
                     );
                 }
                 const differs = packDifferences(packManifest, other);
-                // **Both ROOTS by path — the roots, not the pack directories.** `resolvePack` returns
-                // both, and a first cut printed `dir` (`<root>/<category>/<pack>`) while calling it a
-                // root: a diagnostic that mislabels the thing it names, in a message whose own claim is
-                // to name both roots. The root is also the more useful of the two, because it is what a
-                // reader types back into `--pack-root`. A refusal naming only one hands back a choice
-                // while withholding half of what it is between. Printing the absolute path is safe in a
-                // way it is not in `$portulan.packs`: this is stderr, read once by a human, never a
-                // tracked artifact, so #264's origins-never-paths rule (which exists to stop a
-                // machine-dependent path being committed) does not reach it. `doctor` already prints it
-                // in its resolves-from note, so the two tools now name the same two directories.
-                //
-                // **"Discovered on this host", never "outside this repository".** Discovery reads a
-                // record under `CLAUDE_CONFIG_DIR`, which a hermetic run can point INSIDE the tree — so
-                // a discovered root is not necessarily an external one, and the message must not assert
-                // a location it has not tested. `recordedOrigin` keeps `discovered` and `outside-tree`
-                // as separate answers for exactly this reason: where a root came from and where it sits
-                // are different questions, and the path is printed right there for a reader who wants
-                // the second one. Caught by review after the first cut conflated them.
                 throw new CompileError(
                     `\`${found.name}\` is SHADOWED — it resolved under ${found.root}, a root discovered on this ` +
                         `host, while the root ${path.relative(workspaceRoot, behind.root)} also carries it. ` +
@@ -3839,10 +2210,6 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
             }
         }
         const fragments = packManifest?.contributes?.gates;
-        // Checked here rather than left to `composeFragments` iterating it: a manifest is a file a
-        // human edits, `doctor` may not have run (the two tools have no ordering between them), and a
-        // non-array here would surface as a bare TypeError naming neither the pack nor the field.
-        // `?? []` covers absent, not malformed — those are different failures and only one is benign.
         if (fragments !== undefined && !Array.isArray(fragments)) {
             throw new CompileError(
                 `the pack manifest for \`${found.name}\` declares \`contributes.gates\` as ` +
@@ -3854,35 +2221,14 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
             pack: found.name,
             dir: found.dir,
             fragments: fragments ?? [],
-            // **Provenance, recorded per pack**, so the artifact this compiles into can say what
-            // compiled it (#264). `version` comes from `portulan.version` — the pack manifest's own
-            // location for it, not a top-level `version` — and its ABSENCE is recorded as such rather
-            // than as a blank, because "this pack declares no version" and "I did not look" are
-            // different facts and only one of them is the pack's.
             origin: recordedOrigin(found.root, plan, workspaceRoot),
             version: typeof packManifest?.portulan?.version === "string" ? packManifest.portulan.version : null,
         });
     }
-    // `plan` travels with the result because every consumer prints it: which source won, and the path
-    // it won with, is what tells a feed resolution from a local one.
     return { contributions, unresolved, plan };
 }
 
-/**
- * Compose pack-contributed fragments onto a workspace policy. **Tighten-only, and it throws.**
- *
- * A demotion is refused loudly rather than dropped quietly, because the two are not the same event: a
- * backend refusing a rule it cannot express is a coverage gap, while a pack moving `gated` to
- * `propose` is an attempt to disarm a gate, and a build that continues past it has published an
- * artifact weaker than the policy it claims to compile. Failing closed is right *here* and wrong in
- * ./gate.mjs for a reason worth keeping straight: this runs at build time against a file you
- * can edit, while that runs on every tool call and a refusal there makes the session undriveable.
- *
- * `auto` is barred by the Pack Definition's tier enum, so a schema-valid pack cannot express a
- * demotion to unattended at all. It is checked again here anyway — this compiler does not depend on
- * the schema having been applied, and an unranked tier reaching the comparison would otherwise sort
- * below everything and read as a tightening of nothing.
- */
+/** Tighten-only: a fragment that would demote a rule, or change what it matches, throws. */
 export function composeFragments(policy, contributions) {
     const rules = [...(policy?.rules ?? [])];
     const at = new Map(rules.map((rule, i) => [rule?.id, i]));
@@ -3892,22 +2238,7 @@ export function composeFragments(policy, contributions) {
     for (const { pack, fragments } of contributions) {
         for (const fragment of fragments ?? []) {
             const id = fragment?.id;
-            // **The id is validated HERE even though `parse` validates it too, and the duplication is
-            // the point** (#111). Composition deliberately runs BEFORE `parse`, so that a fragment is
-            // graded by exactly the code that grades a hand-written rule — but that ordering means a
-            // malformed id survives composition and surfaces from `parse` with **no pack context at
-            // all**: `rule id undefined is not a slug`, which sends an adopter to audit their own
-            // `gates.json`, the one file that is not at fault. Every other refusal in this loop names
-            // the contributing pack, because naming the dependency is what the merge step is for.
-            //
-            // It fails closed either way — `parse` refuses the composed policy and nothing invalid
-            // compiles — so this is a diagnostic repair, not a correctness one, and it is written down
-            // as such.
-            //
-            // **It also closes a path the issue did not name.** `at` is keyed by `rule?.id`, so with no
-            // check here a SECOND id-less fragment finds `at.has(undefined)` true and is composed onto
-            // the first one — two unrelated fragments from two packs merged because they were equally
-            // malformed, reported as a tightening of a rule that does not exist.
+            // Checked before `parse` so the refusal names the pack, and so two id-less fragments cannot merge on `undefined`.
             if (typeof id !== "string" || !SLUG.test(id)) {
                 throw new CompileError(
                     `pack \`${pack}\` contributes a fragment whose id is ${JSON.stringify(id)}, which is not a slug. ` +
@@ -3937,14 +2268,6 @@ export function composeFragments(policy, contributions) {
             }
             const base = rules[at.get(id)];
             const baseRank = tierRank(base?.tier);
-            // The base's tier must BE a tier before any comparison means anything. Without this,
-            // `tierRank` returns -1 for a malformed base and every fragment outranks it, so the
-            // refusal below never fires and the fragment REPLACES the malformed rule — a policy
-            // `parse` refuses on its own compiles green once a pack happens to name the same id.
-            // Measured: a base rule at tier `bogus` was refused by `parse` alone, and accepted after
-            // composition, reported as `tightens bogus → gated`. That is a fail-open in gate
-            // machinery healed by a dependency, and the printed provenance claims a tightening from
-            // a tier that is not one. Found by review, in the suppressed channel.
             if (baseRank < 0) {
                 throw new CompileError(
                     `pack \`${pack}\` contributes a fragment for \`${id}\`, but the policy's own rule \`${id}\` ` +
@@ -3953,14 +2276,6 @@ export function composeFragments(policy, contributions) {
                         `policy first. A pack must never be able to make an invalid policy compile.`,
                 );
             }
-            // A tier is not the whole rule. Raising the tier while REPLACING the action removes the
-            // matcher and passes every rank comparison — measured on this repository's own policy: a
-            // fragment `{id: force-push-without-a-lease, tier: prohibited, action: {none: …}}` was
-            // reported as `tightens gated → prohibited` and the emitted `Bash(git push --force:*)`
-            // gate DISAPPEARED, leaving the workspace strictly less cautious about the exact action
-            // the rule exists to gate. Ids are greppable by design and ship in core, so knowing one
-            // is not a barrier. A pack may raise a rule's tier; it may not redefine what the rule
-            // matches. Found by the pre-commit supervisor, which is the checkpoint's whole argument.
             if (rank <= baseRank) {
                 throw new CompileError(
                     `pack \`${pack}\` would move rule \`${id}\` from \`${base?.tier}\` to ` +
@@ -4009,18 +2324,12 @@ function readJson(file, what) {
     }
 }
 
-/** The emitted artifact, as text. One writer, so `--check` compares what `--write` would produce. */
 export function render(settings) {
     return `${JSON.stringify(settings, null, 2)}\n`;
 }
 
-/**
- * Print the per-host backend matrix.
- *
- * The criterion asks for the floor backend to be "positioned in the matrix as the floor backend:
- * what every host falls back to, and all that a host with no hook system has" — so the matrix says
- * that in words rather than leaving a reader to infer it from a column heading.
- */
+// ---------------------------------------------------------------- the command line
+
 function printMatrix(say, parsed, columns, { source }) {
     say(`gate policy: ${source} — ${parsed.rules.length} rule(s), ${columns.length} backend(s)`);
     say();
@@ -4042,14 +2351,6 @@ function printMatrix(say, parsed, columns, { source }) {
     }
     say();
 
-    // The honest degradation signal, and the reason the matrix is worth printing at all: not which
-    // backend is fuller, but what this policy declares that NOTHING enforces.
-    //
-    // Split by tier, because the two halves mean opposite things and printing them together would
-    // pad the alarming number with a harmless one. An `auto` rule compiled by no backend is the
-    // system working — unattended is what that tier means. A `gated` or `prohibited` rule compiled
-    // by no backend is a gate that exists only as a sentence, which is the thing this product is
-    // against. Reporting eight where three are real is how a report gets skimmed.
     const uncovered = rows.filter((r) => columns.every((c) => r.backends[c.backend].verdict === "refused"));
     const gaps = uncovered.filter((r) => r.tier === "gated" || r.tier === "prohibited");
     const unattended = uncovered.filter((r) => r.tier === "auto");
@@ -4065,11 +2366,6 @@ function printMatrix(say, parsed, columns, { source }) {
     }
 }
 
-/**
- * Print each unit against each host: the tier it declares, and what each host makes of it. The degradation
- * report for guidance, derived from `GUIDANCE_HOSTS` rather than written beside it, as the gate matrix is
- * derived from the backends.
- */
 function printGuidanceMatrix(say, guidance) {
     const hosts = Object.entries(GUIDANCE_HOSTS);
     say(`guidance: ${guidance.source} — ${guidance.units.length} unit(s), ${hosts.length} host(s)`);
@@ -4089,30 +2385,7 @@ function printGuidanceMatrix(say, guidance) {
     say("  A unit a host cannot express in its tier is carried as a one-line pointer to its file: late, never lost.");
 }
 
-/**
- * What `--workspace <dir>` names, and where the workspace inside it lives.
- *
- * Two shapes, told apart by **`tree`** — the one thing proposal 0017 says is keyed to location, and the
- * same key `cli/vendor.mjs` reads to decide a residence:
- *
- * - `<dir>` is a **repository root** — no manifest here, so the workspace is at `.portulan` and this is
- *   byte-identical to what this tool did before the distinction existed.
- * - `<dir>` is a **workspace directory** — it holds `workspace.json`. A manifest declaring `tree`
- *   resolves back to the repository it governs; one declaring none is feed-side, and *is* its own root,
- *   because an installed plugin's directory is the workspace root.
- *
- * Nothing here validates the manifest. `doctor` judges manifests and these two tools have no ordering
- * between them — this one only needs to know where the policy is.
- *
- * **`workspaceRoot` is returned as given on the repository-root branch and resolved on the other two,
- * and that asymmetry is deliberate rather than an oversight.** The repository-root branch is the path
- * every existing caller takes, including `.portulan/verify/compile.sh`'s `--workspace .`; returning the
- * argument verbatim is what keeps this change byte-identical for them, output included — `compile` joins
- * this value into the paths it PRINTS, so resolving it here would turn `.claude/settings.json` into an
- * absolute path in every run, for no defect. The other two branches derive a path rather than echoing
- * one, and a derived path has to be absolute to mean anything. Raised as an inconsistency by Copilot
- * (round 10 on #164) and declined on that ground; the contract is stated here rather than changed.
- */
+/** A directory with `workspace.json` is a workspace directory, its own root without a `tree`; any other, a repository root. */
 export function resolveWorkspace(named) {
     const dir = path.resolve(named);
     const manifestPath = path.join(dir, "workspace.json");
@@ -4120,12 +2393,7 @@ export function resolveWorkspace(named) {
     try {
         raw = fs.readFileSync(manifestPath, "utf8");
     } catch (cause) {
-        // **Only `ENOENT` means "this is not a workspace directory".** Anything else — `EACCES` above
-        // all — means the question could not be answered, and falling back to `.portulan` would answer
-        // it *no* and then fail somewhere else with a confusing secondary error about a policy file.
-        // The first cut of this function caught everything, which is the fail-open — "nothing looked"
-        // reported as "nothing wrong" — committed in a change whose own header states the rule three times.
-        // Copilot, round 1 on #164.
+        // As given, not resolved: `compile` prints paths built on it.
         if (cause.code === "ENOENT") return { workspaceRoot: named, workspaceDir: ".portulan" };
         throw new CompileError(
             `${manifestPath} could not be read — ${cause.code ?? cause.message}. Only a MISSING manifest means ` +
@@ -4144,8 +2412,7 @@ export function resolveWorkspace(named) {
     if (typeof manifest?.tree === "string" && manifest.tree.trim()) {
         const root = path.resolve(dir, manifest.tree);
         const inside = path.relative(root, dir);
-        // A `tree` that does not contain its own workspace is a manifest `doctor` refuses; here it just
-        // means the derivation cannot be trusted, so the safe answer is the one that changes nothing.
+        // A `tree` that does not contain its workspace cannot be trusted, so the answer is the one that changes nothing.
         if (inside && !inside.startsWith("..") && !path.isAbsolute(inside)) {
             return { workspaceRoot: root, workspaceDir: inside.split(path.sep).join("/") };
         }
@@ -4154,10 +2421,6 @@ export function resolveWorkspace(named) {
     return { workspaceRoot: dir, workspaceDir: "." };
 }
 
-/**
- * The help screen — see `./doctor.mjs`'s for the contract and why these three gained one late.
- * `../.portulan/dod.md` condition 4 binds it: every flag below exists in the parser above.
- */
 function usage() {
     return [
         "portulan compile — compile a workspace's gate policy into host enforcement",
@@ -4183,9 +2446,7 @@ export function run(argv, options = {}) {
     const say = (line = "") => {
         if (!options.quiet) process.stdout.write(`${line}\n`);
     };
-    // **Before every other argument decision**, so asking for help cannot be outranked by a
-    // complaint about the rest of the command line. `./portulan.mjs` states the contract: an
-    // explicit `--help` exits 0, because asking for help is a request and it succeeded.
+    // First, so `--help` is answered whatever else the command line holds.
     if (argv.includes("--help") || argv.includes("-h")) {
         say(usage());
         return 0;
@@ -4194,24 +2455,6 @@ export function run(argv, options = {}) {
         let named = process.cwd();
         let check = false;
         let showMatrix = false;
-        // Named pack roots, which REPLACE the root derived from `tree` rather than being searched ahead
-        // of it — see `namedRootsOption` for why that distinction cost a checkpoint finding.
-        // `packContributions` has taken `options.packRoots` since session 0 — shaped so that an adopter
-        // resolving from an installed feed travels the same code path as a workspace whose packs ship
-        // beside it — and nothing ever set it, so the parameter was reachable only from a test.
-        // Discovery of a host's plugin cache landed at milestone 7 for BOTH halves (#123): ./discover.mjs
-        // dereferences a POINTER's `governed_by`, and `--pack-root auto` resolves a pack root from the same
-        // record.
-        //
-        // **Discovery IS the default as of 2026-08-13**, and this comment said the opposite — *"what is
-        // deliberately NOT taken is a DEFAULT … defaulting it would change what every existing run
-        // resolves against"*. It would, and the maintainer ruled the change: row 7's clause makes
-        // `--pack-root` *optional where discovery finds a root*, and it was not. Both of the old
-        // sentence's grounds survive where they were actually load-bearing — a **named** root still
-        // REPLACES the derived one (#117, untouched, the arm above), and a required check's verdict still
-        // cannot move with the machine, because `../.portulan/verify/compile.sh` **names its root** and
-        // `./pinned-roots.live.test.mjs` reds if it stops. What changed is which carrier holds that
-        // second guarantee: the pin, not the absence of a default.
         const namedRoots = [];
         let forced = false;
         for (let i = 0; i < argv.length; i += 1) {
@@ -4224,30 +2467,18 @@ export function run(argv, options = {}) {
             } else if (argv[i] === "--pack-root") {
                 const root = argv[i + 1];
                 i += 1;
-                // A SINGLE leading `-` is refused too, not just `--`: `--pack-root -h` would otherwise
-                // consume the flag as a path and fail later as an unreadable one. `doctor` already read
-                // it this way, so this aligns the three rather than inventing a rule. A directory whose
-                // name really begins with `-` is `./-name`, the same escape `auto` takes.
+                // A value starting with `-` is a flag, not a path; a directory so named is `./-name`.
                 if (root === undefined || root.startsWith("-"))
                     throw new CompileError(
                         "--pack-root needs a directory, or `auto` to discover one from the host plugin cache. " +
                             "A directory actually named `auto` is `./auto`",
                     );
-                // The keyword, matched on the RAW argument before `path.resolve`, so a directory
-                // genuinely named `auto` is still reachable as `./auto`. See ./discover.mjs.
+                // Matched raw, so `./auto` still names a directory.
                 if (root === AUTO) {
                     forced = true;
                     continue;
                 }
-                // A root that is not there is a fact about the filesystem, not a pack that failed to
-                // resolve — and reporting it as the latter sends an author to the one file that is not
-                // at fault. Same distinction as ../.portulan/memory/verify-preconditions-fail-closed.md.
-                //
-                // A FILE is the sharper case here than in the other two tools, and the reason is what this
-                // one emits: a file-valued root made resolution fail and produced a **misleading green
-                // compile** that had simply ignored the intended root. A green is what a session acts on,
-                // so it is worse than the exit 2 the argument deserves. Third carrier of one rule, found by
-                // Copilot on #117, round 7 — the sibling class the 2026-07-27 ruling names.
+                // A missing or file-valued root would compile green with every pack unresolved.
                 let rootStat = null;
                 try {
                     rootStat = fs.statSync(root);
@@ -4265,19 +2496,12 @@ export function run(argv, options = {}) {
             } else throw new CompileError(`unknown argument ${JSON.stringify(argv[i])}`);
         }
 
-        // Refused HERE — the last statement of the argument parse, before a workspace is resolved or a
-        // policy read. It sat below both until Copilot's round 2, where an unrelated workspace or
-        // policy error masked the refusal and this tool disagreed with the four beside it about *when*
-        // the answer is given. The other tools' tests pin exactly that property; this one's did not,
-        // which is why the placement could drift here and nowhere else.
+        // Before the workspace is resolved, so no workspace or policy error masks this refusal.
         const bothAsked = namedWithAuto(namedRoots, forced);
         if (bothAsked) throw new CompileError(bothAsked);
 
-        // The workspace may be named as a repository root or as the workspace directory itself, and the
-        // second is how a feed-side workspace is reachable at all — see `resolveWorkspace`.
         const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
-        // Before anything asks the manifest a question, because every reader below takes one that does not
-        // parse for one declaring nothing, and this run would act on that: see `unreadableManifest`.
+        // First: every reader below takes a manifest that will not parse for one declaring nothing.
         const unreadable = unreadableManifest(workspaceRoot, workspaceDir);
         if (unreadable !== null) {
             throw new CompileError(
@@ -4287,45 +2511,21 @@ export function run(argv, options = {}) {
                     `manifest, then compile again`,
             );
         }
-        // The guidance is read before the policy, because a malformed unit is a reason this run cannot
-        // compile honestly whichever half it reaches first, and because a workspace with guidance and no
-        // policy still has something to compile.
         const guidance = guidanceUnits(workspaceRoot, workspaceDir);
         const guidancePlan = showMatrix ? null : planGuidance(guidance, workspaceRoot);
-        // Read beside the guidance and for the same reason: a malformed declaration is a reason this run cannot
-        // compile honestly whichever half it reaches first.
         const sessions = sessionsDeclaration(workspaceRoot, workspaceDir);
         const spend = spendDeclaration(workspaceRoot, workspaceDir);
         const { file: policyFile, declared: policyDeclared, reason: policyReason } = policyDeclaration(workspaceRoot, workspaceDir);
         const packOptions = { named: namedRoots, discovery: () => discoverPackRoots(), forced };
-        // A `gates` key this compiler refuses stops the run, beside guidance or a `gates.json` at the
-        // conventional path alike: the workspace named a policy, and named one nothing here will read.
-        // Guidance compiled past it is a green `--check` that checks no enforcement at all, and the
-        // conventional file compiled in its place is settings enforcing a policy the manifest does not name,
-        // which this run did until 2026-09-24. The hook's reader still falls back (`policyPath`), because it
-        // runs on every tool call and must not stop a session over a manifest; this run can stop.
         if (policyReason === "refused") {
             throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
         }
-        // **Declared-and-missing and never-declared are different answers.** Only the first is a
-        // failure to read something this workspace claimed to have; the second is a shape `policyPath`
-        // documents as legitimate, and reporting it as `ENOENT` sent readers hunting for a deleted
-        // file. Checked here rather than inside the reader because only the caller knows to name what
-        // the absence costs — see `undeclaredPolicyMessage`. The fallback arm is itself FOUR states,
-        // and `policyReason` is what lets the message name the one it is in rather than assert the
-        // commonest: this comment read "two different answers" while the code below had four.
         if (!policyDeclared && !fs.existsSync(policyFile)) {
-            // What an earlier run compiled from guidance the manifest no longer declares is still this
-            // compiler's to remove, as it is beside a policy: stopping before the tidy left an `always` rule
-            // loading into every context until someone deleted it by hand. Only where the manifest was read
-            // and names no policy: one that does not parse stopped the run above, and a workspace with no
-            // manifest has not been authored, so nothing it lacks is a reason to remove anything.
+            // Only a manifest read and naming no policy clears leftovers: one that is missing has not been authored.
             const leftover = guidance === null && policyReason === "no-key" && guidancePlan !== null && guidancePlan.stray.length > 0;
             if (guidance === null && !leftover) {
                 throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
             }
-            // A workspace with no gate policy is a legitimate shape (`policyPath`), and its guidance is not
-            // enforcement: it compiles alone, and the state of the policy is said rather than refused.
             say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, leftover ? "leftover" : true)}`);
             if (sessions !== null) {
                 say(
@@ -4351,55 +2551,26 @@ export function run(argv, options = {}) {
             return 0;
         }
         const policy = readJson(policyFile, "the gate policy");
-        // The cascade's middle layer, composed before the policy is parsed so that a pack's fragment
-        // is validated by exactly the code that validates a hand-written rule.
-        // The thunk means the host's plugin record is read only on a path where it can win — which is
-        // still true of the **named** and **refused** arms and is no longer what keeps `compile --check`
-        // host-independent. That sentence read *"a required check that names no root"*, and since
-        // 2026-08-13 `../.portulan/verify/compile.sh` runs `--pack-root packs --check`: it names one, and
-        // a named root replaces every other source. The pin is the carrier; the thunk is what keeps an
-        // API caller wiring none hermetic.
+        // A thunk, so the host's plugin record is read only where discovery can win.
         const { contributions, unresolved, plan } = packContributions(workspaceRoot, workspaceDir, {
             named: namedRoots,
             discovery: () => discoverPackRoots(),
             forced,
         });
-        // Under `--matrix` only, EXCEPT when the set is a union: that line moves with what is
-        // installed, which is why it is normally withheld from a byte-compared run — but a union is the
-        // one arrangement where a tree-derived root joined the search without anyone naming it, and the
-        // whole contract of the union is that this is never silent.
-        //
-        // **`--check` CAN reach it now, and that is the point rather than a leak.** This read *"`--check`
-        // cannot reach it: it names no root and passes no `auto`, so `forced` is false and the plan is
-        // never a union there"* — all three clauses went false on 2026-08-13, when the unasked arm began
-        // consulting discovery. A `--check` run whose resolution set included a discovered root and said
-        // nothing would be the silent substitution `--pack-root auto`'s own justification refuses, so the
-        // line prints. The **required** check reaches neither, because it names a root: `source` is
-        // `named` there and this condition is false for the right reason.
+        // Only under `--matrix`, as it moves with what is installed; but a union is never silent.
         if (plan && (showMatrix || plan.source === "union")) say(`packs: resolution root ${plan.source} — ${plan.why}`);
         const composed = composeFragments(policy, contributions);
         const parsed = parse(composed.policy);
         const source = path.relative(workspaceRoot, policyFile).split(path.sep).join("/");
-        // `root` is what makes the emitted runner path correct for the workspace being compiled rather
-        // than for the one this process happens to sit in. The plumbing existed and **the caller never
-        // used it**: `compile --workspace <other-project>` wrote that project's settings naming
-        // `${CLAUDE_PROJECT_DIR}/cli/stop-gate.mjs`, a file the target does not have — and a missing hook
-        // fails open, silently. That is the exact defect class this whole change exists to close,
-        // reintroduced through the cross-compile path. Found by the pre-commit checkpoint, which
-        // demonstrated it rather than reasoning about it.
         const columns = backends(parsed, {
             source,
             root: path.resolve(workspaceRoot),
             workspaceDir,
-            // What resolved each pack, carried to the artifact so the file the rail compares says
-            // which world compiled it (#264).
             packProvenance: contributions,
             sessions,
             spend,
         });
 
-        // Printed before the backends, because a rule's provenance changes how its compiled line reads
-        // — and an unresolvable pack is a declaration the workspace believes it composed.
         for (const a of composed.added) say(`pack    ${a.pack.padEnd(30)} adds \`${a.id}\` (${a.tier})`);
         for (const t of composed.tightened) {
             say(`pack    ${t.pack.padEnd(30)} tightens \`${t.id}\` ${t.from} → ${t.to}`);
@@ -4421,8 +2592,6 @@ export function run(argv, options = {}) {
         for (const column of columns) {
             say(`${column.label}: ${column.compiled.length} compiled, ${column.refused.length} refused`);
             for (const gate of column.compiled) say(`  gate    ${gate.id.padEnd(38)} ${gate.surface}`);
-            // Refusals are printed, always. A silent cap reads as "covered everything" when it did
-            // not — and these are the rows the per-host degradation report is built from.
             for (const r of column.refused) say(`  refused ${r.id.padEnd(38)} ${r.why}`);
             for (const n of column.notes) say(`  note    ${n}`);
             say();
@@ -4431,13 +2600,6 @@ export function run(argv, options = {}) {
         if (check) {
             let drifted = 0;
             for (const column of columns) {
-                // A backend with no artifact is owed no file — but *present* and not owed is drift,
-                // and it was the hole here for one checkpoint. Deleting `floor` from a policy left
-                // the ruleset behind: importable, valid, and claiming in its own `name` field to be
-                // generated from a policy that no longer produces it. `--check` reported GREEN,
-                // having compared nothing, which is the shape this recipe exists against. The
-                // eighth fail-open of this repository's series, and again in scaffolding rather than
-                // in a check. Found at the pre-commit checkpoint.
                 if (!column.artifact) {
                     const orphan = path.join(workspaceRoot, ...artifactPaths(workspaceDir)[column.backend].split("/"));
                     if (fs.existsSync(orphan)) {
@@ -4456,13 +2618,6 @@ export function run(argv, options = {}) {
                     continue;
                 }
                 if (current !== column.artifact.text) {
-                    // **Name the origin difference AT THE MOMENT OF FAILURE** (#264). A drift caused by
-                    // a shadowed pack was previously reported as a diff nobody could reproduce from the
-                    // files in front of them, because the deciding input was a directory outside the
-                    // repository — and the remedy the sentence prescribed, "Recompile", is the very
-                    // unpinned act that caused it. Read DEFENSIVELY: the artifact on disk is a file a
-                    // human may have edited, so anything unparseable leaves the plain sentence standing
-                    // rather than turning a drift report into a crash.
                     let why = "";
                     try {
                         const onDisk = JSON.parse(current)?.$portulan?.packs;
@@ -4495,10 +2650,6 @@ export function run(argv, options = {}) {
 
         for (const column of columns) {
             if (!column.artifact) {
-                // Remove a stale artifact rather than leaving it for `--check` to complain about
-                // forever: the RED above tells a reader to recompile, so recompiling has to be what
-                // fixes it. Deleting a generated file this compiler wrote is the one deletion it may
-                // do — it is reproducible by definition, and it is already in git if it mattered.
                 const orphan = path.join(workspaceRoot, ...artifactPaths(workspaceDir)[column.backend].split("/"));
                 if (fs.existsSync(orphan)) {
                     fs.rmSync(orphan);
@@ -4515,9 +2666,7 @@ export function run(argv, options = {}) {
         emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
         return 0;
     } catch (error) {
-        // Anything reaching here means compile could not judge — including a defect in compile
-        // itself. Exit 2. Exit 1 would assert that an artifact drifted when nothing was compared,
-        // and exit 0 would be the fail-open this tool exists against.
+        // Any throw exits 2, never 1: nothing was compared, so there is no verdict.
         if (!options.quiet) {
             process.stderr.write(
                 `compile: ${error instanceof CompileError ? error.message : `unanticipated failure — ${error.stack ?? error}`}\n`,

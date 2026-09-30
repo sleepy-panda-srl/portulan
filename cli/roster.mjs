@@ -1,25 +1,11 @@
 #!/usr/bin/env node
 // The cli roster: `cli/README.md`, rendered from the files it lists and never edited by hand.
 //
-//   node cli/roster.mjs            print the page
-//   node cli/roster.mjs --write    write it to cli/README.md
-//   node cli/roster.mjs --check    exit 1 when cli/README.md is not exactly what this renders
+//   node cli/roster.mjs [--write | --check]
 //
-// Exit 0 printed, written or current · 1 out of date (`--check` only) · 2 could not run: not a git
-// repository, a listed file with no header to quote or a name no row can carry, or a page `--write`
-// could not write.
+// Exit 0 printed, written or current · 1 out of date (`--check` only) · 2 could not run.
 //
-// Each file's header comment says what the file is, and the page quotes its first paragraph: the
-// leading `//` lines, or a leading `/** */` block, up to the first blank comment line. A Markdown file
-// is quoted by its H1. Where the code already says what a file is for, the page reads it there rather
-// than restating it: the subcommands and their summaries from `SUBCOMMANDS` in ./portulan.mjs, the hook
-// runners from `HOOK_RUNNERS` in ./compile.mjs, and what does not ship from `EXCLUDED` in ./payload.mjs,
-// whose reasons stay there. So what a row quotes cannot change without the page changing, and
-// ./cli-roster.live.test.mjs, which the `tests` recipe runs, is red until the page is written again.
-//
-// Tracked files only, the enumeration `docs.sh`'s `cli table` check reads, so a scratch file is never
-// listed and a new file is listed once it is added: `git add` it, then `--write`. That check reads the
-// rows this renders, one per file, which is why every file keeps a row of its own.
+// A row quotes its file's first comment paragraph, up to a blank comment line, or a Markdown file's H1.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -40,22 +26,14 @@ export const README = path.join(HERE, "README.md");
 
 class CannotRun extends Error {}
 
-// A row puts a name in a code span, a link target and a table cell at once, and a character outside this
-// set can end one of them or change where the link goes: a line break splits the row `docs.sh` reads one
-// per line, a backtick closes the span it extracts, `|` ends the cell, and whitespace, `(`, `#` or `%`
-// ends or redirects the target.
+// A name sits in a code span, a link target and a table cell at once: any other character can end one or redirect the link.
 const ROWABLE = /^[\p{L}\p{N}._+-]+$/u;
 
-/**
- * The tracked `cli/*.mjs` and `cli/*.md` files directly in `cli/`, this page aside, and whether
- * `cli/fixtures/` holds anything tracked. `-z`, so each name arrives exactly as git tracks it: a list
- * split on newlines C-quotes a name holding a control character even under `core.quotePath=false`, and
- * the quoted line would drop out of the page without a word. A name no row can carry is refused by
- * name, escaped so the message cannot carry its bytes, and never rendered broken.
- */
+/** The tracked `cli/*.mjs` and `cli/*.md` files directly in `cli/`, this page aside, and whether `cli/fixtures/` holds anything tracked. */
 export function trackedFiles(root = ROOT) {
     let out;
     try {
+        // `-z`: a newline-split list C-quotes a name holding a control character, even under `core.quotePath=false`.
         out = execFileSync("git", ["ls-files", "-z", "--", "cli/*.mjs", "cli/*.md", "cli/fixtures"], {
             cwd: root,
             encoding: "utf8",
@@ -96,8 +74,6 @@ export function headerOf(source) {
             para.push(text);
         }
     } else if (lines[i]?.trim().startsWith("/**")) {
-        // `*/` may close the block on a line that also carries text, the opening line included: the text
-        // before it is the paragraph's last, and nothing after it is header.
         for (let first = true; i < lines.length; i++, first = false) {
             const line = first ? lines[i].trim().slice(3) : lines[i].trim().replace(/^\*(?!\/)/, "");
             const close = line.indexOf("*/");
@@ -109,13 +85,7 @@ export function headerOf(source) {
     return para.join(" ");
 }
 
-/**
- * A Markdown file's H1, without its `# `; "" when its first heading is not one. A line inside a fenced
- * code block is code, not a heading, as CommonMark reads it: a fence opens on three or more backticks
- * with no backtick after them, or on three or more tildes, indented at most three spaces, and closes on
- * a line of the same character, at least as long, followed only by spaces or tabs. A fence never closed
- * runs to the end of the file, so its file has no title.
- */
+/** A Markdown file's H1 without its `# `, fenced code skipped as CommonMark reads it; "" when its first heading is not one. */
 export function titleOf(source) {
     let closer = null;
     for (const line of source.split(/\r?\n/)) {
@@ -133,7 +103,6 @@ export function titleOf(source) {
 const cell = (text) => text.replaceAll("|", "\\|");
 const row = (name, text) => `| [\`${name}\`](${name}) | ${cell(text)} |`;
 
-/** The page, as the bytes `--write` puts in cli/README.md. */
 export function render(root = ROOT) {
     const { files, fixtures } = trackedFiles(root);
     const read = (name) => {
@@ -231,7 +200,6 @@ export function run(argv, stdout = process.stdout, stderr = process.stderr, root
         throw error;
     }
     if (write) {
-        // A page that could not be written is could-not-run, never a stack trace a caller reads as red.
         try {
             fs.writeFileSync(readme, page);
         } catch (error) {

@@ -1,87 +1,16 @@
 #!/usr/bin/env node
 // `vendor` — materialise a workspace where it is needed, in either direction.
 //
-// `docs/vision.md` § *Delivery tiers* glosses `vendor` both ways: into any host, and out of a repository
-// into a feed-side workspace that names it. The maintainer widened that gloss on 2026-08-03, which is
-// what settled the verb row 7 had deliberately left unassigned — so this tool carries **the residence
-// switch in both directions**.
-//
-// ## Two jobs, which are one operation with a direction
-//
-// **Into a host.** A self-contained `AGENTS.md` + `.portulan/` for a host that is not Claude Code — the
-// vendored-standards delivery tier. The source keeps governing; this is a rendering, not a move.
-//
-// **The residence switch.** Feed-side ↔ in-repo, under the contract
-// `../.portulan/proposals/0017-one-repository-one-governing-workspace.md` sets and row 7 states as law:
-// the workspace is materialised in the new residence, a pointer or nothing is left in the old, and
-// `doctor` is green at both ends before the old residence is retired.
-//
-// ## The invariant, and the window that cannot be closed
-//
-// **One repository is governed by exactly one workspace.** `doctor` keys governance on exactly two
-// coordinates: a non-pointer `workspace.json` in the repository, and a feed-side workspace whose
-// `repos/` slot carries a card naming it. A switch has to move both, they live in two directories, and
-// no POSIX primitive changes both at once — so *some* intermediate state is unavoidable. Writing the new
-// manifest first gives a moment with **two** governors; the reverse gives a moment with **zero**.
-//
-// 0017's switch contract numbers materialise **before** pointer-or-nothing and argues why: a window in
-// which a repository is governed by nothing looks identical to a repository that never adopted Portulan.
-// This tool obeys that ordering, and the second reason is the one worth stating here — the two-governor
-// state is exactly what `doctor`'s residence refusals **detect and refuse out loud** (given
-// `--repo-root`, without which the cross-repository check reports that it did not run), while zero
-// governors is silent. Loud beats silent when neither can be avoided.
-//
-// What is guaranteed, precisely:
-//
-// - **Every handled failure leaves exactly one governor.** A red `doctor`, a caught I/O error, a refusal
-//   — all of them roll back to the state before the flip, or, past the flip, stop forward with the new
-//   residence governing. Never zero, never two.
-// - **The window is one `rename(2)` wide.** Everything materialises into a staging directory that is not
-//   a residence anywhere anybody looks, and is validated there; only a rename puts it in place.
-// - **Rollback is possible only before the flip.** Past it, governance has moved and undoing it would
-//   re-open the window in the other direction. So past the flip this tool goes forward and reports.
-// - **An unhandled crash inside that one rename leaves two governors**, which `doctor --repo-root`
-//   refuses by name. The recovery sentence is printed *before* the window opens, not after. Closing this
-//   properly needs the mechanism 0017 defers under *Retire when* — a host that resolves a pointer and
-//   has nowhere to put a second workspace — and that is a contract change, not an implementer's.
-//
-// ## The three rules a tool that writes into somebody's tree carries
-//
-// `cli/init.mjs` and `cli/new.mjs` paid for these and a third writer inherits them — missing a sibling
-// is issue #91's class and it has bitten every session of this milestone:
-//
-// 1. **Refuse an existing file rather than overwriting it** — any file, never only a manifest.
-// 2. **Refuse a symlink at or below the named destination** rather than resolving through it. Above the
-//    named path, resolve: the user named that path, and on macOS `os.tmpdir()` runs through `/var`.
-//    Guarded on the READ side too — copying through a link materialises a file from outside the
-//    workspace and records it as part of one.
-// 3. **Only `ENOENT` means absent.** An `EACCES` is a question that could not be answered, and answering
-//    it *nothing there* is the fail-open: "nothing looked" reported as "nothing wrong".
-//
-// ## Exit codes
-//
-// `0` it did it · `1` a red verdict — `doctor` was not green at an end · `2` it could not run. Unlike
-// `init` and `new`, this tool **does** have a 1: it runs the real validator and reports its verdict, and
-// collapsing "the workspace I wrote is invalid" into "I could not run" would leave a caller unable to
-// tell a bad workspace from a missing flag.
-//
-// Zero dependencies, ESM, no build step — the session-0 ruling.
+// Refuse an existing file, refuse any link at or below the destination or in the source, and treat only ENOENT as absent.
+// Exit 0 done · 1 `doctor` red at an end · 2 could not run.
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-// The guidance reader and its `AGENTS.md` form, from the compiler that owns them, so a unit is read by one
-// parser whichever of the two tools meets it first.
 import { agentsMdGuidance, BOOT_CARD_UNIT, CompileError, compileGuidance, GENERATED_DIRS, guidanceUnits } from "./compile.mjs";
-// The records a consumer keeps in the new form, from the one definition `init` and `upgrade` share.
 import { changesReadme, CHANGES_README, handoffIndexIgnore, withIgnoreLines } from "./form.mjs";
 import { inspect } from "./doctor.mjs";
-// The discovery keyword, imported so no parse site can spell it differently (#123). _(This said
-// "the five parse sites"; there are seven, and `discover.mjs`'s `NAMED_WITH_AUTO` had already been
-// corrected from five to seven while this copy kept the old figure. The number is dropped rather than
-// re-typed, because a count nothing derives goes stale again — which that constant's own docblock
-// records happening twice.)_
 import { AUTO, namedWithAuto } from "./discover.mjs";
 import { recipeSet } from "./recipe-set.mjs";
 
@@ -90,18 +19,13 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** Everything that means `vendor` could not run. Carries no verdict about a workspace. */
 export class VendorError extends Error {}
 
-/** The two residences. Named, never inferred from a path — `init`'s rule, and for `init`'s reason. */
 export const RESIDENCES = new Set(["in-repo", "feed-side"]);
 
-/** What a switch may leave behind, in 0017's own words: "a pointer, or nothing". */
 export const LEAVE = new Set(["pointer", "nothing"]);
 
-/** The Workspace Definition this tool writes against. A pointer needs 2.7 — the version that added it. */
+/** The Workspace Definition version written; 2.7 is the first with pointers. */
 const SPEC = "2.7";
 
-// ONE definition of a slug, read from the contract that publishes it rather than written out again —
-// the same read `cli/init.mjs` does, for the same reason: a second copy here is free to drift from
-// `spec/workspace.schema.json`, and this tool's job at the boundary is to refuse what that refuses.
 let SCHEMA_ERROR = null;
 const SLUG = (() => {
     try {
@@ -113,22 +37,8 @@ const SLUG = (() => {
     }
 })();
 
-/** The governing kinds, in the order a reader would meet them. `pointer` is not one — it governs nothing. */
 const GOVERNING_KINDS = ["repository", "demo", "portfolio"];
 
-/**
- * Top-level entries inside a workspace directory that `cli/compile.mjs` OWNS and this never carries.
- *
- * They are compiled enforcement, and **enforcement is keyed to the residence** — measured this session
- * when `compile` was taught the feed-side shape: an in-repo workspace's Claude settings land at the
- * repository root, a feed-side workspace's land inside the workspace, because that is what ships. So a
- * copy of them at a new residence is a settings file naming paths for the residence it left, sitting
- * where nothing reads it and nothing sweeps it — a document claiming enforcement that nothing carries,
- * emitted into somebody else's tree, which is this milestone's own most expensive recurring defect.
- *
- * Excluded and **named**, never dropped quietly, and `compile` is the one tool that may delete them
- * because it says so itself: a generated file is reproducible by definition.
- */
 const GENERATED = new Set(GENERATED_DIRS);
 
 const isGenerated = (rel) => GENERATED.has(rel.split("/")[0]);
@@ -137,15 +47,6 @@ const isGenerated = (rel) => GENERATED.has(rel.split("/")[0]);
 
 const VALUED = new Set(["--into", "--residence", "--leave", "--host", "--kind", "--feed", "--pack-root", "--repo-root"]);
 
-/**
- * Splits argv into flags and the single source workspace directory.
- *
- * A value beginning with **any** leading `-` is a missing value, not a value — `init`'s round 9, where
- * `--residence -h` was consumed as the residence and the user was then blamed for a token they typed as
- * a flag. An empty string is refused for every flag, because none of them has a meaningful empty value
- * and an empty one reached a manifest once already, failing `minLength: 1` on a run that reported
- * success.
- */
 export function parseArgs(argv) {
     const out = {
         help: false,
@@ -186,8 +87,6 @@ export function parseArgs(argv) {
             continue;
         }
         if (!VALUED.has(arg)) {
-            // #155: both spellings, because the tool is genuinely reachable two ways and a usage line
-            // naming only one of them is wrong for whoever arrived the other way.
             throw new VendorError(
                 `unknown option \`${arg}\` — run \`portulan vendor --help\` for the ones this understands, ` +
                     `or \`node cli/vendor.mjs --help\` from a checkout`,
@@ -200,8 +99,7 @@ export function parseArgs(argv) {
         if (value.trim() === "") {
             throw new VendorError(`\`${arg}\` was given an empty value, and no option here has a meaningful empty value`);
         }
-        // `auto` matched raw so `./auto` still names a directory. This tool only forwards roots to
-        // `doctor`, so it forwards the request too.
+        // Matched raw, so `./auto` still names a directory.
         if (arg === "--pack-root") {
             if (value === AUTO) out.discoverPacks = true;
             else out.packRoots.push(value);
@@ -218,10 +116,7 @@ export function parseArgs(argv) {
                 `and picking one of two would be choosing which one gets moved`,
         );
     }
-    // Forwarded, so refused here too — and in the SHARED sentence rather than a spelling of this
-    // tool's own. `doctor` would refuse the same pair a moment later, but by then this tool has begun
-    // reporting about a workspace, and a refusal that arrives wearing `doctor`'s name reads as a
-    // verdict about the copy rather than as an answer about the command line.
+    // Refused here, not left to `doctor`, so it reads as a command-line error rather than a verdict on the copy.
     const bothAsked = namedWithAuto(out.packRoots, out.discoverPacks === true);
     if (bothAsked) throw new VendorError(bothAsked);
     out.source = positional[0] ?? null;
@@ -230,26 +125,12 @@ export function parseArgs(argv) {
 
 // ------------------------------------------------------------------------- the residence, and the two keys
 
-/**
- * Which residence a manifest describes.
- *
- * Keyed on **`tree`**, which proposal 0017 names as the one thing keyed to location — *"every feature
- * keys to a workspace SLOT, never to a residence… The one thing that IS keyed to location is `tree`"*.
- * Deliberately not keyed on `kind`: a manifest whose `kind` and `tree` disagree is a defect `doctor`
- * reports where it runs, and a second verdict about it from here would be a second carrier of that rule.
- */
+/** Keyed on `tree` alone, never on `kind`: a manifest where the two disagree is `doctor`'s to report. */
 export function residenceOf(manifest) {
     return manifest?.tree === undefined ? "feed-side" : "in-repo";
 }
 
-/**
- * The same workspace, retargeted at the other residence — **exactly two keys change**.
- *
- * 0017's parity argument made executable: *"one artifact in two residences, differing in reach and
- * delivery, never in content-kind"*. If this function ever has to touch a third key, that claim is
- * wrong and it is a finding rather than a patch. Key ORDER is preserved for everything else so the
- * materialised manifest diffs against its source as the two-line change it actually is.
- */
+/** Changes exactly two keys, `kind` and `tree`, and keeps every other key in its order. */
 export function retarget(manifest, residence, kindOf = null, tree = "../") {
     if (kindOf !== null && !GOVERNING_KINDS.includes(kindOf)) {
         throw new VendorError(
@@ -267,22 +148,12 @@ export function retarget(manifest, residence, kindOf = null, tree = "../") {
         out.kind = kindOf ?? "repository";
         out.tree = tree;
     } else {
-        // A `demo` workspace is already a feed-side shape — it declares no `tree` — so rewriting it to
-        // `portfolio` would change what the workspace IS in order to move it, which is not a move.
+        // A `demo` already declares no `tree`, so it moves feed-side as a demo.
         out.kind = kindOf ?? (manifest.kind === "demo" ? "demo" : "portfolio");
     }
     return out;
 }
 
-/**
- * Slots whose value resolves **outside** the workspace directory.
- *
- * A slot pointing outside resolves against the workspace's neighbours, and a workspace materialised
- * somewhere else has different neighbours — so the copy's slot dangles and `doctor` reds it on a path
- * that does not resolve. Customer zero is exactly this shape (`"constitution": "../docs/vision.md"`),
- * which is why this repository's own workspace is not the subject of the parity demonstration.
- * Refused ahead of writing rather than produced and then graded.
- */
 export function escapingSlots(manifest, dir) {
     const root = path.resolve(dir);
     const out = [];
@@ -296,37 +167,16 @@ export function escapingSlots(manifest, dir) {
 
 // ------------------------------------------------------------------------- reading the source
 
-/**
- * Every ordinary file under a workspace directory, with its mode — and a refusal for anything else.
- *
- * `lstatSync`, never `statSync`/`existsSync`: both follow links. A symlink anywhere under the source is
- * refused rather than resolved, because copying through one materialises a file from **outside** the
- * workspace and records it as part of the workspace. That is the write-path escape `init` shipped,
- * arriving by the read path — the sibling nobody guarded (#91).
- */
+/** Every ordinary file under `dir`, with its mode; throws a `VendorError` on a link, a special file, or anything unreadable. */
 export function walk(dir) {
     return scan(dir).files;
 }
 
-/**
- * Every DIRECTORY under a workspace directory, including the empty ones.
- *
- * A copy driven only by `walk()` silently drops an empty directory, because a directory reaches the
- * destination as a side effect of a file landing inside it. That is not a cosmetic loss: the Workspace
- * Definition lets a declared slot be a directory, `doctor` requires the directory to exist, and an empty
- * `memory/` or `proposals/` is the ordinary state of a workspace that has not earned a record yet. So a
- * workspace GREEN at its source became a copy `doctor` refuses — measured, not reasoned about.
- *
- * The staging validation is what turned that into a refusal rather than a corruption: the switch was
- * declined and nothing moved. It is still a defect — a valid workspace could not be moved at all, and
- * the only way an adopter could act on the refusal was to put a file into every empty directory they
- * own. Copilot's suppressed notes, round 8 on #164.
- */
+/** Every directory under `dir`, empty ones included: a declared slot may be an empty directory. */
 export function directories(dir) {
     return scan(dir).dirs;
 }
 
-/** One descent, two answers, so the guards below cannot come to differ between them. */
 function scan(dir) {
     const root = path.resolve(dir);
     const out = [];
@@ -347,7 +197,6 @@ function scan(dir) {
             try {
                 stat = fs.lstatSync(seen(childRel));
             } catch (cause) {
-                // Only ENOENT means absent, and here even that is a surprise: the entry was just listed.
                 if (cause.code === "ENOENT") continue;
                 throw new VendorError(`${seen(childRel)} could not be examined — ${cause.code ?? cause.message}. An unanswerable question is not an absence`);
             }
@@ -376,16 +225,7 @@ function scan(dir) {
 
 // ------------------------------------------------------------------------- writing into somebody's tree
 
-/**
- * The path steps from `root` down to `target`, inclusive of both.
- *
- * **The boundary is the named destination, and it was found by running rather than reading** — the same
- * finding `cli/new.mjs` records. A check that walked to the filesystem root refused every scratch
- * directory in the suites, because on macOS `os.tmpdir()` resolves under `/var` and `/var` is a symlink.
- * A symlink among the ancestors of the path the user named is a fact about their filesystem and they
- * named it; a symlink **at or below** it is a segment this tool derives, and a link there is precisely
- * how a write leaves the tree it was meant to stay inside.
- */
+/** The steps from `root` down to `target`, both included: a link above `root`, such as macOS's `/var`, is the user's own. */
 function chain(target, root) {
     const steps = [];
     let at = path.resolve(target);
@@ -400,17 +240,7 @@ function chain(target, root) {
     return steps.reverse();
 }
 
-/**
- * Which destination paths cannot be written — because something is already there, because a link is on
- * the chain, or because the question could not be answered at all.
- *
- * An existing **directory** is not a collision: this writes files into directories a user may
- * legitimately have created. `allow` carries the narrow carve-out a switch needs — see `carveOut`.
- *
- * `lstat` is injectable because the third rule is the one that cannot otherwise be forced: `chmod`
- * refusals are ignored by root, and CI often runs as root, so a suite that reached for `chmod` would
- * assert the rule on a developer's laptop and silently skip it where it matters.
- */
+/** Destination paths that cannot be written: already there, behind a link, or in a state that could not be read. */
 export function collisions(destDir, rels, { lstat = fs.lstatSync, allow = new Set() } = {}) {
     const found = [];
     for (const rel of rels) {
@@ -420,10 +250,7 @@ export function collisions(destDir, rels, { lstat = fs.lstatSync, allow = new Se
             try {
                 stat = lstat(step);
             } catch (cause) {
-                // Only ENOENT means absent — and nothing below an absent directory can exist either, so
-                // the walk stops clear. Anything else means this path's state is UNKNOWN, and an unknown
-                // is not a clear: declaring it one would let the write loop start on the strength of a
-                // question nobody could answer.
+                // Nothing can exist below an absent path, so the rest of the chain is clear.
                 if (cause.code === "ENOENT") break;
                 found.push({ rel, path: step, why: `${step} could not be examined (${cause.code ?? cause.message})` });
                 break;
@@ -433,22 +260,11 @@ export function collisions(destDir, rels, { lstat = fs.lstatSync, allow = new Se
                 break;
             }
             if (step === target) {
-                // A DIRECTORY at the exact path a file must be written is a collision, and this said it
-                // was not. The exemption for existing directories is right for the *intermediate*
-                // segments — a user may legitimately have created them — and wrong at the leaf, where
-                // `walk()` only ever yields files: preflight passed, and the write phase then threw
-                // `EISDIR` mid-copy, so the promise that every refusal stands ahead of the first byte
-                // was broken by the check that exists to keep it. Copilot's suppressed note, round 4.
                 if (stat.isDirectory()) {
                     found.push({ rel, path: step, why: `${step} is a directory, and a file has to be written there` });
                     break;
                 }
-                // Not a regular file — a FIFO, a socket, a device node. `walk()` already refuses these
-                // in the SOURCE ("copies neither by guessing at it"); the destination's ALLOWED leaves
-                // were the half that did not, so the carve-out could permit a FIFO named `README.md`
-                // and the later read would block rather than fail. Checked before `allow` is consulted,
-                // for the same reason the symlink test is: an exemption is about replacing a file, and
-                // this is not one. Copilot's suppressed notes, round 13 on #164.
+                // Before `allow`: the carve-out exempts replacing a file, never a FIFO, a socket or a device.
                 if (!stat.isFile()) {
                     found.push({ rel, path: step, why: `${step} is neither a file nor a directory, and this reads and writes neither by guessing at it` });
                     break;
@@ -466,34 +282,16 @@ export function collisions(destDir, rels, { lstat = fs.lstatSync, allow = new Se
     return found;
 }
 
-/**
- * What a switch's destination is allowed to already contain, and nothing else.
- *
- * The feed-side → in-repo direction lands **on top of the pointer that is the old residence's in-repo
- * half** — `init --residence pointer` writes exactly `workspace.json` and `README.md` there — so rule 1
- * as written would refuse the switch's own ordinary case. The carve-out is deliberately narrow: the
- * manifest must be a **pointer**, and it must name the workspace being moved in. A pointer naming
- * somebody else is a foreign residence and refuses; a third file is somebody's and refuses.
- */
+/** What a switch's destination may already hold: a pointer naming the incoming workspace, and its README. */
 function carveOut(destDir, incomingName) {
     const manifestPath = path.join(destDir, "workspace.json");
 
-    // **`lstat` BEFORE any read, and this is the whole of it.** `readdirSync` and `readFileSync` follow
-    // symlinks, so without this the carve-out read a manifest *outside* the named tree and could then
-    // refuse — or permit — on the strength of a workspace that is not in this repository at all. The
-    // symlink-aware collision check below would still stop the write, which is why nothing escaped; but
-    // a containment guarantee that depends on which check happens to run first is not a guarantee, and
-    // a refusal drawn from a foreign manifest misdescribes what it found.
-    //
-    // `cli/init.mjs` shipped exactly this and its `residenceAt` records the fix in the same words. I
-    // copied the tool and not the lesson. Copilot, round 5 on #164 — issue #91's class again, and the
-    // fourth time this milestone.
+    // `lstat` before any read: `readdirSync` and `readFileSync` follow links out of the named tree.
     for (const step of [destDir, manifestPath]) {
         let stat;
         try {
             stat = fs.lstatSync(step);
         } catch (cause) {
-            // Only ENOENT means absent, and an absent destination has nothing to carve out.
             if (cause.code === "ENOENT") return { allow: new Set(), pointer: null };
             throw new VendorError(`${step} could not be examined — ${cause.code ?? cause.message}. Only a missing path means "nothing there"`);
         }
@@ -530,20 +328,7 @@ function carveOut(destDir, incomingName) {
         return { allow: new Set(), pointer: null };
     }
     if (manifest.governed_by?.workspace !== incomingName) {
-        // `?? "(nobody)"` was `=== undefined` spelled another way: it caught an ABSENT governor and
-        // read `""`, `null`, `7` and `{}` as names, printing `` `` and `` `[object Object]` `` into a
-        // refusal claiming a foreign residence. Same class as #141 one file over, found at that fix's
-        // pre-commit checkpoint. The refusal itself stands — vendor is about to overwrite, and
-        // fail-closed on a manifest it cannot read is the right direction — but it now says which of
-        // the two it met — the WHOLE sentence, not only its opening clause. The first cut branched
-        // the prefix and left "That is a foreign residence … aimed somewhere else" standing for both,
-        // so the message still asserted a foreign residence about a pointer aimed nowhere: the same
-        // half-done repair this change is about, in the fix for it. (Copilot, the round after.)
-        //
-        // BOTH arms stringify. The first cut escaped only the unusable one and left the declared arm
-        // raw inside backticks — the same sibling shape, in the fix for that shape: this value comes
-        // from a manifest nobody validated, so a newline in it breaks the refusal across lines and
-        // padding hides inside the backticks. (Copilot, on the round reviewing it.)
+        // Quoted with `JSON.stringify` in both arms: the value comes from a manifest nobody validated.
         const declared = typeof manifest.governed_by?.workspace === "string" && manifest.governed_by.workspace.trim() !== "";
         throw new VendorError(
             declared
@@ -570,20 +355,11 @@ function carveOut(destDir, incomingName) {
 
 // ------------------------------------------------------------------------- what a pointer says
 
-/** A path as a reader would recognise it — relative to cwd when that is shorter, absolute otherwise. */
 function display(target) {
     const rel = path.relative(process.cwd(), target);
     return rel && !rel.startsWith("..") && rel.length < target.length ? rel : target;
 }
 
-/**
- * The pointer's own `name`.
- *
- * A residence directory is usually `.portulan`, whose basename would name every pointer in the world
- * `portulan`. So a dot-led residence is named after the **repository** that holds it, and a feed slot
- * after itself. Refused rather than defaulted when nothing survives slugification — a pointer called
- * something nobody chose is worse than being asked.
- */
 function pointerName(residenceDir) {
     const base = path.basename(residenceDir);
     const source = base.startsWith(".") ? path.basename(path.dirname(residenceDir)) : base;
@@ -601,11 +377,7 @@ function pointerManifest(residenceDir, governor, feed) {
     return {
         portulan: { spec: SPEC },
         name: pointerName(residenceDir),
-        // Residence-AGNOSTIC, because this function leaves pointers at both ends. It said "This
-        // repository is governed by…", which is true of the pointer left in a repository and false of
-        // the one left in a retired feed slot — a directory that is not a repository residence at all.
-        // A manifest carrying a sentence about somewhere it is not is the same defect one layer down
-        // from the prose this session spent a sweep on. Copilot's suppressed notes, round 5 on #164.
+        // Residence-agnostic: a pointer is left in a repository or in a retired feed slot.
         summary: `Governed by the \`${governor}\` workspace, which resides elsewhere. This directory holds a pointer and no policy layer of its own.`,
         kind: "pointer",
         governed_by: feed ? { workspace: governor, feed } : { workspace: governor },
@@ -631,7 +403,6 @@ that never adopted Portulan.
 `;
 }
 
-/** What lands where a pointer used to be, once the workspace itself has arrived. */
 function arrivedReadme(name) {
     return `# ${name} — resident here
 
@@ -649,27 +420,7 @@ workspace's gate policy, and no copy of files produces them. Run \`portulan comp
 
 // ------------------------------------------------------------------------- the vendored standards file
 
-/**
- * `AGENTS.md` — the standards plane for a host that is not Claude Code.
- *
- * **It names only what the manifest actually declares.** A vendored standards file listing slots the
- * workspace does not carry is `.portulan/dod.md` condition 4's defect — a document describing a
- * capability the tree does not have — emitted into somebody else's repository, which is the worst shape
- * available for it. So every line below is generated from a key that is present.
- *
- * **Core's kernel is inlined; the workspace's own files are named; packs are neither.**
- * `../core/engine.md` says the CLI *"composes it with the pack and workspace layers into a vendored
- * `AGENTS.md` for any host"*, and two thirds of that is what happens: the kernel is embedded because it
- * ships in this package and a host with no plugin has no other way to it, the workspace's slots are
- * pointed at because they travel in the `.portulan/` beside this file, and a pack resolves from a feed
- * at a pinned version — which vendoring does not do. That third is named in the artifact rather than
- * quietly implied by the word "self-contained".
- *
- * **Where the workspace declares a boot card, the file leads with it** (2026-09-24): the card is the boot,
- * carried whole with its imports as pointer lines, and the slots follow as files to open when the card
- * or the task sends a reader to one, as a Claude Code session reads them. Without a card, the slots are
- * read in order, as before.
- */
+/** `AGENTS.md` for a host that is not Claude Code, naming only what the manifest declares. */
 export function agentsMd(manifest, host, kernel = null, guidance = null) {
     const card = guidance?.units.find((u) => u.name === BOOT_CARD_UNIT) ?? null;
     const lines = [
@@ -717,9 +468,6 @@ export function agentsMd(manifest, host, kernel = null, guidance = null) {
         lines.push("");
     }
 
-    // **The vendored file inherits the tiers** (proposal `0036`). It is the one tier its hosts are sure to load,
-    // so the always units are carried whole and every other unit as a one-line pointer to its file, one
-    // level deep: a tier this host cannot express makes a unit late, never lost.
     const rest = guidance ? guidance.units.filter((u) => u !== card) : [];
     if (rest.length) {
         const { inline, pointers } = agentsMdGuidance({ ...guidance, units: rest }, `.portulan/${manifest.slots.context}`);
@@ -729,26 +477,9 @@ export function agentsMd(manifest, host, kernel = null, guidance = null) {
     }
 
     lines.push("## Verify — what *done* is checked against", "");
-    // Workspace-owned recipes only, and the exclusion is a ruling rather than an oversight.
-    //
-    // This artifact's own header promises **no plugin, no marketplace, no second repository in the
-    // trust path**, so a vendored host cannot resolve a pack — which means a composed recipe listed
-    // here would be a command the reader cannot run, in a table whose whole job is to say what *done*
-    // is checked against. Of the three available answers — list it as could-not-run, materialise the
-    // pack's files into the vendored tree, or exclude it and say so — the third is the only one that
-    // keeps the header's promise: the first ships a table row nobody can execute, and the second puts
-    // a pack's code into the artifact that advertises having none.
-    //
-    // So the table is the workspace's own set, the note below says that in the artifact rather than
-    // only here, and the *Packs this workspace composes* section that follows is where a reader is
-    // told what is missing and why. `recipeSet` is still the carrier — the exclusion is expressed by
-    // asking it for the workspace subset, never by re-enumerating `verify.recipes` in this file.
+    // The workspace's own recipes only: a vendored host cannot resolve a pack, so a pack's recipe could not run there.
     const composed = (manifest.packs ?? []).length > 0;
     const set = recipeSet(manifest, { packs: [] });
-    // A manifest the carrier REFUSES is not a manifest that declares nothing, and collapsing the two
-    // would put "_No recipes are declared._" into a vendored artifact whose workspace actually declares
-    // an unreadable one — a false statement shipped to whoever receives the vendored copy, which is
-    // dod condition 4's class. The refusal's own reason is carried through instead. Copilot round 1.
     const recipes = set.ok ? set.recipes : [];
     if (!set.ok) {
         lines.push(
@@ -803,9 +534,6 @@ export function agentsMd(manifest, host, kernel = null, guidance = null) {
         "- **Compiled host enforcement.** `portulan compile` turns the gate policy into a host's own settings and",
         "  hooks; copying files produces none of it. Until it is run, every tier above is a rule nothing checks.",
         "- **A resolved pointer.** Nothing here fetches anything.",
-        // The engine's rules on the card name its commands from where the plugin is installed, which a
-        // host without the plugin has not got: said here, so the card's command is not read as one this
-        // copy can run.
         ...(cardText?.includes("<plugin root>")
             ? ["- **The Portulan package.** The card's `<plugin root>` is where it is installed, which this copy is not."]
             : []),
@@ -881,15 +609,7 @@ export function usage() {
     ].join("\n");
 }
 
-/**
- * The whole operation. Every refusal is ahead of the first byte; every write is ordered so that a
- * handled failure at any point leaves exactly one governing workspace.
- *
- * `options.faultAt` throws after a named step. It is a **fault-injection seam and it is deliberate**:
- * the property this tool exists to protect is what a *failure partway* leaves behind, and an ordering
- * nothing can interrupt is an ordering nobody has checked. Reading the code establishes the writes are
- * in the intended order; only forcing the stop establishes what sits on disk between two of them.
- */
+/** Refuses before the first byte, and orders every write so a handled failure leaves exactly one governing workspace. */
 export async function run(argv, options = {}) {
     const say = options.say ?? ((line = "") => process.stdout.write(`${line}\n`));
     const warn = options.warn ?? ((line) => process.stderr.write(`${line}\n`));
@@ -901,7 +621,6 @@ export async function run(argv, options = {}) {
         }
     };
 
-    /** Undo steps, newest first. Registered only while a rollback is still the right answer. */
     const undo = [];
     let pastTheFlip = false;
 
@@ -940,18 +659,6 @@ export async function run(argv, options = {}) {
             );
         }
         if (parsed.host !== null && parsed.residence !== "in-repo") {
-            // `agentsMd()` writes `.portulan/<slot>` paths and tells the reader to run
-            // `portulan doctor .portulan`, which is true by construction for an in-repo destination —
-            // that branch already refuses any basename but `.portulan`, on the boot-path rule. Vendored
-            // feed-side, the workspace directory is whatever the caller named, and the standards file
-            // would point at paths that do not exist: a document describing a tree it is not in,
-            // emitted into somebody else's repository, which is `dod.md` condition 4 and the shape this
-            // change has already swept fourteen carriers of.
-            //
-            // Refused rather than parameterised, and the reason is not effort. Vendoring for a host is
-            // the AAIF pair — `AGENTS.md` beside `.portulan/`, at the root an agent reads from — and a
-            // feed-side workspace ships as a plugin instead. Naming a residence that has no host to
-            // stand in is a question, not a configuration. Copilot's suppressed notes, round 11 on #164.
             throw new VendorError(
                 "`--host` vendors the pair a host reads — `AGENTS.md` beside a `.portulan/` at the root of a tree — so it goes " +
                     "with `--residence in-repo`. A feed-side workspace is delivered as a plugin rather than read out of a directory, " +
@@ -1009,9 +716,6 @@ export async function run(argv, options = {}) {
         const sourceResidence = residenceOf(manifest);
         const dest = path.resolve(parsed.into);
 
-        // The boot skill searches exactly `${CLAUDE_PROJECT_DIR}/.portulan/workspace.json` and is told
-        // not to search outward (0017, "Parity, and where it is keyed"). An in-repo residence anywhere
-        // else is a workspace nothing boots, and `tree: "../"` would be wrong for it besides.
         if (parsed.residence === "in-repo" && path.basename(dest) !== ".portulan") {
             throw new VendorError(
                 `an in-repo residence is \`<repository>/.portulan\`, and \`--into ${parsed.into}\` ends in \`${path.basename(dest)}\`. ` +
@@ -1031,8 +735,6 @@ export async function run(argv, options = {}) {
             );
         }
 
-        // The guidance the vendored `AGENTS.md` inherits, read before anything is written: a unit `compile`
-        // refuses is one that file would carry wrongly, so it is refused here too, in the same sentence.
         let guidance = null;
         if (parsed.host !== null) {
             try {
@@ -1084,20 +786,7 @@ export async function run(argv, options = {}) {
         const rels = files.map((f) => f.rel);
         const hostFile = parsed.host === null ? null : path.join(path.dirname(dest), "AGENTS.md");
 
-        // **Every path this run will write, not merely every path it will copy.** When a switch lands on
-        // a pointer whose source carries no `README.md`, one is SYNTHESISED — and the preflight was
-        // built from the source's file list, so that leaf was never lstat'd at all. A symlink there was
-        // followed by the write, which is the containment rule refused by the one path the check could
-        // not see. The carve-out still permits replacing an ordinary pointer README; what it may not do
-        // is exempt a link, and `collisions` tests for a symlink before it consults `allow`.
-        // Copilot, round 9 on #164.
         const synthesised = parsed.switching && carve.pointer && !rels.includes("README.md") ? ["README.md"] : [];
-        // Round 4 established that a directory where a file must be written is refused up front. That
-        // was the DESTINATION; this is the source, and it reaches the same collision from the other end:
-        // a source directory named `README.md` yields no `README.md` in the file list, so the switch
-        // decides to synthesise one, `directories()` faithfully creates the directory in staging, and the
-        // write throws `EISDIR` — recovered, since the undo is registered first, but reported as an
-        // unanticipated failure rather than as the plain fact it is. Copilot's suppressed notes, round 12.
         if (synthesised.length && sourceDirs.some((d) => d.rel === "README.md")) {
             throw new VendorError(
                 `${display(source)} holds a DIRECTORY named \`README.md\`, and this switch needs to write a file there — the ` +
@@ -1108,9 +797,6 @@ export async function run(argv, options = {}) {
         const clash = collisions(dest, [...rels, ...synthesised], { allow: carve.allow });
         if (hostFile !== null) clash.push(...collisions(path.dirname(dest), ["AGENTS.md"]));
         if (clash.length) {
-            // Grouped by CAUSE, not listed per path: one symlinked directory blocks every file, and
-            // naming it twenty times buries the single fact the reader needs under nineteen copies of
-            // it. A refusal nobody finishes reading is a refusal that failed to explain.
             const byCause = new Map();
             for (const item of clash) {
                 const key = item.why === "already exists" ? "already exists" : item.why;
@@ -1147,19 +833,9 @@ export async function run(argv, options = {}) {
         }
 
         // ---- materialise, into a STAGING directory that is a residence nowhere
-        //
-        // 0017 defines a `.portulan/` with files and no manifest as **not a residence**, which is what
-        // makes a partial copy safe. Staging goes further: the copy is validated somewhere nothing looks
-        // for a workspace at all, so a destination that would not have been green never becomes a second
-        // governor for even one rename. Only a rename puts it in place.
 
         const staging = path.join(path.dirname(dest), `.${path.basename(dest).replace(/^\.+/, "")}.vendoring`);
-        // `lstatSync`, not `existsSync` — which answers **false** on `EACCES` and so reported "clear" for
-        // a path whose state nobody could read, letting the run proceed into `mkdirSync` and fail later
-        // with an error about the wrong thing. This file states the only-`ENOENT` rule three times in its
-        // own header and broke it here, in the one call that was written as a convenience rather than as
-        // a check. Copilot's suppressed notes, round 10 on #164 — the fifth appearance of a guard that
-        // was carried everywhere except one place.
+        // `lstatSync`, not `existsSync`, which answers false on EACCES.
         try {
             fs.lstatSync(staging);
             throw new VendorError(
@@ -1178,40 +854,13 @@ export async function run(argv, options = {}) {
         fs.mkdirSync(staging, { recursive: true });
         undo.push(() => fs.rmSync(staging, { recursive: true, force: true }));
 
-        // DIRECTORIES first, and all of them — including the ones with nothing in them. A copy driven
-        // only by the file list creates a directory as a side effect of a file landing in it, so an
-        // empty declared slot never arrives, and `doctor` refuses the copy for a path that does not
-        // exist. `memory/` and `proposals/` are empty in every workspace that has not earned a record
-        // yet, which is most of them on the day they are switched.
         for (const entry of sourceDirs) {
             if (isGenerated(entry.rel)) continue;
             const full = path.join(staging, entry.rel);
             fs.mkdirSync(full, { recursive: true });
             fs.chmodSync(full, entry.mode);
         }
-        // **A byte-for-byte copy carries a path that was only ever true on one machine.** Since
-        // milestone 7 session 7 `init` drafts `verify/index.sh` with a third CLI location baked in —
-        // the bundle it ran from, an absolute path git cannot carry — and the two lines holding it are
-        // marked `# portulan:bundle-fallback` so a rewriter can find them rather than having to notice
-        // a comment. This loop does **not** rewrite them, and a switched workspace whose bundle path
-        // no longer resolves exits **2 — could not run**, which is the fail-closed direction.
-        //
-        // **The remedy exists elsewhere, and this loop deliberately does not call it.** Milestone 7
-        // session 9 built `spec/migrations/0002-bundle-fallback-path.mjs`, run by `portulan upgrade`,
-        // which re-derives every marked line for the bundle it is running from.
-        //
-        // **Ruled by the maintainer on 2026-08-12** — *vendor copies; upgrade repairs; vendor's
-        // comment names the remedy. One tool, one job* — and closed as
-        // https://github.com/sleepy-panda-srl/portulan/issues/230. So this is a decision rather
-        // than a deferral, and the argument is worth keeping where the code is: a repair fixes a
-        // value that *is not true where the workspace now is*, and after a same-machine switch — the
-        // only kind this performs — **the baked path is still true**. This loop cannot observe the
-        // event that invalidates it, and the correct post-travel value is derivable only by the
-        // bundle running on the destination machine, which is what `upgrade` is. So copying and
-        // repairing are not the same operation, and this is not a sibling site under `0020`.
-        //
-        // _(This comment claimed the issue was filed before it existed, until the pre-commit
-        // checkpoint went looking for it.)_
+        // Copied byte for byte: `# portulan:bundle-fallback` lines are not rewritten here; `portulan upgrade` re-derives them.
         for (const file of files) {
             if (file.rel === "workspace.json") continue;
             const full = path.join(staging, file.rel);
@@ -1219,18 +868,12 @@ export async function run(argv, options = {}) {
             fs.writeFileSync(full, fs.readFileSync(path.join(source, file.rel)));
             fs.chmodSync(full, file.mode);
         }
-        // The README the pointer left behind said this repository's workspace lived elsewhere. It does
-        // not any more, and a false sentence left in somebody's tree is this milestone's own recurring
-        // defect — the one that shipped a claim about a rail into every adopter's drafted README.
         if (parsed.switching && carve.pointer && !rels.includes("README.md")) {
             fs.writeFileSync(path.join(staging, "README.md"), arrivedReadme(manifest.name));
         }
         fs.writeFileSync(path.join(staging, "workspace.json"), `${JSON.stringify(retargeted, null, 2)}\n`);
         if (hostFile !== null) {
-            // Read rather than required: an installation missing its own kernel is a broken install and
-            // that is a different problem, but refusing to vendor over it would help nobody. The
-            // artifact says which of the two it is, so a reader never has to guess whether the absence
-            // is deliberate.
+            // Not required: a missing kernel is said in the file rather than refusing the run.
             let kernel = null;
             try {
                 kernel = fs.readFileSync(path.join(HERE, "..", "core", "engine.md"), "utf8");
@@ -1242,20 +885,9 @@ export async function run(argv, options = {}) {
         fault("materialise:files");
 
         // ---- doctor the new residence, BEFORE it is one
-        //
-        // Standalone: the cross-repository refusal cannot pass here by construction, because at this
-        // moment the old residence still governs — that pair IS the two-governor red. The both-ends
-        // check with `--repo-root` runs after the flip, which is the first moment it can be satisfied.
 
-        // **`env` is threaded into every `verdict` call, and it stopped being optional hygiene on
-        // 2026-08-13.** `verdict` calls `doctor`'s `inspect`, which builds its own resolution plan and
-        // wires its own discovery thunk — so `vendor` acquired the unasked-discovery behaviour without a
-        // line of it being edited here, and with `env` absent every run read the machine it happened to
-        // be on. That is the hazard `vendor.test.mjs`'s own `green()` helper already names for the
-        // pointer half: *the suite would behave one way on his laptop and another in CI.* Passed as part
-        // of the doctor-options bundle so the two `verdict` sites below cannot disagree about it —
-        // `oldResidence` was called with a bare `{}` and is exactly the sibling a fix at one site leaves
-        // standing.
+        // No `--repo-root` yet: the old residence still governs, so the cross-repository check cannot pass before the flip.
+        // Every `verdict` gets `env`: `doctor` discovers packs through it, and without it would read whatever machine it runs on.
         const roots = {
             ...(options.env ? { env: options.env } : {}),
             ...(parsed.packRoots.length ? { packRoots: parsed.packRoots.map((r) => path.resolve(r)) } : {}),
@@ -1271,31 +903,14 @@ export async function run(argv, options = {}) {
         }
 
         // ---- the one rename, and the sentence that precedes it
-        //
-        // Printed BEFORE the window opens rather than after, because after is exactly when this process
-        // may not be here to print anything.
 
+        // Printed before the window opens: after it, this process may not be alive to print.
         if (parsed.switching) {
-            // WHICH end to point `doctor` at is not a matter of taste, and this line had it INVERTED.
-            // The cross-repository refusal runs from the **naming** workspace outward — 0017 says
-            // visibility is one-way — so the only end that can see two governors is the FEED-SIDE one,
-            // the workspace carrying the card that names the repository. Which end that is flips with
-            // the direction: materialising feed-side, it is `dest`; materialising in-repo, the feed-side
-            // workspace is the `source` this switch is moving out of. Pointing at the in-repo end sends
-            // a reader to a run that finds only itself and reports nothing.
-            //
-            // Copilot's suppressed note found this and prescribed "always `dest`", which is right for one
-            // direction and wrong for the other for the same reason the original was wrong.
+            // Only the feed-side end sees two governors: visibility runs one way, out from the naming workspace.
             const visibleFrom = parsed.residence === "feed-side" ? dest : source;
             say(`vendor: materialising \`${manifest.name}\` at ${display(dest)}. For the next moment two workspaces govern ${path.basename(repoDir)};`);
             say(`vendor: if this run dies here, \`portulan doctor ${display(visibleFrom)} --repo-root ${display(path.dirname(repoDir))}\` says whether it did.`);
-            // **Conditional, and the condition is load-bearing.** This said "removing <dest>/workspace.json
-            // reverts it", full stop — an instruction that is only correct once the new manifest has
-            // actually landed. Before that moment the file at that path is either absent or, switching
-            // feed-side → in-repo, still the POINTER: deleting it there destroys the one record saying who
-            // governs and leaves governance unreportable from the repository, which is the silent state
-            // 0017 calls out by name. A recovery instruction is read exactly once, by someone with no time
-            // to check it. Copilot's suppressed note, round 3 on #164.
+            // Conditional: before the new manifest lands, that path may hold the pointer, the only record of who governs.
             say(`vendor: ONLY if it reports two governors, remove ${display(path.join(dest, "workspace.json"))} — the manifest this run`);
             say("vendor: wrote — and the window closes. If it reports none, the window never opened: delete nothing.");
         }
@@ -1303,47 +918,29 @@ export async function run(argv, options = {}) {
         const preserved = new Map();
         for (const rel of carve.allow) preserved.set(rel, fs.readFileSync(path.join(dest, rel)));
 
-        // **The undo is registered BEFORE the first byte moves, never after the last one.** Registering
-        // it afterwards leaves every failure *between* the writes uncovered — and the gap was real: with
-        // `--host`, `AGENTS.md` was renamed into place first and a failure in the very next rename rolled
-        // back the staging directory while leaving the file behind, so a run that reported could-not-run
-        // had still vendored half of something. Copilot, round 1 on #164. The closures below read
-        // `written` by reference, so they cover exactly as much as has actually happened when they run.
+        // Registered before the first byte moves; it reads `written` by reference, so it undoes exactly what happened.
         const written = [];
-        const landed = carve.allow.size === 0 && !fs.existsSync(dest);
+        const destWasAbsent = carve.allow.size === 0 && !fs.existsSync(dest);
         undo.push(() => {
-            // The manifest FIRST, always: it is what closes the window. Everything after it is cleanup,
-            // and cleanup that throws must not leave a governor standing.
+            // The manifest first: removing it closes the window, so cleanup that throws after it leaves no governor.
             fs.rmSync(path.join(dest, "workspace.json"), { force: true });
             if (hostFile !== null) fs.rmSync(hostFile, { force: true });
-            if (landed) {
-                // The destination did not exist before this run, so removing it restores the world.
+            if (destWasAbsent) {
                 fs.rmSync(dest, { recursive: true, force: true });
             } else {
                 for (const rel of written) if (!preserved.has(rel)) fs.rmSync(path.join(dest, rel), { force: true });
                 for (const [rel, bytes] of preserved) fs.writeFileSync(path.join(dest, rel), bytes);
-                // The DIRECTORIES the partial write created, too. Removing the files and leaving
-                // `verify/` behind restores the destination's contents and not its shape — and the next
-                // run's `carveOut` refuses it for holding something beside the pointer, so a rollback
-                // that reported success wedges the retry it exists to make possible. That is `init`'s
-                // partial write with the failure moved one layer out, and it is what "rolled back"
-                // has to mean: entry for entry, not merely byte for byte. Copilot, round 6 on #164.
+                // Emptied directories too: one left behind makes the retry's `carveOut` refuse the destination.
                 pruneEmpty(dest);
             }
         });
 
-        if (landed) {
-            // The destination does not exist: one atomic rename puts the whole workspace there, and
-            // there is no half-populated state at all.
+        if (destWasAbsent) {
             fs.mkdirSync(path.dirname(dest), { recursive: true });
             if (hostFile !== null) fs.renameSync(path.join(staging, "..AGENTS.md.vendoring"), hostFile);
             fs.renameSync(staging, dest);
         } else {
-            // The destination exists — the switch's own feed-side → in-repo case, landing on the
-            // pointer that is the old residence's in-repo half. Files first, manifest LAST: until the
-            // manifest lands this is a directory of files, which 0017 says is not a residence.
-            // Directories first here too, for the reason above and one more: the second leg of a
-            // round trip lands on an existing destination, so this is the path a workspace takes home.
+            // Files first, manifest last: until the manifest lands, a directory of files is not a residence.
             for (const entry of directories(staging)) {
                 fs.mkdirSync(path.join(dest, entry.rel), { recursive: true });
                 fs.chmodSync(path.join(dest, entry.rel), entry.mode);
@@ -1362,10 +959,6 @@ export async function run(argv, options = {}) {
         fs.rmSync(staging, { recursive: true, force: true });
         fault("materialise:manifest");
 
-        // **The host's tree gets the records the new form keeps** (2026-09-24), beside `AGENTS.md`: the
-        // fragments directory with its rule, where the tree has none of its own, and the line that keeps the
-        // handoff index off the record, which `index --handoffs` prints on demand. Both written with the
-        // undo still standing, and the `.gitignore` only appended to: nothing here rewrites a file you wrote.
         const records = [];
         const recordsLeft = [];
         if (hostFile !== null) {
@@ -1375,7 +968,6 @@ export async function run(argv, options = {}) {
             if (readmeBlocked.length) {
                 recordsLeft.push(`\`${CHANGES_README}\` ${readmeBlocked[0].why === "already exists" ? "is the tree's own" : readmeBlocked[0].why}`);
             } else {
-                // The directory too, where this made it, so an undo leaves the tree as it found it.
                 const made = fs.mkdirSync(path.dirname(readme), { recursive: true });
                 undo.push(() => {
                     fs.rmSync(readme, { force: true });
@@ -1415,19 +1007,12 @@ export async function run(argv, options = {}) {
         }
 
         // ---- retire the old residence's MANIFEST, which is the act that transfers governance
-        //
-        // First, and by rename where there is something to rename: everything after this is cleanup,
-        // and cleanup that fails must not be able to mint a second governor. The reverse order — files
-        // first — would leave a governing manifest over a workspace with holes in it.
 
+        // Before the material: retiring the files first would leave a governing manifest over a workspace with holes.
         const oldManifest = path.join(oldResidence, "workspace.json");
         if (leave === "pointer") {
             const staged2 = `${oldManifest}.vendoring`;
-            // Registered BEFORE the write, for the same reason the destination's undo is — and this is
-            // the SIBLING of the leak round 1 fixed one function over, missed in the fix for it, which
-            // is issue #91's class exactly. A failure in the rename below leaves this temp file in a
-            // residence a later run will walk, where it reads as an unaccounted leftover and blocks the
-            // very cleanup it came from. Copilot's suppressed notes, round 2 on #164.
+            // Registered before the write: a temp file left in the old residence would block a later run's cleanup.
             undo.push(() => fs.rmSync(staged2, { force: true }));
             fs.writeFileSync(staged2, `${JSON.stringify(pointerManifest(oldResidence, manifest.name, parsed.feed), null, 2)}\n`);
             fs.renameSync(staged2, oldManifest);
@@ -1442,9 +1027,6 @@ export async function run(argv, options = {}) {
 
         const bothRoots = { ...roots, ...(parsed.repoRoots.length ? { repoRoots: parsed.repoRoots.map((r) => path.resolve(r)) } : {}) };
         const newEnd = await verdict(dest, bothRoots);
-        // `env` and nothing else: the old residence is graded as a POINTER, so its pack roots are not
-        // the question — but its `governed_by` is dereferenced against the host's record, and the
-        // injection seam has to reach here too. It was a bare `{}`.
         const oldEnd =
             leave === "pointer"
                 ? await verdict(oldResidence, { ...(options.env ? { env: options.env } : {}) })
@@ -1452,9 +1034,6 @@ export async function run(argv, options = {}) {
                   ? [{ check: "residence", message: `a manifest still stands at ${display(oldManifest)}` }]
                   : [];
         if (newEnd.length || oldEnd.length) {
-            // Past the flip. Rolling back would re-open the window in the other direction, so this goes
-            // forward and reports: exactly one workspace governs, and it is the new one. The old
-            // residence's material is NOT retired, which is the contract's own ordering doing its job.
             say(`vendor: governance has moved to ${display(dest)}, and \`doctor\` is RED at ${newEnd.length ? "the new" : "the old"} end.`);
             for (const f of [...newEnd, ...oldEnd]) say(`vendor:   ${f.check} ${f.message}`);
             say(`vendor: the old residence's files were NOT removed — green at both ends comes before retirement, and it was not green.`);
@@ -1464,10 +1043,7 @@ export async function run(argv, options = {}) {
 
         // ---- retire the old residence's material — only what this run can account for
 
-        // `compile`'s own artifacts are retired with the residence that produced them. They are the one
-        // class this deletes without having copied it, and the licence is `compile`'s own sentence:
-        // deleting a generated file the compiler wrote is reproducible by definition. Leaving them
-        // would be leaving compiled enforcement beside a pointer.
+        // Compile's output is deleted though never copied: it is reproducible, and left here it would enforce beside a pointer.
         const moved = new Set([...rels, ...generated]);
         const leftovers = [];
         let remaining = [];
@@ -1475,12 +1051,7 @@ export async function run(argv, options = {}) {
         try {
             remaining = walk(oldResidence);
         } catch (cause) {
-            // **A scan that failed is not an empty old residence.** Swallowing it made `leftovers` empty,
-            // which under `--leave nothing` reached `rmSync(oldResidence, {recursive: true})` and deleted
-            // files this run could not account for — the exact opposite of the sentence two lines up, in
-            // the branch where being wrong is unrecoverable. Copilot, round 1 on #164, and it is this
-            // repository's own fail-open shape: a question that could not be answered, answered *nothing
-            // there*. Governance has already moved, so stopping here is safe; deleting was never safe.
+            // A failed scan is not an empty residence: under `--leave nothing` it would delete files this run cannot account for.
             unscannable = cause;
         }
         for (const file of remaining) {
@@ -1503,20 +1074,12 @@ export async function run(argv, options = {}) {
         say(`vendor: switched \`${manifest.name}\` — ${sourceResidence} → ${parsed.residence}.`);
         say(`vendor:   resides at ${display(dest)}, green.`);
         if (unscannable !== null) {
-            // The switch itself is complete — governance moved when the manifest did — and only the
-            // cleanup is unfinished. Said as its own line rather than folded into the success sentence,
-            // because "switched" and "and the old residence is tidy" are two different claims.
             say(`vendor:   the old residence at ${display(oldResidence)} could NOT be scanned — ${unscannable.message}`);
             say("vendor:   so nothing there was removed. It no longer governs (its manifest is gone or is a pointer),");
             say("vendor:   and nothing here deletes files it could not account for. Clear it by hand when you can read it.");
         } else if (leave === "pointer") {
             say(`vendor:   a pointer at ${display(oldResidence)}, green.`);
         } else if (leftovers.length) {
-            // NOT "nothing left", which is what this said while the next line listed what was left.
-            // `--leave nothing` is an instruction about the *residence*, and it was honoured — the
-            // manifest is gone and nothing governs from there. It is not a promise about the directory,
-            // because this never deletes a file it cannot account for. Two claims, and only one of them
-            // is true here. Copilot's suppressed notes on #164.
             say(`vendor:   no workspace at ${display(oldResidence)} — its manifest is retired and it governs nothing.`);
         } else {
             say(`vendor:   nothing left at ${display(oldResidence)}.`);
@@ -1530,19 +1093,12 @@ export async function run(argv, options = {}) {
             say("vendor: enforcement is keyed to the residence — where a settings file lands differs between the two — so a copy would name paths for the residence it left.");
         }
         if (sourceResidence === "in-repo") {
-            // Outside the workspace directory, so outside what this tool writes. Named rather than
-            // reached for: a tool that starts deleting beyond the directory it was given is the tool
-            // that eventually deletes the wrong thing.
             say(`vendor: \`${display(path.join(path.dirname(source), ".claude", "settings.json"))}\` and \`${display(path.join(path.dirname(source), ".claude", "rules", "portulan"))}\` — where they exist — were compiled from the workspace that has just moved, and nothing here writes outside ${display(source)}. They are yours to remove.`);
         }
         if (!parsed.repoRoots.length && cards.length) {
-            // A check that vanishes without a word is the fail-open this repository has recorded more
-            // than any other. `doctor` says this where it runs; this says it where the switch happened.
             say(`vendor: no --repo-root was given, so the cross-repository half of "green at both ends" reported rather than checked.`);
         }
-        // **In a repository, the guidance half is compiled** (2026-09-24), through compile's own planner and
-        // refusals, so a card that travelled is loaded where it arrived. Past the flip, so a refusal goes
-        // forward: governance has moved either way, and the card waits for a `compile` once it is cleared.
+        // Past the flip, so a compile refusal is reported and the switch still completes.
         let guidanceCompiled = false;
         if (parsed.residence === "in-repo") {
             try {
@@ -1556,8 +1112,6 @@ export async function run(argv, options = {}) {
         } else {
             say(`vendor: nothing compiled — run \`portulan compile\` against the new residence.`);
         }
-        // The repository's own records, its changelog, its Session logs, its `.gitignore`, are not the
-        // workspace's, so a switch moves none of them (2026-09-24); `upgrade` moves them where it is asked.
         if (parsed.residence === "in-repo") {
             say(`vendor: the repository's own records are not moved by a switch — \`portulan upgrade --write ${display(dest)}\` moves them to the new form, which doctor's \`form\` line reports.`);
         }
@@ -1574,7 +1128,6 @@ export async function run(argv, options = {}) {
     }
 }
 
-/** The failing findings the real validator returns — never a second opinion about what valid means. */
 async function verdict(dir, roots) {
     try {
         const { findings } = await inspect(dir, roots);
@@ -1584,7 +1137,6 @@ async function verdict(dir, roots) {
     }
 }
 
-/** Runs the undo steps newest-first, and never lets a failed undo mask the failure that caused it. */
 async function unwind(undo) {
     while (undo.length) {
         const step = undo.pop();
@@ -1596,7 +1148,6 @@ async function unwind(undo) {
     }
 }
 
-/** Removes directories this run emptied, bottom-up, and never one that still holds something. */
 function pruneEmpty(root) {
     const walkDown = (dir) => {
         let entries;
@@ -1617,9 +1168,7 @@ function pruneEmpty(root) {
     walkDown(path.resolve(root));
 }
 
-// The `?? ""` is not decoration and every sibling tool here carries it: `process.argv[1]` is absent when
-// this module is imported by something that is not a script, and `pathToFileURL(undefined)` throws at
-// module load.
+// `?? ""`: `process.argv[1]` is absent when a non-script imports this, and `pathToFileURL(undefined)` throws.
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     process.exitCode = await run(process.argv.slice(2));
 }

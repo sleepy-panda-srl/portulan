@@ -1,66 +1,6 @@
 #!/usr/bin/env node
 // Mutation-test this repository's two gate matchers against the corpus that claims to cover them.
 //
-// Milestone 8, clause (b), first half: *mutation testing over both matchers.* The second half —
-// grammar-aware fuzzing over the shell segmenter — is ./fuzz-shell.mjs, and the two are separate
-// because a surviving mutant and a grammar bypass are different verdicts with different repairs.
-//
-// ## The question this answers, and it is the one `./goldens.mjs` says out loud that it cannot
-//
-// That runner prints on every green: *"this is a PRESENCE floor — whether a corpus is a real attack
-// is a reviewer's judgement, not this rail's."* One trivial fixture per rule satisfies it while
-// proving nothing adversarial. This runner stands in exactly that stated gap. It does not ask whether
-// a fixture exists; it breaks a matcher on purpose and asks whether the corpus NOTICES.
-//
-// A corpus that cannot tell a working matcher from a broken one is a corpus whose green means
-// nothing, and until this file existed no check in this repository could tell those two apart.
-//
-// ## What a mutant is here — anchored, not generated
-//
-// An operator is a **declared textual substitution** into `./compile.mjs`, anchored to a named
-// construct, required to match **exactly once**. Not a random AST perturbation: a random mutator over
-// a 2681-line module spends most of its budget outside the matchers, and this clause is about the
-// matchers. Every operator names the region member it attacks, and the census prints coverage per
-// member INCLUDING THE ZEROES — otherwise "mutation testing over both matchers" is satisfiable by
-// three operators inside `matchesRule` and no reader would see the narrowing.
-//
-// ## The record, and why it reads in both directions
-//
-// Each operator declares the outcome expected of it:
-//
-//   - `killed`   — the corpus must catch this. If it stops catching it, the kill-set has weakened.
-//   - `survives` — the corpus cannot catch it AND THAT IS PROVEN, not observed. Two proofs are
-//                  admissible and each entry states which: the mutant is semantically **equivalent**
-//                  to the original, or it is equivalent **under the yielded policy** — no rule of the
-//                  shape that would distinguish it is declared, so no fixture could exist to kill it.
-//
-// **A survivor that is neither is not a resting state.** `matchesRule` is a pure function of
-// `(rule, tool, input)` and a fixture is exactly that triple, so any non-equivalent mutant is killable
-// by adding one case. A standing ledger of named-but-unfilled gaps would rebuild the prose hole list
-// that clause (a) exists to have replaced, one altitude up. The repair for such a survivor is a new
-// fixture in the corpus, in the corpus's own shape — never a new `survives` entry.
-//
-// Both directions are red, which is `documented-hole`'s discipline in `./goldens.mjs` applied to a
-// second subject: an operator recorded `killed` that now survives, and an operator recorded `survives`
-// that is now killed. The second is good news and the message says so — but a record that still
-// describes a gap somebody closed is as wrong as one that hides a gap somebody opened.
-//
-// ## Three things it deliberately does not do
-//
-// **It does not run the `node --test` suite as a kill-set.** The corpus is the kill-set this
-// repository designated — `../evals/README.md` says clause (b) *"needs this corpus as its kill-set
-// and this fixture format as its output shape"* — running the suite per mutant would need the
-// subprocesses this design refuses, and a `survives` record citing the suite as the killer would put
-// the kill-claim in a second carrier.
-//
-// **It executes nothing.** Fixture command strings are data here exactly as they are in
-// `./goldens.mjs`; the corpus holds `git push --force` and constitution-write spellings by design.
-// The only thing this module runs is `import()` on a JavaScript file it wrote itself, and
-// `./mutants.test.mjs` asserts it imports no process-spawning API.
-//
-// **It writes nothing inside the tree.** Mutants live under `os.tmpdir()`, one fresh directory each,
-// removed in a `finally`.
-//
 // Exit 0 green · 1 red · 2 could not run.
 
 import fs from "node:fs";
@@ -71,20 +11,9 @@ import { pathToFileURL } from "node:url";
 import { CompileError } from "./compile.mjs";
 import { CouldNotRun, partition, readCorpus, yieldedRules } from "./goldens.mjs";
 
-/** The module under mutation, relative to the repository root. */
 export const SUBJECT = "cli/compile.mjs";
 
-/**
- * The matcher region — every function and table `matchesRule` can reach, named.
- *
- * This list is the **coverage floor**, and it is written down rather than derived because deriving it
- * would mean a call-graph walker, and a walker that is wrong is wrong silently. Each member must carry
- * at least one operator or the table below must say why not; `census` prints the per-member count
- * including zeroes, the way `./goldens.mjs` prints its per-matcher-path census including zeroes.
- *
- * The three entry branches of `matchesRule` are the two matchers the clause names plus `read:`, which
- * shares `matchesPath` with the write branch and so cannot be mutated separately from it.
- */
+/** Every function and table `matchesRule` can reach, listed by hand rather than derived. */
 export const REGION = [
     "matchesRule",
     "matchesPath",
@@ -107,30 +36,13 @@ export const REGION = [
     "SEGMENT_LEADERS",
     "OPERATOR",
     "ASSIGNMENT",
-    // Added at the pre-commit checkpoint, which derived the reachable set rather than reading this
-    // list and found both missing while the sentence above said "every function and table
-    // `matchesRule` can reach". They are the tool tables the write and read branches dispatch on —
-    // `compile.mjs:92` and `:93`, read at `:1003` and `:1033` — and a list that omits a dispatch
-    // table is exactly the narrowing this census exists to make visible. Adding them found a real
-    // gap: the corpus had no `NotebookEdit` case at all.
     "WRITE_TOOLS",
     "READ_TOOLS",
 ];
 
-/** The two outcomes an operator may record. */
 export const OUTCOMES = ["killed", "survives"];
 
-/**
- * The operators, and the outcome recorded for each.
- *
- * **One table, in this module, deliberately.** An operator is an anchor into `./compile.mjs`'s source
- * text plus the outcome expected of it; splitting those across code and a JSON file would make two
- * carriers of one operator, which is the defect this repository names more often than any other. The
- * corpus is data because it is per-rule and large; an operator is neither.
- *
- * `find` must occur **exactly once** in the subject. A missing or ambiguous anchor is could-not-run,
- * never a skip — see `mutate`.
- */
+/** Record `survives` only for a mutant equivalent outright or under the yielded policy: a fixture can kill any other. */
 export const OPERATORS = [
     // ---------------------------------------------------------------------------------- matchesRule
     {
@@ -233,12 +145,7 @@ export const OPERATORS = [
     {
         id: "matchesPath-stops-stripping-a-leading-dot-slash",
         member: "matchesPath",
-        // **The anchor carries the line BELOW it, and that is not decoration.** `neverMatches` in the
-        // same file re-spells this strip — deliberately, so that predicate reads without `matchesPath`
-        // in front of you — and the moment it did, this operator placed TWICE and the whole census
-        // exited 2: could-not-run wearing a pass's clothes, over a cause no reader would guess from the
-        // exit code. The recipe's own advice is to lengthen the anchor until it is unique, and the
-        // `if (clean === ...)` guard is the line only `matchesPath` has. Measured 2026-09-03.
+        // The second line keeps the anchor unique: `neverMatches` repeats the first.
         find: "const clean = String(target ?? \"\").replace(/^\\.\\//, \"\").replace(/^\\/+/, \"\");\n    if (clean === \"\" || clean === \"/\") return false;",
         replace: "const clean = String(target ?? \"\").replace(/^\\/+/, \"\");\n    if (clean === \"\" || clean === \"/\") return false;",
         outcome: "killed",
@@ -578,14 +485,6 @@ export const OPERATORS = [
     },
 ];
 
-/**
- * Apply one operator to the subject's source.
- *
- * **A missing or ambiguous anchor is could-not-run, never a skip.** If `compile.mjs` moves and an
- * anchor no longer places, a harness that skipped it would report a clean sweep of the operators it
- * happened to apply — `../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md`, in the one
- * tool whose entire subject is checks that must not be trusted on their own word.
- */
 export function mutate(source, op) {
     let count = 0;
     let at = 0;
@@ -610,37 +509,15 @@ export function mutate(source, op) {
     return source.replace(op.find, () => op.replace);
 }
 
-/**
- * Rewrite the subject's relative imports to absolute `file://` URLs.
- *
- * A mutant lives in a temp directory, so `./discover.mjs`, `./inside.mjs`, `./symbols.mjs` and `./ledger.mjs`
- * would not resolve from there. The first three import node builtins only, and the fourth imports node
- * builtins and `./inside.mjs`, which resolves from the real module's own directory, so pointing at the real
- * modules costs nothing and copies nothing. Measured before this was written rather than assumed, and again
- * on 2026-09-24, when Workspace Definition 2.12's `spend` brought the fourth: `${SUBJECT}` has exactly four
- * relative imports and no dynamic `import(`. It reads `import.meta.url` at top level twice: in the entry
- * guard, which compares against `process.argv[1]` and therefore cannot fire for a module imported from a
- * temp directory while argv[1] is this runner, and in `ENGINE_ROOT`, which a mutant resolves under its temp
- * directory and which only the guidance compiler reads, never `matchesRule`. `./discover.mjs`,
- * `./symbols.mjs` and `./ledger.mjs` have entry guards of the same form.
- */
+/** Only `from "./….mjs"` imports are rewritten, and a mutant's `import.meta.url` names its temp directory. */
 export function absolutiseImports(source, cliDir) {
     return source.replace(/from "\.\/([A-Za-z0-9._-]+\.mjs)"/g, (_, name) => `from "${pathToFileURL(path.join(cliDir, name)).href}"`);
 }
 
-/** Run the whole corpus through one `matchesRule`, and report the first disagreement. */
 export function runCorpus(matchesRule, byId, corpus) {
     for (const { where, doc } of corpus) {
         const rule = byId.get(doc.rule);
-        // **Never a skip.** This read `if (!rule) continue;`, which let a fixture file whose rule the
-        // policy does not declare — renamed, misfiled, outlived its gate — sit ungraded while the
-        // census reported green. A coverage tool that silently thins its own kill-set and then reports
-        // on it is the loudest false green available here, and it is the failure
-        // `../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md` names, in the module
-        // whose whole subject is that class. `run` refuses the whole census before the baseline for
-        // exactly this, so this arm is unreachable from there and is kept because a direct caller of
-        // an exported function must not get the silent behaviour back. Reported as a suppressed note
-        // by Copilot, round 5 on #338.
+        // `run` refuses such a corpus first; this arm answers a direct caller.
         if (!rule) {
             throw new CouldNotRun(
                 `${where} attacks \`${doc.rule}\`, which the yielded policy does not declare — its cases cannot be ` +
@@ -652,8 +529,7 @@ export function runCorpus(matchesRule, byId, corpus) {
             try {
                 actual = matchesRule(rule, c.tool, c.input);
             } catch (error) {
-                // A mutant that THROWS is caught, and loudly: `matchesRule` promises never to throw,
-                // so a throw is a disagreement with the contract as much as a wrong boolean is.
+                // `matchesRule` never throws, so a mutant that throws is killed.
                 return { agreed: false, at: `${where} → ${c.id}`, how: `threw ${error?.name ?? "an error"}` };
             }
             if (actual !== c.expect) {
@@ -664,16 +540,7 @@ export function runCorpus(matchesRule, byId, corpus) {
     return { agreed: true };
 }
 
-/**
- * Import a mutated subject from a fresh temp directory.
- *
- * **A fresh directory per mutant, and that is load-bearing rather than tidy.** ESM caches by resolved
- * URL and offers no invalidation, so writing every mutant to one reused path would import mutant 1
- * and then grade it forty more times — silently, and *including while the record is first being
- * written*, where the two-directional rail cannot see it because the record would be built from the
- * same wrong readings. `./mutants.test.mjs` pins it with two mutants that must answer differently in
- * one process.
- */
+/** A fresh directory per mutant: ESM caches a module by its URL and never forgets one. */
 async function importMutant(source, cliDir, op) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-mutant-"));
     const file = path.join(dir, "compile.mjs");
@@ -682,10 +549,6 @@ async function importMutant(source, cliDir, op) {
         try {
             return { module: await import(pathToFileURL(file).href), dir };
         } catch (cause) {
-            // **An unimportable mutant is could-not-run, never a kill.** A substitution that produces a
-            // syntax error checks nothing about the corpus, and counting it as killed would let a
-            // broken operator masquerade as a well-covered one — the loudest possible false green in a
-            // tool whose whole output is a coverage claim.
             throw new CouldNotRun(
                 `operator \`${op.id}\` produced a module that will not import — ${cause?.message ?? cause}. ` +
                     `A mutant that cannot load tests nothing; fix the substitution`,
@@ -697,7 +560,6 @@ async function importMutant(source, cliDir, op) {
     }
 }
 
-/** Per-region-member operator counts, zeroes included. */
 export function census(operators = OPERATORS) {
     const counts = new Map(REGION.map((m) => [m, 0]));
     const stray = [];
@@ -758,9 +620,6 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
             } else throw new CouldNotRun(`unknown argument ${JSON.stringify(argv[i])}`);
         }
 
-        // The coverage floor is checked before a single mutant is written, because it is a property of
-        // the TABLE and a run that spends thirty seconds before reporting a structural gap is a run
-        // nobody waits for.
         const { counts, stray, uncovered } = census();
         if (stray.length) {
             throw new CouldNotRun(
@@ -768,12 +627,7 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
                     `Add the member to REGION or correct the operator — an operator outside the census is coverage nobody counts`,
             );
         }
-        // **The WHOLE table, in both modes.** This read `only === null ? OPERATORS : []`, so `--only`
-        // — the mode a person reaches for precisely when something is wrong — validated nothing, and a
-        // malformed operator slipped through exactly where somebody was looking closely. `--only`
-        // narrows what RUNS; it does not narrow what must be well formed, because the table is the
-        // artifact under review and a reviewer reading it in `--only` mode is reading the same table.
-        // Reported by Copilot, round 1 on #338.
+        // Every operator, even under `--only`: it narrows what runs, not what must be well formed.
         for (const op of OPERATORS) {
             if (!OUTCOMES.includes(op.outcome)) {
                 throw new CouldNotRun(`operator \`${op.id}\` records outcome ${JSON.stringify(op.outcome)} — one of ${OUTCOMES.join(" / ")}`);
@@ -799,13 +653,6 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
         const { matchable, exempt } = partition(rules);
         const byId = new Map(matchable.map((r) => [r.id, r]));
 
-        // **The corpus and the policy must correspond before a single mutant is written.** A fixture
-        // naming a rule this census cannot grade is not a case that happens to pass — it is a piece of
-        // the kill-set that never runs, and the census's whole output is a claim about how much the
-        // kill-set catches. Refused here rather than at the first mutant so the message names the
-        // repair once instead of forty-nine times, and refused at all because the alternative measured
-        // green. `goldens` reds on the same condition; this does not lean on that recipe having run,
-        // since a rail that depends on a sibling rail is a rail with a precondition nobody states.
         const ungradable = corpus
             .filter(({ doc }) => !byId.has(doc.rule))
             .map(({ where, doc }) => {
@@ -822,10 +669,6 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
             );
         }
 
-        // **The baseline, before any mutant.** A mutation census over a corpus that is already red
-        // measures nothing — every mutant would "survive" against a kill-set that cannot even agree
-        // with the unmutated matcher. `goldens` is the recipe that grades this; here it is a
-        // precondition, and a failed precondition is could-not-run rather than a verdict.
         const { matchesRule } = await import(pathToFileURL(subject).href);
         const baseline = runCorpus(matchesRule, byId, corpus);
         if (!baseline.agreed) {
@@ -874,14 +717,9 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
         }
 
         say(`mutants: ${selected.length} operator(s) over ${corpus.length} fixture file(s) — ${killed} killed, ${survived} survived`);
-        // Per region member, zeroes included — see REGION. A total says nothing about where the
-        // operators landed, and "mutation testing over both matchers" is satisfiable by three
-        // operators in one function if nobody prints the distribution.
         say(`mutants: by matcher-region member —`);
         for (const member of REGION) say(`           ${String(counts.get(member)).padStart(2)}  ${member}`);
         if (uncovered.length) {
-            // A gap in the floor is a RED rather than a could-not-run: the table is well-formed, it
-            // simply does not reach part of what the clause names.
             findings.push({
                 where: "the operator table",
                 what:
@@ -911,10 +749,7 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
     }
 }
 
-// The entry guard, in the ONE form `./rule-carriers.mjs` designates. `file://${argv[1]}` is NOT that
-// form: `import.meta.url` percent-encodes, this working copy lives under a path with spaces, and the
-// comparison fails — so the tool exits 0 having run nothing. Copied rather than re-derived, for the
-// reason `./goldens.mjs` states after meeting the false green a third time.
+// URLs on both sides, since `import.meta.url` percent-encodes; the realpath covers a symlinked `bin`.
 function isMain() {
     const invoked = process.argv[1];
     if (!invoked) return false;

@@ -1,204 +1,39 @@
 #!/usr/bin/env node
 /**
- * The registrable set — the one carrier of *what a host must declare so a composed pack's skills
- * register*.
+ * The registrable set: the `skills` paths a plugin manifest must declare so a composed pack's skills register.
  *
  *   node cli/skills-set.mjs [--workspace <dir>] [--repo-root <dir>] [--plugin-root <dir>]
  *                           [--pack-root <dir>|auto ...] [--check|--write]
  *
  * Exit 0 derived (or, with `--check`, agrees) · 1 the manifest has drifted · 2 could not run.
- *
- * Row 7 clause (b)'s adopter half, [#184](https://github.com/sleepy-panda-srl/portulan/issues/184):
- * *the generator that derives a plugin's `skills` from a workspace's `packs`*.
- *
- * ## The gap this closes, measured rather than argued
- *
- * **Registration is a property of `.claude-plugin/plugin.json` and of nothing else** — measured
- * 2026-08-09 on Claude Code 2.1.226 by deleting the `packs` key from the governing workspace outright
- * and reinstalling, which changed the host's inventory not at all. So until this landed, a composed
- * pack's skill was invocable **by coincidence of a hand-written path**: two manifests carried one
- * fact, and the only thing holding them together was `cli/plugin-lint.mjs`'s `compose` check, which
- * buys *this bundle's* parity and not an adopter's.
- *
- * `spec/pack.schema.json` had already undertaken this in its own words, under `contributes.skills`:
- * *"Reaching parity means reading this key, so the row has undertaken to open it."* `doctor` opens it
- * to VALIDATE the skills behind it (the 2026-08-03 amendment); nothing folded it into registration.
- * That is exactly the declare-only state `contributes.verify` sat in until milestone 7 session 5, and
- * the repair is the one that session established: **one carrier, and the readers reach it**
- * (`../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`).
- *
- * ## Why a module and not a ninth subcommand
- *
- * `docs/vision.md` names eight and is human-owned. `./discover.mjs` already records the precedent in
- * its own header — *"This is not a ninth `portulan` subcommand."* And not a widening of `compile` either, whose glossary entry is *"Emits
- * restriction only — never an `allow` rule"*: a skills path is a capability **grant**, which is the
- * other direction, and its input is `workspace.json`'s `packs` rather than the gate policy.
- *
- * ## The derivation, and the one platform fact it rests on
- *
- * A pack declares where its skills live (`contributes.skills`, each entry a directory that either IS
- * one skill or CONTAINS them). The host expands a declared skills path **one level and no further**.
- * Both shapes are therefore reached by declaring the root itself — a root holding `SKILL.md`
- * registers at depth 0, a root of skill directories registers them at depth 1 — which is why the
- * derived path is the `contributes.skills` root, relativised to the plugin root, and nothing cleverer.
- *
- * `HOST_SKILL_DEPTH` lives HERE rather than in `cli/plugin-lint.mjs`, where it was measured and was
- * module-local. It moved because that file now imports this one for the `compose` check, so exporting
- * it from there would have made an import cycle. The direction matches `AGENT_DIR`, which flows
- * plugin-lint → doctor: the carrier of a derived set carries the platform constant the derivation
- * depends on. **It is a measurement, not a derivation** — Claude Code 2.1.224 and 2.1.226 — and a host
- * that changes it makes every path below wrong with nothing here to say so. Re-measure on upgrade.
- *
- * ## What this deliberately does NOT do
- *
- * - **It never creates a plugin manifest.** A workspace shipping no plugin is a legitimate state, not
- *   a hole to fill, and inventing a manifest would be this tool deciding an adopter ships one.
- * - **It touches only the pack portion of `skills`.** Entries outside the roots packs actually resolve
- *   from — `./core/skills/`, `./plugin/skills/` — are somebody else's declaration and are preserved
- *   verbatim, including their original spelling and order.
- *
- *   **That boundary is derived, never assumed to be `./packs/`.** The first cut had two partitions of
- *   one fact: the derivation emitted a path for any pack resolving inside the plugin root, while the
- *   declared side recognised only `<pluginRoot>/packs`. Anything in the gap was derived and never
- *   recognised as derived, so `--check` reported the same drift forever and `--write` appended a
- *   duplicate entry on every run — **reachable with no flags at all**, from a `tree` pointing anywhere
- *   but the conventional place, which is to say from an ordinary adopter's layout. This repository's
- *   own layout makes the two partitions coincide, which is exactly why every test and the byte-identity
- *   check passed over it: *a harness written against blind spots inherits this one.* Found at the
- *   pre-commit checkpoint by constructing the layout rather than by reading the code.
- * - **It does not check the tree.** This derives from what a pack DECLARES. Whether a `SKILL.md` is
- *   actually there, and whether one sits too deep for the host to reach, is `plugin-lint`'s walk. The
- *   two are deliberately different derivations: a pack whose declaration and tree disagree is a
- *   finding, and collapsing them would delete the check that finds it.
- * - **`--write` re-serialises with two-space indentation and a trailing newline**, which is the form
- *   every manifest in this repository already has. A manifest formatted otherwise is reformatted, and
- *   that is a real cost rather than a hidden one.
- *
- * ## A pack two roots answer for is refused, not picked
- *
- * On a host carrying an installed copy of a composed pack **and** the tree's own, resolution is
- * discovered-first and first-match-wins, so the installed copy answers. That copy lives outside the
- * plugin root, containment fails, and this tool concluded the tree's declared skills path belonged to
- * no composed pack — printing `--write` as the remedy, where `--write` is the mutation that strips a
- * correct declaration out of a tracked manifest
- * ([#317](https://github.com/sleepy-panda-srl/portulan/issues/317)).
- *
- * So this refuses at RESOLUTION — exit 2 — where `compile` refuses for the same family
- * ([#316](https://github.com/sleepy-panda-srl/portulan/issues/316)), and for the same reason: the
- * printer, `--check` and `--write` inherit ONE rule rather than three. Refusing on `--write` alone
- * would leave `--check` exiting **1**, asserting the *repository* had drifted when it had not — and an
- * exit code is the machine-read API, so a false 1 is a false verdict about the tree.
- *
- * **The predicate is imported, not re-spelled.** `shadowedCopy` and `packDifferences` live in
- * `./compile.mjs`. That comparison had already been wrong twice in `doctor` before it became one
- * carrier, and a third copy written inside a fix for its own family is precisely the defect
- * `../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md` names.
- *
- * **Where this tool's reason is SHARPER than `compile`'s, and the message says so.** `compile` refuses
- * a shadow whose manifests agree because `recordedOrigin` writes the answering root into the artifact,
- * so agreement in the manifests is not agreement in the bytes. Here agreement is beside the point in a
- * more direct way: the two copies sit on opposite sides of the plugin root, so which one answers
- * decides whether this pack contributes a `skills` path **at all**. Version parity does not save it,
- * which is why this fires on hosts where `compile`'s difference-driven half would have nothing to say.
- *
- * Zero dependencies, no network, no install step — the same constraints as every tool here.
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-// The precedence rule — **a named root wins outright; asked-for discovery is unioned with the
-// tree-derived root, discovered first** — lives once, in `discover.mjs`'s `resolutionRoots`, reached
-// through `compile.mjs`'s `rootPlan`. A second derivation here would be a second carrier of the fact
-// that file was built to hold. _(It read "named > discovered > derived, never union" until
-// 2026-08-12. The rule changed because the workspace `init` drafts by default could not go green
-// under any invocation that did not name a host cache path; this comment is one of the carriers that
-// moved with it, and the file below it held the defect that made the class concrete. **On 2026-08-13
-// "asked-for" went too**: the unasked arm consults a wired thunk as well, so the rule is now **a named
-// root wins outright; otherwise discovery is unioned with the derived root, discovered first** — asking
-// only selects the strict degrade. This tool exited **2** on the ordinary drafted workspace until then,
-// which is what the row's "optional where discovery finds a root" was not.)_
 import { packDifferences, recordedOrigin, resolvePack, rootPlan, shadowedCopy } from "./compile.mjs";
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 
-/**
- * How far below a DECLARED skills root the host itself looks. One — `<root>/<skill>/SKILL.md` — and no
- * further.
- *
- * **Measured 2026-08-07 on Claude Code 2.1.224** against a local marketplace built from this
- * repository, in both directions: `./packs/rituals/` registered **0 of the pack's 3 skills**, and
- * `./packs/rituals/checkpoints/skills/` registered **all 3**. Re-measured on 2.1.226. It is its own
- * constant rather than a literal because it is a PLATFORM fact this repository does not control.
- *
- * A skill resolved deeper than this is packaged, counted by a validator, and inert on every install —
- * the failure `../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md` records against
- * the sibling `agents` key. Re-measure it at a host upgrade; a change here is a change in what
- * installs, not in what this tool prefers, and **nothing here can detect one**.
- *
- * It lived in `./plugin-lint.mjs` until milestone 7 session 8, where it was measured; it moved when
- * that file became a consumer of this one, since exporting it back would have made an import cycle.
- * The counts above moved with it deliberately — the first cut of this move kept the mandate and
- * dropped the evidence, which leaves a re-measurer nothing to compare against.
- */
+/** Claude Code 2.1.226 finds a skill at most one level below a declared skills root: `<root>/<skill>/SKILL.md`. */
 export const HOST_SKILL_DEPTH = 1;
 
-/** Could-not-run. Always 2, never 1: *nobody looked* outranks *we looked and it was bad*. */
 function refuse(reason) {
     return { ok: false, exitCode: 2, reason };
 }
 
-/**
- * Lexical containment. `candidate` inside `root`, or `root` itself, is not an escape.
- *
- * Lexical is all this needs and the boundary is worth stating: nothing here OPENS a derived path, so
- * a symlink resolving elsewhere is not this tool's hazard the way it is `plugin-lint`'s walk or
- * `vendor`'s write. What is derived is a *string a manifest will declare*, and the property that
- * matters is that the string names somewhere under the root it claims to be under.
- */
+/** Lexical: a symlink is not followed, since nothing here opens a derived path. */
 function escapes(root, candidate) {
     const rel = path.relative(root, candidate);
     return rel === ".." || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel);
 }
 
-/**
- * The `./…/` spelling both plugin manifests in this repository already use, from a relative path.
- *
- * Canonical on both sides of every comparison, so `packs/a/skills` and `./packs/a/skills/` are one
- * path rather than two — a difference in spelling is not drift, and reporting it as drift would make
- * `--check` red on a manifest that is correct.
- */
 export function canonical(relPath) {
     const posix = String(relPath).split(path.sep).join("/").replace(/^\.\//, "").replace(/\/+$/, "");
     return posix === "" ? "./" : `./${posix}/`;
 }
 
-/**
- * The registrable set for a workspace manifest.
- *
- * @param {object} manifest                a parsed Workspace Definition
- * @param {object}   [options]
- * @param {string[]} [options.packs]       the workspace's `packs`; defaults to `manifest.packs`
- * @param {string}   options.pluginRoot    absolute path of the plugin root whose manifest would declare these
- * @param {(ref: string) => ({ ref: string, root: string, manifest: object } | null)} [options.resolve]
- *        resolves a pack reference to its ABSOLUTE root and parsed manifest, or null when it cannot be
- *        found. Absent while packs are declared means nothing resolves, which is could-not-run: a
- *        resolver that silently is not there would derive nothing and report an empty set.
- *
- * @param {string[]} [options.fallbackRoots]  roots to own when NO pack resolved, so a workspace that
- *        has stopped composing still has its stale entries recognised. `run` passes the ones `rootPlan`
- *        produced; the conventional `<pluginRoot>/packs` is the last resort.
- *
- * @returns {{ ok: true, paths: {path: string, pack: string, root: string}[],
- *             external: {pack: string, root: string}[], composed: number, owned: string[] }
- *          | { ok: false, exitCode: 2, reason: string }}
- *
- * `owned` is part of the contract, not an implementation detail: `compare()` and `declaredFor()` take
- * it to partition the manifest, and a caller holding a set from elsewhere must pass it through or those
- * two will fall back to the conventional root and disagree with the derivation — which is the defect
- * this whole partition exists to prevent. It went undocumented in the change that introduced it; raised
- * as a promoted low-confidence note on #229.
- */
+/** `options.resolve(ref)` returns a pack's `{ root, manifest }` or `{ root, unreadable }`, and `null` when not found. */
 export function skillsSet(manifest, options = {}) {
     const { packs = manifest?.packs ?? [], resolve = null, pluginRoot } = options;
 
@@ -206,10 +41,6 @@ export function skillsSet(manifest, options = {}) {
         return refuse("no plugin root was given — there is nothing for a derived path to be relative to");
     }
 
-    // `packs` must be an array. A string here iterates CHARACTERS and reports "the pack `r` could not
-    // be resolved" — a refusal naming something the manifest never said; an object throws a TypeError,
-    // which is a stack trace rather than a diagnosis. Both are could-not-run wearing a worse face.
-    // `cli/recipe-set.mjs` carries the same guard, put there by review rather than by design.
     if (!Array.isArray(packs)) {
         return refuse(
             `this workspace's \`packs\` is not an array (${packs === null ? "null" : typeof packs}) — ` +
@@ -220,12 +51,6 @@ export function skillsSet(manifest, options = {}) {
     const paths = [];
     const external = [];
     const reportedExternal = new Set();
-    // The roots this tool OWNS in the declared manifest, accumulated from the packs that actually
-    // resolved rather than assumed to be `<pluginRoot>/packs`. A resolver hands back a pack directory,
-    // and `resolvePack` builds one as `<root>/<category>/<name>` — so the root is two segments up, and
-    // recovering it that way keeps this partition identical to the one the derivation uses **by
-    // construction**. Two partitions of one fact is the defect this replaces; a second option to pass
-    // in would have been a third chance to disagree.
     const owned = new Set();
 
     for (const ref of packs) {
@@ -238,17 +63,12 @@ export function skillsSet(manifest, options = {}) {
 
         const found = resolve ? resolve(ref) : null;
         if (!found) {
-            // Never silently absent. A pack quietly missing from this set is a manifest that looks
-            // complete and registers nothing — the same false green the row refuses for recipes.
             return refuse(
                 `the pack \`${ref}\` is composed by this workspace and could not be resolved — no pack.json ` +
                     "under any resolution root, so what it contributes to registration could not be read. " +
                     "Could-not-run rather than a set that quietly lost it",
             );
         }
-        // Resolved, and its manifest defeated the reader. Its own sentence because the repair is its own
-        // act: the pack is exactly where it should be and the file inside it is the problem, which is
-        // not what "could not be resolved" sends anyone to go and check.
         if (found.unreadable) {
             return refuse(
                 `the pack \`${ref}\` is composed by this workspace and resolves at ${found.root}, but its ` +
@@ -256,9 +76,6 @@ export function skillsSet(manifest, options = {}) {
             );
         }
 
-        // Absent is a real state: a pack may contribute no skills at all, which is `packs/tools/github`'s
-        // deliberate shape. PRESENT and not an array is neither that nor a resolution failure — it is a
-        // manifest nobody can read, and `for..of` over it throws where the contract is a sentence.
         const contributed = found.manifest?.contributes?.skills;
         if (contributed !== undefined && !Array.isArray(contributed)) {
             return refuse(
@@ -268,24 +85,11 @@ export function skillsSet(manifest, options = {}) {
         }
 
         const packRoot = path.resolve(found.root);
-        // Recorded for every pack that resolves inside the plugin root, whether or not it contributes
-        // skills: a pack contributing none still makes its root ours, which is what lets a declared
-        // path under it be reported as belonging to no composed pack once the pack stops shipping one.
+        // `resolvePack` builds a pack directory as `<root>/<category>/<name>`.
         const resolutionRoot = path.resolve(packRoot, "..", "..");
 
-        // Only a pack INSIDE the plugin root is one this tool could own — an outside one is the fourth
-        // outcome below and its resolution root is somebody else's business. Asking the question of an
-        // outside pack fires on an ordinary case, since a pack at `/elsewhere/x` has resolution root
-        // `/`, which contains every plugin root there is. Caught by the fourth-outcome tests the moment
-        // the guard was written without this condition.
+        // Only an inside pack is owned: an outside pack's root may be `/`, which contains every plugin root.
         if (!escapes(pluginRoot, packRoot)) {
-            // A resolution root that CONTAINS the plugin root — or is it — makes every declared path a
-            // pack path, so this tool would own `./core/skills/` and delete it on the next `--write`.
-            // That is the contract above ("preserved verbatim") turned into data loss, and it is one
-            // `--pack-root <pluginRoot>` away. Refused rather than narrowed: excluding the plugin root
-            // from the owned set while still deriving paths under it would put the two partitions back
-            // out of step, which is the defect this partition exists to prevent. Symmetric by
-            // construction — nothing derived, nothing recognised. Found at the pre-commit re-check.
             if (!escapes(resolutionRoot, pluginRoot)) {
                 return refuse(
                     `the pack \`${ref}\` resolves from ${resolutionRoot}, which contains the plugin root ` +
@@ -306,9 +110,6 @@ export function skillsSet(manifest, options = {}) {
 
             const absolute = path.resolve(packRoot, entry);
 
-            // A skills root escaping its own pack is `doctor`'s verdict on that pack, and this tool does
-            // not render it — but deriving from it anyway would put a path outside the pack into
-            // somebody's manifest, which is worse than either. Named and refused.
             if (escapes(packRoot, absolute)) {
                 return refuse(
                     `the pack \`${ref}\` declares the skills root \`${entry}\`, which resolves outside the ` +
@@ -316,11 +117,6 @@ export function skillsSet(manifest, options = {}) {
                 );
             }
 
-            // The fourth outcome, and the one an adopter meets first. A pack resolved from the host's
-            // plugin cache — which is the case `--pack-root auto` and `discover.mjs` exist for —
-            // resolves perfectly well and has **no path expressible relative to this plugin root**. It
-            // is not drift, not could-not-run, and must not be silence: it registers through its own
-            // plugin or not at all. Reported, excluded from the set, and it moves no exit code.
             if (escapes(pluginRoot, absolute)) {
                 if (!reportedExternal.has(ref)) {
                     reportedExternal.add(ref);
@@ -333,29 +129,6 @@ export function skillsSet(manifest, options = {}) {
         }
     }
 
-    // An empty set is NOT refused here, and that is the one place this carrier's contract differs from
-    // `recipeSet`'s on purpose. A workspace that yields no verify recipe cannot report green, so that
-    // one refuses; a workspace may legitimately **compose no packs**, and refusing would make the
-    // honest case red. Emptiness is two questions — nothing composed, or nothing readable — and every
-    // unreadable arm above has already returned. What is left is examined and genuinely empty.
-    //
-    // With nothing resolved there is no root to derive from a pack, so the caller's own resolution
-    // roots stand in — `run` passes the ones `rootPlan` produced — and the conventional root is the
-    // last resort. That ordering is the finding: a workspace that has STOPPED composing still needs its
-    // stale pack entries recognised as ours and cleaned, and falling straight to `<pluginRoot>/packs`
-    // did that **only for the conventional layout**, silently preserving a stale entry forever anywhere
-    // else. Layout-dependence in the fallback of a fix whose whole subject was layout-dependence.
-    // Raised at the pre-commit re-check.
-    // The same ambiguity the in-pack guard refuses, on the path that has no pack to guard. A fallback
-    // root that CONTAINS the plugin root makes every declared entry read as pack-owned, and with no
-    // packs composed the derived set is empty — so `--write` deleted `./core/skills/` and
-    // `./plugin/skills/` outright and **exited 0 announcing "wrote 0 skills path(s)"**. Silent data
-    // loss, reachable with `--pack-root <pluginRoot>`.
-    //
-    // The guard was written for the resolved-pack arm and not for this one, which is the third instance
-    // in this change of a fix landing at one site of an operation and not its sibling —
-    // `../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`. Raised by Copilot on
-    // #229, after the two earlier instances were raised the same way.
     const fallbackCandidates = (options.fallbackRoots ?? []).map((r) => path.resolve(r));
     for (const candidate of fallbackCandidates) {
         if (!escapes(candidate, pluginRoot)) {
@@ -376,27 +149,14 @@ export function skillsSet(manifest, options = {}) {
     };
 }
 
-/**
- * Split a plugin manifest's declared `skills` into the portion this tool owns and the portion it must
- * leave exactly as it found it.
- *
- * The outside entries keep their **original spelling**, because `declaredFor` writes them back and a
- * generator that silently re-spelled somebody's hand-written path would be editing what it was asked
- * to preserve.
- */
 export function packPortion(skills, pluginRoot, ownedRoots) {
     if (skills === undefined) return { inside: [], outside: [], malformed: false };
     if (!Array.isArray(skills)) return { inside: [], outside: [], malformed: true };
 
-    // `skillsSet` reports the roots it owns and every caller passes them through. The conventional root
-    // is the default for a caller asking about a manifest with no derivation beside it — never a second
-    // opinion about where packs live when one is available.
     const roots = (ownedRoots ?? [path.join(pluginRoot, "packs")]).map((r) => path.resolve(r));
     const inside = [];
     const outside = [];
     for (const raw of skills) {
-        // A non-string entry is not this tool's verdict — `plugin-lint` grades the manifest — but it is
-        // also not a pack path, so it is preserved rather than dropped.
         if (typeof raw !== "string") {
             outside.push(raw);
             continue;
@@ -408,14 +168,6 @@ export function packPortion(skills, pluginRoot, ownedRoots) {
     return { inside, outside, malformed: false };
 }
 
-/**
- * Compare a derived set against what a plugin manifest declares.
- *
- * Both directions are named, because each is a distinct defect and both are silent today: a composed
- * pack the manifest does not declare ships, counts, and is inert on every install; a pack path the
- * manifest declares that no composed pack asks for is a capability the host registers that no
- * workspace layer asked for.
- */
 export function compare(set, pluginManifest, pluginRoot) {
     const portion = packPortion(pluginManifest?.skills, pluginRoot, set?.owned);
     if (portion.malformed) {
@@ -426,9 +178,6 @@ export function compare(set, pluginManifest, pluginRoot) {
             why: "the plugin manifest declares `skills` as something other than an array, so what it registers could not be read",
         };
     }
-    // Sets rather than `includes` on both sides. The cost is nothing at this repository's three
-    // entries and the shape is an adopter's — the same finding #228 records against the persona
-    // correspondence, applied here rather than shipped again and fixed later.
     const derived = set.paths.map((p) => p.path);
     const declared = portion.inside;
     const derivedSet = new Set(derived);
@@ -438,34 +187,14 @@ export function compare(set, pluginManifest, pluginRoot) {
     return { agree: missing.length === 0 && extra.length === 0, missing, extra };
 }
 
-/**
- * The `skills` array `--write` would put in the manifest: every non-pack entry exactly as it was, in
- * its original order, followed by the derived pack entries.
- *
- * Returns `null` when the manifest's `skills` cannot be read as an array — a caller must not treat
- * that as "there were no entries to preserve", which would silently delete a key it could not parse.
- */
+/** Every non-pack entry as it was, in order, then the derived paths; `null` when `skills` is not an array. */
 export function declaredFor(set, pluginManifest, pluginRoot) {
     const portion = packPortion(pluginManifest?.skills, pluginRoot, set?.owned);
     if (portion.malformed) return null;
     return [...portion.outside, ...set.paths.map((p) => p.path)];
 }
 
-/**
- * The refusal a shadowed pack earns, or `null` when no declared pack is shadowed.
- *
- * Separated from `run` so the sentence a reader gets is testable without a command line, and kept in
- * this file rather than pushed into `compile.mjs` because the CONSEQUENCE clause is this tool's own:
- * `compile` talks about emitted policy, and this one talks about whether a `skills` path is derived.
- * What is shared — *is there a second copy behind the one that answered, and do the two differ* — is
- * imported, and that split is the point.
- *
- * Only the **unasked** path reaches here. `--pack-root <dir>` names a root, which replaces the derived
- * one and leaves nothing behind it to shadow; `--pack-root auto` is discovery ELECTED, and refusing
- * somebody for answering the question the refusal asks would be incoherent. Both spellings are offered
- * in the message for that reason — naming only the tree would make the refusal decide the question it
- * claims to hand back.
- */
+/** The refusal for a composed pack a second root also carries, or `null` when none is shadowed. */
 export function shadowRefusal({ packs, roots, plan, repoRoot, pluginRoot }) {
     const originOf = (r) => (plan?.origins ?? []).find((o) => path.resolve(o.root) === path.resolve(r))?.origin;
     for (const ref of Array.isArray(packs) ? packs : []) {
@@ -475,28 +204,9 @@ export function shadowRefusal({ packs, roots, plan, repoRoot, pluginRoot }) {
         if (!behind) continue;
 
         const there = path.relative(repoRoot, behind.root) || behind.root;
-        // **The tree spelling is the root we just named, not the conventional guess.** Both arms below
-        // hard-coded `--pack-root packs`, and the derived root is `path.resolve(workspaceDir, tree,
-        // "packs")` — so a workspace whose `tree` is `../nested/` derives `nested/packs` and was being
-        // told to pass a directory that does not carry the pack. That is this branch's own defect class
-        // one more time: a message prescribing a remedy it had not checked, in the sentence whose whole
-        // job is to hand back an accurate choice. `there` is already the relative spelling of that root,
-        // and for the conventional layout it is exactly `packs`, so the common output is unchanged.
-        //
-        // The `verify/plugin.sh` clause is gated with it, because that rail pins the literal
-        // `--pack-root packs`: claiming the equivalence for `nested/packs` would replace one false
-        // sentence with another. Raised through the promoted suppressed-note channel, which carries
-        // findings the inline round does not.
+        // `verify/plugin.sh` passes `--pack-root packs`, so only that root may claim to be what it checks.
         const rail = there === "packs" ? ", which is what `verify/plugin.sh` checks" : "";
 
-        // **Read and parse are two failures with two repairs**, and one sentence for both misdiagnoses
-        // the commoner one — the defect Copilot raised against `run`'s workspace arm on #229, whose
-        // comment sits one screen below this and which the first cut of this block reintroduced
-        // anyway. A `SyntaxError` from `JSON.parse` carries no `.code`, so a collapsed arm reporting
-        // `error.code ?? error.message` under *could not be read* sends somebody with a malformed
-        // manifest to look at permissions. `readManifest` and `resolverFor` both keep the two apart;
-        // so does this. It also names WHICH of the two copies is the broken one, which the collapsed
-        // form could not — with two manifests in play, "one of the two" is half a diagnosis.
         const load = (file) => {
             let text;
             try {
@@ -514,9 +224,6 @@ export function shadowRefusal({ packs, roots, plan, repoRoot, pluginRoot }) {
         const beneath = load(behind.manifest);
         const broken = here.why ? { at: found.root, why: here.why } : beneath.why ? { at: there, why: beneath.why } : null;
         if (broken) {
-            // Could-not-run wearing its own sentence rather than the SHADOWED one: with a manifest
-            // unreadable, *what differs* is unanswerable, and a refusal that guessed would be claiming
-            // to have compared two things it could not read. The remedy is the same either way.
             return (
                 `the pack \`${found.name}\` resolved under the root ${found.root} while the root ${there} also ` +
                 `carries it, and the copy under ${broken.at} ${broken.why} — so which one this would derive ` +
@@ -527,21 +234,8 @@ export function shadowRefusal({ packs, roots, plan, repoRoot, pluginRoot }) {
         const mine = here.value;
         const other = beneath.value;
 
-        // **Containment, computed rather than assumed.** The sharp case — one copy inside the plugin
-        // root and one outside — is what makes `--write` destructive, but it is not a law: a
-        // `--plugin-root` pointing elsewhere puts both outside, and the refusal still stands because
-        // the derived path is relative to whichever root answered. Asserting the sharp case
-        // unconditionally would be this message's first lie, in the sentence that exists to be exact.
-        //
-        // Tested against the ROOTS, which is also what `packPortion` partitions on — `resolvePack`
-        // builds `dir` as `<root>/<category>/<pack>`, so the two can never disagree here, and using the
-        // root keeps this predicate spelled the same way as the derivation it is predicting.
         const differs = packDifferences(mine, other);
         const split = escapes(pluginRoot, path.resolve(found.root)) !== escapes(pluginRoot, path.resolve(behind.root));
-        // **Both ROOTS by path — the roots, not the pack directories.** The sibling refusal in
-        // `compile` shipped `dir` while calling it a root, which mislabels the thing it names in a
-        // message whose own claim is to name both; the root is also the half a reader types back into
-        // `--pack-root`. Corrected here in the same stroke rather than left to be found twice.
         return (
             `the pack \`${found.name}\` is SHADOWED — it resolved under ${found.root}, a root discovered on this ` +
             `host, while the root ${there} also carries it. ` +
@@ -559,38 +253,15 @@ export function shadowRefusal({ packs, roots, plan, repoRoot, pluginRoot }) {
     return null;
 }
 
-/**
- * A resolver over a workspace's declared pack roots.
- *
- * Reaches `compile.mjs`'s `rootPlan` and `resolvePack` rather than re-deriving where a pack lives.
- * The root handed back is **absolute**, which is where this differs from `recipe-set.mjs`'s resolver
- * and why the two are not shared: a recipe's `${PACK_ROOT}` is typed from the repository root, while a
- * declared skills path is relative to the **plugin** root, and those are not the same directory. The
- * honest way to serve both is to hand back the absolute path and relativise once, at the caller that
- * knows which root it means.
- */
+/** Throws on a refused or could-not-run root plan; the resolver returns `null` for a pack it cannot find. */
 export function resolverFor({ workspaceDir, manifest, named = [], discovery = null, roots = null }) {
-    // `roots` lets a caller that already computed the plan share it rather than deriving a second one —
-    // `run` needs the same list twice, once to resolve and once as the fallback owned set, and two
-    // derivations of one plan is the shape this file exists to refuse.
     const plan = roots ? null : rootPlan(workspaceDir, manifest, { named, discovery });
     if (plan?.refusal) throw new Error(`skills-set: ${plan.refusal}`);
     if (plan?.couldNotRun) throw new Error(`skills-set: ${plan.couldNotRun}`);
     const resolved = roots ?? plan.roots ?? [];
     return (ref) => {
         const found = resolvePack(ref, resolved);
-        // `resolvePack` returns `manifest` as the PATH to `pack.json`, not as the parsed object.
-        // Reading it is this adapter's job, and the first cut of the sibling resolver got this wrong
-        // while its unit suite stayed green, because the fixture resolver returned a parsed object and
-        // so encoded the same assumption the code made. `cli/skills-set.live.test.mjs` is what stops
-        // that here.
         if (!found?.dir || !found.manifest) return null;
-        // Present and unreadable is NOT a pack that contributes nothing — and it is not one that could
-        // not be FOUND either. Returning bare `null` for both made the caller's refusal say "could not
-        // be resolved" about a pack it had resolved perfectly well, misdiagnosing exactly the
-        // present-but-unreadable case this tool treats as could-not-run. Raised as a promoted
-        // low-confidence note on #229. Both stay could-not-run; what changes is the sentence the reader
-        // gets, and read is kept apart from parse for the reason the arm above it now does.
         let text;
         try {
             text = fs.readFileSync(found.manifest, "utf8");
@@ -605,29 +276,12 @@ export function resolverFor({ workspaceDir, manifest, named = [], discovery = nu
     };
 }
 
-/** Where a plugin root's manifest sits. One spelling, so a reader and a writer cannot disagree. */
 export function manifestPath(pluginRoot) {
     return path.join(pluginRoot, ".claude-plugin", "plugin.json");
 }
 
-/**
- * Read a plugin manifest for `--check`/`--write`, under the three rules a tool that writes into
- * somebody's tree carries — `init`, `new` and `vendor` paid for these and a fourth reader inherits
- * them.
- *
- * Returns `{ ok: true, text, value }` or `{ ok: false, reason }`.
- */
 function readManifest(file, pluginRoot) {
-    // Rule 2: refuse a symlink **at or below the named destination**, rather than resolving through it.
-    //
-    // The whole chain from the named plugin root down, not just the last two steps. The first cut
-    // lstat'd `dirname(file)` and `file` alone, so a symlinked `--plugin-root` was resolved straight
-    // through and this tool wrote into whatever it pointed at — which is the exact failure `init` paid
-    // for at nine files written into an unrelated directory and reported as success. `cli/new.mjs`'s
-    // `chain` is the shape being matched; it is not exported, so the walk is spelled here rather than
-    // reaching into a subcommand for it, and the boundary rule is the one that file argues: **above the
-    // named path, resolve — the user named it, and on macOS `os.tmpdir()` runs through `/var`. At it
-    // and below it, refuse.**
+    // Refuse a symlink at or below the plugin root, not above it: macOS's `os.tmpdir()` runs through `/var`.
     const chain = [];
     for (let at = file, i = 0; i < 64; i += 1) {
         chain.push(at);
@@ -641,8 +295,6 @@ function readManifest(file, pluginRoot) {
         try {
             stat = fs.lstatSync(candidate);
         } catch (error) {
-            // Rule 3: only ENOENT means absent. An EACCES is a question that could not be answered, and
-            // answering it *nothing there* is "nothing looked" recorded as "nothing wrong".
             if (error.code === "ENOENT") {
                 return {
                     ok: false,
@@ -670,21 +322,10 @@ function readManifest(file, pluginRoot) {
     try {
         return { ok: true, text, value: JSON.parse(text) };
     } catch (error) {
-        // Never overwritten. A manifest that will not parse is one whose other keys nobody can preserve.
         return { ok: false, reason: `${file} does not parse as JSON — ${error.message}` };
     }
 }
 
-/**
- * The runnable surface: the printer CI and an adopter's own pipeline call, plus `--check` and
- * `--write`.
- *
- * `options.manifest`, `options.resolve` and `options.discovery` are injection points for the suite, the
- * way `init` injects its reader. No production caller passes any of them; every flag below is the real
- * surface. `discovery` is injected as a THUNK like the production one, because the guarantee that a
- * branch which cannot use the answer never touches the host is a property of the ARGUMENT — a suite
- * handed a pre-computed value would be testing a shape production never takes.
- */
 export function run(argv = [], options = {}) {
     const { stdout = process.stdout, stderr = process.stderr } = options;
     const arg = (flag, fallback) => {
@@ -704,10 +345,6 @@ export function run(argv = [], options = {}) {
     const workspaceDir = path.resolve(arg("--workspace", path.join(repoRoot, ".portulan")));
     const pluginRoot = path.resolve(arg("--plugin-root", repoRoot));
 
-    // Refused before the manifest is read, the sibling of the placement Copilot's round 2 found in
-    // `compile`. It sat below the read here too, so an unreadable or unparsable workspace answered
-    // first and this tool disagreed with the others about WHEN the command line is judged. Swept in
-    // the same stroke rather than left for the round that would eventually find it.
     const askedBoth = namedWithAuto(
         many("--pack-root").filter((r) => r !== AUTO),
         many("--pack-root").includes(AUTO),
@@ -719,11 +356,6 @@ export function run(argv = [], options = {}) {
 
     let manifest = options.manifest;
     if (manifest === undefined) {
-        // Read and parse are two failures with two repairs, and one sentence for both misdiagnoses the
-        // commoner one. A `SyntaxError` from `JSON.parse` carries no `.code`, so it fell through to
-        // `.message` under a sentence reading "could not be read" — sending an adopter with a malformed
-        // manifest to look at permissions and paths. `readManifest` below already keeps the two apart;
-        // this arm did not. Raised by Copilot on #229.
         const file = path.join(workspaceDir, "workspace.json");
         let text;
         try {
@@ -746,20 +378,9 @@ export function run(argv = [], options = {}) {
         const named = many("--pack-root");
         const wantsDiscovery = named.includes(AUTO);
         const namedRoots = named.filter((r) => r !== AUTO);
-        // Two defects lived in this call until 2026-08-12, and both were the finding this change is
-        // about, one caller further on. It passed `discovery` WITHOUT `forced`, and `resolutionRoots`
-        // consults `discovery` only inside its forced branch — so `--pack-root auto` here read the
-        // host's record, threw the answer away, resolved from the derived root, and said nothing.
-        // Silently inert, and eagerly reading `~/.claude` to be so: `discovery` is a THUNK precisely
-        // so a branch that cannot use the answer never touches the host, and calling
-        // `discoverPackRoots()` at the argument site defeated that whichever branch ran.
-        //
-        // _(The thunk's reason NARROWED on 2026-08-13 and the wording followed: it was *an unasked path
-        // never touches the host*, and the unasked path now consults discovery deliberately. What the
-        // thunk still guarantees is that the **named** and **refused** arms do not — and that an API
-        // caller wiring no thunk stays hermetic on every arm.)_
         const plan = rootPlan(workspaceDir, manifest, {
             named: namedRoots,
+            // A thunk, so an arm that has no use for discovery never reads the host.
             discovery: options.discovery ?? (() => discoverPackRoots()),
             forced: wantsDiscovery,
         });
@@ -768,23 +389,6 @@ export function run(argv = [], options = {}) {
             return 2;
         }
         const roots = plan.roots ?? [];
-        // **Refused here, above the mode branches, so the printer, `--check` and `--write` inherit one
-        // rule** (#317). The damage this prevents is specific to the write path — the tool printed
-        // `run with --write` while `--write` would have stripped a correct, tracked `skills` entry on
-        // the strength of what happens to be installed on the machine — but guarding only `--write`
-        // would leave `--check` exiting 1 about a repository that had not drifted, which is a false
-        // verdict handed to a machine. `compile` settled the same question the same way for #316.
-        //
-        // A caller that injected its own `resolve` never reaches this, and that is deliberate rather
-        // than a hole: it chose its own roots, which is the same election `--pack-root` makes.
-        //
-        // **The `named` half of this condition is defence in depth, and it was measured HERE rather
-        // than inherited from `compile`'s note.** Forcing the whole condition to `true` reds exactly
-        // one case — the `--pack-root auto` exemption — while the named-root case goes on passing: a
-        // named root REPLACES the derived one, so the plan carries no discovered root, `shadowedCopy`
-        // finds nothing behind it, and there is no shadow to refuse. The protection is structural, and
-        // no test in this suite binds the clause. It stays because it states the intent at the site
-        // where a future change to `resolutionRoots` could quietly make it load-bearing.
         if (!wantsDiscovery && plan.source !== "named") {
             const shadowed = shadowRefusal({ packs: manifest?.packs, roots, plan, repoRoot, pluginRoot });
             if (shadowed) {
@@ -793,9 +397,6 @@ export function run(argv = [], options = {}) {
             }
         }
         resolve = resolverFor({ workspaceDir, manifest, roots });
-        // The same roots stand in as the owned set when nothing resolves — so a workspace that has
-        // stopped composing gets its stale entries cleaned wherever its packs WOULD have been, not
-        // only at the conventional path.
         fallbackRoots ??= roots;
     }
 
@@ -805,8 +406,6 @@ export function run(argv = [], options = {}) {
         return set.exitCode;
     }
 
-    // Reported on every run, in every mode. A pack registering through its own plugin is not a fault
-    // and is not nothing — a reader who cannot see it will read the derived set as the whole answer.
     for (const { pack, root } of set.external) {
         stderr.write(
             `skills-set: the pack \`${pack}\` resolves outside this plugin root (${root}) — it registers ` +

@@ -1,20 +1,6 @@
 // `form` — which form a consumer's records and boot are in, and the files that move them to the new one.
 //
-// The new form is the one Portulan's own repository is in: a change's why lives in its commit message, a
-// changelog entry is a fragment under `changes/`, the handoff index is printed on demand rather than kept,
-// the Session log is retired to a pointer, the boot is a card the host loads into every context, and a
-// `comments` recipe holds the comment lines that record a change's history at a limit that only falls.
-// This module carries the same to a repository that installs Portulan. `init` drafts it,
-// `vendor` carries it, the steps in `../spec/migrations/` move an existing consumer to it, and `doctor`
-// reports which form a consumer is in. They read one definition of the new form, here, so the four
-// cannot disagree about it.
-//
-// **Today's form stays legitimate.** A consumer that declares no card boots as it did, through the boot
-// skill's steps, and nothing here fails a consumer for being in today's form: `doctor` reports it, and
-// `upgrade` moves it when asked.
-//
-// Nothing here writes. It reads a tree and returns texts, and its callers write them through their own
-// guards: `init`'s refusal to overwrite, `vendor`'s staging, `upgrade`'s snapshots and rollback.
+// Nothing here writes: callers write the texts it returns through their own guards.
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -28,23 +14,17 @@ import { recipeSet } from "./recipe-set.mjs";
 /** Anything that means the form could not be read. Carries no verdict. */
 export class FormError extends Error {}
 
-/** Where a consumer's changelog fragments live, relative to its tree, and the file that keeps the directory. */
 export const CHANGES_DIR = "changes";
 export const CHANGES_README = `${CHANGES_DIR}/README.md`;
 
-/** The changelog, at the tree's root, where `init`, `upgrade` and a release cut look for it. */
 export const CHANGELOG = "CHANGELOG.md";
 
-/** Where the compiled card lands, relative to the tree: the rule `compile` writes for the `boot` unit. */
 export const COMPILED_CARD = `${GUIDANCE_RULES_DIR}/${BOOT_CARD_UNIT}.md`;
 
-/** A heading whose text is exactly `Session log`, at any level. */
 const SESSION_LOG = /^(#{1,6})[ \t]+Session log[ \t]*#*[ \t]*$/;
 
-/** The Unreleased heading of a changelog, bare or bracketed as Keep a Changelog writes it. */
 const UNRELEASED = /^##[ \t]+\[?Unreleased\]?[ \t]*$/i;
 
-/** A top-level bullet, in any of the three markers Markdown takes. */
 const BULLET = /^[-*+][ \t]/;
 
 const posix = (p) => p.split(path.sep).join("/");
@@ -69,11 +49,8 @@ function readOrNull(file) {
     }
 }
 
-// ===========================================================================================
-// The files the new form holds, as texts
-// ===========================================================================================
+// ------------------------------------------------------------------------- the new form's files, as texts
 
-/** `changes/README.md`, as a consumer's copy says it: the rule for a fragment, and what the cut does. */
 export function changesReadme() {
     return `# Changelog fragments
 
@@ -90,7 +67,6 @@ fragment does, and ahead of any fragment named by its slug.
 `;
 }
 
-/** What `## Unreleased` holds once its entries are fragments. */
 export function changelogPointer() {
     return [
         `Each entry for the next release is a file in [\`${CHANGES_DIR}/\`](${CHANGES_DIR}/), so two open changes never edit the`,
@@ -98,7 +74,6 @@ export function changelogPointer() {
     ];
 }
 
-/** What a Session log's section holds once it is retired: the two lines Portulan's own log holds. */
 export function sessionLogPointer({ date, sha, file }) {
     return [
         `Retired ${date}: a change's record is its commit message, and \`git log --first-parent\` lists what`,
@@ -106,7 +81,6 @@ export function sessionLogPointer({ date, sha, file }) {
     ];
 }
 
-/** The handoff series' README, drafted from the engine's `core/templates/handoff.md`: open work only. */
 export function handoffsReadme() {
     return `# Handoffs
 
@@ -125,7 +99,6 @@ and five lines is a valid handoff. Drafted from the engine's \`core/templates/ha
 `;
 }
 
-/** The lines that keep a handoff index off the record, for an index at `rel` from the tree's root. */
 export function handoffIndexIgnore(rel, workspaceRel) {
     return [
         `# The handoff index is printed on demand (\`portulan index --handoffs ${workspaceRel}\`), never kept: a`,
@@ -134,10 +107,6 @@ export function handoffIndexIgnore(rel, workspaceRel) {
     ];
 }
 
-/**
- * `text` with `lines` appended as one block, unless each of them that is a pattern is already a line of it.
- * Returns the text unchanged when nothing is owed, so a caller can tell whether a write is.
- */
 export function withIgnoreLines(text, lines) {
     const have = new Set((text ?? "").split(/\r?\n/).map((l) => l.trim()));
     const patterns = lines.filter((l) => !l.startsWith("#"));
@@ -149,10 +118,6 @@ export function withIgnoreLines(text, lines) {
 
 export const COMMENTS_RECIPE = "comments";
 
-/**
- * The workspace's own `comments` recipe, a pack's being namespaced apart from it: `null` where there is none,
- * `drafted` where it runs a `verify/comments.sh`, and otherwise the other command holding its name.
- */
 export function commentsRecipeOf(manifest) {
     const own = recipeSet(manifest, { packs: [] });
     const recipe = own.ok ? own.recipes.find((entry) => entry.id === COMMENTS_RECIPE) : undefined;
@@ -165,11 +130,6 @@ export function commentsRecipeEntry(workspaceRel) {
     return { id: COMMENTS_RECIPE, run, requires: ["bash", "git", "node"] };
 }
 
-/**
- * `verify/comments.sh`, holding the count at `limit`. `toTree` leads from the recipe's directory to the tree.
- * The CLI is looked for where `verify/index.sh` looks, a `portulan` on PATH only where it holds `comments.mjs`,
- * and the bundle's two lines carry its marker, so `0002` re-derives them where the workspace travels.
- */
 export function commentsRecipe({ bundle, limit, toTree }) {
     const entry = JSON.stringify(`${bundle}/cli/index.mjs`);
     return `#!/usr/bin/env bash
@@ -219,14 +179,8 @@ exit 2
 `;
 }
 
-// ===========================================================================================
-// Git, where a piece needs it: whether a path is ignored, and which commit last held a file
-// ===========================================================================================
+// ------------------------------------------------------------------------- git
 
-/**
- * Run git in `root`. `null` where git is not installed or `root` is not inside a work tree, which a caller
- * turns into its own answer: a tree without git ignores nothing, and has no commit to point at.
- */
 export function gitIn(root) {
     const run = (...args) => {
         const out = spawnSync("git", ["-C", root, ...args], { encoding: "utf8" });
@@ -238,17 +192,7 @@ export function gitIn(root) {
     return run;
 }
 
-/**
- * The `.gitignore` lines that let git see the compiled guidance, or none where it already can.
- *
- * A consumer's `.gitignore` often ignores `.claude/`, which is where a host keeps its local session
- * state, and the compiled card then never reaches review or a fresh checkout. Git re-includes nothing
- * below an excluded directory, so the lines re-include the directory and exclude its other entries again,
- * from the shallowest level that is excluded: everything else under `.claude/` stays ignored as it was.
- * Probed with `git check-ignore` on a file at each level, since a directory's own answer is not reliable.
- *
- * @returns {{ lines: string[], git: boolean }} `git` false where no git answered, and nothing is owed
- */
+/** The `.gitignore` lines that let git see the compiled guidance, none where it already can; `git` false where no git answered. */
 export function claudeRulesUnignore(root, git = gitIn(root)) {
     if (git === null) return { lines: [], git: false };
     const ignored = (rel) => {
@@ -258,27 +202,20 @@ export function claudeRulesUnignore(root, git = gitIn(root)) {
     };
     if (!ignored(COMPILED_CARD)) return { lines: [], git: true };
     const lines = ["# `portulan compile` writes this repository's boot card and guidance to .claude/rules/portulan/, reviewed", "# like code; everything else the host keeps under .claude/ stays ignored."];
+    // Git re-includes nothing below an excluded directory, and answers reliably for a file, not a directory: each level is probed with one.
     if (ignored(".claude/portulan-probe")) lines.push("!/.claude/", "/.claude/*");
     if (ignored(".claude/rules/portulan-probe") || lines.length > 2) lines.push("!/.claude/rules/", "/.claude/rules/*");
     lines.push("!/.claude/rules/portulan/", "!/.claude/rules/portulan/*");
     return { lines, git: true };
 }
 
-/** Whether git still ignores the compiled card under `text` as the tree's `.gitignore`: a check after writing. */
 export function cardIgnored(root, git = gitIn(root)) {
     if (git === null) return false;
     return git("check-ignore", "-q", "--no-index", COMPILED_CARD).status === 0;
 }
 
-// ===========================================================================================
-// Which workspaces a step that moves the form reads
-// ===========================================================================================
+// ------------------------------------------------------------------------- which workspaces a step moving the form reads
 
-/**
- * Why a step in `../spec/migrations/` that moves the form does not read this workspace yet, or null. It
- * reads a workspace at the bundle's MAJOR: one behind is moved by a version step first, and in the same
- * run the step is asked again once it has been, so a workspace no version step reaches stays refused.
- */
 export function notYetForm(ws, ctx) {
     const declared = ws.manifest?.portulan?.spec;
     const major = Number(String(declared).split(".")[0]);
@@ -286,14 +223,9 @@ export function notYetForm(ws, ctx) {
     return `this workspace declares ${declared}, and a step moving the form reads ${ctx?.spec?.major}.x: a version step moves it first`;
 }
 
-// ===========================================================================================
-// The Session log
-// ===========================================================================================
+// ------------------------------------------------------------------------- the Session log
 
-/**
- * Which of `lines` are fenced code, each fence line included: a fence opens on three or more backticks or
- * tildes, indented three spaces at most, and closes on the same character.
- */
+/** Whether each of `lines` is fenced code, fence lines included; a fence closes on its character whatever length it opened with. */
 export function fenced(lines) {
     let fence = null;
     return lines.map((line) => {
@@ -304,12 +236,6 @@ export function fenced(lines) {
     });
 }
 
-/**
- * The Session log sections in a Markdown text: each heading whose text is exactly `Session log`, the
- * section running to the next heading of its level or above, and whether it holds entries. A section
- * whose first line of text opens `Retired ` is the pointer a retirement leaves, and an empty one holds
- * nothing to retire. Fenced code is skipped, so a log quoted in a code block is not one.
- */
 export function sessionLogSections(text) {
     const lines = text.split("\n");
     const found = [];
@@ -330,7 +256,6 @@ export function sessionLogSections(text) {
     return found;
 }
 
-/** `text` with each Session log that holds entries retired to the pointer, and nothing else changed. */
 export function retireSessionLogs(text, pointer) {
     const sections = sessionLogSections(text).filter((s) => s.entries);
     if (sections.length === 0) return text;
@@ -342,16 +267,9 @@ export function retireSessionLogs(text, pointer) {
     return lines.join("\n");
 }
 
-/**
- * The Markdown files of a tree as they sit on disk, for a reader that does not ask git: every `.md` file,
- * never through a link, skipping `.git`, `node_modules` and the dot-directories a host or a tool keeps,
- * though not the workspace's own, `keep`, wherever it sits below the tree: a dot-directory it sits in is
- * walked only on the way down to it. `doctor` reads these; `upgrade` reads git's tracked list instead.
- */
+/** Every `.md` file under `root` on disk, never through a link; of the dot-directories, only the way down to `keep` is walked. */
 export function markdownOnDisk(root, keep = null) {
     const out = [];
-    // `narrow` is a dot-directory entered only because the workspace sits below it: in there, nothing but the
-    // way down to the workspace is walked.
     const walk = (dir, rel, narrow) => {
         let entries;
         try {
@@ -375,7 +293,6 @@ export function markdownOnDisk(root, keep = null) {
     return out;
 }
 
-/** Of `files` (paths relative to `root`), those holding a Session log with entries, each with its first line. */
 export function sessionLogsIn(root, files) {
     const found = [];
     for (const rel of files) {
@@ -387,11 +304,8 @@ export function sessionLogsIn(root, files) {
     return found;
 }
 
-// ===========================================================================================
-// The changelog's Unreleased section, as fragments
-// ===========================================================================================
+// ------------------------------------------------------------------------- the changelog's Unreleased section, as fragments
 
-/** A fragment's slug from its bullet's first line: the first words, as a file name can hold them. */
 function slugOf(bullet) {
     const words = bullet
         .split("\n")[0]
@@ -409,30 +323,12 @@ function slugOf(bullet) {
     return slug || "entry";
 }
 
-/**
- * Every relative link target in a bullet moved one directory down, as a fragment under `changes/` needs
- * it: `renderChanges` takes one `../` off each `](../`, so this adds one to each link a reader would
- * resolve from the changelog's directory. A URL, an anchor and a root path stay as they are.
- */
+/** Each relative link one directory deeper, as a fragment under `changes/` needs: `renderChanges` takes one `../` off again. */
 function rerooted(text) {
     return text.replace(/\]\(([^)\s]*)/g, (whole, target) => (target === "" || /^(?:[a-z][a-z0-9+.-]*:|#|\/|<)/i.test(target) ? whole : `](../${target}`));
 }
 
-/**
- * The entries under a changelog's Unreleased heading, each as the fragment that carries it, and the
- * changelog as it reads once they are gone.
- *
- * A top-level bullet with its indented lines is one entry, filed under the `### Section` above it, or under
- * `changed` where there is none. Prose that is not a bullet stays where it is, and so does fenced code,
- * whatever it holds. A section heading stays while anything is left under it. The fragments are named
- * `<nn>-<slug>.<section>.md`, numbered in the changelog's order, so the cut prints each section's entries in
- * the order they were written, and the move is proved before it is offered: the fragments, read and rendered
- * as the cut renders them, print each entry back as the changelog held it, but for an entry that does not open
- * `- `, which a fragment must: its first two characters, a `*` or `+` marker or a tab after one, become `- `.
- *
- * @returns {null | { refused: string } | { fragments: Array<{ name: string, text: string }>, next: string }}
- * null where there is no Unreleased heading
- */
+/** The Unreleased entries as fragments, and the changelog without them; null where it has no Unreleased heading. */
 export function unreleasedFragments(text, taken = new Set()) {
     const lines = text.split("\n");
     const { start, end, code } = unreleasedSpan(lines);
@@ -479,8 +375,6 @@ export function unreleasedFragments(text, taken = new Set()) {
         return { name, section: e.section, text: `${rerooted(e.text)}\n`, original: e };
     });
 
-    // The proof: what the cut would print, section by section, is each entry as the changelog held it,
-    // its opening aside, which a fragment always writes `- `. In the order the cut reads them, by name.
     const byName = [...fragments].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     const printed = renderChanges(byName.map((f) => ({ name: f.name, section: f.section, text: f.text.replace(/\s+$/, "") })));
     for (const section of CHANGE_SECTIONS) {
@@ -493,7 +387,6 @@ export function unreleasedFragments(text, taken = new Set()) {
         }
     }
 
-    // What stays: prose, and a section heading only while something is left under it.
     const rest = [];
     for (let k = 0; k < kept.length; k += 1) {
         if (kept[k].heading) {
@@ -510,12 +403,7 @@ export function unreleasedFragments(text, taken = new Set()) {
     return { fragments: fragments.map((f) => ({ name: f.name, text: f.text })), next };
 }
 
-/**
- * The lines of the entries under Unreleased that do not open `- `, which the move rewrites: a fragment opens `- `
- * or the release cut refuses it, so this is the one change the move makes, and the step names each.
- *
- * @returns {number[]} 1-based lines, in the changelog's order
- */
+/** 1-based lines of the Unreleased entries not opening `- `, which the move rewrites, since the cut refuses any other opening. */
 export function unreleasedRewrites(text) {
     const lines = text.split("\n");
     const { start, end, code } = unreleasedSpan(lines);
@@ -524,7 +412,6 @@ export function unreleasedRewrites(text) {
     return found;
 }
 
-/** How many entries a changelog holds under Unreleased, or null where it has no such heading. */
 export function unreleasedCount(text) {
     const lines = text.split("\n");
     const { start, end, code } = unreleasedSpan(lines);
@@ -534,10 +421,6 @@ export function unreleasedCount(text) {
     return n;
 }
 
-/**
- * Where a changelog's Unreleased section runs, heading to the next `## ` heading, neither read inside
- * fenced code; `start` is -1 where there is none.
- */
 function unreleasedSpan(lines) {
     const code = fenced(lines);
     const start = lines.findIndex((l, i) => !code[i] && UNRELEASED.test(l));
@@ -546,37 +429,23 @@ function unreleasedSpan(lines) {
     return { start, end, code };
 }
 
-// ===========================================================================================
-// The boot card, drafted from the consumer's own workspace
-// ===========================================================================================
+// ------------------------------------------------------------------------- the boot card
 
-/**
- * The card's section on reading and the cache: the engine's rules, written out by `compile` from
- * `core/operating/context.md` in the Portulan a consumer installed, so every card carries the text
- * Portulan's own does, and an upgrade that changes it is drift until the card is recompiled.
- */
+/** The card's section on reading and the cache: `compile` expands `READING_LINE` into the installed engine's rules. */
 export const READING_TITLE = "Reading and the cache: Portulan's `core/operating/context.md`";
 export const READING_LINE = "<!-- engine: operating/context.md#every-request-pays-for-what-the-session-has-read -->";
 
-/** A card's head as `init` and `0006` drafted it until the card carried that section (2026-09-24). */
 const HEAD_BEFORE_READING = /^(> Compiled by `portulan compile` from .+\. Each section names its file): an(\r?\n)> import is here in full; open any other file when its subject is your task\.$/m;
 
-/** That head, as a reader is told to look for it. */
 export const HEAD_BEFORE_READING_SHOWN =
     '"> Compiled by `portulan compile` from <the card>. Each section names its file: an" over ' +
     '"> import is here in full; open any other file when its subject is your task."';
 
-/** Whether a card carries the section: the line `draftCard` writes, which `compile` expands to the rules. */
 export function carriesReading(card) {
     return card.split(/\r?\n/).includes(READING_LINE);
 }
 
-/**
- * A card drafted before it carried the section on reading and the cache, in the form `draftCard` writes
- * now: the head's last clause dropped, since the section's rule on opening a file says it in full, and the
- * section first under the head. Null for a card that carries the section, or whose head is not the one
- * drafted, which `0008` reports rather than guessing where the section goes.
- */
+/** A card drafted before the reading section, rewritten as `draftCard` writes it now; null where it has the section or another head. */
 export function withReading(card) {
     if (carriesReading(card)) return null;
     const head = HEAD_BEFORE_READING.exec(card);
@@ -586,10 +455,6 @@ export function withReading(card) {
     return card.slice(0, head.index) + moved + card.slice(head.index + old.length);
 }
 
-/**
- * Whether a file's lead sentences can be written onto the card: its first list, every item opening with a
- * bold lead and none carrying a link, read by the reader `compile` writes them out with.
- */
 function leadsFit(text, name) {
     if (text === null) return false;
     try {
@@ -600,26 +465,7 @@ function leadsFit(text, name) {
     }
 }
 
-/**
- * A boot card for a workspace, drafted from its own files: `context/boot.md`, the always unit named `boot`.
- *
- * **Every fact on it comes from one source.** A file the boot read whole is imported whole, so the card
- * holds no copy: the identity, the memory index, the repo card where there is one. A file whose first list
- * carries bold leads gives the card those leads, written out by `compile` and byte-compared, with a line
- * saying when to read the rest: the principles, and the definition of done. One without them is imported
- * whole. The gate policy's gates are written out by tier from the policy by `compile`'s `gates` line. So
- * the card says no less than the boot it replaces, which read each of these files in full, and it moves
- * when they move: a change to any of them is drift until the card is recompiled.
- *
- * What the card cannot import is named with when to read it: a file outside the tree, which the host
- * would not load, and the gate map, whose conditions an act a gate names needs and a boot does not.
- *
- * @param {object} manifest the workspace's manifest, with `slots.context` not yet declared
- * @param {(rel: string) => string | null} read a workspace-relative file's text, or null where absent
- * @param {{ workspace: string, inTree: (rel: string) => boolean, repoCards?: string[] }} where the
- * workspace as the tree names it (`.portulan`), whether a workspace-relative path stays inside the tree,
- * and the names of the cards in the `repos` slot, less `.md`
- */
+/** The boot card, `context/boot.md`: each fact imported, or written out by `compile`, from the file that holds it, never copied. */
 export function draftCard(manifest, read, { workspace, inTree, repoCards = [] }) {
     const slots = manifest.slots ?? {};
     const shown = (rel) => `\`${posix(path.posix.normalize(`${workspace}/${rel}`))}\``;
@@ -701,17 +547,9 @@ export function draftCard(manifest, read, { workspace, inTree, repoCards = [] })
     return `${out.join("\n")}\n`;
 }
 
-// ===========================================================================================
-// Which form a consumer is in
-// ===========================================================================================
+// ------------------------------------------------------------------------- which form a consumer is in
 
-/**
- * Whether the handoff index at `rel` is still kept, judged as `0003` judges it: kept where git does not ignore
- * its path, or ignores it while a copy on disk is still tracked. Null where no git work tree answers, or git
- * cannot say, since `0003` then has nothing to decide.
- *
- * @returns {null | { kept: string | null }} `kept` says why the index is kept, and is null where it is not
- */
+/** Why the handoff index at `rel` is kept, as `spec/migrations/0003` judges it: `{ kept: null }` where it is not, null where git cannot say. */
 function indexKept(tree, rel, onDisk) {
     const git = gitIn(tree);
     const rule = git === null ? null : git("check-ignore", "-q", "--no-index", "--", rel);
@@ -721,21 +559,7 @@ function indexKept(tree, rel, onDisk) {
     return { kept: tracked ? "is git-ignored and still tracked" : null };
 }
 
-/**
- * Each piece of the form, read from disk: `new`, `today`, or absent where it does not apply. A piece of a
- * repository's own, its changelog, Session log, handoff index, card and comments recipe, applies only where
- * the workspace declares a tree, the card and the recipe only to a `repository` workspace, and the recipe
- * only where git lists the tree, as the steps in `../spec/migrations/` that move them are owed only there.
- *
- * **Read from disk, as `doctor` reads everything**, so a report may say less than `upgrade` knows: the
- * Session log is looked for in the tree's Markdown on disk rather than in git's tracked files. The handoff
- * index is the exception, judged by git as `0003` judges it, since a rule other than the root `.gitignore`'s
- * may ignore it, and absent where no git work tree answers, since `0003` then has nothing to decide. Where
- * the two differ, `upgrade`, which asks git, is the one that moves anything.
- *
- * @returns {{ tree: string | null, pieces: Array<{ id: string, state: "new" | "today", text: string, hand?: true }> }}
- *   `hand` marks a piece `upgrade` reports and does not place, which its text says how to add by hand
- */
+/** Each piece of the form, read from disk as `doctor` reads: `new` or `today`, with `hand` where `upgrade` does not place it. */
 export function formOf(workspaceDir, manifest) {
     const pieces = [];
     const add = (id, state, text) => pieces.push({ id, state, text });
@@ -772,20 +596,12 @@ export function formOf(workspaceDir, manifest) {
             const source = readOrNull(path.resolve(wsDir, context, `${BOOT_CARD_UNIT}.md`));
             if (source === null) add("card", "new", "no boot card, by choice: `slots.context` holds no `boot` unit");
             else if (withReading(source) !== null) add("card", "today", "a boot card drafted before it carried the engine's rules on reading and the cache");
-            // A card `0008` cannot place the section on is named, with what to add, rather than called new:
-            // its workspace would never learn the rules exist.
             else if (!carriesReading(source)) {
                 pieces.push({ id: "card", state: "today", hand: true, text: `a boot card without the engine's rules on reading and the cache, whose head \`upgrade\` does not recognise: add a section holding the line \`${READING_LINE}\`` });
             } else if (readOrNull(path.join(tree, COMPILED_CARD)) !== null) add("card", "new", "a compiled boot card");
-            // A host that reads `AGENTS.md` boots from the card `vendor --host` writes at its head, and has
-            // no rules for `compile` to write: there, the card is in the new form as it stands.
             else if ((readOrNull(path.join(tree, "AGENTS.md")) ?? "").split(/\r?\n/).includes(BOOT_CARD_LINE)) add("card", "new", "a boot card at the head of AGENTS.md, which this host reads");
             else add("card", "today", `a boot card not yet compiled to ${COMPILED_CARD}: run \`portulan compile\``);
         }
-        // A section a team marked in its instruction file waits for `0009` to move it; a moved one is the new
-        // form, and a marker naming a unit that is not there is said, never repaired (2026-09-24). Reported only
-        // where a team marked one, so no other workspace's line grows. A marked file that is a link is named to
-        // make a file of its own by hand, as `0009` names it, since the split does not move a link's sections.
         const marked = instructionsState(tree, (rel) => readOrNull(path.join(tree, ...rel.split("/"))));
         if (marked.files.length) {
             const files = marked.files.join(" and ");
@@ -815,14 +631,10 @@ export function formLine(workspaceDir, manifest, { over = false } = {}) {
     if (tree === null) return "not reported: this workspace declares no tree, so no repository's records or boot are its own";
     const today = pieces.filter((p) => p.state === "today");
     if (today.length === 0) return `the new form: ${pieces.map((p) => p.text).join("; ")}`;
-    // Relative where that is shorter to read, as `doctor` names a workspace, and absolute over a ladder of `../`.
     const rel = path.relative(process.cwd(), path.resolve(workspaceDir));
     const shown = rel === "" ? "." : rel.startsWith("..") ? path.resolve(workspaceDir) : rel;
-    // A piece `upgrade` does not place is reported by it and added by hand, and the run moves the rest.
     const moves = today.some((p) => p.hand) ? "moves all but what is named to add by hand" : "moves it";
     const said = `today's form in ${today.length} of ${pieces.length}: ${today.map((p) => p.text).join("; ")} — `;
-    // Over a declared budget `doctor` fails and `upgrade` will not run, so sections a team marked are named with
-    // the command that moves them all the same, as the context line names it (2026-09-24).
     if (over && today.some((p) => p.id === "instructions" && !p.hand)) {
         const rest = today.filter((p) => p.id !== "instructions");
         const after = rest.length === 0 ? "" : `, and \`portulan upgrade --write ${shellWord(shown)}\` ${rest.some((p) => p.hand) ? "moves the rest but what is named to add by hand" : "moves the rest"} once it runs`;

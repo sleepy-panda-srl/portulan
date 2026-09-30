@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-// The warm-start A/B: what a fresh session costs when an earlier session left its prefix in the prompt cache,
-// against the same session priced cold. [`../core/operating/sessions.md`](../core/operating/sessions.md) is
-// the doctrine this measures, and [`../evals/ab/warm.md`](../evals/ab/warm.md) its specification and record.
+// The warm-start A/B: a fresh session's cost when an earlier one left its prefix in the prompt cache, against cold.
 //
 //   node cli/warm.mjs run --tree <dir> --into <dir> --label <name> [--task boot|probe] [--runs <n>]
 //       [--copies one|each] [--between commit] [--declared <workspace dir>] [--git-instructions on|off]
@@ -9,52 +7,10 @@
 //       [--read <multiplier>] [--output <multiplier>]
 //   node cli/warm.mjs report <sequence dir> [<treatment sequence dir>] [--read <multiplier>] [--output <multiplier>]
 //
-// ## A sequence
+// `../evals/ab/warm.md` is its specification and record, and defines the three lines A, B and C.
+// It starts real sessions, which spend, so no verify recipe runs it.
 //
-// `run` starts `--runs` fresh headless sessions one after another, each when the one before it has ended,
-// with one task's prompt and one invocation, in one clone of `--tree`'s committed HEAD, or under `--copies
-// each` in a clone per run, so that no two share a working directory. The first run finds nothing of its
-// own cached; each later one finds what the run before it left, within the cache lifetime. `--between
-// commit` commits in the clone between runs, which is what moves a local session's startup git snapshot, and
-// `--local` starts the child without the variable that marks a hosted session, which takes no snapshot.
-//
-// The arm under test is what the child starts with: the tree's own compiled settings, and the switches named
-// here or, under `--declared`, a workspace's `sessions.headless`. The rest of the child's environment is the
-// parent's, less the variables a parent session sets for its own conversation, which would give the child an
-// effort, a context or a prefix no fresh session has, and less the host's own switch variables, so that only
-// the arm decides them.
-//
-// ## Three lines, from the host's own records
-//
-// Each run's transcript is read with the ledger's reader (one request per message id, the main chain only)
-// and reported in the maintainer's three lines of 2026-09-24, A first:
-//
-// - **A, Portulan's share**: the tokens that carried what Portulan installs or manages, counted once for every
-//   request that sent them, by the split of the five-run set of 2026-09-24. A tool's result and the skill text
-//   the host injects are matched line by line against the tree's tracked files that are not code, and each
-//   takes its share by bytes of the context's growth at the request it entered. What the host loaded of
-//   Portulan's before the first request, the plugin's descriptions and any always tier, is estimated from its
-//   bytes, since the host records that request's context only as a total. A hook's output is not in A.
-// - **B, the whole task**: every token the host recorded for the run, cache reads included.
-// - **C, the cost**, as an index with the before at 100: uncached input 1, a write at its lifetime's multiplier,
-//   a read at the model's read multiplier and output at its rate, which `--read` and `--output` name, the
-//   general ones of `0038` otherwise (0.1 and 5). The before is a sequence's cold figure, or the control's
-//   billed figure when a treatment is read against it.
-//
-// A run is priced twice. **Billed** is what the host recorded. **Cold** prices the first request's reads as
-// writes at the run's lifetime: the run as if nothing had been cached before it, the convention the five-run
-// set's first report priced by. A sequence's warm figure is the mean billed total of its runs after the first, and its cold
-// figure the mean cold total of all of them. Two sequences compare by their cost: every run as billed, the first priced
-// cold, since what the cache held before a sequence began is neither arm's.
-//
-// ## Never in a recipe
-//
-// It starts real sessions, which spend, and reads the host's usage records, which differ per machine, so it
-// never runs inside a verify recipe (`0038`'s ruling on the ledger). Its suite stands a stub in for the agent.
-//
-// Exit 0 done · 1 `report` of two sequences only: a run of either was not measured or changed its clone, a
-// treatment run did not answer as its task expects, or the treatment cost no less than its control · 2 could not
-// run.
+// Exit 0 done · 1 `report` of two sequences whose treatment does not pass `verdict` · 2 could not run.
 
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -73,18 +29,12 @@ export class CouldNotRun extends Error {
     }
 }
 
-/** Output against uncached input, the general figure `0038` prices by. */
+/** Output's price as a multiple of uncached input's. */
 export const OUTPUT = 5;
 
-/** The multipliers C prices by unless `--read` and `--output` name the model's own. */
 export const GENERAL_RATES = { read: GENERAL_READ, output: OUTPUT };
 
-/**
- * Code, which A never counts: the five-run set's rule. The tree a run starts is the plugin itself, so every other
- * tracked file is Portulan's: its boot set, doctrine and skills, the workspace's context, records and memory.
- * `.claude/rules/` is the one exception to that rule's `.claude/`: the set's tree held only the settings there, and
- * since #452 the folder holds the compiled boot card and rule files, which are Portulan's guidance and so A.
- */
+/** Code, which A never counts; `.claude/rules/` holds compiled guidance, so A counts it. */
 export const isCode = (rel) =>
     !rel.startsWith(".claude/rules/") &&
     (/^(?:cli|\.github|\.claude)\//.test(rel) || /\.(?:mjs|js|cjs|sh|yml|yaml)$/.test(rel) || rel === "package.json" || rel === "package-lock.json");
@@ -95,16 +45,9 @@ export const MIN_LINE = 16;
 /** A negation just before a word: `not green`, `do not propose`, `isn't really green`. */
 const NEGATED = String.raw`\b(?:not|never|no|cannot|\w+n['’]t)\s+(?:\w+\s+)?`;
 
-/** An answer that says `word`, and says it without a negation just before it. */
 const says = (answer, word) => new RegExp(String.raw`\b${word}\b`, "i").test(answer) && !new RegExp(String.raw`${NEGATED}${word}\b`, "i").test(answer);
 
-/**
- * The tasks a sequence can run. `boot` is the boot task of the five-run set of 2026-09-24, word for word, so a
- * figure here stands beside that set's; `probe` is one request with no tool, which measures the prefix alone.
- * `expect` is what an answer must say to count as answered: for `boot`, the tier the gate map gives the change
- * and the recipes the definition of done runs first, neither negated; for `probe`, the one word and nothing
- * else. It reads words, not meaning: a guard against a cheaper arm that answers worse, not a grade.
- */
+/** `boot` is `../evals/ab/warm.md`'s boot task word for word, so its figures compare; `expect` reads words, not meaning. */
 export const TASKS = {
     boot: {
         prompt:
@@ -121,7 +64,6 @@ export const TASKS = {
     },
 };
 
-/** Every run's invocation: headless, no MCP server, no subagent, no web, no push. */
 export const INVOCATION = [
     "--output-format", "json",
     "--strict-mcp-config",
@@ -133,11 +75,7 @@ export const INVOCATION = [
 /** The flag that moves the per-machine sections into the first message; no setting carries it. */
 export const EXCLUDE_FLAG = "--exclude-dynamic-system-prompt-sections";
 
-/**
- * What a parent session sets for its own conversation: its ids and channels, its effort and compaction, the
- * directories and memory it adds, its background tasks, and the tokens it acts with, as measured in a hosted
- * session.
- */
+/** What a parent session sets for its own conversation, which a fresh session never starts with. */
 export const PARENT_VARS = [
     "CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_REMOTE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION",
     "CLAUDE_CODE_MESSAGING_SOCKET", "CLAUDE_CODE_MESSAGING_TOKEN", "CLAUDE_CODE_TEE_SDK_STDOUT",
@@ -159,7 +97,6 @@ export const HOSTED_VAR = "CLAUDE_CODE_REMOTE";
 
 const TURN_TIMEOUT_MS = 45 * 60 * 1000;
 
-/** The child's environment: the parent's, less its conversation and the host's switches, plus the arm's. */
 export function childEnv(parent, arm = {}, { local = false } = {}) {
     const env = { ...parent };
     for (const name of [...PARENT_VARS, ...SWITCH_VARS]) delete env[name];
@@ -169,7 +106,6 @@ export function childEnv(parent, arm = {}, { local = false } = {}) {
     return env;
 }
 
-/** The child's arguments: the task's prompt, the invocation, the task's own, and the arm's flag. */
 export function childArgs(task, tree, arm = {}, { model = null } = {}) {
     const spec = TASKS[task];
     if (spec === undefined) throw new CouldNotRun(`no task \`${task}\`; the tasks are ${Object.keys(TASKS).join(", ")}`);
@@ -184,11 +120,7 @@ export function childArgs(task, tree, arm = {}, { model = null } = {}) {
 
 const writeMultiplier = (lifetime) => WRITE_BY_LIFETIME[lifetime] ?? WRITE_BY_LIFETIME[DEFAULT_LIFETIME];
 
-/**
- * One run's figures from its transcript's requests. The lifetime is the one most of its writes used, else the
- * arm's, else the ledger's default. A run started warm when its first request read more than it wrote. `tokens`
- * is B, every token the host recorded; `billed` and `cold` are C's figures at `rates`.
- */
+/** `tokens` is B, and `billed` and `cold` are C's two prices of the run. */
 export function priced(requests, fallbackLifetime = DEFAULT_LIFETIME, rates = GENERAL_RATES) {
     const main = requests.filter((r) => !r.sidechain);
     const sum = (key) => main.reduce((n, r) => n + r[key], 0);
@@ -226,18 +158,12 @@ const READ_PREFIX = /^\s*\d+(?:\t|→)/;
 const GREP_PREFIX = /^[\w./-]+\.\w+[:-]\d+[:-]/;
 const LINENO_PREFIX = /^\d+[:-]/;
 
-/** A line as it may have been printed, and as a file holds it: without a line number or a path in front. */
 function readings(raw) {
     const out = [raw.trim()];
     for (const prefix of [READ_PREFIX, GREP_PREFIX, LINENO_PREFIX]) if (prefix.test(raw)) out.push(raw.replace(prefix, "").trim());
     return out;
 }
 
-/**
- * The bytes of `text` that are Portulan's: each line whose text is a line of Portulan's files, and each shorter
- * line after one (a blank, a fence, a table's rule), since a short line cannot say whose it is. A line code holds
- * too is the code's when the tool call named a code file, as a named file wins in the five-run set's split.
- */
 export function portulanBytes(text, lines, { code = new Set(), namedCode = false } = {}) {
     const all = String(text);
     let bytes = 0;
@@ -250,12 +176,7 @@ export function portulanBytes(text, lines, { code = new Set(), namedCode = false
     return Math.min(bytes, Buffer.byteLength(all, "utf8"));
 }
 
-/**
- * What A counts in a tree: the lines of every tracked file that is not code, the lines of the code (for a tool
- * call that named a code file), and the bytes of Portulan's that the host loads before the first request, the
- * plugin's skill and agent descriptions and the always tier's lines of Portulan's files, as `context` measures
- * them. A tree whose workspace `context` cannot measure loads nothing of Portulan's before the first request.
- */
+/** `before` is the bytes of Portulan's the host loads ahead of the first request. */
 export function portulanSources(tree) {
     const tracked = git(tree, ["ls-files", "-z"]).split("\0").filter(Boolean);
     const lines = new Set();
@@ -292,10 +213,8 @@ export function portulanSources(tree) {
     return { lines, code, codePaths: tracked.filter(isCode), files, before };
 }
 
-/** A path a tool call's input names, the five-run set's way: a token ending in a file extension. */
 const PATH_TOKEN = /[\w./-]*[\w-]+\.(?:md|mjs|json|sh|js|yml|yaml|txt)\b/g;
 
-/** Whether a tool call's input names a tracked code file. */
 function namesCode(input, codePaths) {
     const text = Object.values(input ?? {}).map((v) => String(v)).join(" ");
     const tokens = (text.match(PATH_TOKEN) ?? []).map((t) => (t.startsWith(".portulan") ? t : t.replace(/^[./]+/, "")));
@@ -303,13 +222,11 @@ function namesCode(input, codePaths) {
     return tokens.some((t) => codePaths.some((f) => f === t || t.endsWith(`/${f}`) || f.endsWith(`/${t}`) || (t.length > 6 && f.endsWith(t))));
 }
 
-/** A tool's result as the context holds it. */
 function resultText(b) {
     if (typeof b.content === "string") return b.content;
     return Array.isArray(b.content) ? b.content.map((c) => (c?.type === "text" ? c.text : JSON.stringify(c))).join("\n") : JSON.stringify(b.content ?? null);
 }
 
-/** A model's block, in bytes, as the next request sends it back. */
 function blockBytes(b) {
     if (b?.type === "text") return Buffer.byteLength(String(b.text ?? ""), "utf8");
     if (b?.type === "thinking") return Buffer.byteLength(String(b.thinking ?? ""), "utf8") || 1;
@@ -317,16 +234,7 @@ function blockBytes(b) {
     return Buffer.byteLength(JSON.stringify(b ?? null), "utf8");
 }
 
-/**
- * A for one run, the five-run set's split. The transcript is walked in the ledger's order (one request per
- * message id, the main chain only) for what entered the context before each request, in bytes and in Portulan's
- * bytes: a tool's result and the skill text the host injects are matched line by line; a prompt, a hook's or the
- * host's attachment and the model's own blocks enter as bytes only. Each request's growth is shared by bytes over
- * what entered before it and carried by every request from there on. Request 1 is not split: what the host loaded
- * of Portulan's before it is estimated from its bytes and carried by all. Null where the walk and the ledger do
- * not name the same requests, or where the run compacted, since a compacted context sends a summary in place of
- * what entered it.
- */
+/** Null where the walk and the ledger name different requests, or where the run compacted. */
 export function shareOf(file, requests, sources) {
     const main = requests.filter((r) => !r.sidechain);
     if (main.length === 0 || main.some((r) => r.compacted)) return null;
@@ -388,11 +296,7 @@ export function shareOf(file, requests, sources) {
 
 const mean = (xs) => (xs.length === 0 ? null : Math.round(xs.reduce((a, b) => a + b, 0) / xs.length));
 
-/**
- * A sequence in its three lines and the figures behind C: A and B as means of a run, its first run, its warm and
- * cold means, and what share of cold warm cost. `cost` is what a comparison weighs: the mean of every run as
- * billed, except the first, priced cold, since whatever the cache held before a sequence began is not its arm's.
- */
+/** `cost` prices the first run cold: what the cache held before a sequence began is not its arm's. */
 export function summary(runs) {
     const measured = runs.filter((r) => r.figures !== null);
     const later = measured.filter((r) => r.k > 1);
@@ -418,19 +322,7 @@ export function summary(runs) {
     };
 }
 
-/**
- * A switch against its control: it passes when every run of both sequences was measured, every treatment run
- * answered as its task expects, no run of either changed a file, and the treatment's cost, the mean of its runs
- * with the first priced cold, is lower than the control's. A run that was not measured has no cost, so a mean
- * without it is not its sequence's; a control run that changed a file spent tokens on work its task forbids, so a
- * cut against it is not the switch's; and what the cache held before either sequence began is neither arm's. The
- * two must differ in their arm and in nothing else the runner records (the commit they started from, the task,
- * the run count, the checkouts, what lands between runs, where they ran, the model asked for and the models the
- * host recorded, and the host's version), or no difference between them is the switch's. The models are compared
- * run by run, for the runs both sequences measured: a run with no measurement recorded no model, so its sequence
- * fails as not measured, never as another shape, while a measured run that recorded no model still differs from
- * one that did.
- */
+/** Throws unless the two sequences differ in their arm and in nothing else the runner records. */
 export function verdict(control, treatment) {
     const measuredRun = (s, k) => s.runs.find((r) => r.k === k && r.figures !== null);
     const both = control.runs.map((r) => r.k).filter((k) => measuredRun(control, k) && measuredRun(treatment, k));
@@ -460,18 +352,12 @@ function git(cwd, args) {
     return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 }
 
-/**
- * Where a clone keeps what the runner put in it, the tree's commit and the runner's own commits between runs,
- * as already on a remote. The clone has no remote, so nothing a run does can be pushed; but the stop gate reads a
- * commit on no remote as work not yet recorded (`HEAD --not --remotes`, `cli/stop-gate.mjs`) and would ask every
- * run for a handoff, a file its task says not to change. A commit a run makes itself is never recorded here.
- */
+/** Under `refs/remotes/`, so the Stop-gate reads the runner's commits as recorded and asks no run for a handoff. */
 export const RECORDED_REF = "refs/remotes/source/recorded";
 
-/** The runner's commit between two runs: empty, with the seam line the docs recipe reads on the newest change. */
+/** The docs recipe reads a seam line on the newest commit, so the runner's empty commit carries one. */
 const BETWEEN_SEAM = "Seam-scan: clean, an empty commit whose message is the runner's own";
 
-/** A clone of the tree's committed HEAD with no remote: what every run of a sequence starts from. */
 export function cloneTree(tree, dest) {
     try {
         execFileSync("git", ["clone", "--quiet", "--no-hardlinks", tree, dest], { stdio: ["ignore", "pipe", "pipe"] });
@@ -483,10 +369,7 @@ export function cloneTree(tree, dest) {
     return dest;
 }
 
-/**
- * Where the host keeps the transcript of a session started in `cwd`, or null where it is not there. Keyed by
- * the real path, because that is the working directory a started process sees.
- */
+/** Null when the host holds no transcript; keyed by the real path, the cwd a started process sees. */
 export function transcriptOf(sessionId, cwd, env) {
     const paths = hostPaths(env);
     if (paths.why) throw new CouldNotRun(paths.why);
@@ -494,7 +377,6 @@ export function transcriptOf(sessionId, cwd, env) {
     return fs.existsSync(file) ? file : null;
 }
 
-/** The first line the agent printed on stdout that parses as its JSON result, or null. */
 function resultOf(stdout) {
     for (const line of [stdout.trim(), ...stdout.trim().split("\n").reverse()]) {
         try {
@@ -507,7 +389,6 @@ function resultOf(stdout) {
     return null;
 }
 
-/** The arm a run starts with: the switches named on the command line, or a workspace's `sessions.headless`. */
 export function armOf({ declared = null, switches = {} }) {
     if (declared === null) return { ...switches };
     if (Object.keys(switches).length > 0) throw new CouldNotRun("name the switches or --declared, not both: an arm is one or the other");
@@ -516,10 +397,7 @@ export function armOf({ declared = null, switches = {} }) {
     return { ...(sessions.headless ?? {}) };
 }
 
-/**
- * Run one sequence and record it in `<into>/<label>/sequence.json`, rewritten after every run so a crash
- * loses one run and not the sequence. Each run's transcript is copied beside it.
- */
+/** Rewrites `sequence.json` after every run, so a crash loses one run, not the sequence. */
 export function runSequence({
     tree, into, label, task = "boot", runs = 3, copies = "one", between = null, arm = {}, local = false,
     model = null, agent = "claude", env = process.env, timeoutMs = TURN_TIMEOUT_MS, say = () => {},
@@ -575,10 +453,7 @@ export function runSequence({
             transcript = `run-${k}.jsonl`;
             fs.copyFileSync(found, path.join(dir, transcript));
         }
-        // A run leaves its clone as it found it: the boot task says to change no file, and the probe's one reply
-        // needs none. A run that changed its clone, a file or a commit, fails its task, and once it is recorded the
-        // clone goes back to the commit the run started from, so the next run starts where the others did. Ignored
-        // files count: a clone starts with none, and one a run leaves (a local settings file) is input to the next.
+        // Ignored files count: a clone starts with none, and one a run leaves is input to the next.
         const touched = git(copy, ["status", "--porcelain", "--ignored", "--untracked-files=all"]).split("\n").filter(Boolean);
         const changed = git(copy, ["rev-parse", "HEAD"]).trim() !== start || touched.length > 0;
         record.runs.push({
@@ -615,13 +490,6 @@ export function runSequence({
     return record;
 }
 
-/**
- * A recorded sequence, read into its three lines at `rates`. A is read against the run's own clone, which the
- * sequence keeps; a run whose clone is gone has no A, and says so rather than a zero. A run whose transcript
- * records no request of its session's own (empty, torn before its first request, or holding only host-written
- * or subagent records) measured nothing: it has no figures, as a run with no transcript has none, never the
- * figures of a run that cost nothing.
- */
 export function readSequence(dir, rates = GENERAL_RATES) {
     let record;
     try {
@@ -658,7 +526,6 @@ const ratesText = (rates) =>
     `reads at ${rates.read} and output at ${rates.output}` +
     (rates.read === GENERAL_RATES.read && rates.output === GENERAL_RATES.output ? ", the general multipliers" : "");
 
-/** The lines `report` prints for one sequence: its runs, then its three lines, A first. */
 export function reportLines(sequence) {
     const { record, runs, rates = GENERAL_RATES, summary: s } = sequence;
     const arm = Object.keys(record.arm ?? {}).length ? JSON.stringify(record.arm) : "the host's defaults";
@@ -687,7 +554,6 @@ export function reportLines(sequence) {
     return lines;
 }
 
-/** A treatment against its control, in the same three lines, A first; C decides. */
 export function comparisonLines(control, treatment, v) {
     const [c, t] = [control.summary, treatment.summary];
     const facts = [
@@ -704,7 +570,6 @@ export function comparisonLines(control, treatment, v) {
     ];
 }
 
-/** `--read` and `--output` taken out of an argument list: the multipliers C prices by, and what is left. */
 export function ratesOf(argv) {
     const rates = { ...GENERAL_RATES };
     const rest = [];

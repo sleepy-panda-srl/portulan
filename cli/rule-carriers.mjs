@@ -1,40 +1,9 @@
 /**
  * `rule-carriers` — the rail that keeps a reduced rule reduced.
  *
- * Proposal `.portulan/proposals/0027-a-reduced-rule-stays-reduced.md`. A rule an incident has reduced
- * to ONE carrier is registered with the spellings its other carriers used; those spellings may then
- * appear only in the carrier, or beside a citation of it.
+ * A registered rule's other spellings may appear only in its carrier, or beside a citation of it.
  *
- * ## What this is NOT
- *
- * It is not a solution to `0020`'s class, and describing it as one would be the capability claim
- * `.portulan/memory/a-stated-enforcer-must-be-the-real-one.md` forbids. `0020` proved no rail can find
- * *this patch's rule's other carriers*, because a rule has no token and the sibling set is exactly what
- * nobody enumerated. That holds. **This operates only after an incident has enumerated a set** — at
- * which point the rule does have a token, namely the spellings actually found — and its job is to stop
- * the reduction being undone. Measured need: on 2026-08-10 one branch removed a hand-maintained count
- * and roster while another re-armed them, and a handoff on `main` is titled
- * *the-correction-merged-and-the-next-pull-request-put-it-back*.
- *
- * A rule nobody registered is covered by nothing, and nothing says so. That is stated in the proposal
- * and repeated here because this file is where a reader checks whether the claim matches the code.
- *
- * ## Scope is a PREFIX, deliberately, and the record layer is out by construction
- *
- * `scope` entries are path prefixes, not globs. A glob language would be a second thing to get wrong,
- * and prefixes are what the domain actually needs: doctrine lives in directories. `exclude` entries are
- * prefixes too and win over `scope`.
- *
- * The record layer — handoffs, proposals, milestone files, the changelog and its fragments — is excluded
- * because it legitimately quotes retired sentences forever: `0004` keeps its own minting words under a
- * dated supersession note, and records here are forward-only. A rail over them would be red on arrival
- * and permanently, which is what `a-superlative-is-a-count-nobody-ran.md` refused a grep over.
- *
- * ## Exit codes — the three-code discipline every recipe here holds
- *
- *   0  no registered spelling appears outside its carrier without a citation
- *   1  at least one does
- *   2  could not run — the registry is unusable, or its own audit fails
+ * Exit 0 green · 1 a registered spelling outside its carrier, uncited · 2 could not run.
  */
 
 import fs from "node:fs";
@@ -46,11 +15,6 @@ export class RegistryError extends Error {}
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
-/**
- * Validate the registry BEFORE it is used, so an unusable rule is could-not-run rather than a rule
- * that quietly covers nothing. The same direction `recipe-set.mjs` takes: the emitter validates
- * before it emits, because "declared" is what a gate treats as "enforced".
- */
 export function parseRegistry(source, { where = "registry" } = {}) {
     let raw;
     try {
@@ -93,11 +57,6 @@ export function parseRegistry(source, { where = "registry" } = {}) {
                 if (typeof entry !== "string" || entry.trim() === "") {
                     throw new RegistryError(`${at} (\`${id}\`) has an empty entry in \`${key}\``);
                 }
-                // Untrimmed is refused rather than silently trimmed, matching `cli/compile.mjs`, which
-                // does the same for a rule's action and a required context. It matters most for `scope`
-                // and `exclude`, which are compared with `startsWith`: a trailing space makes a prefix
-                // that can never match any path, so the entry silently covers nothing and the registry
-                // still reports green. Refusing is predictable; repairing quietly is not.
                 if (entry !== entry.trim()) {
                     throw new RegistryError(
                         `${at} (\`${id}\`) has an untrimmed entry in \`${key}\`: ${JSON.stringify(entry)} — ` +
@@ -110,10 +69,6 @@ export function parseRegistry(source, { where = "registry" } = {}) {
             if (!Array.isArray(exclude) || exclude.some((e) => typeof e !== "string" || e.trim() === "")) {
                 throw new RegistryError(`${at} (\`${id}\`) has an unusable \`exclude\``);
             }
-            // The rule-level `exclude` needs the untrimmed check too. It did not have one: the check was
-            // added to `tells`, `cites`, `scope` and the top-level `exclude` and missed this fourth site
-            // — one rule, four enforcement points, repaired at three. The suite caught it, which is the
-            // only reason it is not shipping as the defect this whole change is about.
             for (const entry of exclude) {
                 if (entry !== entry.trim()) {
                     throw new RegistryError(
@@ -135,15 +90,7 @@ export function parseRegistry(source, { where = "registry" } = {}) {
         };
     });
 
-    // The top-level `exclude` is validated exactly as a rule's is. It was not, and the gap was not
-    // cosmetic — but the reason is NOT a crash, and this comment said it was until it was corrected.
-    // `inDomain` calls `file.startsWith(p)`, and `String.prototype.startsWith` COERCES its argument:
-    // 1, null, true, {} and ["x"] all return false quietly, so nothing throws for anything JSON can
-    // carry. The real risk is worse than a stack trace because it is silent — `[]` and `""` coerce to
-    // the empty string, EVERY path starts with the empty string, so one such entry would exclude the
-    // whole tree and this rail would report green having examined nothing. A fail-open in an
-    // allow-list. The suite pins that coercion; this comment stated the opposite for one round, which
-    // is the class this file exists to catch, in the explanation of the fix for it.
+    // `startsWith` coerces its argument: `[]` or `""` would match every path and exclude the whole tree.
     if (raw.exclude !== undefined) {
         if (!Array.isArray(raw.exclude)) {
             throw new RegistryError(`${where} has an \`exclude\` that is not an array`);
@@ -164,11 +111,8 @@ export function parseRegistry(source, { where = "registry" } = {}) {
     return { rules, exclude: Array.isArray(raw.exclude) ? [...raw.exclude] : [] };
 }
 
-/** A file is in a rule's domain when a scope prefix matches and no exclude prefix does. */
 export function inDomain(file, rule, globalExclude = []) {
-    // `rule.exclude` is normalised to an array by `parseRegistry`, but this function is exported and a
-    // caller can hand it a rule object built by hand — which the suite does, and which threw. An
-    // exported predicate that only works on one caller's normalisation is a trap for the next reader.
+    // Exported, so a hand-built rule may lack the arrays `parseRegistry` guarantees.
     const ruleExclude = Array.isArray(rule.exclude) ? rule.exclude : [];
     const scope = Array.isArray(rule.scope) ? rule.scope : [];
     const excluded = [...globalExclude, ...ruleExclude].some((p) => file === p || file.startsWith(p));
@@ -176,35 +120,7 @@ export function inDomain(file, rule, globalExclude = []) {
     return scope.some((p) => file === p || file.startsWith(p));
 }
 
-/**
- * Normalise before matching, and this is the part the first run taught rather than the design.
- *
- * Four of the first registry's seven tells matched NOTHING at the commit whose carriers they were
- * copied from, and the dead-tell audit caught all four. Two causes, both already written down in this
- * repository as traps and both walked into anyway:
- *
- *   1. **A markdown link's URL sits inside the phrase.** `.portulan/dod.md` reads
- *      "run each recipe [`workspace.json`](workspace.json) declares" — the literal text carries the
- *      whole link, so a tell spelled the way a human reads the sentence matches nothing. Links are
- *      collapsed to their label first, which is the repair `#211` recorded and this file now applies.
- *   2. **Prose wraps.** `spec/slots.md` breaks "This repository's CI reads / `verify.recipes` from the
- *      manifest" across a newline, so any tell spanning that break fails on a raw `includes`.
- *
- *   3. **Emphasis and code spans sit INSIDE the phrase.** The record documenting the sweep wrote
- *      "every verify recipe the workspace **declares**" — the bold markers fall between the words, so
- *      the tell went dead the moment the live carrier was fixed and only the record still quoted it.
- *
- * Three variants of ONE trap — markup between the words of a sentence — each found by running this
- * instrument rather than reading it, and the third found by forcing the audit red. So both haystack
- * and needle are flattened: links to labels, emphasis and code markers dropped, every whitespace run
- * to one space, lowercased. A tell is then written the way a human READS the sentence, which is the
- * only way anyone will ever write one.
- *
- * Liveness is measured over the whole tracked set INCLUDING the record layer, deliberately. After a
- * successful sweep a retired spelling survives only in the handoff and proposal that recorded it —
- * that is the steady state, not a defect — so records are what keep a correct tell alive. A tell that
- * matches nothing even there was never a real spelling.
- */
+/** Text as a reader reads it, so a tell matches across links, emphasis, code spans and line wraps. */
 export function normalise(text) {
     return text
         .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
@@ -215,27 +131,13 @@ export function normalise(text) {
 
 const lower = normalise;
 
-/**
- * The scan. `read(file)` returns the file's text; a file that cannot be read is reported rather than
- * skipped, because a check class that disappears quietly is worse than one that says it could not run.
- *
- * `resolve` turns a listed path and a registered carrier into the same kind of thing before they are
- * compared, and it defaults to resolving against the process's own directory rather than to identity.
- * A default of identity would be the string comparison this parameter exists to remove, spelled as a
- * default — correct for the one caller that already resolves and silently wrong for every other.
- */
+/** `resolve` defaults to `path.resolve`, never identity: `./cli/x.mjs` and `cli/x.mjs` name one carrier. */
 export function scan({ registry, files, read, resolve = (p) => path.resolve(p) }) {
     const findings = [];
     const unreadable = [];
-    // Nested maps, NOT a joined string key. The first version joined the rule id and the tell with a
-    // separator and split on it to report — which a tell CONTAINING that separator corrupts, and a JSON
-    // registry can carry one as a legal escape that `control-chars` never sees, because it is an escape
-    // in the file rather than a raw byte. The repair is not to validate the separator out; it is to stop
-    // having one. `evolution.md` ranks removing what would otherwise need enforcing above enforcing it.
-    const tellSeen = new Map(); // rule id -> Map(tell -> seen)
+    // rule id → tell → seen, nested rather than a joined key, since a tell may hold any separator.
+    const tellSeen = new Map();
 
-    // Resolved once per rule rather than once per file × rule, and kept beside the rule id so the
-    // comparison below has an identity on both sides instead of two spellings.
     const carrierId = new Map();
 
     for (const rule of registry.rules) {
@@ -257,14 +159,6 @@ export function scan({ registry, files, read, resolve = (p) => path.resolve(p) }
         const fileId = resolve(file);
 
         for (const rule of registry.rules) {
-            // The carrier is where the rule LIVES; its own spellings are the point of it.
-            //
-            // Compared as RESOLVED paths, not as strings — the same repair `run()` already applies to
-            // the registry's own exclusion one screen below, and for the same reason. `git ls-files -z`
-            // emits `/` while a registry author writes whatever resolves on disk, so `./cli/x.mjs` names
-            // the carrier perfectly well, passes the carrier audit, and then fails to equal the string
-            // `cli/x.mjs`. The rule would flag its own carrier as a restatement of itself: the one file
-            // allowed to spell the rule, reported for spelling it.
             const isCarrier = fileId === carrierId.get(rule.id);
 
             const hits = rule.tells.filter((t) => hay.includes(lower(t)));
@@ -290,28 +184,6 @@ export function scan({ registry, files, read, resolve = (p) => path.resolve(p) }
     return { findings, deadTells, unreadable };
 }
 
-/**
- * The carrier must exist **and be a file**. A rule pointing at a file that is gone is could-not-run,
- * never green — and so is one pointing at a directory.
- *
- * `existsSync` was the first spelling and it answers `true` for a directory. A directory carrier then
- * passed the audit, matched no file in the scan, and left the rule covering **nothing** while the
- * recipe printed green: the quiet-coverage-loss shape the three audits exist to prevent, arriving
- * through the audit itself.
- *
- * `state(carrier)` answers `file`, `absent`, `not-a-file`, or **`unreadable:<errno>`**, and they are
- * kept apart rather than collapsed to a boolean because the caller prints them. Telling a maintainer a
- * directory *"does not resolve"* sends them looking for a missing file that is sitting right there —
- * the same defect `control-chars`'s exemption audit was corrected for, where *dead* and *never read*
- * had to be split.
- *
- * **This function does not enumerate the states; it forwards whatever `state` returns.** Anything but
- * `file` is unusable and is carried through with its own label, so a caller may add a state without
- * touching this code — which is exactly how `unreadable:<errno>` arrived, and exactly how this
- * docstring came to describe three states while the caller returned four. A doc that lists a set it
- * does not enforce goes stale silently, so it now says both the set it knows and the rule it actually
- * applies. Copilot, #249 round 1, suppressed and promoted.
- */
 export function auditCarriers(registry, { state }) {
     const unusable = [];
     for (const rule of registry.rules) {
@@ -350,26 +222,13 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         return 2;
     }
 
-    // `statSync` rather than `lstatSync`: a symlink pointing at a real file IS a usable carrier, and
-    // the scan reads through it exactly the same way. What is refused is a target that is not a file
-    // once followed.
+    // `statSync`, not `lstatSync`: a symlink to a file is a usable carrier.
     const unusable = auditCarriers(registry, {
         state: (p) => {
             let st;
             try {
                 st = fs.statSync(path.resolve(cwd, p));
             } catch (cause) {
-                // ONLY `ENOENT` IS ABSENT. A bare `catch` here turned every errno into "does not
-                // resolve" — so a carrier the process could not LOOK at (EACCES on a parent directory,
-                // ELOOP on a symlink cycle, ENAMETOOLONG) was reported as one it had looked at and not
-                // found. The exit code was right either way; the sentence was not, and an accurate
-                // error sentence is this change's whole subject.
-                //
-                // The rule already existed on a sibling noun and was not swept to this one:
-                // `./control-chars.mjs`'s `bytesOf` returns `null` for `ENOENT` alone and refuses every
-                // other errno, citing `../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md`
-                // — *could not look* reported as *looked and found nothing*. Same rule, same words, now
-                // on this noun too. Copilot, #249 round 1.
                 if (cause.code === "ENOENT") return "absent";
                 return `unreadable:${cause.code ?? cause.message}`;
             }
@@ -402,15 +261,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         return 2;
     }
 
-    // THE REGISTRY IS NOT A CARRIER, and leaving it in the scanned set defeated the dead-tell audit
-    // outright: every tell is spelled in the registry, so every tell found ITSELF and read as alive.
-    // The audit reported green over a tell that matches nothing else in the tree — found by forcing
-    // it red, not by reading it, and it passed the first demonstration only because the registry was
-    // untracked in that scratch worktree.
-    // Compared as RESOLVED ABSOLUTE paths, not as strings. `git ls-files -z` always emits `/`, while
-    // `path.relative` emits the platform separator — so on Windows the two spellings never matched, the
-    // registry was scanned after all, and the self-satisfied dead-tell audit came straight back. A
-    // string comparison between a git path and a platform path is a defect wherever it appears.
+    // The registry spells every tell, so scanning it would keep dead tells alive; resolved, as git's `/` is not every platform's.
     const registryAbs = path.resolve(cwd, registryPath);
     const files = all.filter((f) => path.resolve(cwd, f) !== registryAbs);
 
@@ -454,21 +305,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
     return 0;
 }
 
-/**
- * The main-module guard, and it is `cli/portulan.mjs`'s `isMain()` rather than a third spelling of the
- * same question — one carrier, and the others reach it, which is the rule this file exists to enforce.
- *
- * Two ways to get this wrong, and this file has now had both:
- *
- *   1. Comparing `process.argv[1]` against `new URL(import.meta.url).pathname`. This working copy lives
- *      under "Sleepy Panda SRL Projects", a URL pathname percent-encodes the spaces, the comparison failed,
- *      and the tool **exited 0 having run nothing**. Comparing URLs on both sides removes that entirely.
- *   2. Comparing resolved paths when the script is reached through a **symlink** — an npm `bin`, most
- *      obviously. `path.resolve` does not follow links, so the same silent skip returns. Hence the
- *      `realpathSync` fallback, in a `try` because a missing path must answer *no* rather than throw.
- *
- * Both failures look identical from outside: a green that is the tool never starting.
- */
+/** URLs on both sides, since `import.meta.url` percent-encodes; the realpath covers a symlinked `bin`. */
 function isMain() {
     const invoked = process.argv[1];
     if (!invoked) return false;

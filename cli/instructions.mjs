@@ -5,59 +5,9 @@
 //   node cli/instructions.mjs --workspace <dir> --write           move it, then compile the index
 //   node cli/instructions.mjs --workspace <dir> --join [--write]  put every moved section back
 //
-// Claude Code loads a repository's `CLAUDE.md` and `.claude/CLAUDE.md` whole into every context, and the load
-// tiers of `../core/operating/context.md` reached only the guidance a workspace keeps in `slots.context`. So a
-// repository that installs Portulan kept paying for its own instruction file on every request, however large,
-// and that file can be most of what every request carries: proposal `0036`'s sealed incident measured one at
-// 130k tokens. This moves the sections a team marks into `on-read` units of that slot, where `compile` gives
-// each one line of the index every context loads, and the section itself loads when a session opens it.
-// `portulan upgrade` reaches it through the form step `0009`, `doctor` and `init` propose it, and this command
-// line is the reverse, and the way in where a declared budget already breached keeps `upgrade` from running.
+// Claude Code 2.1.281 removes each block-level `<!-- … -->` from an instruction file or rule it loads, so a mark or marker costs no context.
 //
-// ## The team's word, in its own file
-//
-// **A section moves when the line under its heading is `<!-- portulan: on-read -->`**, alone on its line, and
-// nothing else moves one: which guidance may leave every context is the team's to say (`0036`, rule 5), and a
-// size says nothing about it. A moved section leaves `<!-- portulan: on-read <unit> <digest> -->` where it was,
-// so the file says where its text went, the join knows where to put it back, and the digest, the first 8 hex
-// digits of the SHA-256 of the section the unit holds, tells the join which one was edited since. Claude Code
-// drops both comments before it loads the file: an instruction file or rule is lexed as Markdown and each
-// block-level `<!-- … -->` is removed (read in the program text of Claude Code 2.1.281, 2026-09-24), so neither
-// costs a context anything. `./context.mjs` measures bytes on disk and counts them all the same.
-//
-// ## Moved whole, and proved before anything is written
-//
-// A marked section moves with its heading and everything under it, byte for byte, into a unit named by its
-// heading, whose `description` is the heading itself, so the index line names the section as the file did and
-// paraphrases nothing; `compile` adds its size in whole KB. The text is not rewritten: a relative link in it
-// still reads from the repository root, as it did in `CLAUDE.md`, which is where a session reads paths from,
-// and a link rendered from the unit's own directory misses. **The split is proved or it is refused**: the file
-// with each new marker replaced by its unit's body must equal the file as it was, less the marks, byte for
-// byte, and the only lines the marks take with them are the marks and a blank line each. The plan also counts
-// clauses, read as the checkers of 2026-09-23 read them, into those kept in the file, moved to a unit, missing
-// and doubled.
-//
-// A section is refused, and nothing written, where moving it would change what loads: one holding an import
-// that loads from the file (an on-read unit's import loads nothing, so the file would leave every context
-// without a word), one marked inside another marked section, a mark under no heading, or a unit `compile`
-// would refuse.
-//
-// ## What it does not move
-//
-// Only the project instruction files. A path-scoped rule is on-path already; the files it imports load into
-// every context, and the context line names them among the largest. A team's own unscoped rules and the files
-// an instruction file imports are always-tier files this does not split, and neither is an instruction file
-// that is a link, since the file it names may be one another host loads whole. And once moved, a unit is the
-// team's: one frontmatter line makes it `on-path` with `paths:`, `on-invoke`, or `always` again, and the join
-// then refuses it rather than undo that tier without a word. A unit edited since the move goes back as it
-// stands, and the join says so, unit by unit; and the join removes only a unit at the top of `slots.context`,
-// where the split makes them, whatever else a marker written by hand names.
-//
-// ## Exit codes
-//
-// `0` printed, or written · `2` could not: a mark refused, a split that does not reassemble, a manifest, file
-// or unit that could not be read, a write that failed and was rolled back. There is no 1: a marked section is
-// the team's request, not a verdict about the repository, and `doctor` is where a budget is judged.
+// Exit 0 printed or written · 2 could not: a refused mark, a split that does not reassemble, a failed read or write. There is no 1.
 
 import { createHash } from "node:crypto";
 import fs from "node:fs";
@@ -68,7 +18,7 @@ import { BOOT_CARD_UNIT, CompileError, GUIDANCE_RULES_DIR, ON_READ_INDEX, claude
 import { isInside } from "./inside.mjs";
 import { outlineMd } from "./symbols.mjs";
 
-/** The project instruction files Claude Code loads whole into every context, relative to the repository. */
+/** The project instruction files Claude Code loads whole into every context. */
 export const INSTRUCTION_FILES = ["CLAUDE.md", ".claude/CLAUDE.md"];
 
 /** The team's word that the section whose heading sits directly above this line moves to an on-read unit. */
@@ -77,38 +27,26 @@ export const ON_READ_MARK = "<!-- portulan: on-read -->";
 /** The mark as a line may carry it: indented less than a code block is, and with space after it. */
 const MARK = /^ {0,3}<!-- portulan: on-read -->[ \t]*$/;
 
-/** Where a moved section was: the unit holding it, as a reader of the repository types the path, and its digest. */
 const MOVED = /^ {0,3}<!-- portulan: on-read (.+?) ([0-9a-f]{8}) -->[ \t]*$/;
 export const movedMark = (source, digest) => `<!-- portulan: on-read ${source} ${digest} -->`;
 
-/**
- * A unit's digest: the first 8 hex digits of the SHA-256 of the section it holds, the lines under its frontmatter
- * that the join puts back, each read without its `\r`. A description edited, or line ends a checkout rewrote, is
- * no edit to the section.
- */
+/** Only the section the join puts back, each line without its `\r`: an edited description or a checkout's line ends is no edit. */
 export const unitDigest = (text) => createHash("sha256").update(unitBody(text).map(bare).join("\n"), "utf8").digest("hex").slice(0, 8);
 
-/** Names a unit may not take: the boot card's, and the index `compile` writes beside the rules. */
 const RESERVED = new Set([BOOT_CARD_UNIT, path.basename(ON_READ_INDEX, ".md")]);
 
-/** Anything that means the split could not be planned, read or written. Carries no verdict. */
 export class InstructionsError extends Error {}
 
 const posix = (p) => p.split(path.sep).join("/");
 const bare = (line) => line.replace(/\r$/, "");
 const blank = (line) => bare(line).trim() === "";
-/** A count with its thousands grouped, as the context line prints its figures. */
 export const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 // ===========================================================================================
 // § A file's lines, the ones Markdown does not read as text, and its sections
 // ===========================================================================================
 
-/**
- * The lines of `text` a mark or a marker cannot sit on, read as `outlineMd` reads them: the frontmatter, every
- * line of a fenced block, fences included, and every line of an HTML comment running over more than one.
- * `lines` are `text.split("\n")`, each still carrying a `\r` where the file has one.
- */
+/** The lines a mark cannot sit on, as `outlineMd` reads them: the frontmatter, fenced blocks and multi-line HTML comments. */
 function unread(lines) {
     const out = new Set();
     let i = 0;
@@ -139,13 +77,6 @@ function unread(lines) {
     return out;
 }
 
-/**
- * Every heading of `text` with the lines its section spans, from `outlineMd` in `./symbols.mjs`, the reader a
- * session opens a section with, so the split and the read agree on what a section is. Flattened in document
- * order, each carrying the titles of the headings above it.
- *
- * @returns {Array<{ start: number, end: number, level: number, title: string, bytes: number, parents: string[], children: object[] }>}
- */
 function headingsOf(text) {
     const out = [];
     const walk = (entries, parents) => {
@@ -158,11 +89,6 @@ function headingsOf(text) {
     return out;
 }
 
-/**
- * The sections a proposal names: the file's top-level headings, or, where one heading holds the whole file
- * as its title, the headings under it. The text above the first of them is the file's own opening, and is
- * never a section.
- */
 export function sectionsOf(text) {
     let level = outlineMd(text).entries;
     let title = null;
@@ -177,12 +103,7 @@ export function sectionsOf(text) {
 // § Marks and markers
 // ===========================================================================================
 
-/**
- * The marks and markers in one instruction file.
- *
- * @returns {{ marks: Array<{ line: number, heading: object | null }>, moved: Array<{ line: number, source: string, digest: string }> }}
- *   `line` is 0-based; a mark's `heading` is the section it moves, or null where no heading sits directly above it
- */
+/** Lines are 0-based; a mark's `heading` is null where no heading sits directly above it. */
 export function marksOf(text) {
     const lines = text.split("\n");
     const skip = unread(lines);
@@ -207,10 +128,6 @@ export function marksOf(text) {
 
 const UNDERLINE = /^ {0,3}(=+|-+)[ \t]*$/;
 
-/**
- * The heading a mark on line `at` sits directly under, with only blank lines between: an ATX heading's line,
- * or the underline of a setext heading, whose title may run over more than one line. Null where there is none.
- */
 function headingAbove(lines, headings, at) {
     let above = at - 1;
     while (above >= 0 && blank(lines[above])) above -= 1;
@@ -224,15 +141,7 @@ function headingAbove(lines, headings, at) {
     return underline === above && lines.slice(h.start - 1, above).every((line) => !blank(line)) ? h : null;
 }
 
-/**
- * The imports in `text` the host could load from the file at `from`, by the 0-based line each sits on: every
- * import token naming a file that is there, from that file's directory or as an absolute path, and every one
- * into a home directory, which this cannot see and so counts as loading (a checker refuses what it cannot
- * check). Read by compile's own import reader over the whole text, so a section's imports are the ones the
- * host finds there when it reads the file.
- *
- * @returns {Map<number, string[]>}
- */
+/** Keyed by 0-based line; an import into a home directory, which this cannot see, counts as loading. */
 function importLines(text, from) {
     const starts = [0];
     for (const line of text.split("\n")) starts.push(starts.at(-1) + line.length + 1);
@@ -247,13 +156,9 @@ function importLines(text, from) {
     return out;
 }
 
-/** The imports among `importLines`' that sit on lines `first` to `last`, both 0-based and included. */
 const importsWithin = (imports, first, last) => [...imports].filter(([line]) => line >= first && line <= last).flatMap(([, found]) => found);
 
-/**
- * The imports `compile` refuses in a unit that is not `always`, as it reads them: a path, neither a home nor an
- * absolute one, naming a file from the unit's own directory.
- */
+/** The imports `compile` refuses in a unit that is not `always`. */
 function strayImports(body, unitFile) {
     const out = [];
     for (const { target } of importSpans(body)) {
@@ -268,13 +173,7 @@ function strayImports(body, unitFile) {
 // § The clauses a proof counts
 // ===========================================================================================
 
-/**
- * The clauses of `text`, as the moved-content checkers of 2026-09-23 read them: each sentence, and each part
- * of one between a dash, a colon or a semicolon, of 12 characters or more. A block (a paragraph, a heading, a
- * list item, a table row, a line of code) is read on its own, so no clause runs across the line where a
- * section was cut. Marks and markers are not clauses: they are the team's word and the split's, and the host
- * drops both.
- */
+/** Each sentence, and each part of one between a dash, a colon or a semicolon, of 12 characters or more, block by block. */
 export function clausesOf(text) {
     const blocks = [];
     let current = [];
@@ -316,17 +215,12 @@ export function clausesOf(text) {
     return out;
 }
 
-/** How many times each clause occurs. */
 function tally(clauses) {
     const counts = new Map();
     for (const c of clauses) counts.set(c, (counts.get(c) ?? 0) + 1);
     return counts;
 }
 
-/**
- * Where each clause of `before` landed: in `kept`, in `moved`, in neither, or once too often. Counted with
- * multiplicity, so a sentence the file held twice is two clauses.
- */
 export function landed(before, kept, moved) {
     const o = tally(before);
     const k = tally(kept);
@@ -348,7 +242,6 @@ export function landed(before, kept, moved) {
 // § The split
 // ===========================================================================================
 
-/** A unit's name from its heading: a slug, never one taken or reserved, suffixed until it is free. */
 export function unitName(title, taken) {
     let base = title
         .normalize("NFKD")
@@ -364,39 +257,22 @@ export function unitName(title, taken) {
     return name;
 }
 
-/**
- * A drafted unit: frontmatter naming the tier and the heading, a blank line, the section as it stood, ending as
- * it did: with a line end, or with none where it ended a file that had none.
- */
 function draftUnit(description, body, eol, ended) {
     const head = ["---", "tier: on-read", `description: ${JSON.stringify(description)}`, "---", ""].map((l) => (eol === "\r\n" ? `${l}\r` : l));
     return `${[...head, ...body].join("\n")}${ended ? "\n" : ""}`;
 }
 
-/** The section a drafted unit holds, exactly as `draftUnit` was given it. */
 function draftedBody(text) {
     const lines = text.split("\n");
     const close = lines.findIndex((line, at) => at > 0 && bare(line) === "---");
     return lines.slice(close + 2, text.endsWith("\n") ? -1 : undefined);
 }
 
-/**
- * The lines a mark takes with it: the mark, and the blank line after it where one is also above it, so the
- * section closes up as if the mark had never been written.
- */
 function takenWith(lines, at, limit) {
     return at > 0 && blank(lines[at - 1]) && at + 1 <= limit && blank(lines[at + 1]) ? [at, at + 1] : [at];
 }
 
-/**
- * What the marked sections of a repository's instruction files would become, proved, with nothing written.
- *
- * @param {{ tree: string, context: string | null, taken: Iterable<string>, read: (rel: string) => string | null }} where
- *   the repository's root; `slots.context`'s directory relative to it (`.portulan/context/`), or null where
- *   none is declared; the unit names already in it; and a reader of a file in the repository, null where absent
- * @returns {{ files: object[], units: object[], refusals: string[], marked: number, index: number }} with
- *   `index` the bytes the index `compile` writes adds to the always tier once the units are in the slot
- */
+/** Proved, with nothing written: `context` is `contextDir`'s answer, and `read` gives null for an absent file. */
 export function planSplit({ tree, context, taken, read }) {
     const present = [...taken];
     // A name a marker still gives is taken even where its unit is gone, so no new unit answers an old marker.
@@ -478,16 +354,13 @@ export function planSplit({ tree, context, taken, read }) {
         }
         if (refusals.length > refused) continue;
 
-        // Cut from the bottom, so each earlier cut's lines are where the outline said. A marker ends as the
-        // section's last line did, which at the end of a file may be with no line end at all.
+        // Cut from the bottom, so each earlier cut's lines are where the outline said.
         const next = [...lines];
         for (const cut of [...cuts].sort((a, b) => b.start - a.start)) {
             next.splice(cut.start, cut.last - cut.start + 1, `${movedMark(cut.source, cut.digest)}${lines[cut.last].endsWith("\r") ? "\r" : ""}`);
         }
         const after = next.join("\n");
 
-        // The proof: each new marker replaced by its unit's body gives back the file less its marks, and the
-        // marks took nothing with them but themselves and a blank line each.
         const dropped = new Set(cuts.flatMap((c) => c.dropped));
         const onlyMarks = [...dropped].every((i) => MARK.test(bare(lines[i])) || blank(lines[i]));
         const target = lines.filter((_, i) => !dropped.has(i)).join("\n");
@@ -513,7 +386,6 @@ export function planSplit({ tree, context, taken, read }) {
     return { files, units, refusals, marked, index: units.length === 0 ? 0 : indexGrowth(units, { context, present, read }) };
 }
 
-/** How many levels of lone title headings a file opens with, which a unit's description does not repeat. */
 function sectionDepth(text) {
     let depth = 0;
     let level = outlineMd(text).entries;
@@ -524,11 +396,7 @@ function sectionDepth(text) {
     return depth;
 }
 
-/**
- * The bytes the index adds to the always tier once `units` are in the slot: the index `compile` writes for
- * every on-read unit then, less the one on disk, which the always tier counts as it stands, stale or not. A
- * unit already in the slot that cannot be read counts no line, since `compile` refuses it, and the write too.
- */
+/** A unit in the slot that cannot be read counts no line, since `compile` refuses it. */
 function indexGrowth(units, { context, present, read }) {
     const onRead = present.flatMap((name) => {
         const source = `${context}${name}.md`;
@@ -548,7 +416,6 @@ function indexGrowth(units, { context, present, read }) {
 // § The join
 // ===========================================================================================
 
-/** A unit's guidance as it stands on disk: the lines under its frontmatter, less the blank lines around them. */
 function unitBody(text) {
     const lines = text.split("\n");
     const close = lines.findIndex((line, at) => at > 0 && bare(line) === "---");
@@ -558,16 +425,6 @@ function unitBody(text) {
     return rest;
 }
 
-/**
- * Every moved section put back where its marker is, in the line ends it had, and its unit removed, with
- * nothing written. A unit goes back as it stands now, and each says whether it was edited since the move, by
- * its marker's digest, and where its description is no longer its heading's, since the file names a section by
- * its heading alone. A unit that is gone, one not at the top of `slots.context` (`context`, as `planSplit`
- * takes it), one importing a file, and one no longer on-read are refused rather than dropped, removed or
- * undone.
- *
- * @returns {{ files: object[], units: object[], refusals: string[] }}
- */
 export function planJoin({ tree, context, read }) {
     const files = [];
     const units = [];
@@ -586,9 +443,7 @@ export function planJoin({ tree, context, read }) {
                 refusals.push(`${source} is named by two markers, line ${line + 1} of ${rel} among them: which one it goes back to is not the join's to guess`);
                 continue;
             }
-            // The join removes the unit it puts back, so it reads only where the split writes one, at the top
-            // of the slot, where `compile` reads a unit: a marker written by hand must not remove a file kept
-            // anywhere else.
+            // The join removes the unit it puts back, so a marker written by hand must not reach a file outside the slot's top.
             if (context === null || !source.startsWith(context) || source.slice(context.length).includes("/")) {
                 refusals.push(
                     `line ${line + 1} of ${rel} names ${source}, ${context === null ? "and the workspace declares no `slots.context`" : `which is not at the top of \`slots.context\` (${context})`}, ` +
@@ -608,8 +463,6 @@ export function planJoin({ tree, context, read }) {
                 refusals.push(`${source} could not be read as a unit — ${error.message}`);
                 continue;
             }
-            // The split made an on-read unit, and a tier the team chose since is theirs: put back into the file,
-            // the unit would load in every context and its compiled rule or skill would be removed, unsaid.
             if (unit.tier !== "on-read") {
                 refusals.push(
                     `${source} is \`tier: ${unit.tier}\`${unit.paths ? " with `paths`" : ""} now, and the split made it \`on-read\`: ` +
@@ -617,10 +470,7 @@ export function planJoin({ tree, context, read }) {
                 );
                 continue;
             }
-            // Each line goes back with the line end its unit holds it with, as the move wrote it, and the
-            // last with its marker's, which the split gave the section's last line, as it gave the unit's.
-            // Where every line of the unit ends the other way from that marker, a checkout or an editor
-            // turned them all, and each takes the marker's.
+            // Where every line of the unit ends the other way from its marker, a checkout turned them all, and each takes the marker's.
             const ends = lines[line].endsWith("\r") ? "\r" : "";
             const held = unitBody(unitText);
             const turned = line < lines.length - 1 && held.every((l) => l.endsWith("\r") !== (ends === "\r"));
@@ -646,7 +496,6 @@ export function planJoin({ tree, context, read }) {
             next.push(...unit.body);
         }
         const after = next.join("\n");
-        // The heading each section lands under, as a split of the joined file would describe it.
         const headings = headingsOf(after);
         const depth = sectionDepth(after);
         for (const unit of back.values()) {
@@ -668,7 +517,6 @@ export function planJoin({ tree, context, read }) {
     return { files, units, refusals };
 }
 
-/** What the join says of one unit it puts back: the bytes of its section, where they go, and what changed since the move. */
 export function joinLine(unit, rel) {
     const where = unit.heading === null ? rel : `${rel} under "${unit.heading}"`;
     const how = unit.edited ? "as it stands now, edited since the move" : "as the move left it";
@@ -680,12 +528,6 @@ export function joinLine(unit, rel) {
 // § What `doctor`, the boot and `form` read
 // ===========================================================================================
 
-/**
- * The largest sections of one instruction file that a mark could move, by size: the file's top-level sections,
- * less any holding an import that loads from it.
- *
- * @returns {Array<{ title: string, bytes: number }>}
- */
 export function movableSections(text, from) {
     const imports = importLines(text, from);
     return sectionsOf(text)
@@ -694,12 +536,6 @@ export function movableSections(text, from) {
         .sort((a, b) => b.bytes - a.bytes);
 }
 
-/**
- * The marks waiting in a repository's instruction files, the sections already moved, each marker naming a unit
- * that is not there, and each marked file that is a link, whose marks the split refuses.
- *
- * @returns {{ pending: number, moved: number, gone: string[], files: string[], linked: string[] }}
- */
 export function instructionsState(tree, read) {
     const state = { pending: 0, moved: 0, gone: [], files: [], linked: [] };
     const readThrough = instructionReader(tree, read);
@@ -717,22 +553,13 @@ export function instructionsState(tree, read) {
     return state;
 }
 
-/**
- * Why an instruction file that is a link is not split, or null where it is a file of its own. Read through the
- * link, a split would write through it: a CLAUDE.md linked to AGENTS.md would move out of that file sections
- * another host loads whole from it.
- */
 export function linkRefusal(tree, rel) {
     const at = path.join(tree, ...rel.split("/"));
     if (!fs.lstatSync(at, { throwIfNoEntry: false })?.isSymbolicLink()) return null;
     return `${rel} is a link, to ${posix(path.relative(fs.realpathSync(tree), fs.realpathSync(at)))}, and another host may load that file whole: the split moves sections of a file of its own — make ${rel} one to split it`;
 }
 
-/**
- * `read`, but an instruction file that is a link is read through it where it stays in the repository, and is
- * absent where it leads out of it or nowhere: `upgrade`'s reader reads through no link, and the split must see
- * such a file's marks to say why it does not move them.
- */
+/** `read`, but through an instruction file's link that stays in the repository, so the split sees the marks it refuses. */
 export function instructionReader(tree, read) {
     return (rel) => {
         const at = path.join(tree, ...rel.split("/"));
@@ -744,7 +571,6 @@ export function instructionReader(tree, read) {
             if (error.code === "ENOENT" || error.code === "ENOTDIR") return null;
             throw new InstructionsError(`${rel} could not be followed — ${error.code ?? error.message}`);
         }
-        // A link out of the repository is not this repository's file to split, as `./context.mjs` does not count it.
         if (!isInside(fs.realpathSync(tree), to)) return null;
         try {
             return fs.readFileSync(to, "utf8");
@@ -754,11 +580,6 @@ export function instructionReader(tree, read) {
     };
 }
 
-/**
- * What a split that was not refused says of itself: a line for each section, where it goes and its size, and
- * one for each file's proof. The command line prints them a line each, and `upgrade` joins them as the reason
- * its step is owed.
- */
 export function splitLines(split) {
     return [
         ...split.units.map((u) => `"${u.title}" in ${u.from} → ${u.source}, ${grouped(u.bytes)} B`),
@@ -768,22 +589,13 @@ export function splitLines(split) {
     ];
 }
 
-/**
- * The instruction files large enough to offer the split to, each with the sections a mark could move, largest
- * first: a file over `floor` tokens, `0036`'s offer floor, or any file where the tier is `over` a declared
- * budget. A file that cannot be read is left to the measurement that reads it, which says so, and a link is
- * left out, since the split refuses one.
- *
- * @returns {Array<{ rel: string, tokens: number, sections: Array<{ title: string, tokens: number }> }>}
- */
+/** A file that cannot be read is left to the measurement that reads it, which says so. */
 export function splitOffers(tree, { ratio, floor, over = false }) {
     const offers = [];
     for (const rel of INSTRUCTION_FILES) {
         const from = path.join(tree, ...rel.split("/"));
         let text;
         try {
-            // A link out of the repository loads what it points at, but that file is not this repository's
-            // to split, as `./context.mjs` does not count it.
             if (!isInside(fs.realpathSync(tree), fs.realpathSync(from)) || fs.lstatSync(from).isSymbolicLink()) continue;
             text = fs.readFileSync(from, "utf8");
         } catch {
@@ -797,11 +609,7 @@ export function splitOffers(tree, { ratio, floor, over = false }) {
     return offers;
 }
 
-/**
- * The offers as one sentence, null where there is none: the same for `doctor`'s line, the boot's and `init`'s
- * report, naming each file and the largest sections of them all. Over a declared budget `doctor` fails and
- * `upgrade` will not run, so there the sentence names the command that moves a marked section all the same.
- */
+/** Over a declared budget `upgrade` will not run, so there the sentence names the command that moves a section. */
 export function offerText(offers, { over = false, workspace = null } = {}, shown = 3) {
     if (offers.length === 0) return null;
     const two = offers.length > 1;
@@ -819,22 +627,12 @@ export function offerText(offers, { over = false, workspace = null } = {}, shown
     );
 }
 
-/**
- * The command that moves a workspace's marked sections where `upgrade` will not run, with `workspace` as a shell
- * reads it from where the command is given.
- */
 export function splitCommand(workspace = null) {
     return `node <plugin root>/cli/instructions.mjs --workspace ${workspace === null ? "<dir>" : shellWord(workspace)} --write`;
 }
 
-/** A path as a shell reads it as one word: quoted where it holds anything but a path's plain characters. */
 export const shellWord = (word) => (/^[\w./-]+$/.test(word) ? word : `'${word.replaceAll("'", "'\\''")}'`);
 
-/**
- * `slots.context`'s directory relative to the repository at `tree`, as a reader of it types the path, with a
- * trailing `/`; null where the manifest declares none. Refused where it lies outside the workspace or the
- * repository, as `compile` refuses it.
- */
 export function contextDir(tree, workspaceDir, manifest) {
     const declared = manifest?.slots?.context;
     if (typeof declared !== "string") return null;
@@ -845,7 +643,6 @@ export function contextDir(tree, workspaceDir, manifest) {
     return `${posix(path.relative(tree, dir))}/`;
 }
 
-/** A reader of a file in the repository at `tree`, null where it is absent; a link out of it is refused. */
 export function treeReader(tree) {
     const real = fs.realpathSync(tree);
     return (rel) => {
@@ -889,7 +686,6 @@ function parseArgs(argv) {
     return options;
 }
 
-/** The workspace, its repository and its guidance slot, as the split reads them. */
 function locate(workspaceDir) {
     let manifest;
     try {
@@ -905,7 +701,7 @@ function locate(workspaceDir) {
     try {
         if (context !== null) taken = fs.readdirSync(path.join(tree, context)).filter((name) => name.endsWith(".md")).map((name) => name.slice(0, -3));
     } catch (error) {
-        // A slot declared and not yet made takes its first unit from this split; anything else is unread.
+        // A slot declared and not yet made takes its first unit from this split.
         if (error.code !== "ENOENT") throw new InstructionsError(`\`slots.context\` (${manifest.slots.context}) could not be listed — ${error.code ?? error.message}`);
     }
     return { manifest, tree, context, taken };
@@ -925,8 +721,7 @@ export async function run(argv, say = (line) => process.stdout.write(`${line}\n`
     }
     const workspaceDir = path.resolve(cwd, options.workspace);
     const read = treeReader(where.tree);
-    // Loaded here and not at the top: `./context.mjs` imports this module for the context line, and `upgrade`
-    // reaches it through a migration step, so a static edge to either would close a cycle.
+    // Loaded here, not at the top: `./context.mjs` and `./upgrade.mjs` reach this module, so a static edge would close a cycle.
     const context = await import("./context.mjs");
     const { applyEdits, restore } = await import("./upgrade.mjs");
     let declared;
@@ -994,7 +789,6 @@ export async function run(argv, say = (line) => process.stdout.write(`${line}\n`
         return 2;
     };
     if (!applied.ok) return undo(`the write failed — ${applied.reason}`);
-    // The index goes through the same writes, as `upgrade`'s `0007` writes it, so a rollback takes it too.
     let compiled;
     try {
         compiled = guidanceEdits(workspaceDir).edits.map((edit) => ({ root: "tree", file: edit.file, next: edit.next }));
@@ -1012,7 +806,6 @@ export async function run(argv, say = (line) => process.stdout.write(`${line}\n`
         say(`instructions: written, and the index compiled; the always tier could not be measured after it — ${error.message}`);
         return 0;
     }
-    // A budget already declared is the team's figure, and the split does not offer another.
     const offer =
         options.join || declared.budget !== null
             ? ""
@@ -1023,8 +816,7 @@ export async function run(argv, say = (line) => process.stdout.write(`${line}\n`
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-    // Not awaited at the top level: `run` loads `./context.mjs`, which imports this module, and a module still
-    // suspended in a top-level await leaves that import waiting on itself, so the command would print nothing.
+    // Not awaited at the top level: `run` imports `./context.mjs`, whose import of this module would then wait on itself.
     run(process.argv.slice(2)).then(
         (code) => {
             process.exitCode = code;

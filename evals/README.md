@@ -5,8 +5,8 @@ records and the eval result each release carries. Row 8 of [`../docs/plan.md`](.
 binding criterion; [`../docs/milestones/m08.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m08.md) is its legislative history.
 This file does not restate either — a rule with two carriers is obeyed at the narrower one. It says what
 is here, how to run or extend each rail, and what each one does not establish; a rail's detail is its
-module's header comment. How each clause came to be — first-run figures, reversed designs, review
-rounds — is at `git show 8a33f9b:evals/README.md`.
+module, whose longer header is at `git show a31da46:cli/<module>.mjs`. How each clause came to be —
+first-run figures, reversed designs, review rounds — is at `git show 8a33f9b:evals/README.md`.
 
 ## Two words that mean two things here
 
@@ -122,7 +122,7 @@ node cli/review-meter.mjs --fetch --repo <owner/name> --out <file>        the on
 with `--register evals/review-loop/register.md --write` regenerates it, and the recipe byte-compares it.
 The criterion's *"rounds per pull request"* is **submissions** per pull request — its unit before *round*
 was redefined — and the tool prints that name, never the bare word.
-[`../cli/review-meter.mjs`](../cli/review-meter.mjs)'s header says what each figure is.
+What each figure is, at length, is in the header at `git show a31da46:cli/review-meter.mjs`.
 
 **What it does NOT establish:**
 

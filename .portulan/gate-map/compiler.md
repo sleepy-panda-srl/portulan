@@ -3,8 +3,8 @@
 > The rest of the gate map's [What the compiler refuses](../gate-map.md#what-the-compiler-refuses), and the one
 > account of the enforcement compiler: what it emits, the two backends and what each refuses, composition,
 > guidance, the limits, how each watcher is observed, and the argument for each honest hole. The index
-> carries each hole's rule. [`../../cli/compile.mjs`](../../cli/compile.mjs) carries each decision's argument
-> beside the code that makes it, and this file names where.
+> carries each hole's rule. [`../../cli/compile.mjs`](../../cli/compile.mjs) makes each decision; the argument
+> its comments carried is at `git show a31da46:cli/compile.mjs`, where this file names it.
 
 ## What `compile` emits
 
@@ -38,7 +38,7 @@ artifact also records which world compiled it — `$portulan.packs` holds each d
 version, never a root path, which would make a tracked file machine-dependent — so a shadowed emit differs
 in the diff (#264). Only the Claude Code artifact can carry that record; the ruleset's provenance is its
 `name`, and `doctor` reports a shadowed pack for the workspace as a whole. `recordedOrigin` and `backends` in
-compile.mjs carry the argument.
+`git show a31da46:cli/compile.mjs` carry the argument.
 
 ## Two layers, and which one is the gate
 
@@ -51,7 +51,8 @@ gets; where a permission rule matches, the host discards the hook's reason. The 
 header and [`../memory/two-layers-need-two-jobs.md`](../memory/two-layers-need-two-jobs.md).
 
 `gated` compiles to `ask`, which prompts interactively and blocks headless, and `prohibited` to `deny`; the
-hook returns the same decision as the permission rule. Why Gated is not `deny` is in compile.mjs's header.
+hook returns the same decision as the permission rule. Gated is approval per action, which is what `ask` is;
+`deny` would make it Prohibited by another name.
 
 **The host's prefix match respects token boundaries.** `Bash(git push --force:*)` does not match
 `git push --force-with-lease`, which is Auto: measured on CLI 2.1.220, the lease push drew the same prompt
@@ -90,8 +91,8 @@ yes. The coarseness is printed in both directions — stricter (it blocks `--for
 Auto), narrower (one ref), partial (it adds a layer beside classic protection rather than replacing one).
 It **generates and never applies**: importing a ruleset is a settings change, and Gated. A policy with no
 `floor` compiles nothing here, `strict` cannot be declared, and `bypass_actors` is always empty. Section 3b
-of compile.mjs carries the argument; [`platform-floor.md`](platform-floor.md) compares the artifact with the
-floor in force.
+of `git show a31da46:cli/compile.mjs` carries the argument; [`platform-floor.md`](platform-floor.md)
+compares the artifact with the floor in force.
 
 **Five gates are compiled by neither backend**: the three declared ones above and both composed ones. Each is
 a prompt-level habit until something reaches it. The count moves with composition, and `compile --matrix` and
@@ -140,7 +141,7 @@ enforce; the comparison is the compiler's, and it re-checks `auto` anyway. Faili
 wrong in the hook: this runs at build time against a file you can edit.
 **Tighten-only binds packs, not the layer composing them**: the workspace owns its policy and may override
 any of this in its own gate map, except core's `prohibited` entries, which only the evolution gate grants.
-`composeFragments` in compile.mjs carries the argument.
+The comment above `composeFragments` in `git show a31da46:cli/compile.mjs` carries the argument.
 
 ## Guidance
 
@@ -154,8 +155,8 @@ where a tier the host cannot express degrades to a pointer, late and never lost;
 that per unit, and `GUIDANCE_HOSTS` is the one table of which host expresses which tier. `compile` rewrites
 and removes only what it wrote — the rules its `.compiled` marker lists and the skills carrying its mark —
 writes nothing through a link, and refuses a slot inside a directory it writes. What it wrote from guidance a
-workspace stops declaring goes on the next run, with a gate policy or without one. Section 3c of compile.mjs
-carries each of those rules.
+workspace stops declaring goes on the next run, with a gate policy or without one. Section 3c of
+`git show a31da46:cli/compile.mjs` argues each of those rules.
 
 **This workspace declares four units** in [`../context/`](../context/): the boot card in the `always` tier,
 and the gates, doctrine and records rules in the `on-path` tier, each scoped to the paths where it binds.
@@ -272,7 +273,8 @@ being true. How each hole was found, and the dated corrections to this list, are
    while the unquoted `> foo bar git push …` stays ungated, because there bash really does run `bar`. The
    suite asserts the rule rather than the spellings: whatever `shellWords` calls one word, the strip consumes
    whole. **This licenses no table of command prefixes**; that table is refused for a reason the redirection
-   grammar does not share. The docblocks at `REDIRECTION_TARGET` in compile.mjs carry the argument.
+   grammar does not share. The docblocks at `REDIRECTION_TARGET` in `git show a31da46:cli/compile.mjs` carry the
+   argument.
 
    **A separator inside a wrapper is closed too.** `bash -c "ls; git push --force origin main"` is gated,
    because each spelling is segmented as well as the raw line. The unwrap budget is still one level:
