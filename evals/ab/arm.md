@@ -242,5 +242,7 @@ by comparing the two trees and requiring them identical outside the enumerated t
   **That close ran on 2026-09-09 and the obligation was still open** — the probe was re-run there and
   refused again at exit 2, an isolated `HOME` reaching no stored login — so it is re-pointed once more,
   to the **`0.1.3` cut**, on the same reasoning: an obligation aimed at a moment that has passed is
-  aimed at nobody. [`../../cli/ab.mjs`](../../cli/ab.mjs)'s `acceptedUnder.reRunWhen` is the carrier and
-  this paragraph cites it rather than restating the pointer a third time.
+  aimed at nobody. **It was discharged on 2026-09-30, the day `v0.1.3` was tagged**: with a token exported, the
+  probe under `--operator-env isolated` recorded the compiled Stop hook firing.
+  [`../../cli/ab.mjs`](../../cli/ab.mjs)'s `acceptedUnder.reRunWhen` carries the receipt, and this
+  paragraph cites it rather than restating it.
