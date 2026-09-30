@@ -3389,23 +3389,37 @@ export function sessionsDeclaration(workspaceRoot, workspaceDir = ".portulan") {
  * prices by, and its refusal stops this run with exit 2 before anything is written. A manifest that cannot be
  * read is not this function's to judge: it answers null, as `sessionsDeclaration` does. Proposal `0038`,
  * ruling 2; added 2026-09-24.
+ *
+ * `spend.restart` is refused, too, in a manifest declaring a MINOR before 2.13, the gate `doctor` puts on it,
+ * so no block is compiled from a declaration its own version's validator refuses. A key gated at birth fails
+ * no manifest that compiles today; the keys born gated before it stay `doctor`'s alone.
  */
 export function spendDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
-    let declared;
+    let parsed;
     try {
-        declared = JSON.parse(fs.readFileSync(manifest, "utf8")).spend;
+        parsed = JSON.parse(fs.readFileSync(manifest, "utf8"));
     } catch {
         return null;
     }
+    const declared = parsed?.spend;
     if (declared === undefined) return null;
     const where = path.relative(workspaceRoot, manifest).split(path.sep).join("/");
+    let spend;
     try {
-        return { manifest: where, ...readSpend(declared, where) };
+        spend = { manifest: where, ...readSpend(declared, where) };
     } catch (error) {
         if (error instanceof LedgerError) throw new CompileError(error.message);
         throw error;
     }
+    const version = /^([0-9]+)\.([0-9]+)$/.exec(parsed.portulan?.spec ?? "");
+    if (spend.restart !== null && version && Number(version[1]) === 2 && Number(version[2]) < 13) {
+        throw new CompileError(
+            `\`spend.restart\` in ${where} is Workspace Definition 2.13's, and this manifest declares ${version[0]}, whose validator ` +
+                "refuses it as an unknown key. Declare 2.13, or remove the key",
+        );
+    }
+    return spend;
 }
 
 /**

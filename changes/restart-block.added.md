@@ -5,6 +5,6 @@
   at or past the threshold that no block provoked, it holds the turn's end with the same line as its reason,
   once in a session and again after each compaction. Nothing ends a session, and the Stop-gate's counters and
   caps are untouched. Undeclared or `"advise"`, `.claude/settings.json` compiles byte for byte as before;
-  `doctor` gates the key to 2.13 and names a declared block in its line on the session switches. Nothing
-  offers it: the threshold is an estimate, and at the general multipliers it comes early for a model whose
-  cache reads cost less than a tenth, so this repository declares no block.
+  `doctor` and `compile` refuse the key before 2.13, and `doctor` names a declared block in its line on the
+  session switches. Nothing offers it: the threshold is an estimate, and at the general multipliers it comes
+  early for a model whose cache reads cost less than a tenth, so this repository declares no block.

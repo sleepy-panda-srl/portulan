@@ -246,7 +246,8 @@ before, so every 2.12 manifest is a valid 2.13 manifest unchanged. This reposito
 for a model whose cache reads cost less than a tenth, so a block would hold its sessions short of their real
 line. Nothing writes 2.13 unasked: `init` asks nothing about the key and `upgrade` offers nothing, since
 ruling 3 makes a block a workspace's own choice. `KNOWN_SPECS` in [`../cli/index.mjs`](../cli/index.mjs) and
-[`../cli/librarian.mjs`](../cli/librarian.mjs) gains `"2.13"` by addition, and `doctor` gates the key to 2.13.
+[`../cli/librarian.mjs`](../cli/librarian.mjs) gains `"2.13"` by addition, and `doctor` and `compile` both
+refuse the key in a manifest that declares an earlier MINOR.
 
 **2.12 is a MINOR on 2.8's terms: optional keys only.** `spend` is item 4 of proposal `0038`'s order of
 work: the multipliers the restart threshold is computed at, which its ruling 2 has the manifest declare, and

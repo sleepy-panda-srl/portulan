@@ -754,12 +754,12 @@ describe("the session switches", () => {
 // workspace's to know, and `../spec/slots.md` says so.
 
 /** A scratch workspace whose manifest declares `spend`, on the policy `workspace()` writes. */
-function workspaceWithSpend(spend, p = policy()) {
+// By default the version whose validator takes the declaration: `spend` is 2.12's, and `spend.restart` 2.13's.
+function workspaceWithSpend(spend, p = policy(), spec = spend?.restart === undefined ? "2.12" : "2.13") {
     const dir = workspace(p);
     const file = path.join(dir, ".portulan", "workspace.json");
     const m = JSON.parse(fs.readFileSync(file, "utf8"));
-    // The version whose validator takes the declaration: `spend` is 2.12's, and `spend.restart` 2.13's.
-    m.portulan.spec = spend?.restart === undefined ? "2.12" : "2.13";
+    m.portulan.spec = spec;
     m.spend = spend;
     fs.writeFileSync(file, JSON.stringify(m, null, 2));
     return dir;
@@ -955,6 +955,19 @@ describe("the declared figures", () => {
             assert.equal(fs.existsSync(path.join(dir, ".claude", "settings.json")), false);
         });
     }
+
+    test("a restart in a manifest that declares 2.12 stops compile with exit 2, as doctor refuses it", () => {
+        for (const restart of ["block", "advise"]) {
+            const dir = workspaceWithSpend({ restart }, policy(), "2.12");
+            assert.throws(
+                () => spendDeclaration(dir),
+                (error) => error instanceof CompileError && /^`spend\.restart` in \.portulan\/workspace\.json is Workspace Definition 2\.13's, and this manifest declares 2\.12/.test(error.message),
+            );
+            assert.equal(run(["--workspace", dir], { quiet: true }), 2);
+            assert.equal(fs.existsSync(path.join(dir, ".claude", "settings.json")), false);
+        }
+        assert.equal(spendDeclaration(workspaceWithSpend({ horizon: { requests: 30 } }, policy(), "2.12")).restart, null, "the rest of `spend` is 2.12's");
+    });
 
     test("compiled end to end, the commands carry the figures and --check holds them to the manifest", () => {
         const dir = workspaceWithSpend({ multipliers: { read: 0.05, write: { "5m": 1.5, "1h": 2.5 } }, horizon: { requests: 30 } });
