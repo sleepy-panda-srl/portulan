@@ -1,42 +1,7 @@
 #!/usr/bin/env node
 // Every `cli/*.mjs` the npm payload carries is classified, and nothing arrives in it unclassified.
 //
-// [#383](https://github.com/sleepy-panda-srl/portulan/issues/383)'s first half. `../package.json`'s
-// `files` array governs what ships; **nothing derived or checked its membership.**
-// [`./pack-identity.mjs`](pack-identity.mjs) holds every packed file byte-identical to its staged blob
-// and is deliberately silent on *which* files those are, so a module landing in `cli/` joined the
-// published package with no rail saying so. Demonstrated rather than argued, on the change that filed
-// #383: a `cli/workshop-thing.mjs` staged into a scratch clone entered the tarball with
-// `pack-identity` reporting green over 84 files.
-//
-// That is not hypothetical. `./ab.mjs`, `./ab-run.mjs` and `./ab-grade.mjs` entered the payload in
-// milestone 8 sessions 6b–6d and stayed there, unnoticed, until #382 removed them.
-//
-// ## The shape, which is `./eval-bundle.mjs`'s one level down
-//
-// `assertPartition` there rules that `PAYLOAD ∪ EXCLUDED_TOP_LEVEL` must equal the commit's top-level
-// tracked entries, disjointly — *"a new top-level path fails every pull request until somebody decides
-// whether it ships"*. This is that discipline at `cli/*.mjs` granularity, and the classes below are the
-// dispositions. A module belongs to exactly one.
-//
-// ## What this does NOT claim
-//
-// **It does not derive the payload; npm's `files` handling is still the enforcer.** This rail
-// *classifies and checks* — `../.portulan/memory/a-stated-enforcer-must-be-the-real-one.md`. The
-// authority for *shipped* here is the `npm pack --dry-run --json` roster, never a string match on the
-// `!` lines: npm's negation semantics are npm's, and reconciling against what it actually packs is what
-// keeps this rail's answer the same as the registry's.
-//
-// ## Exit codes, per `../.portulan/memory/verify-preconditions-fail-closed.md`
-//
-//   0  every shipped module is classified, every disposition is live, every exclusion holds
-//   1  a finding: an unclassified module, a stale disposition, an unruled module that moved, or an
-//      exclusion the payload disagrees with
-//   2  could not run: `npm pack` unusable, not a git repository, or a module that cannot be read
-//
-// The 2 matters here for `./pack-identity.mjs`'s reason: this rail shells out to npm, and reporting
-// "an unclassified module" when what happened is "npm did not run" sends someone hunting a defect that
-// does not exist.
+// Exit 0 every shipped module classified, every disposition live · 1 a finding · 2 could not run: npm pack, git or a read failed.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -53,17 +18,7 @@ class CannotRun extends Error {}
 const git = (root, args) =>
     execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 
-/**
- * The modules that are tracked and deliberately do NOT ship, each with the reason — the roster is
- * reviewable because the reasons are, which is `./eval-bundle.mjs`'s `EXCLUDED_TOP_LEVEL` rule and the
- * only place these reasons can live: `package.json` is JSON and carries no comments.
- *
- * The criterion, set at the first publish: the package ships the product, not the workshop. A file that
- * is not part of what an `npx` user runs does not travel.
- *
- * Checked against the payload roster rather than against the `!` lines that produce it. An entry the
- * payload still carries is a finding; so is an entry naming a file the tree no longer has.
- */
+/** Tracked modules that do not ship, each with its reason: the package ships the product, not the workshop. */
 export const EXCLUDED = {
     "eval-bundle.mjs":
         "issuer machinery — an evaluee receives the stamped licence, never the stamp press. Excluded at " +
@@ -88,24 +43,7 @@ export const EXCLUDED = {
         "from this repository's own tree is workshop tooling",
 };
 
-/**
- * The shipped modules that are reachable from nothing the package exposes and have been **ruled to
- * ship anyway**, each with the ruling and its ground.
- *
- * **This is the class `UNRULED` empties into.** Those thirteen are not here because nobody has been
- * asked, not because anybody decided against them; as #383 is answered, entries move from there to
- * here or to `EXCLUDED`. Without this class the rail could record the absence of a decision and had
- * nowhere to put its presence — a gap it exposed in itself the first time a new module arrived.
- *
- * The bar is the rule `./eval-bundle.mjs`'s `EXCLUDED_TOP_LEVEL.evals` set on 2026-08-24 — **the tool
- * is product and the policy it reads is this team's** — and an entry must say who ruled and on what,
- * because a disposition without its ground is the thing this roster exists to stop being taken on
- * trust.
- *
- * **What makes "ruled by the maintainer" true is his merge over this register**, which is the same and
- * only authority `EXCLUDED`, `EXCLUDED_TOP_LEVEL` and `UNRULED` ever had. This rail cannot verify who
- * ruled and does not claim to — it checks that a disposition exists, is live, and is unique.
- */
+/** Shipped modules nothing the package exposes reaches, ruled to ship anyway, each with its ground. */
 export const PRODUCT = {
     "release-eval.mjs":
         "the eval result a release carries, written at publish by `--tagged`. Ruled product by the " +
@@ -124,34 +62,9 @@ export const PRODUCT = {
         "adopters reach it through the card `init` drafts (the coordinator session's delegated call of 2026-09-24)",
 };
 
-/**
- * The shipped modules that are reachable from nothing the package exposes, and on which **nobody has
- * ruled**.
- *
- * **This class records the absence of a decision, never a decision.** `./discover.mjs` mints
- * `could-not-look` beside its three real verdicts because a resolver with two answers must not spend
- * *could not look* as *not installed*; this is the same refusal — "nobody ruled" is spent as neither
- * *ships* nor *excluded*. #383 is the way back, and
- * `../.portulan/memory/a-recorded-limit-is-not-a-managed-limit.md` is why the class carries it — on
- * the object here and in the text of every finding and every green — since a limit waiting on a
- * decision without its issue link is where the question goes to be forgotten politely.
- *
- * **FROZEN, and that is what separates this from a fail-open.** The rail asserts the class still holds
- * exactly `frozenAt` names, and that none of them is classified anywhere else. A fourteenth module may not join it — an arriving module is classified or the recipe is
- * red. An open hole class would be the shape `../.portulan/gate-map.md` condemns, coverage-reading
- * machinery over an escape hatch, and the pressure to widen it is exactly the pressure this constant
- * exists to refuse.
- *
- * Most are the shape `./eval-bundle.mjs`'s `EXCLUDED_TOP_LEVEL.evals` already ruled ships — *the tool
- * is product, the policy it reads is this team's* — but that ruling was about `goldens` and was never
- * put to the rest. Which of these ship is the maintainer's call, the same way a ninth subcommand is.
- */
+/** Shipped modules nothing the package exposes reaches, on which nobody has ruled: frozen, so none may join. */
 export const UNRULED = {
     issue: 383,
-    // The freeze, as a number the rail checks rather than a sentence it makes. `findings()` reds if
-    // `modules` stops holding exactly this many — measured at the checkpoint, where pushing a
-    // fourteenth name produced no finding at all and the class comment's claim that "the rail asserts
-    // the class is exactly these names" was the overstated-enforcer defect this repository names.
     frozenAt: 13,
     modules: [
         "control-chars.mjs",
@@ -170,14 +83,7 @@ export const UNRULED = {
     ],
 };
 
-/**
- * Every dynamic `import(` in a shipped module, and what its subject is.
- *
- * A computed `import()` is an edge this rail's static walk cannot follow, so
- * `../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md` binds: an unaccounted one is
- * **refused**, never skipped. Each entry says why the site adds no `cli/` edge — either the subject is
- * not a `cli/` module, or the edge is already derived from a roster this rail reads.
- */
+/** Each shipped module's dynamic `import(`, which the static walk cannot follow, and why it adds no `cli/` edge. */
 export const ACCOUNTED_DYNAMIC_IMPORTS = {
     "portulan.mjs": "the dispatcher's own loader; its subjects are `SUBCOMMANDS`' modules, read below",
     "init.mjs": "a literal node builtin (`node:readline/promises`)",
@@ -189,20 +95,9 @@ export const ACCOUNTED_DYNAMIC_IMPORTS = {
         "and `context.mjs` is imported statically by `doctor.mjs`, another",
 };
 
-/** The module names a `cli/*.mjs` file imports, by every edge form that reaches one. */
+/** The `./x.mjs` modules a source imports; the walk neither follows nor refuses an edge into a subdirectory or a parent. */
 export function edgesOf(source) {
     const edges = new Set();
-    // `import … from "./x.mjs"`, `export … from "./x.mjs"`, and side-effect `import "./x.mjs"`.
-    // **The re-export form is carried on the grammar, not on a live example** — `./portulan.mjs:76`
-    // re-exports `VERSION` from `./manifest.mjs`, but line 77 plain-imports it and `./feedback.mjs`
-    // does too, so today an `^import`-only reader would still classify `manifest.mjs`. An earlier draft
-    // of this comment claimed otherwise and the pre-commit checkpoint measured it false. The form stays
-    // because a module reachable ONLY by `export … from` is one edit away and would arrive silently;
-    // the reason it is here is the grammar being total, never a defect it currently catches.
-    //
-    // **What is NOT covered, and is a hole rather than a refusal:** a static edge into a subdirectory
-    // or a parent (`./fixtures/x.mjs`, `../x.mjs`). No shipped module has one today; if one arrives it
-    // is dropped silently rather than refused, which is the weakest seam in this walk.
     for (const m of source.matchAll(/(?:^|\n)\s*(?:import|export)\b[^;]*?from\s*["']\.\/([^"']+)["']/g)) {
         edges.add(m[1]);
     }
@@ -210,20 +105,12 @@ export function edgesOf(source) {
     return edges;
 }
 
-/** Does this source carry a dynamic `import(` outside a comment? */
 export function hasDynamicImport(source) {
     return source
         .split("\n")
         .some((line) => /(?:^|[^.\w])import\s*\(/.test(line) && !/^\s*(\/\/|\*|\/\*)/.test(line));
 }
 
-/**
- * Classify every `cli/*.mjs` the payload carries.
- *
- * Roots are derived, never listed: `../package.json`'s `bin` values are the entry points the package
- * exposes, `SUBCOMMANDS` is imported from the dispatcher that owns it, and `HOOK_RUNNERS` from
- * `./compile.mjs`, which spells them into generated host configuration and is their one carrier.
- */
 export function classify(root) {
     let manifest;
     try {
@@ -232,14 +119,7 @@ export function classify(root) {
         throw new CannotRun(`package.json could not be read — ${error.code ?? error.message}`);
     }
 
-    // **`packedPaths` throws `./pack-identity.mjs`'s OWN `CannotRun`, which is a different class than
-    // this file's** — two modules, two declarations, and `instanceof` is false across them. Without this
-    // boundary the rail CRASHES where it contracts exit 2, which is the fail-open
-    // `../.portulan/memory/verify-preconditions-fail-closed.md` exists to refuse: a recipe that dies on
-    // "npm did not run" reports nothing, and nothing is not a verdict. Caught by Copilot on #393; the
-    // earlier checkpoint's could-not-run cases all tripped this file's own reads first and never reached
-    // here. Translating at the seam beats exporting the class, because the guarantee wanted is "no
-    // failure of that call escapes as a crash", not "one named class is handled".
+    // `./pack-identity.mjs` throws its own `CannotRun`, which this file's `instanceof` does not match.
     let shipped;
     try {
         shipped = packedPaths(root)
@@ -269,10 +149,7 @@ export function classify(root) {
         }
     };
 
-    // **npm's `bin` is legally EITHER a map or a bare string**, and `Object.values` on a string yields
-    // its characters — so the string form would have seeded no root at all and mis-classified the real
-    // entry point. This repository's is a map, so there is no live defect; the shape is handled because
-    // a rail that reads a manifest should read the manifest's schema rather than this manifest.
+    // npm's `bin` may be a bare string, and `Object.values` of a string is its characters.
     const declaredBin = manifest.bin ?? {};
     const binPaths = typeof declaredBin === "string" ? [declaredBin] : Object.values(declaredBin);
     const binTargets = new Set(
@@ -283,17 +160,9 @@ export function classify(root) {
     const dispatched = new Set(SUBCOMMANDS.map((s) => s.module).filter(Boolean));
     const runners = new Set(HOOK_RUNNERS);
 
-    // Reachability over the SHIPPED set only: an edge to a module the payload does not carry is a
-    // dangling import at install time, which `./pack-identity.mjs` cannot see either. It is reported
-    // below rather than silently ending the walk.
     const shippedSet = new Set(shipped);
     const dangling = [];
     const seen = new Set();
-    // **A root the payload does not carry is a FINDING, never a root quietly dropped.** Filtering the
-    // seeds to what ships is necessary — the walk reads shipped sources — but doing it silently is a
-    // fail-open of the exact kind this rail exists to refuse: exclude the `bin` by accident and the
-    // package installs an entry point pointing at nothing while this reports green over the remainder.
-    // Caught by Copilot on #393. The three root kinds are named separately because the repair differs.
     const missingRoots = [
         ...[...binTargets].filter((m) => !shippedSet.has(m)).map((m) => ({ kind: "the `bin` target", name: m })),
         ...[...dispatched].filter((m) => !shippedSet.has(m)).map((m) => ({ kind: "a `SUBCOMMANDS` module", name: m })),
@@ -328,7 +197,6 @@ export function classify(root) {
     return { shipped, tracked, classes, reachable: seen, dangling, missingRoots, root };
 }
 
-/** Every finding, in the order a reader can act on them. */
 export function findings(report) {
     const { shipped, tracked, classes, reachable } = report;
     const red = [];
@@ -345,8 +213,6 @@ export function findings(report) {
         }
     }
 
-    // UNRULED is frozen in both directions: nothing joins it, and an entry that stops being unreachable
-    // has moved and must be reclassified rather than left standing.
     for (const name of UNRULED.modules) {
         if (!shipped.includes(name)) {
             red.push(
@@ -371,10 +237,6 @@ export function findings(report) {
         );
     }
 
-    // The three registers must be pairwise disjoint. Before PRODUCT existed this was unrepresentable;
-    // it became possible the moment a ruling could ADD an entry while forgetting to remove the old one,
-    // and it was silent until the checkpoint forced it. `eval-bundle.mjs`'s `assertPartition` is the
-    // precedent: a path ships or it does not, and it says so once.
     for (const [a, b] of [["PRODUCT", "UNRULED"], ["PRODUCT", "EXCLUDED"], ["UNRULED", "EXCLUDED"]]) {
         const sets = { PRODUCT: Object.keys(PRODUCT), UNRULED: UNRULED.modules, EXCLUDED: Object.keys(EXCLUDED) };
         for (const name of sets[a].filter((n) => sets[b].includes(n))) {
@@ -403,8 +265,7 @@ export function findings(report) {
     }
 
     for (const [name, why] of Object.entries(EXCLUDED)) {
-        // `tracked` holds only `cli/*.mjs`, so a non-module entry is asked of the tree directly rather
-        // than skipped — an exclusion nobody can verify is the half of this rail that would rot first.
+        // `tracked` holds only `cli/*.mjs`, so a non-module entry is asked of the tree directly.
         const present = /\.mjs$/.test(name) ? tracked.includes(name) : fs.existsSync(path.join(report.root, "cli", name));
         if (!present) {
             red.push(`EXCLUDED names cli/${name}, which the tree does not carry — a stale exclusion is a defect in the declaration`);
@@ -442,15 +303,6 @@ export function findings(report) {
     return red;
 }
 
-/**
- * Split the dynamic-import register against the tree, in both directions.
- *
- * `unaccounted` is an edge this rail cannot follow and nobody has explained; `stale` is a register
- * entry whose module no longer has a dynamic import at all. They are returned apart because they are
- * opposite defects and a single message path renders one of them as a contradiction — measured at the
- * pre-commit checkpoint, which forced the stale case and read "carries no dynamic import — stale entry"
- * inside a sentence beginning "carries a dynamic `import(` this rail cannot follow".
- */
 export function dynamicImportRegister(report) {
     const unaccounted = [];
     const stale = [];
@@ -459,8 +311,6 @@ export function dynamicImportRegister(report) {
         try {
             source = fs.readFileSync(path.join(report.root, "cli", name), "utf8");
         } catch (error) {
-            // A shipped module this rail cannot read is could-not-run, never a finding about its
-            // imports — the same rule `classify`'s `read` follows, which this function had bypassed.
             throw new CannotRun(`cli/${name} could not be read — ${error.code ?? error.message}`);
         }
         const has = hasDynamicImport(source);
@@ -474,8 +324,6 @@ export function run(argv, stdout = process.stdout, stderr = process.stderr) {
     const root = argv.find((a) => !a.startsWith("-")) ?? process.cwd();
     const json = argv.includes("--json");
 
-    // Both calls can refuse, and both refusals are could-not-run. An earlier cut wrapped only
-    // `classify`, so a read failure in the register crashed past the contract this file documents.
     let report;
     let unaccounted;
     let stale;
@@ -537,8 +385,7 @@ function isMain() {
     }
 }
 
-// `process.exitCode` rather than `process.exit`, per `./control-chars.mjs`: exiting outright can
-// truncate a pipe that has not drained, and a truncated line IS exit 0 with no output.
+// `process.exitCode` rather than `process.exit`, so a pipe that has not drained is not cut short.
 if (isMain()) process.exitCode = run(process.argv.slice(2));
 
 export { CannotRun };

@@ -1,42 +1,7 @@
 #!/usr/bin/env node
-// A code file's outline, one line per symbol, and a Markdown file's, one line per heading with its size,
-// printed from the file at read time.
+// A code file's outline, one line per symbol, and a Markdown file's, one line per heading with its size.
 //
-// A session that needs one function of a module thousands of lines long used to page through it from
-// line 1: the host cuts a read at 25,000 tokens by default, and every line read is paid again on every
-// later request. This prints what is in a file — each declaration, class member, test and titled section
-// with its first and last line — so the session reads only the spans it needs, with the Read tool's
-// `offset` and `limit`. A doctrine page or an instruction file is read the same way, by its headings, and
-// `<file>#<heading>` prints one section, found by the anchor a link to it carries or by its text.
-// `--find <name>` says where a name is defined across the tracked code, the "go to definition" the
-// techniques survey of 2026-09-23 adopted from code-intelligence tools, with no language server.
-// `../core/operating/context.md` holds the rule: which reads stay whole, and why an Edit may follow a span.
-//
-// ## Why it prints and nothing is committed
-//
-// A span moves with every edit above it. A committed map would be wrong inside any session that had
-// already edited the file, which is when it is read next, and every change to the code would carry map
-// churn and collide with the next one. Printed from the file as it is, an outline cannot be stale and
-// needs no check of its own; its parser is what the suite holds, on fixtures and on every tracked code
-// file (the coordinator session's delegated call of 2026-09-24).
-//
-// ## What it reads
-//
-// JavaScript (`.mjs`, `.js`, `.cjs`) with a scanner of its own, because node ships no parser a module
-// may import: it knows strings, templates, comments and regular expressions well enough to match every
-// bracket, then splits statements at the top level, in class bodies and in test suites. Shell (`.sh`, and
-// a tracked file with no extension whose first line runs `sh`, `bash` or `node`) by its function
-// definitions and titled banner comments. A span opens at the comment directly above its declaration,
-// so reading it brings the why with the code. Markdown (`.md`, `.markdown`) by its headings, each span a
-// section with its sub-sections and its size in bytes. Anything else is refused rather than guessed at.
-//
-// ## Exit codes, per ../.portulan/memory/verify-preconditions-fail-closed.md
-//
-//   0  printed
-//   1  `--find`: a name is defined nowhere in the tracked code; `<file>#<heading>`: no heading answers it
-//   2  could not run: a usage error, a file unreadable or of a type it does not read, one whose
-//      brackets it cannot match, so no outline it printed could be trusted, or a fragment naming more
-//      than one heading
+// Exit 0 printed · 1 no definition for `--find`, or no heading for `<file>#<heading>` · 2 could not run.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -73,12 +38,7 @@ const TEST_CALLS = new Set(["describe", "test", "it", "suite", "before", "after"
 const NAME_START = /[A-Za-z_$\u0080-\uffff]/;
 const NAME_PART = /[\w$\u0080-\uffff]/;
 
-/**
- * The code-level tokens and the comments of a JavaScript source. A template literal is one token and a
- * `${}` inside it is skipped whole, so no bracket in it can unbalance the file's. A `/` opens a regular
- * expression unless it follows something a value ends with, the rule every hand-written JavaScript
- * scanner uses; the brackets it would unbalance are the check that it guessed right.
- */
+/** Whether a `/` opens a regular expression is a guess, and matching the brackets is what checks it. */
 export function scanJs(src) {
     const tokens = [];
     const comments = [];
@@ -88,11 +48,7 @@ export function scanJs(src) {
     return { tokens, comments };
 }
 
-// Whether a `/` opens a regular expression, from the tokens before it: it does at the start, after an
-// operator or an opening bracket, after a keyword that takes an expression, and after a `}` that closes a
-// block; it divides after a value, which is a name, a literal, `)`, `]`, a postfix `++` or `--`, a
-// property named like a keyword (`options.default`), or the `}` of an object literal. A `{` opens an
-// object literal where an expression goes: after an operator, an opening bracket, `:` or such a keyword.
+// A `/` divides after a value, as after the `}` of an object literal (a `{` where an expression goes); elsewhere it opens a regex.
 function slashReader() {
     let prev = null;
     const braces = [];
@@ -114,8 +70,7 @@ function slashReader() {
     };
 }
 
-// One scanner for the file and for each `${}`: `nested` stops it at the brace closing the expression,
-// and a nested scan records nothing, so only the file's own level reaches the token list.
+// `nested` scans a `${}` to its closing brace and records nothing, so only the file's own level is tokenised.
 function scan(src, i, nested, sink) {
     let depth = 0;
     const slash = slashReader();
@@ -301,10 +256,7 @@ function statementEnd(t, i, stop, match) {
     return simpleEnd(t, i, stop, match);
 }
 
-// A statement that ends at its `;`, or where automatic semicolon insertion would end it: a line that
-// ends a value followed by one that opens with a name, which no expression can continue. An import, or
-// an export that lists or re-exports names, runs on to its `from "…"` and to a `with { … }` after it,
-// wherever its lines break; a `from` after the source is a new statement, a call to a function so named.
+// Ends at `;` or where ASI would; an import, or an export of `{ … }` or `*`, runs on to its `from "…"` and any `with { … }`.
 function simpleEnd(t, i, stop, match) {
     const clause = t[i].type === "name" && ((t[i].value === "import" && t[i + 1]?.value !== "(" && t[i + 1]?.value !== ".") ||
         (t[i].value === "export" && (t[i + 1]?.value === "{" || t[i + 1]?.value === "*")));
@@ -321,8 +273,7 @@ function simpleEnd(t, i, stop, match) {
     return stop - 1;
 }
 
-// Whether a line can end a statement here: a value, a closing bracket, or `++` and `--`; never an
-// operator, and never a keyword such as `new` or `await` that waits for its operand.
+// Whether a statement may end on this token: never on an operator, or on a keyword awaiting its operand.
 function endsValue(token) {
     if (token.type === "name") return !KEYWORDS_BEFORE_REGEX.has(token.value);
     return token.type !== "punct" || [")", "]", "}", "++", "--"].includes(token.value);
@@ -343,7 +294,6 @@ function statements(t, from, stop, match) {
 // 2. JavaScript: what each statement is, and the line that names it
 // ===========================================================================================
 
-/** Source text collapsed to one line: runs of whitespace become one space, and none pads a bracket. */
 function oneLine(text) {
     return text.replace(/\s+/g, " ").replace(/([([{]) /g, "$1").replace(/ ([)\]}])/g, "$1").trim();
 }
@@ -352,10 +302,7 @@ function cut(text) {
     return text.length > WIDTH ? `${text.slice(0, WIDTH - 1)}…` : text;
 }
 
-/**
- * The outline of a JavaScript source: `{ lines, entries }`, each entry `{ start, end, text, name,
- * children }` with 1-based inclusive lines. Throws `CannotOutline` where the brackets do not match.
- */
+/** `{ lines, entries }`, with 1-based inclusive lines; throws `CannotOutline` where the brackets do not match. */
 export function outlineJs(src) {
     const { tokens: t, comments } = scanJs(src);
     const { lineOf, lines } = lineIndex(src);
@@ -439,8 +386,7 @@ export function outlineJs(src) {
     };
 
     const tests = (first, last) => {
-        // A suite's callback lists its tests, hooks and declarations; a test's own body is code, not an
-        // outline. The callback is the first `{` an arrow or a function opens inside the call's brackets.
+        // Only a suite's callback is outlined, never a test's body: the first `{` an arrow or function opens in the call.
         if (!["describe", "suite"].includes(t[first].value)) return [];
         let call = first + 1;
         while (t[call]?.value === "." && t[call + 1]?.type === "name") call += 2;
@@ -482,8 +428,7 @@ export function outlineJs(src) {
         }
     }
 
-    // The module an import names: its first string outside braces, since `{ "a-b" as ab }` and
-    // `with { type: "json" }` hold strings too.
+    // An import's module is its first string outside braces: `{ "a-b" as ab }` and `with { … }` hold strings too.
     const sourceOf = (first, last) => {
         for (let k = first; k <= last; k++) {
             if (t[k].type === "string") return [t[k].value.slice(1, -1)];
@@ -492,7 +437,6 @@ export function outlineJs(src) {
         return [];
     };
 
-    // Consecutive imports are one entry naming what they import from; a lone import is its own line.
     const runs = [];
     for (const [first, last] of imports) {
         const run = runs.at(-1);
@@ -568,7 +512,6 @@ function memberName(t, i) {
     return t[k]?.type === "name" ? t[k].value : null;
 }
 
-// Every name a function or variable declaration binds, destructured names included.
 function declaredNames(t, first, last, match) {
     let k = first;
     while (["export", "default", "async"].includes(t[k]?.value) && t[k].type === "name") k++;
@@ -588,7 +531,6 @@ function declaredNames(t, first, last, match) {
     return names.length ? names : null;
 }
 
-// The index of the next `,` at this level, or `stop`; brackets are stepped over whole.
 function nextComma(t, j, stop, match) {
     for (; j < stop; j++) {
         if (t[j].type !== "punct") continue;
@@ -625,10 +567,7 @@ function patternNames(t, open, match) {
 
 const SH_FUNCTION = /^(\s*)(?:function\s+([A-Za-z_][\w:.-]*)\s*(?:\(\s*\))?|([A-Za-z_][\w:.-]*)\s*\(\s*\))\s*(\{.*)?$/;
 
-// The here-documents a line opens, in order, each as the shell reads it: `<<` or `<<-`, then a word whose
-// quotes and backslashes are removed to give the line that ends the body, `<<1` and `<<'E F'` alike. A
-// `<<` inside quotes, after a comment or inside `(( … ))` opens none, and `<<<` is a here-string, whose
-// word is on the line. A delimiter whose quote never closes is refused.
+// `<<` or `<<-` and a word unquoted into its delimiter; none inside quotes, after a comment or in `(( ))`, and `<<<` is a here-string.
 function heredocs(text, line) {
     const arithmetic = [];
     for (let i = text.indexOf("(("); i !== -1; i = text.indexOf("((", i + 2)) {
@@ -672,17 +611,13 @@ function heredocs(text, line) {
 // Words after which another command may start: a brace or a keyword standing where a command does.
 const SH_COMMAND_WORDS = new Set(["{", "}", "!", "then", "do", "else", "elif", "if", "while", "until", "time"]);
 
-// The line whose `}` closes the `{` a function's body opens with, `from` the `{` on code[at]. A brace
-// counts only as a word of its own where a command may start, so the braces of `${x}`, `{a,b}`, `'{'`,
-// `\}` or a comment never do. Quotes, `$'…'`, `${…}`, `$(…)` and backquotes may run over lines, and a
-// here-document's lines are not in `code`. A body that never closes is refused, never cut short.
+// A brace is a word of its own only where a command may start: never in `${x}`, `{a,b}`, quotes, `\}` or a comment.
 function functionEnd(code, at, from, name, line) {
     const stack = [];
     let depth = 0;
     let command = true;
     let word = "";
-    // Ends the word being read; true when it is the `}` that closes the body. `next` says whether a
-    // command may start after what ended it, when that is not the word's own say.
+    // True when the word just ended is the body's closing `}`; `next`, when given, says whether a command may follow.
     const endWord = (next) => {
         const brace = word !== "" && command && (word === "{" || word === "}");
         if (brace) depth += word === "{" ? 1 : -1;
@@ -785,9 +720,7 @@ export function outlineSh(src) {
 // 4. Titled banners, the one structure both languages share
 // ===========================================================================================
 
-// A banner titles the code under it: a rule of `-` or `=` with a title on it (four or more, the form a
-// long function's own parts use), or a title between two rules of eight or more on the lines around it.
-// `sub` adds the numbered sub-sections (`4a.`) that divide a long shell recipe's sections.
+// A title on a rule of four or more `-` or `=`, or between two rules of eight or more; `sub` adds numbered parts (`4a.`).
 function banners(commentLines, sub = []) {
     const at = new Map(commentLines.map((c) => [c.line, c.text.trim()]));
     const rule = (text) => /^[-=]{8,}$/.test(text ?? "");
@@ -801,8 +734,7 @@ function banners(commentLines, sub = []) {
     return [...found, ...sub.map((s) => ({ ...s, level: 1 }))].sort((a, b) => a.line - b.line);
 }
 
-// Each section goes inside the innermost span holding it, so a long function lists its own parts, and
-// runs to the next section there or to that span's end.
+// A section nests in the innermost span holding it, and runs to the next section there or to that span's end.
 function place(entries, sections, lines, mark) {
     const holder = (list, line) => {
         for (const e of list) if (!e.section && e.start < line && line <= e.end) return holder(e.children, line) ?? e;
@@ -832,13 +764,7 @@ function order(entries) {
 // 5. Markdown: headings, and the section under each
 // ===========================================================================================
 
-// A Markdown file's outline is its headings, each spanning its section: from the heading to the line
-// before the next heading of its level or a higher one, so a section holds its sub-sections. Each carries
-// its size in bytes, which is what reading it costs, and the anchor a link to it carries. A heading is
-// read as CommonMark reads one: a line of one to six `#`, or a line of `=` or `-` under a paragraph that
-// opens at the margin. Nothing in fenced code, an HTML comment or the frontmatter is a heading. A heading
-// set under a list item by `=` or `-` is missed rather than guessed at, since CommonMark reads that line as
-// a rule.
+// Headings as CommonMark reads them, outside fences, HTML comments and frontmatter; a setext heading in a list item is missed.
 
 /** A heading's text as it reads rendered: a code span's content kept, links and images their text, and emphasis, tags and escapes gone. */
 function plainText(title) {
@@ -858,7 +784,7 @@ function plainText(title) {
     return out + inline(title.slice(at));
 }
 
-/** The anchor GitHub gives a heading: its text lower-cased, anything but letters, digits, `_`, `-` and spaces dropped, each space a `-`. */
+/** The anchor GitHub gives a heading. */
 export function anchorOf(title) {
     return plainText(title).toLowerCase().replace(/[^\p{L}\p{M}\p{N}_\- ]/gu, "").replace(/ /g, "-");
 }
@@ -981,11 +907,7 @@ export function outlineMd(src) {
 /** No heading answers a fragment: what `--find` finding no definition is to code, exit 1. */
 export class NoSection extends CannotOutline {}
 
-/**
- * The section a fragment names, with its lines, its size and its text. The fragment is the anchor a link
- * carries, or the heading's text, with `Parent > Child` narrowing one that repeats; a fragment naming no
- * heading is `NoSection`, and one naming more than one is refused with the anchor of each.
- */
+/** A fragment is a heading's anchor or its text, `Parent > Child` for a repeated one; `NoSection` when none answers. */
 export function sectionOf(src, fragment) {
     const { entries } = outlineMd(src);
     const all = [];
@@ -1043,8 +965,7 @@ export function outlineFile(file, shown = file, src = null) {
     }
 }
 
-// Spans inside the file, each opening before it closes, siblings in order and apart: an outline that
-// breaks one of these is refused, never printed.
+// Spans nest in their parent, open before they close and never overlap; an outline breaking one is refused.
 function check({ lines, entries }) {
     const walk = (list, lo, hi) => {
         let previous = null;
@@ -1060,10 +981,7 @@ function check({ lines, entries }) {
 
 const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-/**
- * The lines an outline prints: the file, then one line per entry, children indented under theirs. A Markdown
- * heading's line carries its anchor, which names it in `<file>#<anchor>` where its text is repeated, and its size.
- */
+/** A heading's line carries its anchor, which names it in `<file>#<anchor>` where its text repeats. */
 export function render(file, { lines, bytes, entries }) {
     const out = [`${file}: ${lines} line${lines === 1 ? "" : "s"}${bytes === undefined ? "" : `, ${grouped(bytes)} B`}`];
     const walk = (list, indent) => {
@@ -1078,7 +996,7 @@ export function render(file, { lines, bytes, entries }) {
     return out;
 }
 
-/** The tracked code this reads, relative to `cwd`: every file `languageOf` names JavaScript or shell, by extension or `#!`. */
+/** Tracked JavaScript and shell files, by extension or `#!`, as paths relative to `cwd`. */
 export function trackedCode(cwd) {
     let listed;
     try {
@@ -1114,8 +1032,7 @@ export function find(cwd, name) {
         try {
             text = fs.readFileSync(full, "utf8");
         } catch (error) {
-            // A tracked path the work tree no longer holds as a file holds no definition; one it holds and
-            // cannot read might, so the search refuses rather than answer that there is none.
+            // A path gone from the work tree holds no definition; one that cannot be read might, so it is refused.
             if (error.code === "ENOENT" || error.code === "EISDIR") continue;
             throw new CannotOutline(`cannot read ${file}: ${error.code ?? error.message}`);
         }
@@ -1135,11 +1052,7 @@ export function find(cwd, name) {
     return hits;
 }
 
-/**
- * A `<file>#<heading>` argument, read: the Markdown file, its text and the fragment, or null for an argument
- * naming a file as it stands. A path may hold a `#` of its own, so the file is the shortest prefix before
- * a `#` that names one.
- */
+/** Null for an argument naming a file; a path may hold `#`, so the file is the shortest prefix before a `#` that names one. */
 function sectionArg(cwd, arg) {
     const isFile = (rel) => fs.statSync(path.resolve(cwd, rel), { throwIfNoEntry: false })?.isFile() ?? false;
     if (!arg.includes("#") || isFile(arg)) return null;
@@ -1206,16 +1119,14 @@ export function main(argv, stdout, stderr, cwd = process.cwd()) {
         if (printed.length) stdout.write(`${printed.join("\n\n")}\n`);
         return missing ? 1 : 0;
     } catch (error) {
-        // An unexpected throw is could-not-run, never a finding: exit 1 says a name is defined nowhere,
-        // and a crash read that way would send a session looking for code that exists.
+        // An unexpected throw exits 2, never 1, which would send a session looking for code that exists.
         const why = error instanceof CannotOutline ? error.message : `unexpected ${error?.name ?? "error"}: ${String(error?.message ?? error).split("\n")[0]}`;
         stderr.write(`symbols: could not outline — ${why}\n`);
         return 2;
     }
 }
 
-// The same guard `pack-identity.mjs` uses: node realpaths the main module for `import.meta.url` while
-// `process.argv[1]` keeps a symlink, so the comparison is on the resolved URL.
+// Node realpaths `import.meta.url` but not `process.argv[1]`, so run through a symlink this guard does not fire.
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     process.exitCode = main(process.argv, process.stdout, process.stderr);
 }

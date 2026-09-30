@@ -1,94 +1,5 @@
 #!/usr/bin/env node
 // The forced-red drill harness — every rail broken on purpose, and required to fire.
-//
-// Milestone 8, clause (d): *scheduled forced-red drills — every rail forced red on a calendar and
-// required to fire.* The argument for the clause is in `../docs/milestones/m08.md`; the calendar is
-// `../.github/workflows/drills.yml`; what belongs here is what a drill is and why the shape is this
-// one.
-//
-// ## What it answers, and what its two siblings answer
-//
-// `./goldens.mjs` asks whether every compiled gate has adversarial fixtures — **presence**.
-// `./mutants.mjs` asks whether those fixtures can tell a working matcher from a broken one —
-// **discrimination**. Neither asks the question one level out: **does the rail still fire at all?**
-// A recipe whose precondition quietly started exiting 0 over an empty file list, a hook that fails
-// open on a crash, a check whose enumeration went empty — each reports green and each has stopped
-// being a rail. Nothing in this repository could see that, and the way it was found until now was an
-// incident.
-//
-// ## The clause's provenance is two sessions doing this by hand
-//
-// `../.portulan/proposals/0007-every-watcher-ships-with-its-observation-procedure.md` — *a watcher
-// earns its place by being watched* — asks for a procedure *"run once and its result recorded"*. The
-// 2026-07-28 amendment generalises it along both axes: from one demonstration at adoption **to a
-// calendar**, and from **watchers to every rail**. Milestone 8 sessions 0 and 1 ran eleven forced-red
-// drills by hand and recorded them in their handoffs, which is precisely the state this file exists to
-// replace: two sessions running them by hand is evidence for the clause, not a substitute for it.
-//
-// **And both sessions had a drill that did not fire.** One anchored substitution missed by four spaces
-// of indentation; one patch script's quoting broke. Both times the recipe ran green against an
-// unmodified file and the drill reported on nothing — the same false green the whole milestone is
-// about, inside the instrument built to detect it. Every guard below traces to one of those two.
-//
-// ## A drill is a PAIR, and the pair is the oracle
-//
-// Per rail: a **control** run on a pristine tree, then a **fire** run after the perturbation. Both are
-// required, because drill 1 of 2026-07-30 recorded the reason —  *"a rail that only ever reds proves
-// nothing about its green: a recipe hard-wired to fail would have produced the identical red
-// transcript."*
-//
-// The control does a second job the drills of the two hand sessions could not do: it catches an
-// **environment** difference. A rail that is red for a reason having nothing to do with the
-// perturbation — a path-sensitive check, a clean checkout that is not a working copy — makes its drill
-// exit 2 rather than report a fire it did not cause.
-//
-// ## Three guards, each from a defect this repository has already shipped
-//
-//  1. **A `tell` is required, never optional.** A perturbation can red a rail for the wrong reason — a
-//     syntax error instead of the finding. So every drill declares a substring the rail's own output
-//     must carry when it fires, and the harness requires it **absent in the control and present in the
-//     fire**. `../.portulan/verify/README.md` already records one instance caught *"only because the
-//     drill asserts the message"*.
-//  2. **A perturbation may not no-op.** An anchored substitution must place **exactly once** —
-//     `./mutants.mjs`'s discipline, adopted rather than re-derived — *and* the bytes on disk are
-//     hashed before and after and must differ. A missing or ambiguous anchor is could-not-run, never
-//     a skip.
-//  3. **`--only` narrows what RUNS, not what must be well formed.** The whole table is validated in
-//     every mode. Session 1's round 1 found the opposite in `./mutants.mjs`: `--only` skipped
-//     validation in exactly the mode a person reaches for when something is already wrong.
-//
-// ## Isolation: one throwaway `git worktree` per drill
-//
-// `git worktree add --detach <tmp> <tree>` shares the object store, so there is no clone and no
-// network, and history is complete — which `pack-version` and `pack-identity` both need. The
-// developer's working tree is never perturbed. Both hand sessions perturbed in place and restored by
-// hand, which is one crash away from leaving a repository broken.
-//
-// ## Which tree is drilled, said out loud on every run
-//
-// A worktree is a **commit**, so this tool reports on a commit and prints which one. By default it
-// refuses a dirty tree rather than quietly drilling `HEAD` while the reader believes it drilled what
-// they are looking at — the shape of *the gate allows in silence when it reads the wrong tree*.
-// `--working-copy` synthesizes a commit from the working copy with `git stash create` and prints
-// **that** sha; because `stash create` does not carry untracked-and-unstaged files, that mode refuses
-// while any exist, naming them, rather than drilling a tree missing the very file under review.
-//
-// ## Why the sweep is NOT a verify recipe, and what is
-//
-// `../.portulan/dod.md` condition 1 asks that every recipe ran green *in this working copy*. A recipe
-// that reported on `HEAD` would be a green about a different tree. So the **sweep** belongs to the
-// calendar and to `--working-copy` by hand, and what is declared as the `drills` recipe is `--check`:
-// the correspondence pass over the working tree — every yielded rail has a drill, every drill names a
-// declared rail, every anchor still places exactly once. That is the half that can drift on any commit,
-// it runs no rail, and it costs milliseconds.
-//
-// ## This module SPAWNS, and its siblings assert they do not
-//
-// `./goldens.mjs`, `./mutants.mjs` and `./fuzz-shell.mjs` are each held by their suites to importing no
-// process-spawning API, because a corpus of `git push --force` spellings must never reach a shell.
-// This module is the opposite by nature: running a rail *is* spawning it. What its suite pins instead
-// is that nothing it spawns is composed from a payload — every command comes from the yielded recipe
-// set or from this file's own declarations, and no drill's `perturb` value is ever passed to a shell.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -101,37 +12,11 @@ import { CouldNotRun } from "./goldens.mjs";
 import { isInside } from "./inside.mjs";
 import { recipeSet, resolverFor } from "./recipe-set.mjs";
 
-/** How long any one rail may take before the drill calls it a could-not-run rather than a verdict. */
 const RAIL_TIMEOUT_MS = 10 * 60 * 1000;
 
-/**
- * The prefix every session id this harness invents carries.
- *
- * It is load-bearing twice. A hook keyed by session id must not share state between runs, and — because
- * `./stop-gate.mjs` writes its refusal counter into the OS temp directory under
- * `portulan-stopgate-<readable-session-id>-…` — a prefix this harness owns is what lets it retire its
- * own counter files without touching a real session's. Measured before it was relied on: each sweep was
- * leaving one 45-byte file behind, found at the pre-commit checkpoint.
- */
 export const DRILL_SESSION_PREFIX = "portulan-drill";
 
-/**
- * The rails that are NOT recipes, declared as an allow-list.
- *
- * **The allow-list is the point rather than the convenience.** Without it a drill whose `rail` is a
- * misspelled recipe id — `doc` for `docs` — would be silently reclassified as a rail of its own, and
- * the coverage check would pass while the real recipe went undrilled. A rail is a yielded recipe id or
- * a member of this list, and nothing else.
- *
- * Both members are hooks: they exit 0 whether they refuse or allow, because a hook communicates through
- * its stdout JSON and not through its status. So their drills declare `exit: 0` and lean entirely on the
- * tell — which is why the tell is mandatory rather than a nicety.
- *
- * `tellStream: "stdout"` for both, measured rather than assumed: `stop-gate` writes git's own
- * diagnostics to stderr when it probes an upstream in a detached worktree (`fatal: HEAD does not point
- * to a branch`), so a tell read from the combined streams would be read out of noise the rail did not
- * choose to say.
- */
+/** Hooks answer in their stdout JSON and exit 0 either way, so their drills judge by a tell read from stdout. */
 export const NON_RECIPE_RAILS = [
     {
         id: "stop-gate",
@@ -147,13 +32,6 @@ export const NON_RECIPE_RAILS = [
     },
 ];
 
-/**
- * The rails this harness does NOT drill, each with the reason.
- *
- * Printed on every run, green included. The clause's whole subject is the honesty of the word *every*,
- * and a scope claim with no carrier is the defect `../.portulan/verify/README.md`'s register was
- * already carrying by hand. These are rails; they are simply not rails a local process can force.
- */
 export const NOT_DRILLED = [
     {
         rail: "the platform floor — branch protection, the required checks, `enforce_admins`",
@@ -185,33 +63,9 @@ export const NOT_DRILLED = [
     },
 ];
 
-/**
- * The drills. One per rail, and the harness refuses a yielded rail that has none.
- *
- * **One table, in this module** — `./mutants.mjs`'s argument, unchanged: a drill is an anchor into a
- * file plus the outcome expected of it, and splitting those across code and JSON would make two
- * carriers of one drill.
- *
- * Fields:
- *   `rail`    a yielded recipe id, or a `NON_RECIPE_RAILS` member's id
- *   `perturb` `{file, find, replace}` — anchored, must place exactly once; or `{create, content}`;
- *             or `null` for a rail whose control and fire differ by INPUT rather than by tree
- *   `stage`   `git add -A` in the drill worktree before the fire, for a rail that reads the index
- *   `exit`    the status the fire must return
- *   `tell`    a substring the rail's own output must carry when it fires, and must not carry before
- *   `why`     what this drill proves about this rail — not what the perturbation does
- *
- * **Prefer an in-place edit of a tracked file to a creation.** Measured: `docs.sh` and
- * `control-chars.sh` both walk `--cached --others --exclude-standard` and see a new file, while a pass
- * reading `--cached` alone does not — so a creation-shaped perturbation is invisible to some rails and
- * would read as a rail that did not fire. Where a creation is the only honest shape, `stage` makes it
- * visible and says so.
- */
+/** A rail that reads only the index misses a created file unless the drill sets `stage`. */
 export const DRILLS = [
     // ------------------------------------------------------------------------- the yielded recipes
-    // (Including the composed one at the end of this section. This read *the eighteen yielded recipes*,
-    // which was both a count in prose and wrong — the section holds the workspace's own plus the pack's.
-    // The number has one carrier and it is the runner. Copilot, round 2's notes.)
     {
         rail: "docs",
         perturb: {
@@ -246,35 +100,13 @@ export const DRILLS = [
         why: "`doctor` resolving a slot path is the check the Workspace Definition rests on: a manifest naming a file that is not there must never validate.",
     },
     {
-        // ---- the SECOND drill on the `doctor` rail, and the reason there are two
-        //
-        // `check()` counts a rail as drilled once any drill names it, so a second entry adds coverage
-        // rather than a duplicate — the DRILLS docblock's "one per rail" is a floor, not a cap. This
-        // arm needs its own because the one above perturbs a slot path and this one perturbs the gate
-        // POLICY: different file, different check inside `doctor`, and nothing about the first would
-        // have noticed if this one stopped firing.
-        //
-        // **Why it is a `doctor` drill and not a `compile` one.** The refusal it forces is a
-        // `CompileError`, so `compile` exits **2** — and `check()` refuses any drill declaring
-        // `exit: 2`, correctly, because it "would read a refusal as a verdict". `doctor` runs the
-        // backends inside its own try and turns the same refusal into a `fail`, which is exit 1 and is
-        // a verdict. Measured on this tree, 2026-09-03: with `edit-on-a-working-branch` flipped to
-        // `gated`, `compile` exits 2, `goldens` stays 0, and `doctor` exits 1 printing the sentence
-        // below.
         rail: "doctor",
         perturb: {
             file: ".portulan/gates.json",
-            // The flip is the whole hazard in one word: this rule's target is `./`, which matches no
-            // path a host submits, and at `auto` that is harmless — the tier is refused before any
-            // target is read. At `gated` it becomes a hollow gate, reported compiled and enforcing
-            // nothing. So the perturbation manufactures exactly the state hole 8 describes, from the
-            // policy this repository actually ships.
             find: '"id": "edit-on-a-working-branch",\n      "tier": "auto",',
             replace: '"id": "edit-on-a-working-branch",\n      "tier": "gated",',
         },
         exit: 1,
-        // Scoped to the sentence only this refusal prints. `doctor` has other enforcement failures and
-        // a tell like "enforcement" would be satisfied by any of them.
         tell: "matches no path a host can submit",
         why: "A gate whose target can never match is the one defect this repository cannot see by reading a policy: the compiler reports it COMPILED and `doctor` counts it covered, so the gate map, the artifact and the report all agree about a gate that enforces nothing. Hole 8 of the gate map, closed by #337's option 3 — and the only rail that can watch the closure is the one whose exit is a verdict rather than a refusal.",
     },
@@ -326,11 +158,7 @@ export const DRILLS = [
         perturb: {
             file: ".github/workflows/pr-labels.yml",
             find: "if ! declared=$(jq -er '.labels[].name' \"$POLICY\"); then",
-            // The program's OUTPUT is changed rather than its shape: dropping a character made the
-            // fixture's anchor match no program at all, and the rail then exited 2 — a legitimate
-            // refusal, but the arm this drill is not for. Appending a suffix keeps the anchor findable
-            // and makes the bytes the surrounding shell branches on differ, which is the exit-1 arm.
-            // Measured both ways before this line was written.
+            // Appends, so the fixture's anchor still finds the program and the rail exits 1 rather than 2.
             replace: "if ! declared=$(jq -er '.labels[].name + \"-drilled\"' \"$POLICY\"); then",
         },
         exit: 1,
@@ -353,9 +181,7 @@ export const DRILLS = [
         perturb: {
             file: "core/engine.md",
             find: "# Portulan engine",
-            // 408 bytes onto the kernel's heading: past the engine rail's headroom and inside the boot
-            // rails', so the one rail that owns the kernel is the one that has to fire. It was 510 until
-            // the boot's closing line left the demo's boot rail 514 bytes of headroom.
+            // 408 bytes: over the engine rail's headroom, under the boot rails', so only the engine rail fires.
             replace: `# Portulan engine${" (moved back from an on-read file)".repeat(12)}`,
         },
         exit: 1,
@@ -367,8 +193,6 @@ export const DRILLS = [
         perturb: {
             file: "cli/ledger.mjs",
             find: "const prior = request.id === null ? undefined : byId.get(request.id);",
-            // Per-block deduplication switched off: every content block the host wrote becomes a request of
-            // its own, which is the one mistake every figure the ledger prints would inherit silently.
             replace: "const prior = undefined;",
         },
         exit: 1,
@@ -380,8 +204,7 @@ export const DRILLS = [
         perturb: {
             file: "CONTRIBUTING.md",
             find: "# Contributing",
-            // A real NUL, written as an escape so THIS file carries no control byte of its own. Session 0
-            // shipped a literal NUL as a literal character while writing prose about storing bytes escaped.
+            // A real NUL, written as an escape so this file carries no control byte of its own.
             replace: "# Contributing\u0000",
         },
         exit: 1,
@@ -451,10 +274,7 @@ export const DRILLS = [
                 "",
             ].join("\n"),
         },
-        // **NOT staged, and that is the drill's second subject.** `npm pack` reads the WORKING TREE, so an
-        // untracked module ships — measured before this drill was written. A drill that staged first would
-        // pass while leaving the likelier arrival untested: a module written, packed and published before
-        // anyone committed it. `pack-identity` above is the mirror case and stages for the opposite reason.
+        // Not staged: `npm pack` reads the working tree, so an untracked module ships too.
         stage: false,
         exit: 1,
         tell: "SHIPS and is classified by nothing",
@@ -515,11 +335,7 @@ export const DRILLS = [
             find: "**Current release: `0.1.3`**",
             replace: "**Current release: `0.2.0`**",
         },
-        // **Staged, because this rail reads the INDEX** — `git show :<path>`, the same way
-        // `pack-identity` does and for the reason that module states: enumerating from the index and
-        // then reading the worktree lets a staged drift with a reverted worktree copy report green.
-        // Measured: unstaged, the perturbation is invisible and the rail reports its ordinary green,
-        // which would have read as a rail that stopped firing.
+        // Staged: this rail reads the index (`git show :<path>`), so an unstaged edit is invisible to it.
         stage: true,
         exit: 1,
         tell: "but package.json declares",
@@ -529,15 +345,6 @@ export const DRILLS = [
         rail: "skill-goldens",
         perturb: {
             file: "core/skills/clarify/SKILL.md",
-            // **The perturbation ADDS A MANDATE**, which puts this rail's central claim under test: the
-            // denominator is derived from the skill's own pass, so a step nobody wrote a case for is a
-            // red rather than a default. A corpus whose author picks which mandates to answer for
-            // reports "5 of 5" of a set it drew, and that is the version this drill exists to refuse.
-            //
-            // **Rewording a mandate was the first spelling and it is the wrong arm.** An anchor that
-            // stops placing is could-not-run, and this harness refuses `exit: 2` as a fire outright —
-            // *"counting it as a fire would read a refusal as a verdict"*. Measured rather than
-            // reasoned about: `--check` rejected the first version of this entry for exactly that.
             find: "## Why it earns its tokens",
             replace: "5. **A step the drill added** — bound to nothing, answered by no case.\n\n## Why it earns its tokens",
         },
@@ -554,10 +361,6 @@ export const DRILLS = [
         },
         exit: 1,
         tell: "is out of date against the snapshot",
-        // The perturbation edits the REGISTER rather than the snapshot, and that is the direction the
-        // rail exists for. Editing the snapshot would make both sides move together in a rerun and
-        // prove nothing; editing the published figures is the failure the recipe is there to catch,
-        // since a committed Markdown table is the one artifact here a person can quietly correct.
         why: "The register is the review loop's published figures, and this clause exists because the figures it replaces were hand-maintained. A register that could drift from its own snapshot would be that hand-maintained tally wearing a generated file's clothes.",
     },
     {
@@ -569,16 +372,6 @@ export const DRILLS = [
         },
         exit: 1,
         tell: "invokes cli/review-meter.mjs --fetch",
-        // **The perturbation is a network mode reaching a recipe, which is the rail's actual subject —
-        // not a drifted payload, which would have been the cheaper drill.** Byte-drift is already the
-        // shape `review-loop` and `index` drill; what nothing else here watches is the offline
-        // property, so that is what this forces.
-        //
-        // And it forces it through the mode this session did NOT introduce. `--fetch` predates the
-        // telemetry clause by a session, so a drill that fired on `--export` would prove only that the
-        // checker recognises its author's own module — while the whole argument for railing a class
-        // rather than a file is that the OLDER network mode was the unrailed one. A drill on the new
-        // mode would have passed while leaving exactly the gap the class exists to close.
         why: "A verify recipe that can reach the network goes red about the world rather than about the tree, and this repository prohibits it in three carriers while nothing checked it. The drill proves the checker sees a real invocation — spread across continued lines, the spelling a recipe actually uses — rather than only the literal string a test would hand it.",
     },
     {
@@ -597,13 +390,6 @@ export const DRILLS = [
             ].join("\n"),
         },
         exit: 1,
-        // **The perturbation ADDS a file rather than editing the table, and that is the rail's actual
-        // subject.** Deleting a disposition would fire the *stale declaration* arm — a legitimate
-        // refusal, and exit 2, which is the arm this drill is not for. What the rail exists to catch is
-        // the opposite direction: a file arriving in `.portulan/` that nobody classified, which is
-        // precisely how customer zero's `memory-index.md`, `handoffs-index.md`, `rule-carriers.json`
-        // and `labels.json` reached an arm built to `evals/ab/arm.md`'s six rows with `doctor` GREEN
-        // over all of it. The drill reproduces the arrival, not the forgetting.
         tell: "classified by no disposition",
         why:
             "The A/B treatment arm is built by removing things from customer zero's workspace, and `cli/vendor.mjs` carries " +
@@ -615,16 +401,6 @@ export const DRILLS = [
         rail: "ab-grade",
         perturb: {
             file: "cli/ab-grade.mjs",
-            // **The perturbation makes a grader a CONSTANT, which is the rail's actual subject.** Drifting
-            // the register would have been the cheaper drill and would have proved only the byte compare —
-            // a shape `review-loop`, `index` and `ab` already force. What nothing else here watches is a
-            // grader that has stopped reading the arm, and that is the failure this instrument was built
-            // around: the prototype returned "30 records, each with its own provenance and retirement
-            // condition" against an arm that had done nothing at all.
-            //
-            // It is planted in `gradeCuratedLayer` deliberately — the prototype's own scenario family —
-            // and it is an early `return` rather than an edited branch, so it fires whatever the delta,
-            // which is what a constant is.
             find: '    const scenario = "curated-layer";\n    const anchor = anchored(root, scenario, nonce);',
             replace:
                 '    const scenario = "curated-layer";\n' +
@@ -632,10 +408,6 @@ export const DRILLS = [
                 "    const anchor = anchored(root, scenario, nonce);",
         },
         exit: 1,
-        // The tell is level 2's, not level 1's. A constant about the base ALSO fails level 1 and
-        // inertness here, and naming one of those would let a later edit that fixed only the cheap half
-        // pass the drill — while the property this rail is for is that the inverted fixture cannot be
-        // inverted by a grader that ignores the delta.
         tell: "did not invert the figures",
         why:
             "A grader that has stopped reading the arm produces a baseline about file copying, and it does so silently: the " +
@@ -647,25 +419,10 @@ export const DRILLS = [
         rail: "release-eval",
         perturb: {
             file: "cli/release-eval.mjs",
-            // **The perturbation moves the CLAUSE BOUNDARY, which is the rail's actual subject.**
-            // Editing a committed record would have been the cheaper drill and would have proved only
-            // the byte compare — a shape `review-loop`, `index`, `ab` and `ab-run` already force. What
-            // nothing else here watches is the check this clause exists for: *a release the clause
-            // governs, carrying no eval result*. Every governed release this repository has cut carries its
-            // record, so that arm is unreachable from the committed tree — until the boundary moves. Dropping it
-            // to `0.1.2` makes an already-cut release governed, and the rail must then say the record
-            // is missing.
-            //
-            // It is the boundary rather than a record because a boundary that silently widened is the
-            // failure mode with teeth: a release would be graded that nobody captured for, or — the
-            // direction that matters — one that should be graded would fall outside and the rail would
-            // report green having looked at nothing.
             find: 'export const FIRST_GOVERNED_VERSION = "0.1.3";',
             replace: 'export const FIRST_GOVERNED_VERSION = "0.1.2";',
         },
         exit: 1,
-        // The tell is the missing-record arm specifically, not the boundary arithmetic. A fix that
-        // restored only the constant while leaving the presence check broken would pass a looser tell.
         tell: "is a release from milestone 8 onward and there is no",
         why:
             "Milestone 8's ninth clause is that a release carries an eval result, and the check that carries it is *a governed " +
@@ -679,23 +436,10 @@ export const DRILLS = [
         rail: "ab-run",
         perturb: {
             file: "evals/ab/baseline.json",
-            // **The perturbation edits a PUBLISHED FIGURE, which is the rail's actual subject.** The
-            // baseline is the one record here that cannot be re-derived — its events do not repeat — so
-            // what holds it honest is that the register agrees with the capture beside it, and that the
-            // capture folds to the figures it publishes. Editing a cell is exactly the drift
-            // `review-loop.sh` names: *"a published figure that can drift from its own data is the
-            // hand-maintained tally in a new costume"*.
-            //
-            // A drifted REGISTER would have been the cheaper drill and would prove only the byte
-            // compare, which `review-loop`, `index` and `ab-grade` already force between them. This
-            // forces the arithmetic instead.
             find: '"operatorEnv": "isolated"',
             replace: '"operatorEnv": "inherit"',
         },
         exit: 1,
-        // The tell is the isolation clause, not the byte compare: a baseline recorded over an unisolated
-        // arm is the one thing `evals/ab/corpus.md` forbids outright, and a repair that fixed only the
-        // rendering would leave that hole open.
         tell: "no baseline may be recorded under an unisolated arm",
         why:
             "A baseline is the only record in this repository derived from events rather than from the tree, so it cannot be " +
@@ -720,14 +464,7 @@ export const DRILLS = [
         rail: "drills",
         perturb: {
             file: "cli/drills.mjs",
-            // **The perturbation is ADDITIVE and the anchor is CONCATENATED, and neither is a style
-            // choice.** A drill perturbing its own module meets two traps, and the first draft met
-            // both. Renaming an existing declaration destroys the very anchor some drill depends on —
-            // measured: the child `--check` then exited 2 saying the drill no longer places, instead
-            // of 1 reporting the coverage hole. And an anchor written as one literal would place
-            // TWICE, once at its target and once in this line, so `--check` would refuse the whole
-            // roster as ambiguous. Splitting the literal keeps this line from being what it searches
-            // for; inserting rather than editing leaves every other anchor standing.
+            // Split so this line is not its own anchor; additive so every other anchor still places.
             find: "export const DRILL" + "S = [",
             replace:
                 "export const DRILL" +
@@ -741,12 +478,6 @@ export const DRILLS = [
     // ------------------------------------------------------------------------- the two non-recipe rails
     {
         rail: "stop-gate",
-        // The same perturbation the `docs` drill uses, because `docs` is this workspace's DEFAULT recipe
-        // and the default is what this hook runs. The tell is scoped to the recipe reason on purpose:
-        // this gate also blocks for a missing same-day handoff, and whether it does depends on the
-        // calendar date and on whether HEAD's patches are on a remote — measured at the session-open
-        // checkpoint, which saw the identical tree allow on one date and block on the next. A drill whose
-        // control demanded *no block at all* would therefore be green or red by the day of the week.
         perturb: {
             file: "CONTRIBUTING.md",
             find: "- [`docs/plan.md`](docs/plan.md) — the milestones. A change's record is its commit message.",
@@ -754,28 +485,15 @@ export const DRILLS = [
         },
         stdin: {
             hook_event_name: "Stop",
-            // **A session id unique per run**, completed by `runRail` from the worktree's own name. The
-            // constant this replaced was harmless and not obviously so, which is the reason it moved:
-            // `stop-gate`'s counter file is keyed by session id **and** by the tree, and the tree is a
-            // fresh `mkdtemp` every drill, so two runs could not share a counter either way. Measured
-            // at the pre-commit checkpoint. Relying on that is relying on another module's key, and the
-            // prefix below is also what lets this harness retire the counter file it leaves behind.
             session_id: DRILL_SESSION_PREFIX,
         },
         exit: 0,
+        // The recipe reason only: whether this hook also blocks for a missing handoff depends on the date.
         tell: "PORTULAN STOP-GATE (recipe",
         why: "This gate is what makes a red unmissable rather than merely recorded. It fails open on a crash by design, so a crashed Stop-gate and a green one are indistinguishable from outside — and only a drill that requires the refusal can tell them apart.",
     },
     {
         rail: "gate",
-        // No perturbation: this rail's control and fire differ by INPUT. The control is a benign command
-        // and the fire is a gated one.
-        //
-        // **The control is byte-identical to this runner having crashed**, and that is worth knowing
-        // rather than fixing: `./gate.mjs` fails open deliberately — any internal error exits 0 emitting
-        // nothing, so the permission layer governs unchanged. Empty stdout therefore means *allowed* or
-        // *crashed*, indistinguishably. What separates them is the FIRE: a crashing runner is silent on
-        // both inputs, so the pair is the oracle even though neither half is.
         perturb: null,
         stdinControl: { tool_name: "Bash", tool_input: { command: "git status --short" } },
         stdin: { tool_name: "Bash", tool_input: { command: "git push --force origin main" } },
@@ -785,35 +503,13 @@ export const DRILLS = [
     },
 ];
 
-/** The digest used to prove a perturbation moved bytes. Not security — just enough to differ. */
 const digest = (buffer) => crypto.createHash("sha256").update(buffer).digest("hex");
 
-/**
- * Apply a drill's perturbation inside `worktree`.
- *
- * Refuses — could-not-run, never a skip — when the anchor is absent, when it places more than once, or
- * when the bytes on disk did not move. The third is not redundant with the first two: both hand sessions
- * had a drill whose substitution placed and changed nothing that mattered, and `count === 1` alone would
- * have passed a replacement identical to what it replaced.
- */
+/** Throws `CouldNotRun`, never skips, when the anchor is absent or ambiguous or the bytes do not move. */
 export function perturb(worktree, drill) {
     if (!drill.perturb) return null;
 
-    /**
-     * Refuse a target that does not stay inside the worktree, **before anything is written**.
-     *
-     * The isolation guarantee is the whole reason a drill runs in a throwaway tree, and nothing checked
-     * it: a `..` in a declaration, or a symlinked parent in the checkout, would have let `writeFileSync`
-     * reach the caller's own repository — the tree this harness promises never to perturb. `isInside` is
-     * the one carrier of the predicate and `realpathSync` is what makes it answer about the tree rather
-     * than about two spellings of it; for a path that does not exist yet the nearest existing ancestor
-     * is resolved instead, since that is what a write would actually follow. Copilot round 2.
-     */
     const contained = (rel) => {
-        // The worktree side is resolved tolerantly too. `realpathSync` on a directory that is not there
-        // throws a bare ENOENT, and an unguarded throw here would arrive as *could not finish the sweep*
-        // with a stack trace instead of a sentence — the first version did exactly that, and its own test
-        // caught it.
         let root;
         try {
             root = fs.realpathSync(worktree);
@@ -825,20 +521,7 @@ export function perturb(worktree, drill) {
         }
         const target = path.resolve(worktree, rel);
 
-        // **A symlink AT THE TARGET is refused outright, and this is the sibling the first containment
-        // fix left open.** `writeFileSync` follows a link, and the resolve loop below skips a *broken*
-        // leaf up to its parent — so a target that is itself a dangling symlink pointing outside passed
-        // both checks and the write landed outside the worktree. Measured at the final checkpoint, which
-        // produced a file called `outside/ghost.txt` holding `PWNED`.
-        //
-        // `lstat`, not `stat`, because the question is whether *this name* is a link rather than what it
-        // points at — and it catches a live link and a dangling one with the same test. A drill has no
-        // business perturbing through a link in either case: the tree it is given is a fresh `git
-        // worktree` of this repository, which commits none.
-        //
-        // The enumerated vectors — `..`, an absolute path, a symlinked *parent* — were all closed by the
-        // first fix, and this was not one of them. That is `0020` at its most literal: the repair held
-        // for the spellings its own docblock listed.
+        // The realpath loop below skips past a dangling link, so a link at the target is refused here.
         let leaf = null;
         try {
             leaf = fs.lstatSync(target);
@@ -863,8 +546,7 @@ export function perturb(worktree, drill) {
                 probe = parent;
             }
         }
-        // The resolved ancestor must be inside, and so must the unresolved remainder — the first stops a
-        // symlink hop, the second stops a `..` that never touches an existing directory.
+        // The first stops a symlink hop, the second a `..` that never touches an existing directory.
         if (!isInside(root, probe) || !isInside(path.resolve(worktree), target)) {
             throw new CouldNotRun(
                 `drill \`${drill.rail}\` names ${JSON.stringify(rel)}, which resolves outside the drill worktree. ` +
@@ -933,14 +615,7 @@ export function perturb(worktree, drill) {
     return { path: rel, before, after };
 }
 
-/**
- * The yielded recipe set, at a PINNED root, with host discovery refused.
- *
- * The pin is the same argument `./goldens.sh` and `./compile.sh` state at length: a rail answers *does
- * this tree hold its own claims*, so its answer may not move with what happens to be installed on the
- * machine running it. `discovery: null` and `forced: false` are the second carrier of that, so a stray
- * `--pack-root auto` on the command line cannot reach the host either.
- */
+/** Never consults the host for packs, so the set cannot move with what happens to be installed. */
 export function yieldedRecipes({ workspaceDir, repoRoot, packRoots }) {
     let manifest;
     try {
@@ -959,24 +634,13 @@ export function yieldedRecipes({ workspaceDir, repoRoot, packRoots }) {
     return set.recipes;
 }
 
-/**
- * Validate the whole table against a tree. Returns findings; throws `CouldNotRun` for a drill whose
- * anchor no longer places, because that is `./mutants.mjs`'s ruling on the same condition: an anchor
- * that has drifted must refuse rather than be skipped.
- *
- * Runs in **every** mode, `--only` included.
- */
+/** Returns findings; throws `CouldNotRun` for an anchor that does not place exactly once. */
 export function check({ recipes, repoRoot, drills = DRILLS }) {
     const findings = [];
     const recipeIds = new Set(recipes.map((r) => r.id));
     const nonRecipeIds = new Set(NON_RECIPE_RAILS.map((r) => r.id));
     const drilled = new Set();
 
-    // **A yielded recipe sharing an id with a non-recipe rail is refused**, because the sweep's lookup
-    // map spreads the hooks after the recipes: a workspace recipe called `gate` would be silently
-    // shadowed by the hook, `check` would count that id as drilled, and the real recipe would never run
-    // while the sweep reported green. Nothing in `spec/workspace.schema.json` reserves these two slugs,
-    // so the refusal belongs here. Copilot round 1.
     for (const rail of NON_RECIPE_RAILS) {
         if (recipeIds.has(rail.id)) {
             findings.push({
@@ -988,9 +652,6 @@ export function check({ recipes, repoRoot, drills = DRILLS }) {
         }
     }
 
-    // `drills` is a seam for the suite and never a selection: the CLI never passes it, so the whole
-    // declared table is always what gets validated. It exists because a guard nothing can exercise
-    // positively is a guard nobody has seen work — this module's own subject, one altitude up.
     for (const drill of drills) {
         const where = `drill \`${drill.rail}\``;
         if (!recipeIds.has(drill.rail) && !nonRecipeIds.has(drill.rail)) {
@@ -1004,11 +665,6 @@ export function check({ recipes, repoRoot, drills = DRILLS }) {
         }
         drilled.add(drill.rail);
 
-        // **A hook drill's session id must be the prefix this harness owns.** The completion in
-        // `runRail` and the retirement in `drillOne` both key on it, so a drill inventing its own id
-        // would get neither: a counter shared between runs and a file nobody cleans. That is a rail
-        // with a precondition nobody states, refused here rather than left as a comment. Raised at the
-        // pre-commit checkpoint's second pass, as a trap the fold had left open.
         if (nonRecipeIds.has(drill.rail) && drill.stdin?.session_id !== undefined && drill.stdin.session_id !== DRILL_SESSION_PREFIX) {
             findings.push({
                 where,
@@ -1025,13 +681,6 @@ export function check({ recipes, repoRoot, drills = DRILLS }) {
         if (typeof drill.why !== "string" || drill.why.length === 0) {
             findings.push({ where, what: "declares no `why`. A drill with no stated claim is a perturbation nobody can review" });
         }
-        // **0 or 1, never 2.** Exit 2 is reserved throughout this repository for *could not run*, so a
-        // drill declaring it would count a rail that could not be judged as a rail that fired — the exact
-        // inversion `../.portulan/memory/verify-preconditions-fail-closed.md` exists to prevent, inside
-        // the harness built to detect it. A rail whose only non-green arm IS a refusal needs an argument
-        // and a different mechanism, not a declaration that quietly reads a refusal as a fire; the
-        // `workflow-filters` drill was drafted that way and was rewritten to force the exit-1 arm
-        // instead. Copilot round 1.
         if (drill.exit !== 0 && drill.exit !== 1) {
             findings.push({
                 where,
@@ -1040,15 +689,7 @@ export function check({ recipes, repoRoot, drills = DRILLS }) {
                     "1 (a red); 2 is could-not-run everywhere here, and counting it as a fire would read a refusal as a verdict",
             });
         }
-        // A drill whose control and fire are the same run proves nothing at all. One of the two must
-        // differ: the tree, or the input.
-        //
-        // **The input half is only available to a non-recipe rail, and the test for it was three kinds of
-        // weak.** `stdinControl !== undefined` did not ask whether it *differs*; `stdinControl: null`
-        // falls back to `stdin` through `drillOne`'s `??`, so it is the same run wearing a different
-        // declaration; and `runRail` passes stdin to `rail.argv` only — a **recipe** rail ignores it
-        // entirely, so a recipe drill with no perturbation could satisfy this and never change a thing.
-        // Raised as a suppressed note by Copilot, round 1.
+        // A null `stdinControl` falls back to `stdin` in `drillOne`, so it does not count as differing input.
         const inputCanDiffer =
             nonRecipeIds.has(drill.rail) &&
             drill.stdinControl !== undefined &&
@@ -1064,8 +705,6 @@ export function check({ recipes, repoRoot, drills = DRILLS }) {
             });
         }
 
-        // The anchor is checked against the WORKING TREE here, which is the whole value of `--check`
-        // running on a pull request: the commit that moves an anchored line is the one that learns it.
         if (drill.perturb?.file !== undefined) {
             const target = path.join(repoRoot, drill.perturb.file);
             let source;
@@ -1120,7 +759,6 @@ export function check({ recipes, repoRoot, drills = DRILLS }) {
     return findings;
 }
 
-/** `git`, run for its stdout, with a could-not-run on failure rather than a throw nobody can read. */
 function git(args, { cwd }) {
     const result = spawnSync("git", args, { cwd, encoding: "utf8" });
     if (result.error) throw new CouldNotRun(`git ${args[0]} could not run — ${result.error.message}`);
@@ -1130,18 +768,6 @@ function git(args, { cwd }) {
     return result.stdout;
 }
 
-/**
- * Which commit the sweep drills, and the refusals that keep the answer honest.
- *
- * A worktree is a commit, so this tool reports on a commit. Two modes:
- *   default        `HEAD`, and a dirty tree is refused rather than silently drilled around
- *   --working-copy a commit synthesized from the working copy by `git stash create`
- *
- * `stash create` carries staged additions and unstaged edits to tracked files and does **not** carry
- * untracked-and-unstaged files — measured at the session-open checkpoint. So that mode refuses while any
- * exist, naming them: drilling a tree that is missing the file under review is the wrong-tree green this
- * whole design is arranged against.
- */
 export function treeToDrill({ repoRoot, workingCopy }) {
     const head = git(["rev-parse", "HEAD"], { cwd: repoRoot }).trim();
     const dirty = git(["status", "--porcelain"], { cwd: repoRoot }).trim();
@@ -1179,11 +805,8 @@ export function treeToDrill({ repoRoot, workingCopy }) {
     return { sha: synthesized, kind: "a commit synthesized from the working copy" };
 }
 
-/** Run one rail in one tree. Returns `{status, stdout, stderr}`. */
 function runRail({ rail, worktree, stdin, workspaceRel }) {
     if (rail.argv) {
-        // The id is completed here rather than in the declaration, so it is distinct per worktree and
-        // still carries the prefix this harness cleans up under.
         const payload =
             stdin?.session_id === DRILL_SESSION_PREFIX
                 ? { ...stdin, session_id: `${DRILL_SESSION_PREFIX}-${path.basename(worktree)}` }
@@ -1191,31 +814,16 @@ function runRail({ rail, worktree, stdin, workspaceRel }) {
         const result = spawnSync(process.execPath, rail.argv, {
             cwd: worktree,
             encoding: "utf8",
-            // **The enforced fields come LAST**, and the order is a finding rather than a style: spread
-            // first, a drill's own `cwd` silently overrode it, and `./stop-gate.mjs` resolves the session
-            // tree from that field — so drill data could have pointed a control or a fire at another
-            // repository entirely while the transcript said the worktree. The harness owns the execution
-            // tree, never the declaration. Copilot round 1.
+            // After the spread, so a drill's own `cwd` cannot point the hook at another tree.
             input: `${JSON.stringify({ ...payload, cwd: worktree })}\n`,
             timeout: RAIL_TIMEOUT_MS,
-            // The hooks are TOLD their project root rather than deriving it, so a drill that did not set
-            // this would grade the repository this session is in and not the throwaway worktree.
-            //
-            // **And `PORTULAN_WORKSPACE` is set rather than inherited.** Both hooks read
-            // `process.env.PORTULAN_WORKSPACE || ".portulan"`, so with `--workspace` naming anything else
-            // — or with that variable merely present in the ambient environment — the sweep enumerated one
-            // workspace's recipes while the hooks read another workspace's policy. A rail graded against a
-            // policy the run did not choose is a verdict about the machine. `run` refuses a workspace that
-            // is not inside the repository, so this relative spelling always resolves in the worktree.
-            // Copilot round 1.
+            // Set, never inherited: the hooks read their tree and workspace from these two.
             env: { ...process.env, CLAUDE_PROJECT_DIR: worktree, PORTULAN_WORKSPACE: workspaceRel },
         });
         if (result.error) throw new CouldNotRun(`rail \`${rail.id}\` could not run — ${result.error.message}`);
         return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
     }
-    // A recipe's `run` is a shell string in the manifest — `bash -c` is how CI runs it and how the
-    // Stop-gate runs it, so it is how a drill must run it. Nothing from a drill's declarations reaches
-    // this command line: the string comes from the yielded set and the perturbation is applied to a file.
+    // `bash -c`, as CI and the Stop-gate run a recipe; no drill declaration may reach this command line.
     const result = spawnSync("bash", ["-c", rail.run], {
         cwd: worktree,
         encoding: "utf8",
@@ -1225,17 +833,8 @@ function runRail({ rail, worktree, stdin, workspaceRel }) {
     return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
 }
 
-/** The text a tell is looked for in — see `NON_RECIPE_RAILS` for why one rail reads stdout alone. */
 const tellText = (rail, out) => (rail.tellStream === "stdout" ? out.stdout : `${out.stdout}${out.stderr}`);
 
-/**
- * The part of a rail's output a reader needs, for a message that has to be legible in a CI log.
- *
- * **The finding-shaped lines first, and that is a defect this tool shipped once.** The first version
- * printed the last twelve lines, and this repository's recipes end with a long list of `ok` lines — so
- * the one `FAIL` that explained everything was scrolled off the top of the very diagnostic written to
- * explain it. A reader then has to re-run the rail by hand to find out what it said.
- */
 const salient = (text, lines = 12) => {
     const all = text.split("\n").filter((l) => l.trim() !== "");
     const findings = all.filter((l) => /^\s*(FAIL|RED|✗|✖|not ok|UNPINNED)\b/.test(l) || /^RED —/.test(l));
@@ -1243,17 +842,10 @@ const salient = (text, lines = 12) => {
     return [...new Set(chosen)].map((l) => `           | ${l}`).join("\n");
 };
 
-/**
- * Drill one rail: a pristine control, then the perturbation, then the fire.
- *
- * Returns a finding or `null`. Throws `CouldNotRun` when no verdict can be formed — a control that is
- * already red, a tell already present before the perturbation, an anchor that will not place.
- */
+/** A finding, or null when the rail fired as recorded; throws `CouldNotRun` when no verdict can be formed. */
 export function drillOne({ drill, rail, repoRoot, sha, say, workspaceRel = ".portulan" }) {
     const worktree = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-drill-"));
-    // `mkdtemp` creates the directory and `git worktree add` insists on creating it itself, so the
-    // reservation is made and then handed back — which is still the right order: it is what guarantees
-    // no two concurrent runs pick one path.
+    // `git worktree add` creates the directory itself; `mkdtemp` only reserved a unique name for it.
     fs.rmSync(worktree, { recursive: true, force: true });
     try {
         git(["worktree", "add", "--detach", worktree, sha], { cwd: repoRoot });
@@ -1277,11 +869,6 @@ export function drillOne({ drill, rail, repoRoot, sha, say, workspaceRel = ".por
 
         const fire = runRail({ rail, worktree, stdin: drill.stdin, workspaceRel });
         const text = tellText(rail, fire);
-        // **A status that is not a verdict is could-not-run, never a rail that failed to fire.**
-        // `spawnSync` reports `status: null` for a signal-killed child — a timeout, an OOM — and 2 is
-        // could-not-run everywhere here. Both mean no verdict was formed, and reporting either as *this
-        // rail did not fire* is a could-not-measure read as a measurement: session 1's round 3, in the
-        // guard added to stop exactly that. Raised as a suppressed note by Copilot, round 1.
         if (fire.status === null) {
             throw new CouldNotRun(
                 `rail \`${drill.rail}\` was killed by a signal rather than exiting, so no verdict was formed` +
@@ -1313,12 +900,7 @@ export function drillOne({ drill, rail, repoRoot, sha, say, workspaceRel = ".por
         say(`  fired  ${drill.rail.padEnd(28)} exit ${fire.status} · said ${JSON.stringify(drill.tell)}`);
         return null;
     } finally {
-        // **The counter files a hook rail leaves behind, retired.** `./stop-gate.mjs` writes one per
-        // (session id, tree) into the OS temp directory, so a sweep that invented a session id and
-        // walked away left one 45-byte file per run accumulating forever — the leak #340 names in a
-        // sibling module, found here at the pre-commit checkpoint before it could become the same
-        // issue. Scoped to this harness's own prefix, which is why the prefix is a constant: a wider
-        // glob would retire a live session's counter and quietly disarm its cap.
+        // Only this harness's prefix: a wider match would delete a live session's counter and disarm its cap.
         try {
             const dir = os.tmpdir();
             const mine = `portulan-stopgate-${DRILL_SESSION_PREFIX}-${path.basename(worktree)}`;
@@ -1328,7 +910,6 @@ export function drillOne({ drill, rail, repoRoot, sha, say, workspaceRel = ".por
         } catch {
             /* A counter file this run cannot retire is litter in a temp directory, never a wrong verdict. */
         }
-        // `--force` because the perturbation left the worktree dirty, which is the whole point of it.
         try {
             git(["worktree", "remove", "--force", worktree], { cwd: repoRoot });
         } catch {
@@ -1401,9 +982,7 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
 
         const recipes = yieldedRecipes({ workspaceDir, repoRoot, packRoots });
 
-        // **The whole table, in every mode.** `--only` narrows what runs and not what must be well
-        // formed — session 1's round 1 on `./mutants.mjs`, where `--only` skipped validation in exactly
-        // the mode a person reaches for when something is already wrong.
+        // The whole table in every mode: `--only` narrows what runs, not what must be well formed.
         const findings = check({ recipes, repoRoot });
 
         if (checkOnly) {
@@ -1422,10 +1001,7 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
             return 0;
         }
 
-        // **The argument is validated before the tree is chosen, and the order is a finding rather than
-        // a preference.** With `treeToDrill` first, a typo'd `--only` on a dirty tree reported the dirty
-        // tree — a refusal naming a cause it had not established, which sends the reader to look at
-        // their working copy when what was wrong was what they typed. Caught by this module's own suite.
+        // Before `treeToDrill`, so a mistyped `--only` on a dirty tree is not reported as the dirty tree.
         const selected = only === null ? DRILLS : DRILLS.filter((d) => d.rail === only);
         if (only !== null && selected.length === 0) {
             throw new CouldNotRun(
@@ -1434,29 +1010,7 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
             );
         }
 
-        // **The sweep runs every command from a throwaway worktree, so every path in one must resolve
-        // there.** Two refusals, both measured rather than reasoned:
-        //
-        //   * a **pack root outside the repository** makes `recipe-set` relativise `${PACK_ROOT}` against
-        //     the repo root, which produced `bash ../../../../../../../private/tmp/…/actions-pinned.sh`
-        //     — a path with `..` hops, executed from a different directory, landing somewhere nobody
-        //     chose. `--check` stays permissive because it runs no rail.
-        //   * a **workspace outside the repository** cannot be handed to the hooks, which read
-        //     `PORTULAN_WORKSPACE` as a path inside their project root.
-        //
-        // Both are could-not-run rather than a best effort: a rail run against files the sweep cannot
-        // name is a verdict about neither tree. Copilot round 1.
-        // **`isInside` is imported, not re-spelled.** The predicate this replaced was
-        // `!path.relative(a, b).startsWith("..")` plus `rel !== ""` — the exact spelling
-        // `./inside.mjs` exists to hold, and its docblock records that two copies of this rule drifted
-        // into the identical defect before either shipped. Mine had both halves of it: a directory
-        // legitimately named `..packs` reads as outside, and a root *equal* to the repository root was
-        // rejected outright, so `--pack-root .` refused a tree that is trivially inside itself. A third
-        // copy of a rule twice-corrected elsewhere is `0020` exactly. Copilot round 2.
-        //
-        // `fs.realpathSync` on both sides, for the reason `./compile.mjs` had to add it: a symlinked
-        // checkout — `/var` against `/private/var` on macOS is the one this session already met — makes
-        // two names for one directory compare as different trees.
+        // `realpathSync` on both sides: on macOS `/var` is `/private/var`, one directory under two names.
         const real = (dir) => {
             try {
                 return fs.realpathSync(dir);
@@ -1480,19 +1034,9 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
                     "path inside the tree being drilled. Pass a workspace inside the repository, or use --check",
             );
         }
-        // **An empty relative path means *the repository root itself*, and the hooks read it as absent.**
-        // `PORTULAN_WORKSPACE=""` falls through `process.env.PORTULAN_WORKSPACE || ".portulan"` in both
-        // runners, so a workspace at the repo root would have silently drilled `.portulan` instead — a
-        // rail graded against a policy the run did not choose, which is the defect the threading was
-        // added to close, surviving in its own edge case. `.` is the spelling that says *here*. Copilot,
-        // round 2's notes.
+        // `.`, not "": the hooks' `PORTULAN_WORKSPACE || ".portulan"` reads an empty value as unset.
         const workspaceRel = path.relative(repoRoot, workspaceDir) || ".";
 
-        // **A malformed roster is reported here, not met as a throw inside the loop.** `check` had already
-        // recorded a drill naming an undeclared rail as a finding, and the sweep then walked into the
-        // guard below and turned that documented exit-1 roster failure into an exit-2 could-not-run,
-        // abandoning the rest of the transcript. A roster failure is a finding in both modes. Raised as a
-        // suppressed note by Copilot, round 1.
         if (findings.length) {
             for (const f of findings) stderr.write(`drills: ${f.where}\n           ${f.what}\n`);
             stderr.write(`RED — ${findings.length} finding(s) in the drill roster; no rail was drilled\n`);
@@ -1509,22 +1053,9 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
         say(`drills: ${selected.length} of ${DRILLS.length} drill(s), one throwaway git worktree each`);
         for (const excluded of NOT_DRILLED) say(`  not drilled  ${excluded.rail}`);
 
-        // **One rail that cannot be judged does not end the sweep**, and this is a defect the first run
-        // of this tool shipped: a `CouldNotRun` thrown out of one drill aborted the loop and discarded
-        // every finding already collected, so the run reported on one rail and said nothing about the
-        // twenty behind it. That is the same argument `../.github/workflows/verify.yml` settles with
-        // `set +e` — *a red recipe does not abort the loop* — and a sweep whose whole subject is rails
-        // nobody has watched fire is the last place to stop looking at the first obstacle.
-        //
-        // The two outcomes stay distinguishable, per `../.portulan/memory/verify-preconditions-fail-closed.md`:
-        // a **finding** is a rail that did not fire, and a **could-not-run** is a rail whose verdict
-        // could not be formed. Both are printed; a single could-not-run makes the whole run exit 2,
-        // because a set that was not fully judged has not been judged.
         const unjudged = [];
         for (const drill of selected) {
             const rail = byId.get(drill.rail);
-            // `check` above has already refused a drill naming an undeclared rail, so this cannot be hit
-            // through the CLI — it is the guard that keeps that true if the two ever drift.
             if (!rail) throw new CouldNotRun(`rail \`${drill.rail}\` is not in the yielded set nor declared`);
             try {
                 const finding = drillOne({ drill, rail, repoRoot, sha: tree.sha, say, workspaceRel });
@@ -1561,10 +1092,7 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
     }
 }
 
-// The entry guard, in the ONE form `./rule-carriers.mjs` designates. `file://${argv[1]}` is NOT that
-// form: `import.meta.url` percent-encodes, this working copy lives under a path with spaces, and the
-// comparison fails — so the tool exits 0 having run nothing. Copied rather than re-derived, for the
-// reason `./goldens.mjs` states after meeting the false green a third time.
+// Not `file://${argv[1]}`: `import.meta.url` percent-encodes, so a path with a space would never match.
 function isMain() {
     const invoked = process.argv[1];
     if (!invoked) return false;

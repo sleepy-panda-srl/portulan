@@ -1,66 +1,11 @@
 #!/usr/bin/env node
-// What a change spends, measured — the ledger proposal `0038` names.
+// What a change spends, measured from the host's own usage records.
 //
 //   node cli/ledger.mjs [--branch <name>] [--repo <dir>] [--base <ref>] [--projects <dir>] [--config <file>]
 //       [--workspace <dir>]
 //   node cli/ledger.mjs --fixture <dir>
 //
-// `0036` prices one context's prefix. Nothing priced how many times it is re-read, how many times it is
-// written again, or what a change came to in the end — and the one number a host shows, the hit rate,
-// does not bound spend: session length does. This reads the host's own usage records and prints, for one
-// change (a branch), what it spent: requests, tokens by class, the contexts it opened, its largest
-// context, its hit rate, the rebuilds and what caused each, and tokens per changed line (`0038`, rule 1).
-//
-// ## Numbers only, local only, and never inside a recipe
-//
-// It reads each record's usage and the few fields that attribute it — message id, model, effort, branch,
-// working directory, time — and nothing a context said: a line is parsed only when it carries a usage
-// object or a compaction boundary, and no content field is read, kept or printed. It makes no network
-// call. **It never runs inside a recipe** (`0038`, ruling 4): host records differ per machine, so a rail on
-// them would be red on one machine and green on the next. What a recipe runs is `--fixture`, which reads
-// the committed synthetic records under `./fixtures/ledger/` and nothing of the host's, and fails when
-// they no longer reproduce their known totals.
-//
-// ## The host's format, pinned where it was measured
-//
-// Claude Code keeps one transcript per session, `<config>/projects/<key>/<session>.jsonl`, and one per
-// subagent under `<session>/subagents/`, where `<config>` is `CLAUDE_CONFIG_DIR` or `~/.claude` and `<key>`
-// is the session's working directory with every character outside `[a-zA-Z0-9]` replaced by `-`, cut at
-// 200 with a hash of the whole path appended past that. The format is **undocumented**: it was read here
-// on host version 2.1.280, and the fixture is what turns a change in it into a red rather than a quiet
-// move in every figure. **The host writes one record per content block**, each carrying the whole
-// request's usage — 59 records for 24 requests when `0038` was drafted, 33 for 17 when this was built —
-// so a request is counted once per message id, with each count the largest its records carry.
-//
-// ## A rebuild, and what caused it
-//
-// A request is a rebuild when it wrote again at least `MISS_TOKENS`, and more than `MISS_PERCENT` of its
-// context, that the request before it had in cache — the threshold the host's own `/usage` uses for a
-// miss. The cause is read from the records around it, in this order: a compaction boundary between the
-// two, a model change, an effort change, or a gap longer than the lifetime of the writes before it; with
-// none of those it is `unexplained`, which is the host pruning history, a tool list changing, or an
-// eviction the records do not name.
-//
-// ## The restart threshold
-//
-// `C* ≈ F × (1 + m_w / (n × m_r))`, `0038`'s arithmetic: past it, continuing `n` more requests costs more
-// in reads than one write of a fresh context `F`. `F` here is the session's first request after its last
-// compaction, which is the host's floor and the always tier as the host sent them. It leaves out the
-// handoff and what a new session re-reads to orient itself, so the threshold errs toward an earlier line,
-// the direction ruling 2 chose to err in for the multipliers; a restart that finds its floor still in the
-// directory's shared cache pulls the other way. The multipliers are the manifest's to declare (`0038`,
-// ruling 2), and so is the horizon: `spend`, since Workspace Definition 2.12, which `--workspace <dir>` reads
-// from `<dir>/workspace.json`, the declared write taken at the lifetime the host recorded. Without the flag,
-// or where the manifest declares no `spend`, every figure here says `undeclared` and uses the general ones:
-// reads at a tenth of input, and writes at the lifetime the host recorded, 1.25× for five minutes and 2× for
-// an hour; and the horizon is 20 requests (ruling 3). `./advisory.mjs` is the one line this threshold feeds,
-// with the next tool result or at the next prompt, and in the status line, from the same running figures,
-// and it takes the declared ones from the flags `./compile.mjs` writes onto its commands.
-//
-// Exit 0 a report · 1 `--fixture` only: the fixture no longer reproduces its known totals · 2 could not run:
-// an argument, a records directory or file that could not be read, a fixture missing, or a manifest named by
-// `--workspace` that could not be read or whose `spend` is refused, or a threshold its figures carry past the
-// largest number.
+// Exit 0 a report · 1 `--fixture` no longer reproduces its known totals · 2 could not run.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -70,24 +15,22 @@ import { pathToFileURL } from "node:url";
 
 import { isInside } from "./inside.mjs";
 
-/** The general read multiplier: `0038`'s cache reads cost *between a fortieth and a tenth*, and the tenth errs early, which ruling 2 found the cheaper way to err. */
+/** Cache reads cost between a fortieth and a tenth of input; the tenth errs toward an earlier restart. */
 export const GENERAL_READ = 0.1;
 
-/** The write multiplier by the cache lifetime the host recorded, from the price list `0038` cites. */
 export const WRITE_BY_LIFETIME = { "5m": 1.25, "1h": 2 };
 
-/** A lifetime the records do not state is taken as the API's default, five minutes. */
+/** The API's default, for a lifetime the records do not state. */
 export const DEFAULT_LIFETIME = "5m";
 
 export const LIFETIME_MS = { "5m": 5 * 60 * 1000, "1h": 60 * 60 * 1000 };
 
-/** Requests still to go when the threshold is judged — `0038`'s ruling 3, where the manifest's `spend.horizon` declares no other. */
+/** Requests still to go when the threshold is judged, where `spend.horizon` declares none. */
 export const HORIZON = 20;
 
-/** A rebuild wrote again at least this many tokens the request before it had in cache… */
+/** With `MISS_PERCENT`, the host's own `/usage` definition of a cache miss. */
 export const MISS_TOKENS = 2000;
 
-/** …and more than this share of its context: the host's own definition of a miss. */
 export const MISS_PERCENT = 5;
 
 /** Where the host cuts a project key and appends a hash of the whole path. */
@@ -109,12 +52,6 @@ const count = (v) => (Number.isSafeInteger(v) && v > 0 ? v : 0);
 
 const text = (v) => (typeof v === "string" && v !== "" ? v : null);
 
-/**
- * The host's configuration home, its transcripts, and the file holding its own per-project totals, or why
- * there is no default. The host takes a relative `CLAUDE_CONFIG_DIR` as it stands, so from the directory
- * it was started in, which a later reader cannot know: that is a reason to name both paths, never a
- * reason to read `~/.claude` in its place.
- */
 export function hostPaths(env = process.env, home = os.homedir()) {
     const configDir = text(env.CLAUDE_CONFIG_DIR);
     if (configDir !== null && !path.isAbsolute(configDir)) {
@@ -139,25 +76,21 @@ export function projectKey(dir) {
     return key.length <= KEY_LIMIT ? key : `${key.slice(0, KEY_LIMIT)}-${Math.abs(hostHash(dir)).toString(36)}`;
 }
 
-/**
- * Could this project directory hold sessions started in `root` or below it? A pre-filter only: the key
- * of `/work/demo` is a prefix of `/work/demo-old`'s too, so what decides is each record's own `cwd`.
- */
+/** A pre-filter only: `/work/demo`'s key prefixes `/work/demo-old`'s, so each record's `cwd` decides. */
 export function mayHold(name, root) {
     const key = root.replace(/[^a-zA-Z0-9]/g, "-");
     const stem = key.length <= KEY_LIMIT ? key : key.slice(0, KEY_LIMIT);
     return name === projectKey(root) || name.startsWith(`${stem}-`);
 }
 
-/** One request from one record, or null for a record that is not an API response with usage. */
+/** null for a record that is not an API response with usage; no content field is ever read. */
 function requestOf(record) {
     if (record === null || typeof record !== "object" || record.type !== "assistant") return null;
     const message = record.message;
     if (message === null || typeof message !== "object") return null;
     const usage = message.usage;
     if (usage === null || typeof usage !== "object") return null;
-    // The host writes records of its own under this model — an interruption, an API error — and no
-    // request stands behind them.
+    // The host's own records, an interruption or an API error, with no request behind them.
     if (message.model === "<synthetic>") return { synthetic: true };
     const lifetimes = usage.cache_creation !== null && typeof usage.cache_creation === "object" ? usage.cache_creation : {};
     const written1h = count(lifetimes.ephemeral_1h_input_tokens);
@@ -185,16 +118,8 @@ export const contextOf = (r) => r.uncached + r.written1h + r.written5m + r.writt
 
 const writtenOf = (r) => r.written1h + r.written5m + r.writtenUnknown;
 
-/** The context a record belongs to: the session's own, or a subagent's, by its id. */
 const chainOf = (r) => (r.sidechain ? `agent:${r.agent ?? ""}` : "session");
 
-/**
- * What one line of a transcript is to the ledger: `{ request }`, `{ boundary: true, sidechain, agent }` for
- * a compaction boundary and the context it compacted, `{ malformed: true }` for a line that does not parse,
- * or null for anything else. A line is parsed only when it carries a usage object's key or the boundary's
- * subtype, and a match inside content is escaped there, so a prompt quoting either is passed over once
- * parsed.
- */
 export function readLine(line) {
     const usageLike = line.includes('"usage":');
     const boundaryLike = line.includes('"compact_boundary"');
@@ -212,20 +137,14 @@ export function readLine(line) {
     return request === null ? null : { request };
 }
 
-/**
- * Read one transcript: its requests in the order the host wrote them, one per message id, each marked
- * `compacted` where a compaction boundary comes before it, and the session's running `figures`. Throws
- * what `fs` throws; the caller decides what an unreadable transcript means.
- */
+/** Claude Code 2.1.280, undocumented: one record per content block, so one request per message id. */
 export function readTranscript(file) {
     const source = fs.readFileSync(file, "utf8");
     const byId = new Map();
     const requests = [];
     const tally = { records: 0, duplicates: 0, malformed: 0, synthetic: 0, compactions: 0 };
     const figures = sessionFigures();
-    // The contexts a boundary has compacted and no request has run in since. A subagent's own transcript
-    // writes every record as a sidechain, its boundaries too, so a boundary marks the next request of its
-    // own context: a subagent's compaction is never the session's.
+    // Compacted contexts awaiting their next request, by chain, so a subagent's compaction is never the session's.
     const awaiting = new Set();
     for (const line of source.split("\n")) {
         const read = readLine(line);
@@ -249,8 +168,7 @@ export function readTranscript(file) {
         }
         const prior = request.id === null ? undefined : byId.get(request.id);
         if (prior !== undefined) {
-            // One request, written again for its next content block. The input side repeats; the output
-            // count may have grown, so each class keeps the largest any of its records carried.
+            // The host writes a request again per content block, and its output count may grow: keep each largest.
             tally.duplicates += 1;
             for (const c of CLASSES) prior[c] = Math.max(prior[c], request[c]);
             continue;
@@ -268,7 +186,6 @@ function lifetimeOf(r) {
     return r.written1h >= r.written5m ? "1h" : "5m";
 }
 
-/** Mark every rebuild in one context's requests, in place, with the tokens written again and its cause. */
 export function markRebuilds(requests) {
     let lifetime = DEFAULT_LIFETIME;
     for (let i = 0; i < requests.length; i += 1) {
@@ -277,11 +194,11 @@ export function markRebuilds(requests) {
         if (i > 0) {
             const before = requests[i - 1];
             const context = contextOf(r);
-            // What this request could have read: the prefix the request before it left in cache, as far
-            // as this request still carries it. A context that shrank carries less of it.
+            // What it could have read: the prefix left in cache, as far as a context that shrank still carries it.
             const missed = Math.min(contextOf(before), context) - r.read;
             if (missed >= MISS_TOKENS && missed * 100 > context * MISS_PERCENT) {
                 const gap = r.at !== null && before.at !== null ? r.at - before.at : null;
+                // Unexplained: pruned history, a changed tool list or an eviction, none of which the records name.
                 let cause = "unexplained";
                 if (r.compacted) cause = "compaction";
                 else if (before.model !== null && r.model !== null && before.model !== r.model) cause = "model change";
@@ -295,29 +212,14 @@ export function markRebuilds(requests) {
     return requests;
 }
 
-/** How many of a session's latest request ids its running figures remember, to pass over their repeats. */
+/** Latest request ids remembered to pass over repeats: the host writes a request's blocks back to back. */
 const RECENT = 16;
 
-/**
- * The running figures one session's restart threshold is computed from: its compactions, whether the
- * last has no request after it yet, the fresh context and its write lifetime, the latest lifetime named,
- * the latest context, and the ids of its latest requests; and how many requests the session has made,
- * compactions or not, which the advisory reports beside the threshold (`0038`, rule 1: a change is priced
- * by its requests, and every request re-reads the context). **One fold, two readers**: `readTranscript`
- * folds a whole transcript into them, and `./advisory.mjs` keeps them between calls and folds in only
- * the lines a transcript gained since, so what the advisory says and what the ledger prints cannot part.
- * Every field is a number, a string, a boolean or null, so they survive a round trip through JSON.
- */
+/** Every field JSON-safe: `./advisory.mjs` keeps these between calls and folds in only the lines since. */
 export function sessionFigures() {
     return { compactions: 0, pending: false, fresh: null, freshLifetime: null, lifetime: null, last: null, requests: 0, recent: [] };
 }
 
-/**
- * Fold one read line into a session's running figures, in place. A subagent's request or compaction
- * written inline is not the session's context, and a request's next content block repeats its input
- * counts, so a repeat of one of the latest ids is passed over: the host writes a request's blocks one
- * after another.
- */
 export function foldFigures(figures, read) {
     if (read.boundary) {
         if (read.sidechain) return figures;
@@ -345,55 +247,30 @@ export function foldFigures(figures, read) {
     return figures;
 }
 
-/**
- * What each figure of a workspace's `spend` may be (Workspace Definition 2.12, `0038`'s ruling 2): a cache
- * read costs more than nothing, since the threshold divides by it, and at most an uncached input token; a
- * cache write costs at least one; and the horizon is a whole number of requests. One table, read by
- * `readSpend` here and by `./advisory.mjs`, which takes the same figures back from the flags `./compile.mjs`
- * writes onto its commands. Each test is the one `./doctor.mjs` applies to the same key, the horizon's
- * included, which is `Number.isInteger` there as for every positive integer it checks, so a manifest
- * `doctor` passes is one these readers take.
- */
+/** Each test is the one `./doctor.mjs` applies to the same key, so a manifest `doctor` passes is one these take. */
 export const SPEND_FIGURES = {
     read: { holds: (v) => Number.isFinite(v) && v > 0 && v <= 1, is: "a number above 0 and at most 1" },
     write: { holds: (v) => Number.isFinite(v) && v >= 1, is: "a number of at least 1" },
     requests: { holds: (v) => Number.isInteger(v) && v > 0, is: "a positive integer" },
 };
 
-/**
- * What a crossed restart threshold does (Workspace Definition 2.13): `"advise"` says the line, as an undeclared
- * workspace's advisory does, and `"block"` also holds the turn's end once.
- */
+/** What a crossed restart threshold does: `"advise"` says the line; `"block"` also holds the turn's end once. */
 export const RESTARTS = ["advise", "block"];
 
-/**
- * The write, `"5m"` or `"1h"`, that the read divides past the largest number, or null. The restart threshold
- * divides each write by the horizon times the read, so figures each in its range can still give no threshold:
- * a read near zero under a write near the largest number overflows to Infinity, a line no session reaches. A
- * horizon is at least 1, so a write the read divides finitely gives a finite quotient at every horizon.
- */
 export function overflowingWrite({ read, write }) {
     return ["5m", "1h"].find((at) => !Number.isFinite(write[at] / read)) ?? null;
 }
 
-/**
- * A manifest's `spend`, read: `{ multipliers, horizon, restart }`, each null where it is undeclared, and all
- * three null where `spend` is. `where` names the manifest in a refusal. **Refused at the first fault, in any
- * shape the schema refuses, any figure out of its range, or a pair that gives no finite threshold**, because
- * every threshold the ledger prints and the advisory says is priced by it, and neither reader may depend on
- * `doctor` having been run: `./compile.mjs` writes what this returns into the settings the host reads, and
- * `--workspace` prints by it.
- */
+/** Each part null where undeclared; throws at the first fault, since no reader may rely on `doctor` having run. */
 export function readSpend(value, where) {
     if (value === undefined) return { multipliers: null, horizon: null, restart: null };
     const refuse = (what) => new LedgerError(`\`spend\` in ${where} ${what}; ../spec/slots.md gives its shape, and \`doctor\` names every finding`);
     const code = (key) => `\`${key}\``;
-    // An object of `keys` and no other, holding every one of them where `whole` says it must.
-    const shaped = (v, at, keys, whole) => {
+    const shaped = (v, at, keys, allRequired) => {
         if (v === null || typeof v !== "object" || Array.isArray(v)) throw refuse(`${at}is not an object`);
         const stray = Object.keys(v).find((key) => !keys.includes(key));
         if (stray !== undefined) throw refuse(`${at}names ${code(stray)}, which is ${keys.length === 1 ? `not ${code(keys[0])}` : `neither ${keys.map(code).join(" nor ")}`}`);
-        const missing = whole ? keys.find((key) => !Object.hasOwn(v, key)) : undefined;
+        const missing = allRequired ? keys.find((key) => !Object.hasOwn(v, key)) : undefined;
         if (missing !== undefined) throw refuse(`${at}has no ${code(missing)}, which it needs`);
         return v;
     };
@@ -416,11 +293,6 @@ export function readSpend(value, where) {
     return { multipliers, horizon, restart: value.restart ?? null };
 }
 
-/**
- * The multipliers a threshold is computed at, and where each came from. Declared or general, the write is
- * the one for the lifetime the host recorded, else the default's: a declaration prices both lifetimes, and
- * the records say which one the fresh context was written at.
- */
 export function multipliers({ declared = null, lifetime = null } = {}) {
     const recorded = lifetime !== null && lifetime in WRITE_BY_LIFETIME;
     const at = recorded ? lifetime : DEFAULT_LIFETIME;
@@ -432,12 +304,10 @@ export function multipliers({ declared = null, lifetime = null } = {}) {
 export function restartThreshold({ fresh, write, read, horizon = HORIZON }) {
     if (!(fresh > 0 && write > 0 && read > 0 && horizon > 0)) throw new LedgerError("a restart threshold needs a fresh context, both multipliers and a horizon, each above zero");
     const threshold = Math.round(fresh * (1 + write / (horizon * read)));
-    // Figures a declaration may hold can still overflow with a fresh context, and a line at Infinity is none.
     if (!Number.isFinite(threshold)) throw new LedgerError(`the restart threshold ${fresh} × (1 + ${write} / (${horizon} × ${read})) overflows, so these multipliers give none`);
     return threshold;
 }
 
-/** The words that say which multipliers a figure assumed, and which lifetime its write was taken at. */
 export function describeMultipliers(m) {
     const lifetime = m.lifetime === "1h" ? "one-hour" : "five-minute";
     const at = m.recorded ? `the ${lifetime} writes the host recorded` : `a ${lifetime} write, the lifetime the records did not state`;
@@ -445,10 +315,7 @@ export function describeMultipliers(m) {
     return `multipliers undeclared: the general read ${m.read}× and the ${m.write}× of ${at}`;
 }
 
-/**
- * The threshold a session's running figures give, or null where no request is recorded yet, or none since
- * its last compaction: until then the context the figures hold is the one the compaction replaced.
- */
+/** null with no request yet, or none since the last compaction: the context held is the one it replaced. */
 export function figureOf(figures, { declared = null, horizon = HORIZON } = {}) {
     if (figures.fresh === null || figures.pending || figures.fresh === 0) return null;
     const m = multipliers({ declared, lifetime: figures.freshLifetime ?? figures.lifetime });
@@ -456,7 +323,6 @@ export function figureOf(figures, { declared = null, horizon = HORIZON } = {}) {
     return { fresh: figures.fresh, context: figures.last, threshold, horizon, multipliers: m, compactions: figures.compactions, requests: figures.requests };
 }
 
-/** The threshold for one read transcript, or null where it has none yet. */
 export function thresholdFor(transcript, options = {}) {
     return figureOf(transcript.figures, options);
 }
@@ -481,7 +347,6 @@ function subagentFiles(dir) {
     return found.sort();
 }
 
-/** The transcripts that may hold sessions run in any of `roots`: each session's, then its subagents'. */
 export function transcriptFiles(projects, roots) {
     const files = [];
     if (fs.existsSync(projects) && !fs.statSync(projects).isDirectory()) throw new LedgerError(`${projects} is not a directory, so no transcript could be read from it`);
@@ -505,12 +370,7 @@ export function transcriptFiles(projects, roots) {
 
 const insideAny = (cwd, roots) => cwd !== null && roots.some((root) => isInside(root, cwd));
 
-/**
- * Read every transcript that may hold sessions run in `roots`, and keep the requests whose own working
- * directory is inside one of them. Each context's rebuilds are marked over all its requests, before any
- * branch is chosen, so a rebuild at a branch switch lands on the branch it happened on, and before any
- * copy is passed over, so the request after a copied one is judged against the prefix it continued from.
- */
+/** Rebuilds are marked over each context whole, before a branch is chosen or a copied request passed over. */
 export function collect({ projects, roots }) {
     const contexts = [];
     const tally = { files: 0, records: 0, duplicates: 0, malformed: 0, synthetic: 0 };
@@ -524,8 +384,7 @@ export function collect({ projects, roots }) {
         }
         tally.files += 1;
         for (const k of ["records", "duplicates", "malformed", "synthetic"]) tally[k] += transcript[k];
-        // A subagent's own transcript is its context whole. In a session's, a sidechain written inline,
-        // as earlier hosts did, is a subagent's context and not the session's, one per agent id.
+        // Earlier hosts wrote a subagent's requests inline, as sidechains: each agent id is a context of its own.
         const parts = new Map();
         for (const r of transcript.requests) {
             const agent = entry.agent ?? (r.sidechain ? `inline:${r.agent ?? "unnamed"}` : null);
@@ -534,8 +393,7 @@ export function collect({ projects, roots }) {
         }
         for (const [agent, requests] of parts) {
             markRebuilds(requests);
-            // A request copied into a second transcript is still one request, counted in the first that
-            // keeps it. A copy outside the roots is not kept, so it passes over no copy inside them.
+            // A request copied into a second transcript counts once, in the first that keeps it.
             const inside = requests.filter((r) => insideAny(r.cwd, roots));
             const kept = inside.filter((r) => r.id === null || !seen.has(r.id));
             for (const r of kept) if (r.id !== null) seen.add(r.id);
@@ -548,7 +406,6 @@ export function collect({ projects, roots }) {
 
 const zero = () => ({ requests: 0, uncached: 0, written1h: 0, written5m: 0, writtenUnknown: 0, read: 0, output: 0 });
 
-/** What one branch spent, main sessions and subagents apart. */
 export function tally(contexts, branch) {
     const main = zero();
     const subagents = zero();
@@ -594,7 +451,6 @@ export function tally(contexts, branch) {
     };
 }
 
-/** Every session's totals, main and subagents together and every branch, for the host-totals comparison. */
 function sessionTotals(contexts) {
     const by = new Map();
     for (const c of contexts) {
@@ -608,10 +464,7 @@ function sessionTotals(contexts) {
     return by;
 }
 
-/**
- * The host's own totals for the last session it ran in each root: the `lastTotal*` counters it saves per
- * project in its global configuration. Numbers and the session id only; nothing else there is read.
- */
+/** The `lastTotal*` counters the host saves per project for its last session; nothing else there is read. */
 export function hostTotals(config, roots) {
     let parsed;
     try {
@@ -656,11 +509,7 @@ function git(repo, args) {
     return execFileSync("git", ["-C", repo, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
-/**
- * The repository's worktrees, the main one first; null where `repo` is not inside a git repository, which
- * is where no `.git` is in it or above it. Where one is and git cannot list them, the run cannot either: a
- * report of the one directory would read as the whole repository's.
- */
+/** The main one first; null outside a git repository. */
 export function worktrees(repo) {
     let listing;
     try {
@@ -706,7 +555,6 @@ export function linesChanged(repo, branch, base = null) {
     }
 }
 
-/** The latest main session on the branch, by the time of its last request. */
 function latestSession(contexts, branch) {
     let latest = null;
     for (const c of contexts) {
@@ -719,10 +567,6 @@ function latestSession(contexts, branch) {
     return latest?.context ?? null;
 }
 
-/**
- * The whole report for one branch, as figures; `print` turns it into lines. `spend` is what `readSpend`
- * gives, and every threshold the report computes is priced by it.
- */
 export function ledger({ projects, config, roots, branch, lines = null, spend = { multipliers: null, horizon: null } }) {
     const collected = collect({ projects, roots });
     const figures = tally(collected.contexts, branch);
@@ -737,10 +581,6 @@ const signed = (n) => (n > 0 ? `+${grouped(n)}` : n < 0 ? `−${grouped(-n)}` : 
 
 const short = (id) => id.slice(0, 8);
 
-/**
- * The restart line of a report with no threshold to judge. It still says the horizon and the multipliers a
- * threshold would take, so a declaration `--workspace` read is said where no request is recorded.
- */
 function unjudged({ declared, horizon } = { declared: null, horizon: HORIZON }) {
     const m = declared ?? { read: GENERAL_READ, write: WRITE_BY_LIFETIME };
     return (
@@ -829,11 +669,6 @@ export function pinned(report) {
     };
 }
 
-/**
- * A path the person named, which must be what it is named as. The host's own defaults may be absent — a
- * machine where the host never ran has no records, and that is a report of none — but a named directory
- * that is missing or a file would read as "0 transcripts" about a place nothing was read from.
- */
 function named(cwd, value, flag, kind) {
     const full = path.resolve(cwd, value);
     let stat;
@@ -846,11 +681,6 @@ function named(cwd, value, flag, kind) {
     return full;
 }
 
-/**
- * The `spend` of the manifest in a directory `--workspace` names. A manifest that cannot be read or parsed
- * is could-not-run, as a named records directory that is not one is: read as declaring nothing, every
- * figure would say `undeclared` of a workspace that may declare them.
- */
 function workspaceSpend(dir) {
     const file = path.join(dir, "workspace.json");
     let manifest;
@@ -881,7 +711,6 @@ function parseArgs(argv) {
     return options;
 }
 
-/** Run the fixture: its records, its config, its roots and branch, and the known totals it carries. */
 function runFixture(dir, say) {
     let spec;
     try {
@@ -894,8 +723,6 @@ function runFixture(dir, say) {
     if (!roots || typeof spec.branch !== "string" || spec.branch === "" || !expect) {
         throw new LedgerError(`${path.join(dir, "fixture.json")} does not carry roots as absolute paths, a branch and the known totals to expect`);
     }
-    // The fixture names its records and its totals file by being a fixture, so either missing is
-    // could-not-run: read as none, it would say the reader no longer reproduces totals nothing was read for.
     const report = ledger({ projects: named(dir, "projects", "--fixture", "directory"), config: named(dir, "claude.json", "--fixture", "file"), roots: spec.roots, branch: spec.branch });
     print(report, say);
     const got = pinned(report);
@@ -913,7 +740,6 @@ export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { e
     try {
         const options = parseArgs(argv);
         if (options.fixture !== null) return runFixture(path.resolve(cwd, options.fixture), say);
-        // Before any record is read, so a refused declaration costs no walk of the host's transcripts.
         const spend = options.workspace === null ? undefined : workspaceSpend(named(cwd, options.workspace, "--workspace", "directory"));
         const host = hostPaths(env, home);
         if (host.why !== undefined && (options.projects === null || options.config === null)) throw new LedgerError(host.why);
@@ -942,8 +768,7 @@ export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { e
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-    // 1 is `--fixture`'s verdict, so anything unhandled is 2: a crash is a defect in the ledger, never a
-    // figure. `process.exitCode`, not `process.exit`, so a pipe that has not drained is not cut.
+    // `process.exitCode`, not `process.exit`, so a pipe that has not drained is not cut.
     try {
         process.exitCode = run(process.argv.slice(2));
     } catch (cause) {

@@ -1,136 +1,7 @@
 #!/usr/bin/env node
-// The review-loop meter — the three figures that bound this repository's review loop, derived
-// instead of counted by hand.
+// The review-loop meter: the figures that bound this repository's review loop, derived from its reviews.
 //
-// Milestone 8, clause (c): *review-loop metering in the telemetry clause — rounds per pull request,
-// pushes per round, empty-round rate.* The argument for the clause is in
-// `../docs/milestones/m08.md`; what belongs here is what each figure IS, which of them the API can
-// answer, and — at more length than is comfortable — which of them it cannot.
-//
-// ## Why this tool exists at all
-//
-// `../.portulan/memory/a-review-loop-needs-a-bound.md` bounds the loop on a table of figures — 110
-// submissions over 30 pull requests, 29% of them finding nothing — every one of which was counted by
-// hand on 2026-07-28. That record says of itself, in its own *Why it holds* section, **"Nothing
-// checks it — discipline, not a rail"**, citing
-// `../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md`. The 2026-07-28 amendment
-// answers it in as many words: *"the telemetry clause is where that checker's home is, and naming the
-// home is what this amendment does rather than claiming the checker exists."* This file is that
-// checker arriving at the home the amendment named.
-//
-// A hand-counted figure whose subject keeps growing is this repository's most-repeated defect — it
-// has now been repaired in the recipe counts of `../.portulan/repos/portulan.md`, the CLI roster of
-// `./README.md`, and the operator total in `../evals/README.md`, each time the same way: **delete the
-// tally and name the command that derives it.** The loop's figures are the last hand-maintained set
-// of any consequence, and they are the ones a rule leans on.
-//
-// ## The word "round" moved, and the criterion predates the move
-//
-// This is the first thing to settle, because two of the criterion's three figures are named in a unit
-// that was redefined after the criterion was written, and reading them in today's unit yields a
-// different tool.
-//
-// The criterion was written **2026-07-28**. On **2026-07-30** the maintainer defined a round as *a
-// Copilot review the working session answers with a push*
-// (`../.portulan/handoffs/2026-07-30-a-round-gets-its-definition.md`), and the rule's table was
-// **re-labelled, not re-counted**: its figures had always counted **submissions** — every review
-// Copilot submits, one per push under `review_on_push: true`, including on the branch as opened —
-// and the table's own units note says so. The rule's `Retire when:` line settles it beyond argument,
-// naming its threshold in *"the submission units of the table above, **not fix-rounds**"*.
-//
-// So the criterion's *"rounds per pull request"* is **submissions per pull request**, and that is
-// what this tool computes under that name. It never prints the bare word "rounds" for a figure,
-// because the word has meant two things here and a figure whose unit is ambiguous is the exact defect
-// #119 was opened to repair.
-//
-// ## What the API can answer, and the one thing it cannot
-//
-// **Submissions: exactly.** A review on `/pulls/N/reviews` whose author is the reviewer. Two traps,
-// both measured on this repository rather than reasoned about:
-//
-//   * **One actor, two logins.** `copilot-pull-request-reviewer[bot]` on `/reviews`, plain `Copilot`
-//     on `/pulls/N/comments`; a filter on either returns zero from the other, which is how #105's
-//     count was first mis-measured as zero. Matching is therefore a case-insensitive prefix over both
-//     surfaces, never an equality against one spelling.
-//   * **Our own reviews are on that endpoint too.** The agent identity's replies and derived verdicts
-//     are submitted as REVIEWS, so an unfiltered count is inflated by our own traffic: **at merge,
-//     seven of #105's fifteen review objects are `portulan-agent[bot]`, and ninety of #342's hundred
-//     and two.** Both figures are stamped *at merge* on purpose — the pre-commit checkpoint measured
-//     them and found this file carrying *six of fifteen* and *seventy-four of eighty-one*, which were
-//     the counts **mid-loop** (74/81 was true at 17:58:40Z on #342, which merged at 18:49:40Z). A
-//     hand-counted figure about a subject still growing is the exact defect this whole tool exists to
-//     retire, reproduced inside the fix for it.
-//     That is also why every read here is **paginated** — page 1 of a busy pull request is measurably
-//     stale, and on #342 page 1 carries three reviewer entries while the one on head is the twelfth.
-//
-// **Pushes: as a floor.** Under `review_on_push: true` each push draws one submission, so the
-// distinct heads the reviewer judged are the pushes it saw. It is a floor rather than a count,
-// because a push that drew no review — the ruleset not requesting one, a review still in flight at
-// merge — leaves no trace here, and a force-push destroys the commits it replaced. Printed as a floor
-// and never as a total.
-//
-// **Fix-rounds: NOT AT ALL, and this is the finding rather than a gap to apologise for.** A fix-round
-// is a push that *answers* a submission, and whether a push answers one is a fact about its contents.
-// Two measured demonstrations, both from the pull request that produced the definition:
-//
-//   * On #105, `08d7d10` answered review 4's inline finding and **was never a reviewed head** — it
-//     rode inside the next push. Enumerating heads cannot see it. The 2026-07-30 ruling states the
-//     method that can: *"Count pushes, then look inside each one."*
-//   * Also on #105, the push at `cff3e4e0` follows a submission whose body ran to 4,087 bytes and
-//     answers none of it — it carried records. A rule keyed on *"a finding-bearing submission
-//     preceded this push"* calls that a fix-round; the maintainer's table calls it *no*.
-//
-// So this tool does not compute fix-rounds, does not estimate them, and does not print a figure that
-// could be mistaken for them. The criterion's *"pushes per round"* is reported in the one unit
-// available without adjudication — **pushes per finding-bearing submission** — under that name, with
-// the difference stated in the output rather than left for a reader to assume away.
-//
-// ## The empty-round rate is reported as a BOUND, and the reason is a layering rule
-//
-// The rule's table counts submissions that found **nothing at all**. Finding nothing has two halves:
-// no inline comment thread, *and* no suppressed low-confidence note in the review body. The first
-// half is structural and this tool computes it exactly. The second was decided by a matcher, the awk
-// in `copilot-review.yml`, deliberately reduced to **one** carrier, and that carrier was a
-// workspace-layer gate while this file is engine. The workflow and its fixtures in
-// `../.portulan/verify/workflow-filters.mjs` were removed on 2026-09-23, so nothing in the tree decides
-// the second half now. The matcher's last version:
-// https://github.com/sleepy-panda-srl/portulan/blob/74a2a315c8c2641736eea6d87be3c2fba83827a5/.github/workflows/copilot-review.yml
-//
-// Re-implementing it here would have put a second spelling of one rule on the other side of the
-// engine/workspace boundary, where neither could see the other drift. That is this repository's
-// signature defect and `../.portulan/proposals/0027` exists to refuse it. So the tool reports what it
-// can compute exactly and names the relation:
-//
-//     submissions that found nothing  ≤  submissions with no inline comment
-//
-// The right-hand side is what this prints, under its own name, as an **upper bound**.
-//
-// **What the layering rule does NOT establish is that the exact rate is out of reach**, and saying so
-// is the difference between a limit and an excuse. Until 2026-09-23 the tree held a lift-and-run
-// consumer of these very programs: `../.portulan/verify/workflow-filters.mjs` extracts each
-// single-quoted awk program out of a workflow's parsed `run:` scalars and executes it through the real
-// `awk`. `--fetch` already spawns, so a body could have been piped through the **lifted** program at
-// capture time and stored as one integer — no second spelling, and still no bodies in the snapshot.
-// That was the closing move, a workspace-side consumer rather than a copy, and it was **not built here
-// for budget** (one clause, one session) rather than because the boundary forbids it. Tracked as
-// https://github.com/sleepy-panda-srl/portulan/issues/355 — filed, and the number is here because
-// "filed rather than built" naming no filing is a claim in the past tense about an issue that does
-// not exist, which this repository has already shipped once. Since 2026-09-23 there is no program left
-// to lift: the matcher went with its workflow.
-//
-// ## What this tool is NOT
-//
-// **It is a meter, not a bound.** Rule 4 of the record above stops a loop at two fix-rounds; nothing
-// here stops anything. The record's own honest-limits section already says the judgement it depends
-// on is the interested party's about its own work, and a tool that reports after the merge does not
-// change that. Nor does it adjudicate rule 4's **sibling** exemption, which is a judgement about
-// whether one finding's governing rule was already enforced at another site — so *rounds past the
-// bound* is not computable and is not claimed.
-//
-// **It reports on a snapshot, never on the network.** The computation takes data and the fetch is a
-// separate mode, for the reason `./goldens.mjs` takes fixtures: a figure a verify recipe rails must be
-// re-derivable from the tree, on a machine with no token and no network, and must not move because
-// GitHub was slow. `--fetch` is the only mode that talks to anything.
+// Fix-rounds are not derivable from the API: whether a push answers a submission is a fact about its contents.
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -139,27 +10,20 @@ import { pathToFileURL } from "node:url";
 
 export const SNAPSHOT_VERSION = "1";
 
-// The reviewer's identity is a PREFIX over a lowercased login, never an equality. Both observed
-// spellings — `copilot-pull-request-reviewer[bot]` and `Copilot` — start with it, and a third
-// spelling of the same actor would too. The cost of the looser test is that a human login beginning
-// "copilot" would be counted; the cost of the tighter one was a whole round read as missing (#154).
+// A prefix, not an equality: the reviewer is `copilot-pull-request-reviewer[bot]` on reviews and `Copilot` on comments.
 export const REVIEWER_PREFIX = "copilot";
 
-// The threshold the record names for its own retirement: *submissions-per-pull-request measures below
-// 2.0 for a full milestone*. Carried here as a number so the tool can say which side of it a window
-// falls on; the record remains the authority on what crossing it means.
+// The review-loop rule retires once submissions per pull request stay below this for a full milestone.
 export const RETIRE_THRESHOLD = 2.0;
 
 const isReviewer = (login) =>
     typeof login === "string" && login.toLowerCase().startsWith(REVIEWER_PREFIX);
 
 // ---------------------------------------------------------------------------------------------
-// The computation. Everything below takes a snapshot object and returns numbers; nothing here reads
-// a file, runs a process, or knows what year it is.
+// The computation: pure, a snapshot in and numbers out
 // ---------------------------------------------------------------------------------------------
 
-// A pull request's own figures. `submissions` counts the reviewer's reviews; `pushes` counts the
-// distinct heads those reviews judged, which is a floor for the same reason stated in the header.
+// `pushes` is a floor: a push no review judged leaves no trace here.
 export function meterPullRequest(pr) {
     const submissions = pr.submissions ?? [];
     const heads = new Set();
@@ -177,9 +41,7 @@ export function meterPullRequest(pr) {
     };
 }
 
-// The aggregate. Ratios are returned as `null` rather than as `0` or `NaN` when their denominator is
-// empty: a corpus with no finding-bearing submission has no pushes-per-submission, and printing 0
-// would be a claim about a loop nobody ran. `verify-preconditions-fail-closed` in prose.
+// A ratio over an empty denominator is null, never 0: an unmeasured loop is not a measured zero.
 export function meter(snapshot) {
     const perPullRequest = (snapshot.pullRequests ?? []).map(meterPullRequest);
     const total = (key) => perPullRequest.reduce((sum, p) => sum + p[key], 0);
@@ -203,28 +65,9 @@ export function meter(snapshot) {
         submissionsPerPullRequest: ratio(submissions, pullRequests),
         noInlineRate: ratio(noInline, submissions),
         pushesPerPullRequest: ratio(pushes, pullRequests),
-        // **The criterion's own "pushes per round" in submission units, stated rather than inferred.**
-        // Under `review_on_push: true` it is 1.00 by construction, which is why the row below it exists
-        // at all — but a reader owed the criterion's literal figure should not have to derive it from a
-        // paragraph about a coincidence. The pre-commit checkpoint asked for it in as many words.
         pushesPerSubmission: ratio(pushes, submissions),
         pushesPerFindingBearingSubmission: ratio(pushes, findingBearing),
-        // **Is the push figure carrying any information the submission figure does not?**
-        //
-        // Under `review_on_push: true` a push draws a submission, so the two coincide whenever every
-        // submission judged its own head — and when they do, `pushesPerFindingBearingSubmission`
-        // is not a second measurement at all: it reduces to `1 / (1 - noInlineRate)`, an identity.
-        // Measured 2026-08-26 over the thirty most recently merged pull requests: 140 submissions and
-        // 140 pushes, exactly equal, and 140/46 = 3.04 = 1/(1 - 0.671).
-        //
-        // Three figures of which two are algebraically the same figure is a table that reads as more
-        // evidence than it holds. So the coincidence is DETECTED and stated rather than left for a
-        // reader to notice, which is the same discipline `./goldens.mjs` applies when it prints the
-        // per-path census including the zeroes.
         pushesCoincideWithSubmissions: pushes === submissions,
-        // Which side of the record's own retirement threshold this window falls on. `null` where the
-        // ratio is null — an unmeasured window is not a window measuring below the threshold, and
-        // conflating the two is how a rule gets retired on an empty corpus.
         belowRetireThreshold:
             ratio(submissions, pullRequests) === null
                 ? null
@@ -234,8 +77,7 @@ export function meter(snapshot) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The snapshot's own shape is checked before it is metered. A malformed snapshot must be exit 2 —
-// "could not judge" — and never exit 1, which would report a review loop that nobody measured.
+// The snapshot's shape, checked before metering: malformed is exit 2, never 1
 // ---------------------------------------------------------------------------------------------
 
 export function validateSnapshot(snapshot) {
@@ -259,19 +101,6 @@ export function validateSnapshot(snapshot) {
         problems.push("pullRequests is not an array");
         return problems;
     }
-    // The `window` is printed in the register as a claim about what was sampled, so a window that
-    // disagrees with the corpus beneath it is a false heading over true figures. Measured at the
-    // pre-commit checkpoint: `{merged: 300}` over thirty pull requests rendered *"300 most recently
-    // merged"* above *"| Pull requests | count | 30 |"*, rail green.
-    //
-    // **Zero is a legal window and the floor here used to be one.** A repository with no merged pull
-    // requests yet has an empty review loop, which is a true measurement rather than a failed one —
-    // and `meter()` already answers it correctly, returning `null` for every ratio and `null` for the
-    // retirement verdict, because *"an unmeasured window is not a window measuring below the
-    // threshold"*. Refusing it made this tool reject a snapshot **its own `--fetch` can write**, which
-    // is a validator disagreeing with its own producer. Copilot round 2 on #357, arriving through the
-    // suppressed channel — the half no gate sees until this repository's own promotion step makes it
-    // a thread.
     if (!Number.isInteger(snapshot.window?.merged) || snapshot.window.merged < 0) {
         problems.push(
             `window.merged is ${JSON.stringify(snapshot.window?.merged)}; the register prints it as the size of the sample`,
@@ -282,11 +111,6 @@ export function validateSnapshot(snapshot) {
         );
     }
     const seen = new Set();
-    // **The window is BY MERGE DATE, and the snapshot must prove it.** `gh pr list` orders by pull
-    // request NUMBER, and the two disagree: the first capture taken here carried three merge-order
-    // inversions and sampled a corpus that was not the one its own register named — found at the
-    // pre-commit checkpoint, from evidence inside the committed snapshot. A rail that only checked
-    // the arithmetic would have re-published the same wrong window every time it was regenerated.
     let previous = null;
     for (const pr of snapshot.pullRequests) {
         if (!Number.isInteger(pr?.number)) {
@@ -295,12 +119,6 @@ export function validateSnapshot(snapshot) {
         }
         if (seen.has(pr.number)) problems.push(`pull request ${pr.number} appears twice`);
         seen.add(pr.number);
-        // **`mergedAt` is parsed, not compared as text.** It was compared lexicographically, which is
-        // right for ISO-8601 and right for nothing else: any string orders against any other string,
-        // so a snapshot carrying `"yesterday"` or a `DD/MM/YYYY` stamp would have ordered cleanly and
-        // the register would still have claimed the window was *by merge date*. A check that cannot
-        // fail on a malformed input is not checking that input. Copilot round 2 on #357, through the
-        // suppressed channel.
         const merged = typeof pr.mergedAt === "string" ? Date.parse(pr.mergedAt) : Number.NaN;
         if (Number.isNaN(merged)) {
             problems.push(
@@ -322,9 +140,6 @@ export function validateSnapshot(snapshot) {
         }
         for (const s of pr.submissions) {
             if (!isReviewer(s?.login)) {
-                // A snapshot carrying a non-reviewer review means the fetch filter drifted, and the
-                // figures would be inflated by our own traffic exactly as the header describes. That
-                // is a snapshot this tool cannot judge, not a loop with a high count.
                 problems.push(
                     `pull request ${pr.number} carries a submission by ${JSON.stringify(s?.login)}, which is not the reviewer`,
                 );
@@ -334,11 +149,6 @@ export function validateSnapshot(snapshot) {
                     `pull request ${pr.number} has a submission with no inline count: ${JSON.stringify(s?.inline)}`,
                 );
             }
-            // **`head` is contracted exactly as `inline` is, and for the same sentence.** It was not,
-            // and the gap was measured at the pre-commit checkpoint: strip every `head` and the tool
-            // exits 0 printing `pushes  0` and regenerates a register carrying that zero — which is
-            // what `meter()`'s own comment forbids one field over, *"printing 0 would be a claim about
-            // a loop nobody ran"*. Two of the criterion's three metrics rest on this field.
             if (typeof s?.head !== "string" || s.head.length === 0) {
                 problems.push(
                     `pull request ${pr.number} has a submission with no head sha: ${JSON.stringify(s?.head)} — pushes are counted from it`,
@@ -350,12 +160,7 @@ export function validateSnapshot(snapshot) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The register: the figures as a committed document, regenerated and byte-compared.
-//
-// The point of writing them down at all is that a snapshot is JSON nobody reads, and the figures are
-// quoted by a rule. The point of byte-comparing them is that a published figure which can drift from
-// its own data is the hand-maintained tally in a new costume — `./index.mjs` holds the memory index
-// this way for the same reason.
+// The register: the figures as a committed document, regenerated and byte-compared
 // ---------------------------------------------------------------------------------------------
 
 const round2 = (n) => (n === null ? "—" : (Math.round(n * 100) / 100).toFixed(2));
@@ -441,21 +246,9 @@ const gh = (args) => {
     return out.stdout;
 };
 
-// **The window is the most recently MERGED N, and `gh pr list` cannot answer that on its own.** It
-// orders by pull request NUMBER, and number order is not merge order: the first capture taken here
-// carried three inversions — #346 before #345, #343 before #342, #312 before #310 — so the sampled
-// corpus contained #303 and excluded #301, while the register above it claimed *"the 30 most recently
-// merged"*. Every published figure was therefore against a corpus its own heading did not name.
-// Found at the pre-commit checkpoint, from evidence inside the committed snapshot: `mergedAt` was
-// already being captured and nothing was sorting on it.
-//
-// So a POOL is listed and the window is taken from it by merge date. Sorted descending, ties broken by
-// number descending so the order is total and a re-capture of the same data is byte-stable.
+// By merge date, which `gh pr list`'s number order is not; ties by number, so a re-capture is byte-stable.
 export function selectWindow(listed, limit) {
-    // Parsed rather than compared as text, and for the same reason `validateSnapshot` parses it: the
-    // producer and the validator must order by the same relation, or the fetch can write a window the
-    // validator then refuses. An unparsable stamp sorts last rather than throwing — the validator is
-    // where it is reported, and a fetch that crashed on one bad row would lose the other twenty-nine.
+    // An unparsable stamp sorts last rather than throwing: the validator reports it, and the other rows still land.
     const at = (x) => {
         const t = Date.parse(x?.mergedAt);
         return Number.isNaN(t) ? -Infinity : t;
@@ -465,9 +258,7 @@ export function selectWindow(listed, limit) {
         .slice(0, limit);
 }
 
-// An inline comment belongs to the review that carried it, and `pull_request_review_id` is what ties
-// the two surfaces together across the login split. Pure, so the grouping and the login filter are
-// testable without a network: they are where two of the measured traps live.
+// `pull_request_review_id` ties an inline comment to its review across the two logins.
 export function shapeSubmissions(reviews, comments) {
     const inlineByReview = new Map();
     for (const c of comments) {
@@ -481,35 +272,25 @@ export function shapeSubmissions(reviews, comments) {
             id: r.id,
             login: r.user.login,
             state: r.state,
-            // An inline COMMENT's `commit_id` drifts onto a later head, so the sha a round judged is
-            // read from the REVIEW and never from a comment. That a review's own `commit_id` holds
-            // still is an assumption with an open issue on it — #253, and the falsifier is stated at
-            // length in this file's header rather than only here.
+            // From the review, never a comment: a comment's `commit_id` drifts onto later heads.
             head: r.commit_id,
             at: r.submitted_at,
             inline: inlineByReview.get(r.id) ?? 0,
         }));
 }
 
-// `--paginate` on both surfaces, never a bare read. Page 1 of a busy pull request is measurably stale
-// here: on #342 ninety of a hundred and two review objects at merge were our own, so an unpaginated
-// read returns three reviewer entries and the one on head is the twelfth.
+// `--paginate` on both surfaces: page 1 of a busy pull request misses its latest reviews.
 export function fetchSnapshot({ repository, limit, pool, now }) {
     const listed = JSON.parse(
         gh(["pr", "list", "--repo", repository, "--state", "merged", "--limit", String(pool), "--json", "number,mergedAt"]),
     );
-    // **A saturated pool cannot prove the window.** Where the listing came back short of the pool it
-    // is every merged pull request there is, and the window is provably the newest N; where it came
-    // back full, an older-numbered pull request merged recently could sit outside it. Recorded rather
-    // than assumed away, so a reader can tell which of the two they are holding.
     const saturated = listed.length >= pool;
     const window = selectWindow(listed, limit);
     const pullRequests = [];
     for (const { number, mergedAt } of window) {
         const reviews = JSON.parse(gh(["api", "--paginate", `repos/${repository}/pulls/${number}/reviews`]));
         const comments = JSON.parse(gh(["api", "--paginate", `repos/${repository}/pulls/${number}/comments`]));
-        // No bodies. The metrics need none, and a snapshot carrying review prose would put quoted
-        // content into a committed file for no measurement's sake.
+        // No bodies: review prose has no place in a committed snapshot.
         pullRequests.push({ number, mergedAt, submissions: shapeSubmissions(reviews, comments) });
     }
     return {
@@ -580,12 +361,6 @@ export function run(argv = process.argv.slice(2), io = console) {
         io.error("review-meter: --check and --write ask for opposite things; pick one");
         return 2;
     }
-    // **`--check` and `--write` are about the REGISTER, so without one they asked for nothing and got
-    // exit 0.** A mistyped invocation — the flag typed, the path forgotten — printed the report and
-    // returned green, so a person believing they had byte-compared the register had run no comparison
-    // at all. That is a false green in the one place this tool exists to remove one, and it is the same
-    // shape as the entry-guard defect further down this file: the command runs, says nothing is wrong,
-    // and did not do the thing. Copilot round 1 on #357.
     if ((opts.check || opts.write) && !opts.register) {
         io.error(`review-meter: ${opts.check ? "--check" : "--write"} needs --register <file> — it is the register that is written and compared`);
         io.error("Without it this flag would do nothing and still exit 0.");
@@ -601,12 +376,6 @@ export function run(argv = process.argv.slice(2), io = console) {
             io.error(`review-meter: --limit must be a positive integer, not ${JSON.stringify(opts.limit)}`);
             return 2;
         }
-        // **Strictly greater, and the check used to say `<` while the prose beneath it argued `<=`.**
-        // A pool the size of the window cannot contain a pull request outside the window, so it is
-        // number order wearing the window's name — which is the defect the pool exists to remove. The
-        // guard permitted it anyway, so the suite's own case for this refusal fell straight through
-        // into the real fetch path and passed on `gh` failing instead. Copilot round 3 on #357: a test
-        // passing for the wrong reason, the same class round 1 found one site over.
         if (!Number.isInteger(opts.pool) || opts.pool <= opts.limit) {
             io.error(`review-meter: --pool must be an integer greater than --limit (${opts.limit}), not ${JSON.stringify(opts.pool)}`);
             io.error("The pool is listed by pull request NUMBER and the window is taken from it by merge date,");
@@ -676,9 +445,6 @@ export function run(argv = process.argv.slice(2), io = console) {
         io.log("  independent measurement — it is 1 / (1 - the no-inline rate). Two rows, one figure.");
     }
 
-    // The limits are printed on every run rather than left in a README, for the reason
-    // `./goldens.mjs` prints its presence-versus-adequacy limit on every green: an exit code that
-    // implies more than it means is how a figure gets quoted as something it is not.
     io.log("");
     io.log("  Every figure above is in SUBMISSION units and none of them is a fix-round count.");
     io.log("  Fix-rounds are not derivable here: a fix can ride inside another push, and a records");
@@ -718,15 +484,7 @@ export function run(argv = process.argv.slice(2), io = console) {
     return 0;
 }
 
-// The entry guard, in the ONE form `./rule-carriers.mjs` designates. `file://${argv[1]}` is NOT that
-// form, and this file shipped that spelling for exactly one measurement: `--fetch` against the live
-// repository printed nothing, exited 0, and wrote no snapshot, because `import.meta.url`
-// percent-encodes and this working copy lives under a path with spaces. **A green that is the tool
-// never starting** — the fourth time this repository has met it, and the reason the form is copied
-// rather than re-derived.
-//
-// The realpath fallback covers the symlink an npm `bin` produces, in a `try` because a missing path
-// must answer no rather than throw.
+// As file URLs, since `import.meta.url` percent-encodes a space; through realpath too, for an npm `bin` symlink.
 function isMain() {
     const invoked = process.argv[1];
     if (!invoked) return false;
@@ -738,7 +496,5 @@ function isMain() {
     }
 }
 
-// `process.exitCode` rather than `process.exit`, which `./control-chars.mjs` settled here: exiting
-// outright can truncate a pipe that has not drained, and a truncated line IS exit 0 with no output —
-// the precise shape of the false green the guard above was fixed for.
+// `process.exitCode` rather than `process.exit`, so a pipe that has not drained is not cut short.
 if (isMain()) process.exitCode = run(process.argv.slice(2));

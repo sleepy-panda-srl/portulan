@@ -4,45 +4,7 @@
 //   node cli/finish.mjs -m <subject> [-m <paragraph>]... [options]
 //   node cli/finish.mjs -F <file | -> [options]
 //
-// The end of a change was a run of small requests — the recipes, the fragment, `git add`, `git commit`,
-// `git push`, a look at the status — and every one of them sent the whole context again. This is one call.
-// In order, it:
-//
-//   1. finds the branch, the remote it pushes to and the base it merges into, and refuses a detached HEAD,
-//      the base branch itself, and a base that names no branch, since nothing could be compared with it: a
-//      change closes on a working branch and never pushes to its base;
-//   2. confirms the change carries a changelog fragment, `changes/<slug>.<section>.md`, added or edited
-//      since the base, where the tree keeps them; `--no-fragment <why>` closes a change that owes none;
-//   3. stages the changes to files git already tracks, beside whatever is staged, and commits them with the
-//      message given, the repository's hooks included: never `--amend`, never `--no-verify`. It never stages
-//      a file nobody named: an untracked one stops it, listed, so a new file is staged by name in the same
-//      call (`git add <paths> && node cli/finish.mjs …`), and a scan of what is staged covers what it commits;
-//   4. runs every recipe the workspace yields, as CI runs them, on that commit;
-//   5. pushes the commit the recipes judged, by name and only while the branch still holds it, never with
-//      `--force` in any spelling — or, where a recipe is not green, pushes nothing, undoes its own commit and
-//      prints which recipe went red, with the last lines it wrote, in the order it wrote them.
-//
-// **The recipes judge the commit, not the tree before it**, because a recipe may read the commit: `docs`
-// checks the newest commit's message for its `Seam-scan:` line. Run before committing, it would judge the
-// commit before this one, and a missing trailer would first go red in CI. So the commit comes first, and a
-// red undoes it: the branch is moved back over a commit this call made and no remote has seen, with a
-// compare-and-swap that refuses if anything else moved it, and the commit's changes are left staged. That
-// is not an amend: nothing published is rewritten, and a message the recipes refused could not be mended by
-// a second commit on top of it.
-//
-// **It satisfies the Stop-gate rather than stepping round it** (`./stop-gate.mjs`): the default recipe is
-// one of the set, and a closed change leaves the tree clean and the branch pushed, which owes no handoff.
-// Every recipe runs, not only the default, because done is every recipe green (the workspace's definition of
-// done says so here) and CI runs them all; no recipe declares the paths it checks, so no smaller set could
-// be read off the change. They took 43 s on this repository on 2026-09-24.
-//
-// What it prints is budgeted (`0038`, rule 5): one line when the change closes, and when it stops, one line
-// saying why and nothing committed or pushed, then each recipe that was not green with its last 25 lines,
-// the Stop-gate's measure. Passes are a count.
-//
-// Exit 0 closed, or nothing to close · 1 red: a recipe, the fragment, an untracked file, or a hook that
-// refused the commit · 2 could not run: an argument, git, the base, the recipe set, a recipe that could not
-// run, or a push the remote refused. A recipe that could not run is never read as a pass.
+// Exit 0 closed, or nothing to close · 1 red: a recipe, the fragment, an untracked file or a refusing hook · 2 could not run or push.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -55,24 +17,16 @@ import { CHANGES_DIR, CHANGES_README } from "./form.mjs";
 import { CHANGE_NAME } from "./index.mjs";
 import { recipeSet, resolverFor } from "./recipe-set.mjs";
 
-/** How long one recipe may run: `./drills.mjs`'s rail timeout, since both run the whole recipe set. */
 export const RECIPE_TIMEOUT_MS = 10 * 60 * 1000;
 
-/** How many of a failing recipe's last lines are printed: the Stop-gate's measure. */
 export const TAIL_LINES = 25;
 
-/** How much of a recipe's output is kept to find those lines: its last 64 KiB. */
 const TAIL_BYTES = 64 * 1024;
 
-/**
- * How long the pipe is still read once a recipe's shell has exited, for what the shell wrote: no process it
- * left running holds the run longer.
- */
 const DRAIN_MS = 1000;
 
 const GIT_TIMEOUT_MS = 2 * 60 * 1000;
 
-/** A recipe's exit codes that are not a verdict about the tree, as `./stop-gate.mjs` reads them. */
 const CANNOT_RUN = new Set([2, 126, 127]);
 
 const USAGE = [
@@ -94,11 +48,7 @@ const USAGE = [
 
 const TAKES_VALUE = new Set(["-m", "-F", "--no-fragment", "--base", "--workspace", "--pack-root"]);
 
-/**
- * The options, or `{ error }`. Every value is refused when missing or empty, and every value but a message
- * paragraph and a reason when it looks like a flag: `recipe-set`'s three refusals, since a flag taken for a
- * value names a directory nobody asked for.
- */
+/** The options, or `{ error }`. */
 export function parseArgs(argv, cwd = process.cwd()) {
     const options = { paragraphs: [], file: null, noFragment: null, base: null, workspace: null, named: [], forced: false, help: false };
     for (let i = 0; i < argv.length; i += 1) {
@@ -165,7 +115,6 @@ const lastLine = (text) => tail(text, 1) || "no output";
 /** Why git refused a push: its `! [rejected]` line, which names the ref and the reason, not a `hint:` after it. */
 const refusalOf = (text) => text.split("\n").map((line) => line.trim().replace(/\s+/g, " ")).find((line) => line.startsWith("! ")) ?? lastLine(text);
 
-/** What a thrown value says, whatever was thrown: reading it never throws in turn. */
 const textOf = (thrown) => {
     try {
         return String(thrown?.message ?? thrown);
@@ -174,7 +123,6 @@ const textOf = (thrown) => {
     }
 };
 
-/** What a runner returned, as a result: anything but a green, red or could-not-run one could not run. */
 const resultOf = (id, r) => {
     if (r?.outcome === "green") return { id, outcome: "green" };
     if (r?.outcome === "red" || r?.outcome === "could not run") {
@@ -183,20 +131,13 @@ const resultOf = (id, r) => {
     return { id, outcome: "could not run", code: null, output: "the runner returned no result" };
 };
 
-/**
- * The branch this change merges into: `--base`, else `PORTULAN_BASE_REF` as the recipes read it, else the
- * remote's own recorded default head — never a branch picked by name, `./stop-gate.mjs`'s rule — asked of
- * the remote where the clone never recorded one. `{ ref, sha, name }`, where `name` is the branch the base
- * is on this remote or locally, or `{ why }`.
- */
+/** The base as `{ ref, sha, name }`, `name` null where it is no branch, or `{ why }`; never a branch picked by name. */
 export function findBase(git, { remote, remotes = [remote], given, env }) {
     const asked = given ?? (env.PORTULAN_BASE_REF || null);
     let full;
     if (asked !== null) {
         const from = given === null ? ", from PORTULAN_BASE_REF," : "";
-        // A ref never begins with a dash, and refusing one here spares every git call below an option it would
-        // read as a flag: `--end-of-options` is not honoured by every git's `rev-parse --symbolic-full-name`,
-        // which echoes it back as though it were the name (git 2.43, measured).
+        // Refused, not passed after `--end-of-options`: git 2.43's `rev-parse --symbolic-full-name` echoes that back as the name.
         if (asked.startsWith("-")) return { why: `the base ${JSON.stringify(asked)}${from} is not a ref: a ref never begins with a dash` };
         const sha = git(["rev-parse", "--verify", "-q", `${asked}^{commit}`]);
         if (sha.status !== 0 || sha.out === "") return { why: `the base ${JSON.stringify(asked)}${from} is not a commit here` };
@@ -232,25 +173,13 @@ export function changedPaths(git, mergeBase) {
     return out;
 }
 
-/**
- * The changelog fragment among a change's paths — one it added or edited, never one it deleted — or null.
- * One it added names the change better than an earlier entry it extended, so an added one is preferred.
- */
+/** The change's changelog fragment, preferring one it added, or null. */
 export function fragmentIn(paths) {
     const fragments = paths.filter(({ status, path: p }) => status !== "D" && p.startsWith(`${CHANGES_DIR}/`) && CHANGE_NAME.test(p.slice(CHANGES_DIR.length + 1)));
     return (fragments.find(({ status }) => status === "A" || status === "?") ?? fragments[0])?.path ?? null;
 }
 
-/**
- * The pack roots to resolve with where the caller named none: the tree's own, when it carries every pack
- * the workspace composes, so a host with the Portulan plugin installed, carrying the same packs twice, does
- * not make the set refuse them as shadowed before anything is committed. Otherwise none, and the set
- * resolves as `recipe-set`, `doctor` and the Stop-gate do bare: the tree's packs beside the installed ones,
- * which is where a consumer's composed packs live — `init` declares a tree for every consumer, and a
- * `packs/` of the consumer's own beside it must not hide them. Where CI names the tree's root, the caller
- * names it too, `--pack-root packs` as this repository's card spells it, and a pack the tree lacks is then
- * refused as CI refuses it.
- */
+/** The tree's own pack roots when they hold every composed pack, so an installed plugin's copies are not refused as shadowed; else none. */
 export function treeRoots({ workspaceDir, manifest }) {
     const declared = Array.isArray(manifest?.packs) ? manifest.packs : [];
     if (declared.length === 0) return [];
@@ -294,14 +223,6 @@ export function tailKeeper(limit = TAIL_BYTES) {
     };
 }
 
-/**
- * Run one recipe as CI and the Stop-gate do: its `run` through `bash -c`, from the repository root. Its
- * stderr is made its stdout before it starts, one pipe this process drains as it fills, so its lines keep
- * the order it wrote them in. No file stands between: a write a full disk refused would reach the recipe as
- * its own failure, and its exit would read as a verdict on the tree. No cap stands between either, and no
- * store that grows with the output: only its last `TAIL_BYTES` are held, for a failure's report. The shell's
- * exit ends the run: a process it left running is not waited for, and the pipe it shares is closed.
- */
 export function runRecipe(recipe, { root, env, timeout = RECIPE_TIMEOUT_MS }) {
     return new Promise((resolve) => {
         const kept = tailKeeper();
@@ -318,6 +239,7 @@ export function runRecipe(recipe, { root, env, timeout = RECIPE_TIMEOUT_MS }) {
             const cannot = code === null || CANNOT_RUN.has(code);
             resolve({ id: recipe.id, outcome: cannot ? "could not run" : "red", code, output: `${kept.text()}${why}` });
         };
+        // As CI and the Stop-gate run a recipe, its stderr joined to its stdout so its lines keep their order.
         const child = spawn("bash", ["-c", `exec 2>&1\n${recipe.run}`], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
         const stop = () => {
             child.stdout.destroy();
@@ -327,6 +249,7 @@ export function runRecipe(recipe, { root, env, timeout = RECIPE_TIMEOUT_MS }) {
         child.stderr.on("data", kept.add);
         child.on("exit", () => {
             clearTimeout(limit);
+            // A process the shell left running is not waited for: once the pipe closes, the child's next write kills it with SIGPIPE, or fails with EPIPE where it ignores that signal, and a child that never writes keeps running.
             drain = setTimeout(stop, DRAIN_MS);
         });
         child.on("error", (error) => {
@@ -342,10 +265,7 @@ export function runRecipe(recipe, { root, env, timeout = RECIPE_TIMEOUT_MS }) {
     });
 }
 
-/**
- * Close the change the working tree at `cwd` holds. Resolves to `{ code, lines }`: the exit code and what
- * to print, the first line always the one that says what happened.
- */
+/** Resolves to `{ code, lines }`: the exit code and what to print, the first line saying what happened. */
 export async function finish(options, { cwd = process.cwd(), env = process.env, readStdin, runOne = runRecipe } = {}) {
     const stop = (code, ...lines) => ({ code, lines: [`finish: ${lines[0]}`, ...lines.slice(1)] });
     const message = messageOf(options, readStdin);
@@ -371,11 +291,9 @@ export async function finish(options, { cwd = process.cwd(), env = process.env, 
 
     const base = findBase(git, { remote, remotes, given: options.base, env });
     if (base.why) return stop(2, `could not run — ${base.why}`);
-    // A base that names no branch, a commit or a tag, leaves nothing to compare the push against.
     if (base.name === null) {
         return stop(2, `could not run — the base ${base.ref} names no branch, so nothing shows ${branch} is not the branch changes merge into: pass --base <remote>/<branch>`);
     }
-    // The base's branch, and the remote's own default head where it is recorded: a working branch is neither.
     const recorded = branchOn(git(["symbolic-ref", "-q", `refs/remotes/${remote}/HEAD`]).out, [remote]);
     const guarded = [base.name, recorded].filter((name) => name !== null);
     if (guarded.includes(target) || guarded.includes(branch)) {
@@ -392,9 +310,6 @@ export async function finish(options, { cwd = process.cwd(), env = process.env, 
         return stop(0, upstream ? `nothing to close — the tree is clean and ${branch} matches ${remote}/${target}` : `nothing to close — the tree is clean and ${branch} is at ${base.ref}`);
     }
 
-    // A file nobody named is never committed: it could be anything, and no scan of what was staged read it. Nor
-    // is it to be ignored through the tracked .gitignore, which `git add -u` would commit with its name in it,
-    // nor deleted, which git cannot undo: the way out named is .git/info/exclude, which is never committed.
     const untracked = git(["ls-files", "--others", "--exclude-standard", "-z", "--", "."]).raw.split("\0").filter(Boolean);
     if (untracked.length) {
         const shown = untracked.slice(0, TAIL_LINES).map((p) => `    ${p}`);
@@ -442,18 +357,16 @@ export async function finish(options, { cwd = process.cwd(), env = process.env, 
 
     const undo = (why) => {
         if (made === null) return "";
+        // With the old value given, `update-ref` moves HEAD back only while it still holds `made`.
         const moved = git(["update-ref", "-m", `finish: ${why}`, "HEAD", parent, made]);
         return moved.status === 0
             ? " The commit is undone and its changes are staged."
             : ` The commit ${made.slice(0, 7)} could not be undone (${lastLine(moved.err)}) and stays, unpushed.`;
     };
 
-    // What the recipes judge, and so the one commit this call may push.
+    // The recipes judge the commit, not the tree before it: `docs` reads the newest commit's message for its `Seam-scan:` line.
     const judged = git(["rev-parse", "--verify", "-q", "HEAD^{commit}"]).out;
     const recipeEnv = { ...env, PORTULAN_BASE_REF: base.ref };
-    // A runner that throws judged nothing, whatever it throws, and so does one that returns no result: the
-    // recipe could not run, and the commit is undone as for any recipe that could not run, never left
-    // standing by an error nothing caught.
     const results = [];
     for (const recipe of set.recipes) {
         try {
@@ -473,8 +386,7 @@ export async function finish(options, { cwd = process.cwd(), env = process.env, 
         );
     }
 
-    // The commit judged is pushed by name, and only while the branch still holds it: a branch that moved
-    // while the recipes ran holds something they did not judge.
+    // The judged commit is pushed by its SHA, and only while the branch still holds it.
     const now = git(["rev-parse", "--verify", "-q", `refs/heads/${branch}^{commit}`]).out;
     if (now !== judged) {
         return stop(
