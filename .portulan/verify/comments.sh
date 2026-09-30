@@ -22,8 +22,8 @@ cd -- "$root" || exit 2
 }
 
 # LIMIT only falls, to the count a change leaves; BYTES is the figure plus 2%, raised only with its reason here.
-LIMIT=1564
-BYTES=2161816             # 2,119,427 B
+LIMIT=650
+BYTES=954776              # 936,054 B
 
 node cli/comments.mjs --limit "$LIMIT" --bytes "$BYTES"
 status=$?
