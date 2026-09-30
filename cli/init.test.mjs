@@ -1614,8 +1614,7 @@ describe("where git lists the tree, the drafted workspace holds its comments' hi
         return dir;
     };
     const railOf = (dir) => path.join(dir, ".portulan", "verify", "comments.sh");
-    const runRail = (dir) => {
-        const env = { ...process.env, PORTULAN_CLI: path.join(REPO, "cli") };
+    const runRail = (dir, env = { ...process.env, PORTULAN_CLI: path.join(REPO, "cli") }) => {
         try {
             return { code: 0, out: execFileSync(railOf(dir), { cwd: dir, encoding: "utf8", stdio: "pipe", env }) };
         } catch (error) {
@@ -1654,6 +1653,22 @@ describe("where git lists the tree, the drafted workspace holds its comments' hi
         const marked = fs.readFileSync(railOf(dir), "utf8").split("\n").filter((line) => line.includes("portulan:bundle-fallback"));
         assert.equal(marked.length, 2);
         for (const line of marked) assert.equal([...line.matchAll(/"([^"]*)"/g)].filter((m) => m[1].endsWith("/cli/index.mjs")).length, 1, line);
+    });
+
+    test("a `portulan` on PATH holding no comments.mjs is passed over for the bundle; a PORTULAN_CLI holding none cannot run", async () => {
+        const dir = repository();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        const bin = scratch({ portulan: "#!/bin/sh\nexit 0\n" });
+        fs.chmodSync(path.join(bin, "portulan"), 0o755);
+        const onPath = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` };
+        delete onPath.PORTULAN_CLI;
+        const bundle = runRail(dir, onPath);
+        assert.equal(bundle.code, 0, bundle.out);
+        fs.writeFileSync(path.join(bin, "comments.mjs"), "console.log('the copy on PATH');\n");
+        assert.match(runRail(dir, onPath).out, /the copy on PATH/);
+        const explicit = runRail(dir, { ...onPath, PORTULAN_CLI: scratch() });
+        assert.equal(explicit.code, 2, explicit.out);
+        assert.match(explicit.out, /holds no comments\.mjs/);
     });
 
     test("a tree git does not list gets no recipe, and is told `upgrade` offers one", async () => {

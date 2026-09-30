@@ -156,14 +156,14 @@ export function declaresCommentsRecipe(manifest) {
 }
 
 export function commentsRecipeEntry(workspaceRel) {
-    const run = workspaceRel === "." ? "./verify/comments.sh" : `./${workspaceRel}/verify/comments.sh`;
+    const run = shellWord(workspaceRel === "." ? "./verify/comments.sh" : `./${workspaceRel}/verify/comments.sh`);
     return { id: COMMENTS_RECIPE, run, requires: ["bash", "git", "node"] };
 }
 
 /**
  * `verify/comments.sh`, holding the count at `limit`. `toTree` leads from the recipe's directory to the tree.
- * The CLI is found as `verify/index.sh` finds it, and the bundle's two lines carry its marker, so `0002`
- * re-derives them where the workspace travels.
+ * The CLI is looked for where `verify/index.sh` looks, a `portulan` on PATH only where it holds `comments.mjs`,
+ * and the bundle's two lines carry its marker, so `0002` re-derives them where the workspace travels.
  */
 export function commentsRecipe({ bundle, limit, toTree }) {
     const entry = JSON.stringify(`${bundle}/cli/index.mjs`);
@@ -177,7 +177,7 @@ export function commentsRecipe({ bundle, limit, toTree }) {
 #   exit 2   could not run: git, node or the Portulan CLI is not reachable from here. NEVER a pass.
 
 set -uo pipefail
-cd "\$(dirname "\$0")/${toTree}" || exit 2
+cd -- "\$(dirname -- "\$0")"/${shellWord(toTree)} || exit 2
 
 LIMIT=${limit}
 
@@ -190,14 +190,15 @@ done
 
 if [ -n "\${PORTULAN_CLI:-}" ]; then
     cli=\$PORTULAN_CLI
-elif command -v portulan >/dev/null 2>&1; then
-    entry=\$(node -e 'process.stdout.write(require("node:fs").realpathSync(process.argv[1]))' "\$(command -v portulan)") || exit 2
+elif command -v portulan >/dev/null 2>&1 &&
+    entry=\$(node -e 'process.stdout.write(require("node:fs").realpathSync(process.argv[1]))' "\$(command -v portulan)") &&
+    [ -f "\$(dirname -- "\$entry")/comments.mjs" ]; then
     cli=\$(dirname -- "\$entry")
 elif [ -f ${entry} ]; then # portulan:bundle-fallback
     cli=\$(dirname -- ${entry}) # portulan:bundle-fallback
 else
     printf 'verify: the Portulan CLI is not reachable, so the comments were NOT counted. Looked at\\n' >&2
-    printf 'verify: $PORTULAN_CLI, portulan on PATH and the bundle this workspace was drafted from.\\n' >&2
+    printf 'verify: $PORTULAN_CLI, a portulan on PATH holding comments.mjs, and the bundle this workspace was drafted from.\\n' >&2
     exit 2
 fi
 if [ ! -f "\$cli/comments.mjs" ]; then

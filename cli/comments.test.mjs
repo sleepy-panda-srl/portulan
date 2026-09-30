@@ -100,6 +100,22 @@ describe("jsComments", () => {
             [5, "yes"],
         ]);
     });
+
+    test("a slash after a postfix ++ or -- divides", () => {
+        const source = ["const n = x++ / 2; // Added 2026-09-01", "const m = x-- / 2; // two"].join("\n");
+        assert.deepEqual(texts(jsComments(source)), [
+            [1, "Added 2026-09-01"],
+            [2, "two"],
+        ]);
+    });
+
+    test("two comments on one line are one comment line, with both texts and both costs", () => {
+        const [line, ...rest] = jsComments("f(); /* Added 2026-09-24 */ g(); /* see #12 */\n");
+        assert.deepEqual(rest, []);
+        assert.deepEqual([line.line, line.text], [1, "Added 2026-09-24 see #12"]);
+        assert.equal(line.bytes, Buffer.byteLength("/* Added 2026-09-24 */") + Buffer.byteLength("/* see #12 */"));
+        assert.deepEqual(historyOf([line]).map((c) => [c.line, c.kinds]), [[1, ["date", "reference"]]]);
+    });
 });
 
 describe("shellComments", () => {
@@ -149,6 +165,66 @@ describe("shellComments", () => {
             [6, "node"],
         ]);
     });
+
+    test("a string quoted across lines is a program only after a flag taking one, or given to an interpreter", () => {
+        const source = [
+            "printf '%s\\n' 'first",
+            "# 2026-09-24 notes",
+            "last'",
+            "echo 'a",
+            "// data'",
+            "\"$node\" -e '",
+            "  // one",
+            "'",
+            "if FS=, command /usr/bin/awk -F, '",
+            "  # two",
+            "' f; then node --eval='",
+            "  // three",
+            "' | cat '",
+            "# data",
+            "' && jq -r 2>&1 '",
+            "  # four",
+            "'",
+        ].join("\n");
+        assert.deepEqual(texts(shellComments(source)), [
+            [7, "one"],
+            [10, "two"],
+            [12, "three"],
+            [16, "four"],
+        ]);
+    });
+
+    test("a command substitution inside double quotes is shell, and the quoted text around it is not", () => {
+        const source = [
+            'x="$(',
+            "  # one",
+            "  cmd",
+            ')" # two',
+            'y="a # no $(echo ")" # three',
+            ') b # no"',
+            'z="`',
+            "  # four",
+            '  cmd`"',
+            'w="$(f "$(',
+            "  # five",
+            ')" \')\')" v="$(( 1 + 2 )) # no"',
+            "# six",
+        ].join("\n");
+        assert.deepEqual(texts(shellComments(source)), [
+            [2, "one"],
+            [4, "two"],
+            [5, "three"],
+            [8, "four"],
+            [11, "five"],
+            [13, "six"],
+        ]);
+    });
+
+    test("a here-document's delimiter is read whole, however long", () => {
+        const long = "E".repeat(250);
+        assert.deepEqual(texts(shellComments([`cat <<'${long}'`, "# Added 2026-09-24", long, "# one"].join("\n"))), [[4, "one"]]);
+        assert.deepEqual(texts(shellComments([`cat <<${long}`, "# data", long, "# two"].join("\n"))), [[4, "two"]]);
+    });
 });
 
 describe("yamlComments", () => {
@@ -172,6 +248,26 @@ describe("yamlComments", () => {
             [10, "four"],
         ]);
     });
+
+    test("a quoted scalar across lines holds no comment, and one after its close is read", () => {
+        const source = [
+            "name: 'first",
+            "  # Added 2026-09-24",
+            "  it''s # no",
+            "  last' # one",
+            "text:",
+            '  - "a',
+            "    run: |",
+            '    b" # two',
+            "note: plain 'quote",
+            "# three",
+        ].join("\n");
+        assert.deepEqual(texts(yamlComments(source)), [
+            [4, "one"],
+            [8, "two"],
+            [10, "three"],
+        ]);
+    });
 });
 
 describe("jsonComments", () => {
@@ -191,8 +287,7 @@ describe("jsonComments", () => {
             [2, "one"],
             [4, "two"],
             [5, "three"],
-            [8, "four"],
-            [8, "five"],
+            [8, "four five"],
         ]);
     });
 });
@@ -210,6 +305,33 @@ describe("markdownComments", () => {
     test("a fence closes on a line ending in a carriage return", () => {
         assert.deepEqual(texts(markdownComments(["```js\r", "<!-- no -->\r", "```\r", "<!-- one -->\r"].join("\n"))), [[4, "one"]]);
     });
+
+    test("a code span runs on across the lines of its paragraph, and a blank line or a fence ends the paragraph", () => {
+        const source = [
+            "text `code",
+            "<!-- no -->",
+            "still` <!-- one -->",
+            "",
+            "a ` stray",
+            "<!-- two -->",
+            "",
+            "b `` x",
+            "<!-- no --> ` still code",
+            "`` <!-- three -->",
+            "c ` x <!-- four -->",
+            "```",
+            "`",
+            "```",
+            "<!-- five -->",
+        ].join("\n");
+        assert.deepEqual(texts(markdownComments(source)), [
+            [3, "one"],
+            [6, "two"],
+            [10, "three"],
+            [11, "four"],
+            [15, "five"],
+        ]);
+    });
 });
 
 describe("a line a tool reads", () => {
@@ -222,11 +344,15 @@ describe("a line a tool reads", () => {
             "<!-- Kept by hand since 2026-09-24. -->",
             "<!-- portulan: any form a later tool reads, in as many words as it takes -->",
             "<!-- updated: 2026-09-24, PR #12 -->",
+            "<!-- updated: 2026-09-24 -->",
+            "<!-- leads: ../dod.md -->\r",
         ].join("\n");
         assert.deepEqual(texts(markdownComments(source)), [
             [5, "Kept by hand since 2026-09-24."],
             [7, "updated: 2026-09-24, PR #12"],
+            [8, "updated: 2026-09-24"],
         ]);
+        assert.deepEqual(historyOf(markdownComments(source)).map((c) => c.line), [5, 7, 8]);
     });
 });
 
@@ -364,6 +490,18 @@ test("scan reads the files git lists, and nothing through a link", () => {
     const dir = repository({ "a.sh": "# 2026-09-24\n" });
     fs.symlinkSync(path.join(dir, "a.sh"), path.join(dir, "link.sh"));
     assert.deepEqual(scan(dir).map((entry) => entry.file), ["a.sh"]);
+});
+
+test("a tracked file beneath a directory now a link is not read through it", () => {
+    const dir = repository({ "src/a.js": "x();\n", "b.js": "// see #12\n" });
+    execFileSync("git", ["-C", dir, "add", "src/a.js"]);
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-comments-"));
+    SCRATCH.push(outside);
+    fs.writeFileSync(path.join(outside, "a.js"), "// Added 2026-09-24\n");
+    fs.rmSync(path.join(dir, "src"), { recursive: true });
+    fs.symlinkSync(outside, path.join(dir, "src"));
+    assert.deepEqual(scan(dir).map((entry) => entry.file), ["b.js"]);
+    assert.equal(historyCount(dir), 1);
 });
 
 test("historyCount is the count a run holds at its limit", () => {

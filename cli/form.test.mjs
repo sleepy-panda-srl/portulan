@@ -14,12 +14,15 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
     claudeRulesUnignore,
     cardIgnored,
     carriesReading,
     changesReadme,
+    commentsRecipe,
+    commentsRecipeEntry,
     draftCard,
     formLine,
     formOf,
@@ -47,6 +50,8 @@ import { renderChanges } from "./index.mjs";
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const made = [];
 after(() => {
@@ -480,5 +485,31 @@ describe("which form a consumer is in, read from disk", () => {
         const ids = (m) => formOf(path.join(root, ".portulan"), m).pieces.map((p) => p.id);
         assert.deepEqual(ids(manifest({ kind: "portfolio" })), ["session-log"]);
         assert.deepEqual(ids(manifest()), ["session-log", "card"]);
+    });
+});
+
+describe("the drafted comments recipe", () => {
+    test("its entry runs the script by the workspace's directory, one shell word however the directory is spelled", () => {
+        assert.equal(commentsRecipeEntry(".portulan").run, "./.portulan/verify/comments.sh");
+        assert.equal(commentsRecipeEntry(".").run, "./verify/comments.sh");
+        assert.equal(commentsRecipeEntry("team notes").run, "'./team notes/verify/comments.sh'");
+        const rel = "it's $(touch ran)";
+        const root = tree({ [`${rel}/verify/comments.sh`]: "#!/usr/bin/env bash\necho reached\n" });
+        fs.chmodSync(path.join(root, rel, "verify", "comments.sh"), 0o755);
+        assert.equal(execFileSync("bash", ["-c", commentsRecipeEntry(rel).run], { cwd: root, encoding: "utf8" }), "reached\n");
+        assert.equal(fs.existsSync(path.join(root, "ran")), false, "the directory's name ran as a command");
+    });
+
+    test("it reaches the tree through a path a shell would split or expand, and runs nothing from it", () => {
+        assert.match(commentsRecipe({ bundle: "/b", limit: 0, toTree: "../.." }), /^cd -- "\$\(dirname -- "\$0"\)"\/\.\.\/\.\. \|\| exit 2$/m);
+        const root = tree();
+        const name = "the tree $(touch ran)";
+        execFileSync("git", ["init", "-q", path.join(root, name)]);
+        const recipe = path.join(root, "ws", "verify", "comments.sh");
+        fs.mkdirSync(path.dirname(recipe), { recursive: true });
+        fs.writeFileSync(recipe, commentsRecipe({ bundle: "/b", limit: 0, toTree: `../../${name}` }), { mode: 0o755 });
+        const out = execFileSync(recipe, { cwd: root, encoding: "utf8", env: { ...process.env, PORTULAN_CLI: path.join(REPO, "cli") } });
+        assert.match(out, /green: 0 is within the limit of 0/);
+        assert.equal(fs.existsSync(path.join(root, "ran")), false, "the tree's name ran as a command");
     });
 });

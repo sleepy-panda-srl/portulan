@@ -7,6 +7,6 @@
   the comment lines in a tree that record such history, in JavaScript, shell, YAML, JSON and the HTML
   comments of Markdown other than the lines a tool reads. This repository's
   [`comments`](../.portulan/verify/comments.sh) recipe holds them at a limit that only falls, 1,800 today,
-  and rails every comment byte, 2,393,344 today, at 2% over. `init` drafts the same count for a consumer
+  and rails every comment byte, 2,393,722 today, at 2% over. `init` drafts the same count for a consumer
   whose tree git lists, at the figure it finds, so none starts red, and `upgrade` offers it to one drafted
   without, as the `form` step `0010`. Each boot card grows by 220 bytes.

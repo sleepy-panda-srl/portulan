@@ -822,7 +822,8 @@ is worse than one with fewer of them.
 - **A change's history goes in its commit message, not in a comment**, which is paid for on every read
   of its file. \`verify/comments.sh\` counts the comment lines that record one, by a date, a proposal or
   milestone number, a review round, or a pull request or issue number, and holds them at the
-  ${observed.commentHistory} \`init\` found: lower its \`LIMIT\` as they leave. It finds the CLI as the records rail does.` : ""}
+  ${observed.commentHistory} \`init\` found: lower its \`LIMIT\` as they leave. It finds the CLI as the records rail does, but takes a
+  \`portulan\` on your \`PATH\` only where it holds \`comments.mjs\`.` : ""}
 - **The session-end gate is wired by \`compile\`, and this draft has run only its guidance half.** The
   runner that asks for a dated handoff when a session ends with work not committed and pushed **does**
   ship in the package you have — it is \`cli/stop-gate.mjs\` — and \`portulan compile\` emits a
@@ -1003,7 +1004,7 @@ is a command in a file.
 |---|---|
 | \`workspace\` | **Nothing yet — it exits 2.** Replace it with the command that tells you this repository is healthy. This one is the **default**: it is what runs at a session end. |
 | \`index\` | The handoff series renders an index line for every handoff, and a copy of the index kept on disk matches it byte for byte; none is kept as drafted. Finished as drafted — it checks a real thing today. |${commented ? `
-| \`comments\` | No more comment lines record a change's history than its \`LIMIT\`, the count \`init\` found. Lower it as they leave. It needs git, and finds the CLI as \`index\` does. |` : ""}
+| \`comments\` | No more comment lines record a change's history than its \`LIMIT\`, the count \`init\` found. Lower it as they leave. It needs git, and finds the CLI as \`index\` does, but takes a \`portulan\` on \`PATH\` only where it holds \`comments.mjs\`. |` : ""}
 
 ## The three exit codes, and why the middle one is not enough
 

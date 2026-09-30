@@ -11,6 +11,7 @@ import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
+import { ENGINE_LINE, GATES_LINE, LEADS_LINE } from "./compile.mjs";
 import { NOTE_PERCENT, railFor } from "./context.mjs";
 
 export class CommentsError extends Error {}
@@ -49,10 +50,10 @@ function lineAt(starts, offset) {
     return low;
 }
 
-/** One entry per source line a comment spans: its line number, its text, and the bytes deleting it frees. */
+/** One entry per source line comments span: its line number, their text, and the bytes deleting them frees. */
 function spansToComments(source, spans, markers) {
     const starts = lineStarts(source);
-    const comments = [];
+    const comments = new Map();
     for (const [from, to] of spans) {
         for (let index = lineAt(starts, from); index < starts.length && starts[index] < to; index++) {
             const lineEnd = index + 1 < starts.length ? starts[index + 1] - 1 : source.length;
@@ -61,10 +62,13 @@ function spansToComments(source, spans, markers) {
             const raw = source.slice(start, end);
             const alone = !source.slice(starts[index], start).trim() && !source.slice(end, lineEnd).trim();
             const bytes = alone ? Buffer.byteLength(source.slice(starts[index], lineEnd + 1)) : Buffer.byteLength(raw);
-            comments.push({ line: index + 1, text: markers(raw).trim(), bytes });
+            const text = markers(raw).trim();
+            const seen = comments.get(index);
+            if (seen) comments.set(index, { ...seen, text: [seen.text, text].filter(Boolean).join(" "), bytes: seen.bytes + bytes });
+            else comments.set(index, { line: index + 1, text, bytes });
         }
     }
-    return comments;
+    return [...comments.values()].sort((a, b) => a.line - b.line);
 }
 
 const JS_MARKERS = (raw) => raw.replace(/^\s*(\/\/+|\/\*+|\*(?!\/))/, "").replace(/\*+\/\s*$/, "");
@@ -165,6 +169,9 @@ export function jsComments(source) {
             const word = source.slice(i, j);
             last = REGEX_AFTER_WORD.has(word) ? word : "value";
             i = j;
+        } else if ((c === "+" || c === "-") && next === c) {
+            last = "value";
+            i += 2;
         } else {
             last = c === ")" || c === "]" ? "value" : c;
             i++;
@@ -174,6 +181,25 @@ export function jsComments(source) {
 }
 
 const SHELL_WORD_BREAK = new Set([..." \t\n;&|()<>"]);
+const PROGRAM_FLAGS = new Set(["-e", "-c", "-p", "--eval", "--print"]);
+const PROGRAMS = new Set(["awk", "gawk", "mawk", "nawk", "node", "python", "python3", "perl", "ruby", "jq", "sed", "bash", "sh", "zsh", "dash", "ksh"]);
+const WRAPPERS = new Set(["command", "exec", "env"]);
+const RESERVED = new Set(["if", "then", "else", "elif", "do", "while", "until", "!", "{", "time"]);
+const ASSIGNMENT = /^[A-Za-z_]\w*=/;
+const HEREDOC = /^<<(-?)\s*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([A-Za-z_][\w.-]*))/;
+
+const unquoted = (word) => word.replace(/["'\\]/g, "");
+
+function takesProgram(words, before) {
+    if (PROGRAM_FLAGS.has(unquoted(before))) return true;
+    let at = 0;
+    while (ASSIGNMENT.test(words[at] ?? "")) at++;
+    while (WRAPPERS.has(words[at])) {
+        at++;
+        while (/^-|^[A-Za-z_]\w*=/.test(words[at] ?? "")) at++;
+    }
+    return at < words.length && PROGRAMS.has(path.posix.basename(unquoted(words[at])));
+}
 
 /** A program quoted across lines, as awk, jq or `node -e` take one: each later line opening `#` or `//`. */
 function embeddedComments(source, from, to) {
@@ -199,8 +225,6 @@ function arithmeticEnd(source, i) {
 export function shellComments(source) {
     const spans = [];
     const heredocs = [];
-    let i = source.startsWith("#!") ? source.indexOf("\n") : 0;
-    if (i === -1) return [];
     const skipHeredocBodies = (from) => {
         let at = from;
         for (const { word, tabs } of heredocs.splice(0)) {
@@ -214,35 +238,84 @@ export function shellComments(source) {
         }
         return at;
     };
-    while (i < source.length) {
-        const c = source[i];
-        if (c === "\n") {
-            i = heredocs.length ? skipHeredocBodies(i + 1) : i + 1;
-        } else if (c === "\\") i += 2;
-        else if (c === "#" && (i === 0 || SHELL_WORD_BREAK.has(source[i - 1]))) {
-            const end = source.indexOf("\n", i);
-            spans.push([i, end === -1 ? source.length : end]);
-            i = end === -1 ? source.length : end;
-        } else if (c === "'") {
-            const close = source.indexOf("'", i + 1);
-            const end = close === -1 ? source.length : close;
-            spans.push(...embeddedComments(source, i + 1, end));
-            i = end + 1;
-        } else if (c === '"' || c === "`" || (c === "$" && source[i + 1] === "'")) {
-            const quote = c === "$" ? "'" : c;
-            let j = c === "$" ? i + 2 : i + 1;
-            while (j < source.length && source[j] !== quote) j += source[j] === "\\" ? 2 : 1;
-            i = j + 1;
-        } else if (c === "(" && source[i + 1] === "(") i = arithmeticEnd(source, i) ?? i + 1;
-        else if (source.startsWith("<<<", i)) i += 3;
-        else if (source.startsWith("<<", i)) {
-            const heredoc = /^<<(-?)\s*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([A-Za-z_][\w.-]*))/.exec(source.slice(i, i + 200));
-            if (heredoc) {
-                heredocs.push({ word: heredoc[2] ?? heredoc[3] ?? heredoc[4], tabs: heredoc[1] === "-" });
-                i += heredoc[0].length;
-            } else i += 2;
-        } else i++;
+    const doubleQuoted = (i) => {
+        let j = i + 1;
+        while (j < source.length && source[j] !== '"') {
+            if (source[j] === "\\") j += 2;
+            else if (source[j] === "`") j = lex(j + 1, "`");
+            else if (source[j] === "$" && source[j + 1] === "(" && source[j + 2] !== "(") j = lex(j + 2, ")");
+            else j++;
+        }
+        return j + 1;
+    };
+    /** Shell from `from` to its closing `)` or backtick, or the end: the offset after the close. */
+    function lex(from, closer) {
+        const words = [];
+        let start = -1;
+        let depth = 0;
+        const endWord = (at) => {
+            if (start !== -1 && (words.length || !RESERVED.has(source.slice(start, at)))) words.push(source.slice(start, at));
+            start = -1;
+        };
+        let i = from;
+        while (i < source.length) {
+            const c = source[i];
+            const arithmetic = c === "(" && source[i + 1] === "(" ? arithmeticEnd(source, i) : null;
+            if (c === closer && (closer === "`" || depth === 0)) return i + 1;
+            if (c === "\n") {
+                endWord(i);
+                words.length = 0;
+                i = heredocs.length ? skipHeredocBodies(i + 1) : i + 1;
+            } else if (c === "\\") {
+                if (source[i + 1] !== "\n" && start === -1) start = i;
+                i += 2;
+            } else if (c === "#" && (i === from || SHELL_WORD_BREAK.has(source[i - 1]))) {
+                const end = source.indexOf("\n", i);
+                spans.push([i, end === -1 ? source.length : end]);
+                i = end === -1 ? source.length : end;
+            } else if (c === "'") {
+                const close = source.indexOf("'", i + 1);
+                const end = close === -1 ? source.length : close;
+                const before = start === -1 ? (words.at(-1) ?? "") : source.slice(start, i).replace(/=$/, "");
+                if (takesProgram(words, before)) spans.push(...embeddedComments(source, i + 1, end));
+                if (start === -1) start = i;
+                i = end + 1;
+            } else if (arithmetic !== null) i = arithmetic;
+            else if (source.startsWith("<<<", i)) {
+                endWord(i);
+                i += 3;
+            } else if (source.startsWith("<<", i)) {
+                endWord(i);
+                const lineEnd = source.indexOf("\n", i);
+                const heredoc = HEREDOC.exec(source.slice(i, lineEnd === -1 ? source.length : lineEnd));
+                if (heredoc) {
+                    heredocs.push({ word: heredoc[2] ?? heredoc[3] ?? heredoc[4], tabs: heredoc[1] === "-" });
+                    i += heredoc[0].length;
+                } else i += 2;
+            } else if (SHELL_WORD_BREAK.has(c)) {
+                endWord(i);
+                if (c === "(") depth++;
+                else if (c === ")" && depth > 0) depth--;
+                const redirect = c === "&" && (/[<>]/.test(source[i - 1]) || source[i + 1] === ">");
+                if (!" \t<>".includes(c) && !redirect) words.length = 0;
+                i++;
+            } else {
+                if (start === -1) start = i;
+                if (c === '"') i = doubleQuoted(i);
+                else if (c === "$" && source[i + 1] === "(" && source[i + 2] !== "(") i = lex(i + 2, ")");
+                else if (c === "`" || (c === "$" && source[i + 1] === "'")) {
+                    const quote = c === "$" ? "'" : c;
+                    let j = c === "$" ? i + 2 : i + 1;
+                    while (j < source.length && source[j] !== quote) j += source[j] === "\\" ? 2 : 1;
+                    i = j + 1;
+                } else i++;
+            }
+        }
+        return source.length;
     }
+    const from = source.startsWith("#!") ? source.indexOf("\n") : 0;
+    if (from === -1) return [];
+    lex(from, null);
     return spansToComments(source, spans, HASH_MARKERS);
 }
 
@@ -252,14 +325,18 @@ const BLOCK_SCALAR = /^(\s*)(?:-\s+)?(?:([\w.-]+)\s*:\s*)?[|>][-+0-9]*\s*(?:#.*)
 export function yamlComments(source) {
     const lines = source.split("\n");
     const comments = [];
+    let quote = null;
     for (let index = 0; index < lines.length; index++) {
         const text = lines[index];
-        const hash = yamlCommentAt(text);
+        const inScalar = quote !== null;
+        const { hash, open } = yamlCommentAt(text, quote);
+        quote = open;
         if (hash !== -1) {
             const raw = text.slice(hash);
             const alone = !text.slice(0, hash).trim();
             comments.push({ line: index + 1, text: HASH_MARKERS(raw).trim(), bytes: Buffer.byteLength(alone ? `${text}\n` : raw) });
         }
+        if (inScalar) continue;
         const block = BLOCK_SCALAR.exec(text);
         if (!block) continue;
         const indent = block[1].length + (block[2] && /^\s*-\s/.test(text) ? text.slice(block[1].length).search(/[^-\s]/) : 0);
@@ -278,18 +355,26 @@ export function yamlComments(source) {
     return comments;
 }
 
-function yamlCommentAt(text) {
-    let quote = null;
+/** Where a quoted scalar opens that can run on to later lines: a quote inside a plain scalar cannot. */
+const SCALAR_START = /(?:^\s*(?:-\s+)*|:\s+)$/;
+
+function yamlCommentAt(text, carried) {
+    let quote = carried;
+    let carries = carried !== null;
     for (let i = 0; i < text.length; i++) {
         const c = text[i];
         if (quote) {
             if (c === "\\" && quote === '"') i++;
+            else if (c === "'" && quote === "'" && text[i + 1] === "'") i++;
             else if (c === quote) quote = null;
         } else if (c === "'" || c === '"') {
-            if (i === 0 || /[\s:[{,-]/.test(text[i - 1])) quote = c;
-        } else if (c === "#" && (i === 0 || /\s/.test(text[i - 1]))) return i;
+            if (i === 0 || /[\s:[{,-]/.test(text[i - 1])) {
+                quote = c;
+                carries = SCALAR_START.test(text.slice(0, i));
+            }
+        } else if (c === "#" && (i === 0 || /\s/.test(text[i - 1]))) return { hash: i, open: null };
     }
-    return -1;
+    return { hash: -1, open: quote !== null && carries ? quote : null };
 }
 
 const COMMENT_KEY = /^(\/\/|\$comment|_(?:\w+_)?(?:comments?|notes?))$/;
@@ -340,16 +425,61 @@ export function jsonComments(source) {
     return spansToComments(source, spans, (raw) => raw);
 }
 
-/** A line a tool reads: any `<!-- portulan: … -->`, or a key and one token, as `<!-- leads: ../dod.md -->`. */
-const DIRECTIVE = /^\s*<!--\s*(?:portulan:\s[^\n]*?|[a-z][\w-]*:\s+\S+)\s*-->\s*$/;
+/** A line a tool reads: any `<!-- portulan: … -->`, or one `compile` expands, as `<!-- leads: ../dod.md -->`. */
+const PORTULAN_LINE = /^\s*<!--\s*portulan:\s[^\n]*?\s*-->\s*$/;
+const toolReads = (line) => PORTULAN_LINE.test(line) || [LEADS_LINE, ENGINE_LINE, GATES_LINE].some((form) => form.test(line.replace(/\r$/, "")));
+
+const FENCE_OPEN = /^ {0,3}(`{3,}(?!.*`)|~{3,})/;
+
+function backtickString(text, from, length) {
+    for (let at = text.indexOf("`", from); at !== -1; at = text.indexOf("`", at)) {
+        const start = at;
+        while (text[at] === "`") at++;
+        if (at - start === length) return start;
+    }
+    return -1;
+}
+
+/** A line with its code spans blanked, and the backtick string of one it leaves open to a later line. */
+function blankCodeSpans(line, open, later) {
+    let visible = line;
+    let from = 0;
+    const blank = (start, end) => (visible = visible.slice(0, start) + " ".repeat(end - start) + visible.slice(end));
+    if (open) {
+        const close = backtickString(line, 0, open.length);
+        if (close === -1) return { visible: " ".repeat(line.length), open };
+        from = close + open.length;
+        blank(0, from);
+    }
+    for (let at = line.indexOf("`", from); at !== -1; at = line.indexOf("`", from)) {
+        let end = at;
+        while (line[end] === "`") end++;
+        const close = backtickString(line, end, end - at);
+        if (close !== -1) {
+            from = close + end - at;
+            blank(at, from);
+        } else if (later().some((text) => backtickString(text, 0, end - at) !== -1)) {
+            blank(at, line.length);
+            return { visible, open: line.slice(at, end) };
+        } else from = end;
+    }
+    return { visible, open: null };
+}
 
 /** A Markdown file's HTML comments, outside fenced code and code spans, and other than a tool's directives. */
 export function markdownComments(source) {
     const spans = [];
+    const lines = source.split("\n");
+    const paragraphAfter = (index) => {
+        let end = index + 1;
+        while (end < lines.length && lines[end].trim() && !FENCE_OPEN.test(lines[end])) end++;
+        return lines.slice(index + 1, end);
+    };
     let fence = null;
     let open = -1;
+    let code = null;
     let offset = 0;
-    for (const line of source.split("\n")) {
+    for (const [index, line] of lines.entries()) {
         const lineStart = offset;
         offset += line.length + 1;
         if (open === -1) {
@@ -357,13 +487,16 @@ export function markdownComments(source) {
                 if (fence.test(line)) fence = null;
                 continue;
             }
-            const opening = /^ {0,3}(`{3,}(?!.*`)|~{3,})/.exec(line)?.[1];
+            const opening = FENCE_OPEN.exec(line)?.[1];
             if (opening) {
                 fence = new RegExp(`^ {0,3}${opening[0]}{${opening.length},}[ \\t\\r]*$`);
+                code = null;
                 continue;
             }
         }
-        const visible = open === -1 ? line.replace(/(`+)[^`]*?\1/g, (span) => " ".repeat(span.length)) : line;
+        let visible = line;
+        if (open === -1) ({ visible, open: code } = blankCodeSpans(line, code, () => paragraphAfter(index)));
+        else code = null;
         let from = 0;
         while (from <= visible.length) {
             if (open === -1) {
@@ -374,7 +507,7 @@ export function markdownComments(source) {
             }
             const close = visible.indexOf("-->", from);
             if (close === -1) break;
-            if (!DIRECTIVE.test(line)) spans.push([open, lineStart + close + 3]);
+            if (!toolReads(line)) spans.push([open, lineStart + close + 3]);
             open = -1;
             from = close + 3;
         }
@@ -481,10 +614,19 @@ function trackedFiles(root) {
     }
 }
 
-function readSource(root, file) {
+function underLink(root, file, linked) {
+    for (let at = file.indexOf("/"); at !== -1; at = file.indexOf("/", at + 1)) {
+        const dir = file.slice(0, at);
+        if (!linked.has(dir)) linked.set(dir, fs.lstatSync(path.join(root, dir)).isSymbolicLink());
+        if (linked.get(dir)) return true;
+    }
+    return false;
+}
+
+function readSource(root, file, linked) {
     const full = path.join(root, file);
     try {
-        if (!fs.lstatSync(full).isFile()) return null;
+        if (underLink(root, file, linked) || !fs.lstatSync(full).isFile()) return null;
         return fs.readFileSync(full, "utf8");
     } catch (error) {
         if (error.code === "ENOENT") return null;
@@ -498,11 +640,12 @@ export function scan(root, { exclude = [] } = {}) {
     const unused = exclude.filter((prefix) => !files.some((file) => file.startsWith(prefix)));
     if (unused.length) throw new CommentsError(`--exclude ${unused.join(", ")} names no file in the tree: remove it`);
     const read = [];
+    const linked = new Map();
     for (const file of files) {
         if (exclude.some((prefix) => file.startsWith(prefix))) continue;
         const guess = languageOf(file);
         if (guess === null && path.extname(file)) continue;
-        const source = readSource(root, file);
+        const source = readSource(root, file, linked);
         if (source === null) continue;
         const language = guess ?? languageOf(file, source.slice(0, source.indexOf("\n") >>> 0));
         if (!language) continue;
