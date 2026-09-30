@@ -52,9 +52,11 @@ function capture(argv) {
 }
 
 describe("languageOf", () => {
-    test("reads the extension, and the shebang of a file with none", () => {
+    test("reads the extension, and the shebang of a file with none; JSX is left unread", () => {
         assert.equal(languageOf("cli/a.mjs"), "js");
-        assert.equal(languageOf("src/a.tsx"), "js");
+        assert.equal(languageOf("src/a.ts"), "js");
+        assert.equal(languageOf("src/a.tsx"), null);
+        assert.equal(languageOf("src/a.jsx"), null);
         assert.equal(languageOf("a.jsonc"), "js");
         assert.equal(languageOf("verify/a.sh"), "shell");
         assert.equal(languageOf(".github/workflows/a.yml"), "yaml");
@@ -173,7 +175,7 @@ describe("shellComments", () => {
             "last'",
             "echo 'a",
             "// data'",
-            "\"$node\" -e '",
+            "/usr/local/bin/node -e '",
             "  // one",
             "'",
             "if FS=, command /usr/bin/awk -F, '",
@@ -225,6 +227,37 @@ describe("shellComments", () => {
         assert.deepEqual(texts(shellComments([`cat <<'${long}'`, "# Added 2026-09-24", long, "# one"].join("\n"))), [[4, "one"]]);
         assert.deepEqual(texts(shellComments([`cat <<${long}`, "# data", long, "# two"].join("\n"))), [[4, "two"]]);
     });
+
+    test("a here-document's delimiter may be any word, quoted in part or not at all", () => {
+        const source = ["cat <<1", "# Added 2026-09-24", "1", "# one", "cat <<E'O'F", "# data", "EOF", "# two"].join("\n");
+        assert.deepEqual(texts(shellComments(source)), [
+            [4, "one"],
+            [8, "two"],
+        ]);
+    });
+
+    test("a program is read by its interpreter's own lexer, and one no lexer here reads is data", () => {
+        const source = [
+            "node -e 'const t = `",
+            "// Added 2026-09-24",
+            "`; // one",
+            "'",
+            "jq -n '\"a",
+            "# Added 2026-09-24\" # two",
+            "'",
+            "bash -c 'echo \"# no\" # three'",
+            "python3 -c 's = \"\"\"",
+            "# Added 2026-09-24",
+            "\"\"\"'",
+            "\"$runtime\" -e '",
+            "// data'",
+        ].join("\n");
+        assert.deepEqual(texts(shellComments(source)), [
+            [3, "one"],
+            [6, "two"],
+            [8, "three"],
+        ]);
+    });
 });
 
 describe("yamlComments", () => {
@@ -247,6 +280,12 @@ describe("yamlComments", () => {
             [5, "three"],
             [10, "four"],
         ]);
+    });
+
+    test("a run block's comment alone on its line costs its indentation, a trailing one only itself", () => {
+        const [alone, trailing] = yamlComments(["steps:", "  - run: |", "      # alone", "      echo hi # end", ""].join("\n"));
+        assert.equal(alone.bytes, Buffer.byteLength("      # alone\n"));
+        assert.equal(trailing.bytes, Buffer.byteLength("# end"));
     });
 
     test("a quoted scalar across lines holds no comment, and one after its close is read", () => {
@@ -373,6 +412,13 @@ describe("historyOf", () => {
         assert.deepEqual(flagged("Raised by Copilot, round 1 on #343."), [[1, ["review", "reference"]]]);
         assert.deepEqual(flagged("at 2026-08-27T17:19:20Z"), [[1, ["date"]]]);
         assert.deepEqual(flagged("`#265`'s ruling"), [[1, ["reference"]]]);
+    });
+
+    test("a pull request or issue labelled as one counts at any number, a bare or unmarked one from two digits", () => {
+        assert.deepEqual(flagged("Fixed in PR #1."), [[1, ["reference"]]]);
+        assert.deepEqual(flagged("see issue #7 for the rest"), [[1, ["reference"]]]);
+        assert.deepEqual(flagged("Step #2 runs first."), []);
+        assert.deepEqual(flagged("the pull request 5 case"), []);
     });
 
     test("a review round or a credit to the reviewer, with no pull request named", () => {

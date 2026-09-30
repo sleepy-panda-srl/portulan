@@ -16,8 +16,9 @@ import { NOTE_PERCENT, railFor } from "./context.mjs";
 
 export class CommentsError extends Error {}
 
+/** `.jsx` and `.tsx` are left unread: JSX text can hold `//` as prose, and no lexer here tells it from a comment. */
 const EXTENSIONS = new Map([
-    ...[".js", ".mjs", ".cjs", ".jsx", ".ts", ".mts", ".cts", ".tsx", ".jsonc"].map((ext) => [ext, "js"]),
+    ...[".js", ".mjs", ".cjs", ".ts", ".mts", ".cts", ".jsonc"].map((ext) => [ext, "js"]),
     ...[".sh", ".bash"].map((ext) => [ext, "shell"]),
     ...[".yml", ".yaml"].map((ext) => [ext, "yaml"]),
     [".json", "json"],
@@ -54,7 +55,7 @@ function lineAt(starts, offset) {
 function spansToComments(source, spans, markers) {
     const starts = lineStarts(source);
     const comments = new Map();
-    for (const [from, to] of spans) {
+    for (const [from, to, strip = markers] of spans) {
         for (let index = lineAt(starts, from); index < starts.length && starts[index] < to; index++) {
             const lineEnd = index + 1 < starts.length ? starts[index + 1] - 1 : source.length;
             const start = Math.max(from, starts[index]);
@@ -62,7 +63,7 @@ function spansToComments(source, spans, markers) {
             const raw = source.slice(start, end);
             const alone = !source.slice(starts[index], start).trim() && !source.slice(end, lineEnd).trim();
             const bytes = alone ? Buffer.byteLength(source.slice(starts[index], lineEnd + 1)) : Buffer.byteLength(raw);
-            const text = markers(raw).trim();
+            const text = strip(raw).trim();
             const seen = comments.get(index);
             if (seen) comments.set(index, { ...seen, text: [seen.text, text].filter(Boolean).join(" "), bytes: seen.bytes + bytes });
             else comments.set(index, { line: index + 1, text, bytes });
@@ -115,7 +116,7 @@ function skipTemplate(source, i) {
     return { end: source.length, open: false };
 }
 
-export function jsComments(source) {
+function jsSpans(source) {
     const spans = [];
     const resumeAt = [];
     let depth = 0;
@@ -177,39 +178,87 @@ export function jsComments(source) {
             i++;
         }
     }
-    return spansToComments(source, spans, JS_MARKERS);
+    return spans;
+}
+
+export function jsComments(source) {
+    return spansToComments(source, jsSpans(source), JS_MARKERS);
 }
 
 const SHELL_WORD_BREAK = new Set([..." \t\n;&|()<>"]);
-const PROGRAM_FLAGS = new Set(["-e", "-c", "-p", "--eval", "--print"]);
-const PROGRAMS = new Set(["awk", "gawk", "mawk", "nawk", "node", "python", "python3", "perl", "ruby", "jq", "sed", "bash", "sh", "zsh", "dash", "ksh"]);
 const WRAPPERS = new Set(["command", "exec", "env"]);
 const RESERVED = new Set(["if", "then", "else", "elif", "do", "while", "until", "!", "{", "time"]);
 const ASSIGNMENT = /^[A-Za-z_]\w*=/;
-const HEREDOC = /^<<(-?)\s*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([A-Za-z_][\w.-]*))/;
+const HEREDOC = /^<<(-?)[ \t]*((?:'[^'\n]*'|"[^"\n]*"|\\.|[^\s;&|<>()'"\\])+)/;
 
 const unquoted = (word) => word.replace(/["'\\]/g, "");
 
-function takesProgram(words, before) {
-    if (PROGRAM_FLAGS.has(unquoted(before))) return true;
+/** A program's comments where its strings cannot run across lines: each line opening `#`. */
+function lineSpans(program) {
+    return [...program.matchAll(/^[ \t]*(#.*)/gm)].map((m) => [m.index + m[0].length - m[1].length, m.index + m[0].length]);
+}
+
+/** jq's comments: `#` to the line's end outside strings, which may run across lines and interpolate `\( )`. */
+function jqSpans(program) {
+    const spans = [];
+    const resume = [];
+    let depth = 0;
+    let quoted = false;
+    for (let i = 0; i < program.length; i++) {
+        const c = program[i];
+        if (quoted) {
+            if (c === "\\" && program[i + 1] === "(") {
+                resume.push(depth++);
+                quoted = false;
+                i++;
+            } else if (c === "\\") i++;
+            else if (c === '"') quoted = false;
+        } else if (c === '"') quoted = true;
+        else if (c === "(") depth++;
+        else if (c === ")" && --depth === resume.at(-1)) {
+            resume.pop();
+            quoted = true;
+        } else if (c === "#") {
+            const end = program.indexOf("\n", i);
+            spans.push([i, end === -1 ? program.length : end]);
+            i = end === -1 ? program.length : end;
+        }
+    }
+    return spans;
+}
+
+const AWKS = ["awk", "gawk", "mawk", "nawk"];
+const SHELLS = ["bash", "sh", "zsh", "dash", "ksh"];
+
+/**
+ * The interpreters whose single-quoted program is read: the flags taking it, and the lexer reading it. Python,
+ * Perl and Ruby strings run across lines, and no lexer here follows them, so their programs are data.
+ */
+const INTERPRETERS = new Map([
+    ["node", { flags: ["-e", "-p", "--eval", "--print"], spans: (program) => jsSpans(program).map(([from, to]) => [from, to, JS_MARKERS]) }],
+    ...SHELLS.map((shell) => [shell, { flags: ["-c"], spans: shellSpans }]),
+    ...AWKS.map((awk) => [awk, { flags: ["-e", "--source"], operand: true, spans: lineSpans }]),
+    ["sed", { flags: ["-e", "--expression"], operand: true, spans: lineSpans }],
+    ["jq", { flags: [], operand: true, spans: jqSpans }],
+]);
+
+const interpreterOf = (word) => INTERPRETERS.get(path.posix.basename(unquoted(word ?? "")));
+
+/** The interpreter a single-quoted word is the program of: after a flag taking one, or as awk's, jq's or sed's operand. */
+function programOf(words, before) {
+    const flag = unquoted(before);
+    if (flag.startsWith("-")) {
+        const interpreter = interpreterOf((before === words.at(-1) ? words.slice(0, -1) : words).findLast((word) => !word.startsWith("-")));
+        if (interpreter?.flags.includes(flag)) return interpreter;
+    }
     let at = 0;
     while (ASSIGNMENT.test(words[at] ?? "")) at++;
     while (WRAPPERS.has(words[at])) {
         at++;
         while (/^-|^[A-Za-z_]\w*=/.test(words[at] ?? "")) at++;
     }
-    return at < words.length && PROGRAMS.has(path.posix.basename(unquoted(words[at])));
-}
-
-/** A program quoted across lines, as awk, jq or `node -e` take one: each later line opening `#` or `//`. */
-function embeddedComments(source, from, to) {
-    const spans = [];
-    for (let at = source.indexOf("\n", from); at !== -1 && at < to; at = source.indexOf("\n", at + 1)) {
-        const lineEnd = Math.min(to, source.indexOf("\n", at + 1) === -1 ? source.length : source.indexOf("\n", at + 1));
-        const marker = /^[ \t]*(#|\/\/)/.exec(source.slice(at + 1, lineEnd));
-        if (marker) spans.push([at + 1 + marker[0].length - marker[1].length, lineEnd]);
-    }
-    return spans;
+    const command = at < words.length ? interpreterOf(words[at]) : undefined;
+    return command?.operand ? command : null;
 }
 
 /** From `((`, the offset after the `))` closing it on the same line: `<<` inside is a shift, not a heredoc. */
@@ -222,7 +271,7 @@ function arithmeticEnd(source, i) {
     return null;
 }
 
-export function shellComments(source) {
+function shellSpans(source) {
     const spans = [];
     const heredocs = [];
     const skipHeredocBodies = (from) => {
@@ -277,7 +326,8 @@ export function shellComments(source) {
                 const close = source.indexOf("'", i + 1);
                 const end = close === -1 ? source.length : close;
                 const before = start === -1 ? (words.at(-1) ?? "") : source.slice(start, i).replace(/=$/, "");
-                if (takesProgram(words, before)) spans.push(...embeddedComments(source, i + 1, end));
+                const program = programOf(words, before);
+                if (program) spans.push(...program.spans(source.slice(i + 1, end)).map(([a, b, strip]) => [a + i + 1, b + i + 1, strip]));
                 if (start === -1) start = i;
                 i = end + 1;
             } else if (arithmetic !== null) i = arithmetic;
@@ -289,7 +339,8 @@ export function shellComments(source) {
                 const lineEnd = source.indexOf("\n", i);
                 const heredoc = HEREDOC.exec(source.slice(i, lineEnd === -1 ? source.length : lineEnd));
                 if (heredoc) {
-                    heredocs.push({ word: heredoc[2] ?? heredoc[3] ?? heredoc[4], tabs: heredoc[1] === "-" });
+                    const word = heredoc[2].replace(/'([^']*)'|"([^"]*)"|\\(.)/g, (_, single, double, escaped) => single ?? double ?? escaped);
+                    heredocs.push({ word, tabs: heredoc[1] === "-" });
                     i += heredoc[0].length;
                 } else i += 2;
             } else if (SHELL_WORD_BREAK.has(c)) {
@@ -316,7 +367,11 @@ export function shellComments(source) {
     const from = source.startsWith("#!") ? source.indexOf("\n") : 0;
     if (from === -1) return [];
     lex(from, null);
-    return spansToComments(source, spans, HASH_MARKERS);
+    return spans;
+}
+
+export function shellComments(source) {
+    return spansToComments(source, shellSpans(source), HASH_MARKERS);
 }
 
 const BLOCK_SCALAR = /^(\s*)(?:-\s+)?(?:([\w.-]+)\s*:\s*)?[|>][-+0-9]*\s*(?:#.*)?$/;
@@ -345,9 +400,11 @@ export function yamlComments(source) {
         if (block[2] === "run") {
             const body = lines.slice(index + 1, end);
             const margin = Math.min(...body.filter((l) => l.trim()).map((l) => l.search(/\S/)));
-            const script = body.map((l) => l.slice(Number.isFinite(margin) ? margin : 0)).join("\n");
-            for (const comment of shellComments(script)) {
-                comments.push({ ...comment, line: comment.line + index + 1, bytes: comment.bytes + (Number.isFinite(margin) ? margin : 0) });
+            const shift = Number.isFinite(margin) ? margin : 0;
+            const script = body.map((l) => l.slice(shift));
+            for (const comment of shellComments(`${script.join("\n")}\n`)) {
+                const alone = comment.bytes === Buffer.byteLength(`${script[comment.line - 1]}\n`);
+                comments.push({ ...comment, line: comment.line + index + 1, bytes: comment.bytes + (alone ? shift : 0) });
             }
         }
         index = end - 1;
@@ -556,7 +613,7 @@ export const KINDS = [
     },
     {
         kind: "reference",
-        prose: /(?<![\w$&{#/])#\d{2,}\b|\b(?:PR|[Pp]ull [Rr]equest|[Ii]ssue)s?\s+#?\d{2,}\b|github\.com\/[\w.-]+\/[\w.-]+\/(?:pull|issues)\/\d+\b/gu,
+        prose: /(?<![\w$&{#/])#\d{2,}\b|\b(?:PR|[Pp]ull [Rr]equest|[Ii]ssue)s?\s+(?:#\d+|\d{2,})\b|github\.com\/[\w.-]+\/[\w.-]+\/(?:pull|issues)\/\d+\b/gu,
         raw: /`#\d{2,}`/gu,
     },
 ];
