@@ -723,8 +723,8 @@ function handoffInHistory(stamp, tree = { root: REPO, workspace: WORKSPACE }, he
 
 /**
  * Everything this gate refuses a stop for, plus whether the governing recipe was observed GREEN.
- * The two are reported separately because the consecutive-cap reset keys off the recipe alone, while
- * whether to block keys off the whole set.
+ * The two are reported separately because the recipe's consecutive-cap reset keys off an observed green
+ * alone, while whether to block keys off the whole set.
  */
 function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "told", note: null }) {
     /** Every problem carries the REASON it belongs to — the key its own counter is kept under. */
@@ -843,7 +843,7 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
         });
     }
 
-    return { problems, recipeGreen, handoffPresent };
+    return { problems, recipeGreen };
 }
 
 /**
@@ -932,13 +932,14 @@ function main() {
     // removed-worktree case permanently blocking — the false red the first arm was built to remove.
     if (tree.note) process.stderr.write(`portulan stop-gate: ${tree.note}; answering about ${REPO} instead.\n`);
 
-    const { problems, recipeGreen, handoffPresent } = collectProblems(tree);
+    const { problems, recipeGreen } = collectProblems(tree);
 
     // A reason's condition clearing ends THAT reason's futile-retry episode, whether or not the stop
     // is allowed, and never any other reason's. Done before the bump so a cleared reason cannot be
-    // charged a consecutive refusal on the same turn it cleared.
+    // charged a consecutive refusal on the same turn it cleared. The handoff's clears with its own
+    // handoff or with nothing left unrecorded, and a push records a handoff too.
     if (recipeGreen) clearReason(sessionId, "recipe");
-    if (handoffPresent) clearReason(sessionId, "handoff");
+    if (!problems.some((p) => p.reason === "handoff")) clearReason(sessionId, "handoff");
 
     // Charged only when this gate is actually about to refuse. A green stop costs nothing.
     const state = problems.length === 0

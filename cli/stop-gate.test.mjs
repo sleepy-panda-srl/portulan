@@ -820,6 +820,22 @@ describe("a handoff answers for the work only while this tree has not pushed it"
         assert.doesNotMatch(reason, /does exist elsewhere/, "the base branch's copy of a handoff this tree holds is not one elsewhere");
     });
 
+    test("pushing the work ends the handoff refusals it earned, so the next work meets the whole cap", () => {
+        const { work, stamp } = mergedHandoff();
+        assert.match(gate(work, "refused-then-pushed").reason, /handoff 1\/3/);
+        assert.match(gate(work, "refused-then-pushed").reason, /handoff 2\/3/);
+        fs.writeFileSync(path.join(work, ".portulan", "handoffs", `${stamp}-this-session.md`), "what is open\n");
+        git(work, ["add", "-A"]);
+        git(work, ["commit", "-m", "this session's work and its handoff"]);
+        git(work, ["push", "-q"]);
+        assert.equal(gate(work, "refused-then-pushed").decision, "allow", "premise: the work and its handoff are pushed");
+        fs.appendFileSync(path.join(work, "f.txt"), "this session's next work\n");
+        git(work, ["add", "f.txt"]);
+        const { decision, reason } = gate(work, "refused-then-pushed");
+        assert.equal(decision, "block");
+        assert.match(reason, /handoff 1\/3/, "the refusals before the push were about work the push recorded");
+    });
+
     test("this session's own handoff, untracked beside the merged one, releases it", () => {
         const { work, stamp } = mergedHandoff();
         fs.writeFileSync(path.join(work, ".portulan", "handoffs", `${stamp}-this-session.md`), "what is open\n");
