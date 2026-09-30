@@ -2,5 +2,5 @@
   `handoffs/` named with today's date, so a handoff committed and pushed already, as one merged on the base
   branch is, released every session whose tree held uncommitted or unpushed work on the day it landed.
   [`cli/stop-gate.mjs`](../cli/stop-gate.mjs) now counts only a handoff the tree has not yet committed and
-  pushed: untracked, changed, or in a commit no remote holds, the test it already puts to the work. Its
-  refusal names a dated handoff it did not count and says why.
+  pushed: untracked, changed, or committed with content no remote has held, in whatever commit a rebase or a
+  squash merge put it. Its refusal names a dated handoff it did not count and says why.

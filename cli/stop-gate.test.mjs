@@ -750,6 +750,45 @@ function mergedHandoff() {
     return { work, stamp };
 }
 
+/**
+ * A clone on a branch whose commit carries this session's handoff, pushed and then merged by a rebase: the
+ * base branch holds the handoff in a commit of its own, the branch is gone from the remote, and the tree
+ * holds the session's next work, staged and uncommitted, with no handoff beyond the merged one.
+ */
+function rebaseMergedHandoff() {
+    const stamp = today();
+    const root = scratch();
+    const origin = path.join(root, "origin.git");
+    const work = path.join(root, "work");
+    const merger = path.join(root, "merger");
+    execFileSync("git", ["init", "-q", "--bare", origin]);
+    execFileSync("git", ["--git-dir", origin, "symbolic-ref", "HEAD", "refs/heads/main"]);
+    execFileSync("git", ["clone", "-q", origin, work], { stdio: ["ignore", "pipe", "pipe"] });
+    fs.mkdirSync(path.join(work, ".portulan", "handoffs"), { recursive: true });
+    fs.writeFileSync(path.join(work, ".portulan", "workspace.json"), MANIFEST);
+    fs.writeFileSync(path.join(work, "f.txt"), "base\n");
+    git(work, ["add", "-A"]);
+    git(work, ["commit", "-m", "base"]);
+    git(work, ["branch", "-M", "main"]);
+    git(work, ["push", "-q", "-u", "origin", "main"]);
+    git(work, ["checkout", "-q", "-b", "feature"]);
+    fs.writeFileSync(path.join(work, ".portulan", "handoffs", `${stamp}-this-session.md`), "what this session left open\n");
+    git(work, ["add", "-A"]);
+    git(work, ["commit", "-m", "this session's change and its handoff"]);
+    git(work, ["push", "-q", "-u", "origin", "feature"]);
+    execFileSync("git", ["clone", "-q", origin, merger], { stdio: ["ignore", "pipe", "pipe"] });
+    fs.writeFileSync(path.join(merger, "g.txt"), "another change\n");
+    git(merger, ["add", "g.txt"]);
+    git(merger, ["commit", "-m", "another change, merged first"]);
+    git(merger, ["cherry-pick", "origin/feature"]);
+    git(merger, ["push", "-q", "origin", "main"]);
+    git(merger, ["push", "-q", "origin", "--delete", "feature"]);
+    git(work, ["fetch", "-q", "--prune"]);
+    fs.appendFileSync(path.join(work, "f.txt"), "this session's next work\n");
+    git(work, ["add", "f.txt"]);
+    return { work, stamp };
+}
+
 describe("a handoff answers for the work only while this tree has not pushed it", () => {
     test("a handoff merged on the base branch does not release a tree holding other work", () => {
         const { work, stamp } = mergedHandoff();
@@ -764,6 +803,21 @@ describe("a handoff answers for the work only while this tree has not pushed it"
         assert.ok(reason.includes(`${stamp}-another-session.md`), `the refusal names the dated file it did not count — got: ${reason}`);
         assert.match(reason, /committed and pushed already/, "and says why it did not count");
         assert.doesNotMatch(reason, /does exist elsewhere/, "a handoff this tree holds is not one elsewhere");
+    });
+
+    test("a handoff merged by a rebase, its branch deleted, does not release the next work", () => {
+        const { work, stamp } = rebaseMergedHandoff();
+        const handoff = `.portulan/handoffs/${stamp}-this-session.md`;
+        assert.equal(git(work, ["status", "--porcelain", "--", ".portulan"]).trim(), "", "premise: the handoff is committed and unchanged");
+        assert.notEqual(git(work, ["log", "--oneline", "HEAD", "--not", "--remotes"]).trim(), "", "premise: no remote holds the commit that carries it");
+        assert.equal(git(work, ["rev-parse", `origin/main:${handoff}`]), git(work, ["rev-parse", `HEAD:${handoff}`]), "premise: the base branch holds its content");
+        assert.match(git(work, ["status", "--porcelain"]), /^M {2}f\.txt$/m, "premise: this session's next work is staged and uncommitted");
+
+        const { decision, reason } = gate(work, "rebase-merged-handoff");
+        assert.equal(decision, "block", "a handoff a remote holds, in whatever commit, must not answer for work after it");
+        assert.ok(reason.includes(`${stamp}-this-session.md`), `the refusal names the dated file it did not count — got: ${reason}`);
+        assert.match(reason, /committed and pushed already/, "and says why it did not count");
+        assert.doesNotMatch(reason, /does exist elsewhere/, "the base branch's copy of a handoff this tree holds is not one elsewhere");
     });
 
     test("this session's own handoff, untracked beside the merged one, releases it", () => {
