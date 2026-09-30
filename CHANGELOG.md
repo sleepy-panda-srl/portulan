@@ -60,7 +60,8 @@ upgrade can trip on.
 
 Beside them, a consumer `init` drafts boots on 70% less text, `upgrade` moves an existing consumer to the
 new form in five steps that are each proved or refused before they write, and a workspace can compile its
-guidance into the load tier it declares.
+guidance into the load tier it declares. This release carries its eval result in
+[`evals/releases/0.2.0.md`](evals/releases/0.2.0.md), which this file and the release body cite rather than restate.
 
 ### Added
 
