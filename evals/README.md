@@ -288,6 +288,11 @@ reaches the tagged tree at the publish, and the release body, written outside th
 check. While every governed release has its record, the clause's central arm — a governed release with
 none — is exercised only by the forced-red drill that moves the boundary.
 
+**`v0.1.3` is the first release published with its eval result.** It was tagged on 2026-09-30 at the
+commit that cut it, the publish workflow ran `--tagged` against that tree before publishing it, and its
+release body cites [`releases/0.1.3.md`](releases/0.1.3.md) without restating it. That the body cites the
+register is the maintainer's act, and nothing here checks it.
+
 ## A rule change decided on eval evidence
 
 Row 8's clause *a rule change merges or is rejected on eval evidence* is discharged by one instance, hole 8
@@ -306,10 +311,6 @@ a case would manufacture the defect.
 Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 — nothing here
 claims a capability that does not exist:
 
-- **A release actually *published* with its eval result.** The mechanism is built and `0.1.3`'s record is
-  in the tree; the tag and a release body citing its register are not. **Ruled 2026-09-01: it waits for a
-  real cut.** `tag-a-release` and `publish-a-release` are Gated, so the clause stays undemonstrated until
-  the maintainer takes them; [`../docs/milestones/m08.md`](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/docs/milestones/m08.md) carries the argument.
 - **The `evals` and `telemetry` Workspace Definition slots.** Proposal
   [`0034`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md), accepted
   2026-08-28, carries both in one spec bump. The deferral in [`../spec/slots.md`](../spec/slots.md) is due

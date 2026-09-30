@@ -39,7 +39,14 @@ working copy — because re-measuring amid uncommitted edits reports the measure
 The 76 beside it was re-measured on a `git clone` fixture at `v0.1.2`, which is the spelling available
 once a tag exists. The tree the tag names is the maintainer's to confirm at the cut, and that nothing
 carries that obligation is [#384](https://github.com/sleepy-panda-srl/portulan/issues/384), which this
-change does not close.)_ _(First measured 2026-07-31 at 72 files, all 72 identical — recorded then against `0f49868`, **an object that does not resolve in this repository today**, the branch having been squashed at merge; the date is the durable half and the sha is kept only as the original record. The property
+change does not close.)_ _(**Re-measured at the 0.2.0 cut: 109.** Twenty-one files joined the payload since `0.1.3` and
+none left it: nine `cli/` modules — `advisory`, `comments`, `context`, `finish`, `form`,
+`instructions`, `ledger`, `sessions` and `symbols` — `core/operating/context.md` and
+`core/operating/sessions.md`, the eight `spec/migrations/` from `0003` to `0010`, and the record pair
+`evals/releases/0.2.0.{json,md}`. Measured the way the 88 was, on a clean `git archive` export of the
+cut's index tree packed outside the working copy. **The 88 is now confirmed at its tag**: an export of
+`v0.1.3` packs 88 files to `fd242ad71b2d84882f7edb0d79cbcfa3884b1623`, the tarball the registry serves
+for `0.1.3`.)_ _(First measured 2026-07-31 at 72 files, all 72 identical — recorded then against `0f49868`, **an object that does not resolve in this repository today**, the branch having been squashed at merge; the date is the durable half and the sha is kept only as the original record. The property
 strengthened as the package grew; only the count moved, and it is restated rather than left standing,
 because a count is the half of this claim that goes stale silently. **Measure it on a clean checkout:**
 re-measuring inside a working tree with uncommitted edits reports those edits as drift — it did here,

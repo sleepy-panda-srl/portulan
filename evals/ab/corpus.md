@@ -159,8 +159,9 @@ on the instrument"* so that construction does not get to decide what counts as i
 > token exported; the obligation is `acceptedUnder.reRunWhen`. **It belonged to session 6d, which closed
 > on 2026-08-31 without discharging it — so it was re-pointed to the maintainer at row 8's close, an
 > obligation owned by a finished session being owned by nobody. That close ran 2026-09-09 with it still
-> open, the probe refusing again at exit 2, and it is now aimed at the `0.1.3` cut;
-> [`../../cli/ab.mjs`](../../cli/ab.mjs) is the pointer's one carrier and this line cites it.**
+> open, the probe refusing again at exit 2, and it was aimed at the `0.1.3` cut. It was discharged on
+> 2026-09-30, the day `v0.1.3` was tagged, the hook recorded firing under isolation;
+> [`../../cli/ab.mjs`](../../cli/ab.mjs) carries the receipt and this line cites it.**
 >
 > **The maintainer accepted the departure, 2026-08-29**, on the argument that the test asks whether the
 > **host invokes the compiled hook** — a question orthogonal to how an arm resolves packs — and that the

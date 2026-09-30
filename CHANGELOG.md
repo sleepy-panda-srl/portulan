@@ -47,6 +47,446 @@ A change's commit message is the fuller record: it says why, and `git log` finds
 Each entry for the next release is a file in [`changes/`](changes/), so two open changes never edit the
 same lines; `node cli/index.mjs --changes changes` prints them as the cut pastes them.
 
+## 0.2.0 — 2026-09-30
+
+**A boot that reads a fraction of what it did, a workspace form in which open changes stop colliding over
+records — and three changes that can break an upgrade.** `portulan compile` now exits **2** and writes
+nothing in two cases where it used to carry on: a `workspace.json` that does not parse, where a write used
+to remove every rule it had compiled, and a `gates` value it will not read, which used to fall back to a
+`gates.json` at the conventional path. And `cli/librarian.mjs` no longer writes a Session log entry or a
+handoff: `--report <path>` writes its report outside the tree and refuses a path inside it. The entries
+under **Fixed** and **Changed** say what to do in each case, and they lead here because they are what an
+upgrade can trip on.
+
+Beside them, a consumer `init` drafts boots on 70% less text, `upgrade` moves an existing consumer to the
+new form in five steps that are each proved or refused before they write, and a workspace can compile its
+guidance into the load tier it declares. This release carries its eval result in
+[`evals/releases/0.2.0.md`](evals/releases/0.2.0.md), which this file and the release body cite rather than restate.
+
+### Added
+
+- **Every repository that installs Portulan gets the new records and a boot card, and a fresh one's boot
+  reads 70% less.** `init` drafts a consumer in the new form: `changes/` with its README, a handoff
+  series for open work only, no Session log and no kept handoff index, and a boot card drafted from the
+  workspace's own files and compiled, importing the identity whole and writing out the principles, the
+  definition of done and the gate policy's gates by tier from their one source. `upgrade` moves an
+  existing consumer there in five new `form` steps, each owed only where the new form is missing and each
+  proved or refused before it writes: the handoff index deleted and git-ignored, Unreleased entries moved
+  to fragments that must print back as the changelog held them (an entry that does not open `- ` is named
+  by its line, and its fragment does), each Session log retired to a pointer at the commit holding its
+  entries, the card drafted and compiled; a consumer that declares no card boots as it did. `vendor
+  --host` leads `AGENTS.md` with the card, `doctor` reports which form a consumer is in without failing
+  it, and [`cli/form.mjs`](cli/form.mjs) is the one definition all four read. A consumer `init` drafts
+  boots from 8,081 bytes, down from 26,759, railed in [`context.sh`](.portulan/verify/context.sh); one
+  upgraded from the old form, from 8,433, down from 20,434, most of the rest being the skill and kernel
+  every boot reads and the consumer's own identity.
+
+- **A workspace can compile a boot card, and this repository's boot reads 83% less.** A Workspace
+  Definition 2.10 workspace may keep an `always` unit named `boot` in `slots.context`. `compile` writes it
+  into every context, where it can import whole files and write out the lead sentences of another file's
+  first list, so that file stays their one source, and the card names the file behind each of its lines.
+  An import is checked against what Claude Code 2.1.281 loads: one the host would not follow is refused,
+  and so is one in a unit of any other tier, which would not load with its unit.
+  `/portulan`'s [`SKILL.md`](plugin/skills/portulan/SKILL.md) now routes: where the card is loaded it
+  is the boot, and otherwise the boot reads the steps it always did, verbatim, in
+  [`steps.md`](plugin/skills/portulan/steps.md). This repository's boot drops from 89,057 to 15,525
+  bytes, about 29,800 to 5,200 tokens, and three rules scoped to paths carry the gate, doctrine and record
+  rules to where a session works on them. A boot with no card loaded reads 1,474 bytes more, for the
+  router, the demo's included; `vendor` carries a card's imports into `AGENTS.md` as pointer lines.
+
+- **A repository that installs Portulan is offered five-minute cache writes, with what they save and what a
+  pause costs, and a workspace can declare the multipliers its restart threshold is priced at.** `init` asks
+  once at a terminal, or takes `--cache-lifetime 5m|1h`, and on a yes drafts
+  `"sessions": { "cache_lifetime": "5m" }` at Workspace Definition 2.11, which `portulan compile` writes into
+  `.claude/settings.json` as `promptCacheTtl`; without one it prints the offer, and `upgrade` prints it too
+  and writes nothing. On Portulan's own tasks, run straight through, five-minute writes cut a boot's cost by
+  22 to 30% and an edit's by about 18% against an hour's ([`evals/ab/warm.md`](evals/ab/warm.md)), while
+  one pause past five minutes in a long session can cost more than every write they saved, so the offer says
+  so. `doctor` reports every session switch's state, and the multipliers, in one line. Workspace Definition
+  **2.12** adds one optional key, `spend`, for the read and write multipliers and the horizon proposal
+  [`0038`](.portulan/proposals/0038-what-a-change-spends-is-measured.md) computes the restart threshold at:
+  [`cli/ledger.mjs`](cli/ledger.mjs) reads it with `--workspace`, `compile` writes its figures onto the
+  restart advisory's commands, and `doctor` gates it to 2.12 and checks its ranges; without it every figure
+  says `undeclared` as before, and every 2.11 manifest stays valid unchanged. This repository's own headless
+  runs now write for five minutes; its interactive sessions keep the host's default.
+
+- **A comment says what the code cannot, and a check counts the ones recording history.** The rules on
+  reading every boot card carries gain a sixth, from
+  [`core/operating/context.md`](core/operating/context.md): code should speak for itself, and since a
+  comment is paid for on every read of its file, one is added only when truly needed, concise, meaningful
+  and valuable, while a change's history (a date, a proposal or milestone number, a review round, a pull
+  request or issue number) goes in its commit message. [`cli/comments.mjs`](cli/comments.mjs) counts
+  the comment lines in a tree that record such history, in JavaScript, shell, YAML, JSON and the HTML
+  comments of Markdown other than the lines a tool reads. This repository's
+  [`comments`](.portulan/verify/comments.sh) recipe holds them at a limit that only falls, 1,800 today,
+  and rails every comment byte, 2,400,396 today, at 2% over. `init` drafts the same count for a consumer
+  whose tree git lists, at the figure it finds, so none starts red, and `upgrade` offers it to one drafted
+  without, as the `form` step `0010`. Each boot card grows by 220 bytes.
+
+- **One call closes a change.** [`cli/finish.mjs`](cli/finish.mjs) confirms the change carries its
+  changelog fragment, commits the changes to tracked files and whatever is staged with the repository's
+  hooks, runs every recipe the workspace yields on that commit, as CI runs them, and pushes the branch. It
+  never stages a file nobody named: an untracked one stops it, listed, so a new file is staged by name in
+  the same call. Where a recipe is not green it pushes nothing, undoes its own commit with the changes left
+  staged, and prints which recipe went red with its last 25 lines, at most its last 64 KiB; it never
+  amends, never skips a hook, never force-pushes, refuses a detached HEAD and the base branch itself, and
+  pushes only the commit the recipes judged. Where the tree carries every pack the workspace composes, the
+  packs resolve from it, so an installed plugin carrying the same packs does not stop the command;
+  otherwise they resolve as `recipe-set` resolves them bare, the tree's beside the plugin's, where a
+  consumer's composed packs live. The closing steps were a run of requests, each re-sending the whole
+  context; they are now one.
+  This repository's boot card says to close a change with
+  `git add <new files> && node cli/finish.mjs --pack-root packs`, naming the pack root as CI does, so a
+  pack its tree lacks is refused; the card `init` drafts says the same with `<plugin root>/` before
+  `cli/` and no root named, merged into its records line: a drafted consumer's boot grows 138 bytes,
+  to 8,219.
+
+- **A repository's own `CLAUDE.md` can leave every context section by section, and nothing of it is
+  lost.** A team marks a section with a line `<!-- portulan: on-read -->` under its heading, and
+  `upgrade`'s form step `0009` moves it, heading and all and byte for byte, into an on-read unit of
+  `slots.context`, leaving a comment where it was that Claude Code drops before it loads the file; the
+  on-read index then carries one line for it, and every index line now names its unit's size in whole KB.
+  The split is proved before anything is written: the file must reassemble from its units byte for byte
+  and every clause land once, kept or moved, or nothing moves; a section importing a file and a mark
+  inside a marked section or under no heading are refused with the reason, and a marked `CLAUDE.md` that
+  is a link is named to make a file of its own while `upgrade` runs its other steps. `doctor`'s context
+  line, the boot and `init` offer the split where an instruction file is over 8,000 tokens, and `doctor`
+  and the boot wherever a declared budget is breached, naming the largest sections; `doctor` reports
+  marks waiting and markers naming a unit that is gone; and
+  [`cli/instructions.mjs`](cli/instructions.mjs) is the same split on the command line, where a
+  breached budget stops `upgrade`, with `--join` to put every section back, saying which unit was edited
+  since and refusing one re-tiered. On an invented consumer, marking three of eight sections takes 8,633
+  bytes out of every context, about 2,887 tokens at 2.99 bytes a token, an estimate: its `CLAUDE.md` goes
+  from 15,866 bytes to 7,049, for 184 bytes of index.
+
+- **Every boot card, Portulan's and each consumer's, carries five rules on what a session's reads, output
+  and pauses cost on every request after them.** Send independent tool calls in one request; read a file
+  once; open one of 300 lines or more only at the part the task needs; ask for only the output you need;
+  and stay within the prompt cache's lifetime, resuming a worker rather than starting one. They sit
+  in [`core/operating/context.md`](core/operating/context.md) with their reasons and the host facts
+  behind them, and `compile` writes their leads onto each card from the Portulan it ships with, through a
+  new `<!-- engine: … -->` line, so every card carries one text. [`cli/symbols.mjs`](cli/symbols.mjs)
+  now outlines a Markdown file by its headings with each section's anchor and size, and `<file>#<heading>`
+  prints one section; a `<!-- leads: … -->` line may name a heading too. `upgrade` gives a card drafted
+  before this the section in a new `form` step, `0008`, compiled in the same run; a card whose head it
+  does not recognise it names, as `doctor` does, with the line to add by hand, then applies the rest of
+  the chain and exits 1. The kernel and the boot skill moved their framing to files read on demand to pay
+  for the lines: Portulan's own always tier is 317 bytes smaller and its boot 625, and a fresh consumer's
+  boot reads 7,827 bytes, down from 8,219, while its card grows 543 bytes by the rules.
+
+- **A workspace can declare that a crossed restart threshold also holds a turn's end, once.** Workspace
+  Definition 2.13 adds `spend.restart`. `"advise"`, what every workspace has, is the restart advisory's line,
+  once, with a tool result or at a prompt. `"block"` keeps that line, and `compile` writes a second `Stop`
+  command beside the Stop-gate's, [`cli/advisory.mjs`](cli/advisory.mjs)'s `stop` mode: at the first stop
+  at or past the threshold that no block provoked, it holds the turn's end with the same line as its reason,
+  once in a session and again after each compaction. Nothing ends a session, and the Stop-gate's counters and
+  caps are untouched. Undeclared or `"advise"`, `.claude/settings.json` compiles byte for byte as before;
+  `doctor` and `compile` refuse the key before 2.13, and `doctor` names a declared block in its line on the
+  session switches. Nothing offers it: the threshold is an estimate, and at the general multipliers it comes
+  early for a model whose cache reads cost less than a tenth, so this repository declares no block.
+
+- **A workspace can declare the host switches that decide whether a fresh session starts warm, each earned by
+  an A/B run first.** Workspace Definition 2.11 adds one optional key, `sessions`, the machine half of the new
+  doctrine page [`core/operating/sessions.md`](core/operating/sessions.md): a session that starts after
+  another reads the host's prefix from the prompt cache instead of writing it again, so a task runs in as few
+  fresh contexts as it can and keeps what varies per session out of the prefix. `git_instructions` and
+  `cache_lifetime` compile into `.claude/settings.json` as Claude Code's `includeGitInstructions` and
+  `promptCacheTtl`, said on every `compile` run with the way back for one session; `headless` carries the same
+  two and the dynamic-sections exclusion for the sessions Portulan's own runners start, since that one is no
+  setting. Nothing is defaulted, so a manifest without the key compiles byte for byte as before. In this
+  repository, [`cli/warm.mjs`](cli/warm.mjs) runs fresh headless sessions in sequence and reports each from
+  the host's own records in three lines, A Portulan's share, B the whole task and C the cost, warm against
+  cold, and [`evals/ab/warm.md`](evals/ab/warm.md) says what a switch must show before a workspace declares
+  it; it does not ship. This repository declares no switch yet.
+
+- **Sessions read code by symbol.** [`cli/symbols.mjs`](cli/symbols.mjs) prints a code file's outline,
+  one line per declaration, class member, test and titled section with its first and last line, so a
+  session reads only the spans it needs with the Read tool's `offset` and `limit`; `--find <name>` says
+  where a name is defined in the tracked code. It reads JavaScript and shell with no dependency and prints
+  from the code as it is, so nothing is committed to go stale. The rule in
+  [`core/operating/context.md`](core/operating/context.md) keeps whole reads for a file under 300 lines
+  that the task changes, and this repository's boot card carries it in one line. On the 130 code files
+  this repository tracks with this change, the outlines come to 8% of the code's bytes.
+
+### Changed
+
+- **A workspace can declare what its always tier may cost, and the doctrine says what that tier is.**
+  [`core/operating/context.md`](core/operating/context.md) states proposal
+  [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md)'s rule: guidance
+  sits in four load tiers (always, on-path, on-invoke, on-read) and belongs in the latest that still
+  reaches the agent in time, with one level of index, and the always tier is budgeted in tokens like
+  memory, never defaulted and repaired by demotion, merge or retirement rather than a raise. Workspace
+  Definition **2.9** adds one optional key, `context`, for that budget and the bytes-per-token ratio it is
+  counted at, and `doctor` checks their shape and refuses the key under an earlier declared version; every
+  2.8 manifest stays valid unchanged. Nothing measures the tier yet: that is the next change. The kernel gains one word, 11 bytes on every boot.
+
+- **The rest of this repository's boot read sheds another 11 KB.** Its identity file, definition of done and
+  repo card keep what routine work needs, the glossary and every condition included, and move their
+  reasons, measurements and history verbatim into [`.portulan/identity/`](.portulan/identity/),
+  [`.portulan/dod/`](.portulan/dod/) and [`.portulan/repos/portulan/`](.portulan/repos/portulan/), each
+  linked from the line it continues. This repository's boot read-set drops from 92,998 to 81,892 bytes,
+  100,053 to 88,947 with the manifest, and the `context` recipe's rail on it drops to match, from 102,055
+  to 90,726. The constitution is left whole by this change. Nothing in the package changes, and
+  the demo workspace's boot read-set is unchanged.
+
+- **The boot skill is 22% smaller on every boot, with nothing to configure.** `/portulan`'s
+  [`SKILL.md`](plugin/skills/portulan/SKILL.md) keeps every instruction and moves the reasons behind
+  them, the measurements and incidents included, into
+  [`rationale.md`](plugin/skills/portulan/rationale.md), which a boot reads only when a step does not
+  fit its case or someone asks why. The skill drops from 22,774 to 17,813 bytes, and the demo
+  workspace's boot read-set from 41,156 to 36,195. It is the first of the two demotions proposal
+  [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md) names, and it
+  arrives with the plugin upgrade.
+
+- **The boot skill reads its pointer and pack steps only where they apply, halving it for a workspace
+  that uses neither.** `/portulan`'s [`SKILL.md`](plugin/skills/portulan/SKILL.md) keeps every other
+  instruction and moves step 2a, resolving a pointer manifest, into
+  [`pointer-manifest.md`](plugin/skills/portulan/pointer-manifest.md), and step 3a, what declared packs
+  deliver, into [`packs.md`](plugin/skills/portulan/packs.md); a boot opens each only where its condition
+  holds. The skill drops from 17,813 to 8,917 bytes. A workspace naming packs, as the demo does, reads
+  15,198, and the demo's boot read-set drops from 36,195 to 33,580; a pointer to a workspace naming packs
+  reads 1,833 more than before. It is the maintainer's amendment to proposal
+  [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md), and it arrives
+  with the plugin upgrade.
+
+- **`cli/README.md` is rendered from the code, and the long workshop pages keep their rules and leave
+  their history to git.** `node cli/roster.mjs --write` writes the cli roster from each file's header and
+  from the rosters in [`cli/portulan.mjs`](cli/portulan.mjs) and [`cli/compile.mjs`](cli/compile.mjs),
+  at a seventh of the hand-kept page's size, and the tests fail when the committed page is not what the
+  files render. The verify and evals READMEs and the compiler's page in the gate map keep their rules,
+  limits and procedures and name the `git show` that holds how each was found, and the compile README
+  merged into the compiler's page. `.ignore` files keep ripgrep out of the handoffs, the closed
+  milestones and the done tasks until a following change deletes them.
+
+- **The cli tests keep only the comments that say what their code cannot.** The suites under
+  [`cli/`](cli/) and the fixtures only they read drop the dates, proposal and milestone numbers,
+  review rounds, pull request numbers and narration their comments carried. A comment stays where it states
+  a host's behaviour at its version, an ordering or safety constraint, or what a test cannot prove, and
+  four file-private names now say what a comment said. Their comments fall from 765,536 to 85,874 bytes,
+  and [`cli/README.md`](cli/README.md) renders each suite's new one-line header. The tree's comment
+  lines recording history fall from 650 to none, and the
+  [`comments`](.portulan/verify/comments.sh) recipe's limit falls to 0, with its byte rail at
+  261,520, the tree's 256,392 comment bytes plus 2%. What each test checks is unchanged.
+
+- **The cli modules' comments say only what the code cannot.** Across the 47 modules in
+  [`cli/`](cli/), 1,572 of 16,845 comment lines stay, 143,429 of 1,326,800 bytes, and none records a
+  change's history, so the modules drop from 2,720,329 bytes to 1,537,070. What stays is each file's
+  header with its usage and exit codes, one banner line per section, and the facts no name carries: a
+  host's behaviour at its version, an ordering or a safety constraint, an export's contract. Where a
+  comment said what a value held, one of five file-private names says it now, and no other code changes.
+  Where [`.portulan/gate-map/compiler.md`](.portulan/gate-map/compiler.md) and
+  [`evals/README.md`](evals/README.md) sent a reader to an argument those comments carried, they now name
+  the `git show` that still holds it. The [`comments`](.portulan/verify/comments.sh) recipe's limit falls
+  to 650 and its byte rail to 954,776.
+
+- **The comments outside `cli/` say only what the code cannot.** Across the workflows, the verify recipes,
+  the tools, the `tools/github` pack, the spec migrations and the golden tasks, 328 of 3,747 comment lines
+  stay, 26,898 of 307,867 bytes, and none records a change's history; where a comment said what a value
+  held or a test checked, a file-private name says it now. The drill calendar's answering runs move from
+  its workflow's header to [`.portulan/gate-map/platform-floor.md`](.portulan/gate-map/platform-floor.md),
+  and the [`comments`](.portulan/verify/comments.sh) recipe's limit falls to 1,564 and its byte rail to
+  2,161,816.
+
+- **A workspace's guidance compiles into the load tier it declares, so a long instruction file can be split
+  without losing a line.** Workspace Definition 2.10 adds one optional slot, `slots.context`: a directory of
+  Markdown units, each naming in its frontmatter one of proposal
+  [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md)'s four load tiers
+  (`always`, `on-path` with its `paths`, `on-invoke` or `on-read`) and, for every tier but `always`, the
+  one-line description an agent decides by. [`compile`](cli/compile.mjs) emits each in Claude Code's own
+  form: an unscoped rule in `.claude/rules/portulan/`, a rule scoped by `paths:`, a project skill, or one
+  line in an index of pointers, and `compile --check` byte-compares every one against its unit, so the
+  existing compile recipe reds a stale file. A tier a host cannot express degrades to a pointer, never to
+  nothing: the `AGENTS.md` that `vendor --host` writes carries the `always` units inline and the rest as
+  one line each. `compile` never writes `CLAUDE.md`, never writes or removes through a link, and never
+  replaces or removes a rule or a skill it cannot show it wrote. A workspace with guidance and no gate policy
+  compiles its guidance alone and says no enforcement is compiled; a `gates` key `compile` will not read still
+  stops it with exit 2. What `compile` wrote from guidance a workspace stops declaring is removed by its next
+  run, with a gate policy or without one. An adopter moves a section of an always-loaded file into a unit and
+  runs `npx @sleepy_panda_srl/portulan compile`.
+
+- **The constitution is cited by its sections, and says each thing once.** Code, tests and the spec
+  that quoted [`docs/vision.md`](docs/vision.md) word for word now name the section, as
+  `vision.md § thesis 4` or `vision.md § *Delivery tiers*`, and
+  [`cli/vision-sections.live.test.mjs`](cli/vision-sections.live.test.mjs) holds every such citation
+  to a section the file has. Freed from its quotes, the file keeps every rule and decision: the CLI
+  glosses under *Delivery tiers* keep what binds each subcommand and leave the rest to the code, and
+  what it said twice sits in one place. It drops from 9,385 to 8,762 bytes, 7.4% under its 9,459
+  before the flattening, and a session following a citation reads one section, 71 to 555 bytes.
+
+- **An agent may edit the constitution.** The maintainer lifted the prohibition on 2026-09-24.
+  [`docs/vision.md`](docs/vision.md) stays human-owned: the policy's `change-the-constitution` rule puts
+  it at Propose beside the plan, so it changes by pull request under his review, and an agent's edit cites
+  his word in its commit message. The compiled settings drop the `Edit` denial and the three file-tool
+  hooks that served it; the Bash hook and the repository ruleset are unchanged. The write matcher's attack
+  corpus, fuzzer and mutation census keep the file as their target, and the gate map and the boot card
+  leave the Prohibited tier with the composed `self-certify-a-checkpoint`.
+
+- **The constitution reads flatter, at the maintainer's direction of 2026-09-24, and records that agents
+  may edit it.** [`docs/vision.md`](docs/vision.md)'s header now carries his word of that day where it
+  said no agent edits it. The rest keeps every rule, and every sentence another file quotes word for word,
+  without its blockquote header, the heading over its opening, two headings' asides and its nested
+  parentheses, and what it said twice now sits in one place. The file drops from 9,459 to 9,385 bytes.
+
+- **What a boot reads and what the host loads into every context are measured, and Portulan's own share
+  cannot grow unnoticed.** [`cli/context.mjs`](cli/context.mjs), proposal
+  [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md)'s measurement,
+  lists for any workspace every file a boot reads in full and every file Claude Code loads into every
+  context there (instruction files and their imports, unscoped rules, skill, command and agent
+  descriptions), each with its size, its tokens at the declared ratio and why it counts. Where a manifest
+  declares a budget, Workspace Definition 2.9's `context.always.budget.tokens`, the always tier is railed
+  against it; otherwise it is a report. A pointer manifest is refused with the reason: its
+  workspace is resolved from the host's install records, which a recipe must not read, so an adopter
+  measures the workspace it resolves to.
+  An adopter runs it as `node <plugin root>/cli/context.mjs --workspace .portulan`. This repository's
+  new [`context`](.portulan/verify/context.sh) recipe rails Portulan's own footprint at its figures plus
+  2%: the boot skill and kernel every adopter's boot reads (11,825 bytes), the skill's two step files
+  (10,729), the plugin's descriptions (3,386), and both workspaces' boot read-sets. **Those now count
+  the manifest**, which the boot reads whole and every figure the day's records gave, from 213,002 to
+  92,998, left out. On the tree this landed on (main at a534f15), the nine files this repository's
+  figures counted are 86,717 bytes, 92,998 with the packs step its boot reads, and 100,053 with the
+  manifest; the demo's 33,591 is 35,393 with it.
+
+- **The session that owns a pull request awaits Copilot's round and reports it; no check judges the
+  round.** This repository's merge discipline still requires Copilot's feedback to be awaited and
+  resolved. The owning session now awaits the round on the final head and names the review and the commit
+  it addressed when it says the pull request is ready, and unresolved Copilot threads still block the
+  merge. The `copilot-reviewed` check and its workflow are removed; the request for bot-authored pull
+  requests stays. The rule and its carriers are in
+  [`.portulan/gate-map/merge-discipline.md`](.portulan/gate-map/merge-discipline.md). Nothing in the
+  package changes.
+
+- **`doctor` reports what every context in your repository loads, and the boot closes with the same
+  line.** Every `doctor` run now carries a `context` note for each workspace: Claude Code's always tier in
+  the repository its manifest's `tree` names, in bytes and tokens, its three largest files and what each
+  is, what sits on-path beside it, and the Portulan plugin's own descriptions, measured by
+  [`cli/context.mjs`](cli/context.mjs). It fails only where the manifest declares a budget, Workspace
+  Definition 2.9's `context.always.budget.tokens`: over it, or where the budget cannot be judged. The boot
+  skill's closing report gives the same line, `node <plugin root>/cli/context.mjs --workspace .portulan
+  --brief`, run alongside its slot reads, which adds 194 bytes to the skill, to 9,111, on every boot. It is
+  item 4 of proposal [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md)'s
+  order of work, and it arrives with the upgrade.
+
+- **A memory record's cap can bind forward only, and the librarian's pass leaves no record of its own.**
+  Workspace Definition 2.11 adds one optional key, `memory.store.budget.cutoff`, beside
+  `memory.store.budget.record_kilobytes`: with it, the per-record cap binds only the records dated after the
+  cutoff, and the index recipe reports the older ones over it without going red. Each record then carries a
+  `**dated:**` line, the day its text last changed, which the
+  [memory template](core/templates/memory-entry.md) now holds; a record without a real date, or dated more
+  than a day ahead, is refused, and `doctor` refuses a cutoff that is not a real day or has no cap beside it.
+  `cli/librarian.mjs` no longer writes a Session log entry or a handoff: `--report <path>` writes its report
+  outside the tree and refuses a path inside it, `--since` names where its mining window opens, and the
+  scheduled workflow opens a pull request carrying the report only when the pass changed the tree, and
+  otherwise leaves it in the run's summary. In Portulan's own repository the cap is 2 KB from 2026-09-24,
+  each record is dated by its last change in git's full history, and the four records near the old 8 KB cap
+  are compressed under it.
+
+- **A session working in this repository boots on less than half the text.** Portulan's own gate map,
+  [`.portulan/gate-map.md`](.portulan/gate-map.md), is now the index a boot reads: each gate's rule under
+  its tier, and one line per honest hole and per identity act. Its conditions, measurements, amendments and
+  reasons moved verbatim into nine files under [`.portulan/gate-map/`](.portulan/gate-map/), read when an
+  action is on their path. The file drops from 143,030 to 26,959 bytes and this repository's boot read-set
+  from 211,673 to 95,602. Nothing in the package changes, and the demo workspace's boot read-set is
+  unchanged: it reads its own gate map.
+
+- **A change's record is its commit, and two open pull requests no longer conflict over records.** The
+  doctrine every workspace boots from now puts a change's why in its commit message and asks for a
+  handoff only when a session ends with work not committed and pushed; the
+  [handoff template](core/templates/handoff.md) holds open state only, with a filled example, and the
+  Stop gate's refusal names committing and pushing as the other way out. A workspace may stop keeping
+  its handoff index: with no copy on disk, `portulan index --check` renders the series instead of
+  comparing a copy, and `portulan index --handoffs` prints it, while a workspace that keeps one, as
+  `init` drafts, is checked as before. `portulan index --changes <dir>` prints changelog fragments, one
+  file per change, grouped for a release, which is how this repository now writes its own under
+  [`changes/`](changes/). In Portulan's own repository the Session log retired from `docs/plan.md`,
+  and the docs recipe checks that the newest change's commit carries a `Seam-scan:` trailer.
+
+- **What a change spends is read from the host's own records, and a session is told once when continuing
+  costs more than restarting.** [`cli/ledger.mjs`](cli/ledger.mjs), proposal
+  [`0038`](.portulan/proposals/0038-what-a-change-spends-is-measured.md)'s ledger, prints what a branch spent
+  across the repository's worktrees: requests and tokens by class for sessions and subagents apart, contexts
+  opened, compactions, the largest context, the hit rate, each rebuild and its cause, tokens per changed
+  line, the difference from the totals the host saves, and the latest session's restart threshold. It reads
+  Claude Code's local transcripts, numbers only, counts a request once although the host writes it once per
+  content block, makes no network call and never runs inside a recipe; an adopter runs it as
+  `node <plugin root>/cli/ledger.mjs`. `compile` now wires [`cli/advisory.mjs`](cli/advisory.mjs) into
+  `.claude/settings.json` for every workspace: a `PostToolUse` and a `UserPromptSubmit` hook that put one
+  line into the context, once, with the first tool result or at the first prompt whose recorded usage has
+  reached the threshold `F × (1 + m_w / (20 × m_r))`, never in a subagent, and a status line that shows the
+  human the same figure, each reading only what the transcript gained since its last call. Both lead with
+  the session's request count, the unit a change is priced in, as a report and never a budget. The tool
+  result is what reaches a session at work: a headless run's one prompt comes before any request is
+  recorded, so the prompt hook alone never spoke in one. **The status line takes the place of one set in your
+  user settings, in that repository**; set `statusLine` in `.claude/settings.local.json` to keep yours. Until
+  a manifest key declares the multipliers, both say `undeclared` and use the general read multiplier, 0.1×,
+  and the write multiplier of the cache lifetime the host recorded. The new
+  [`ledger`](.portulan/verify/ledger.sh) recipe rails the reader on synthetic records with known totals.
+
+- **`upgrade --write` finishes in one run where a later step makes an earlier one owed.** After a pass
+  that applied a step, it asks the whole chain again until a pass applies nothing, so a card a later form
+  step edits is compiled in the same run rather than on the next; a chain still applying after as many
+  passes as it has steps is refused and rolled back, leaving the workspace as it was.
+
+### Removed
+
+- **The history the maintainer chose to delete has left the tree: 195 handoffs up to 2026-09-23, the
+  files of milestones 0 to 11 and seven done tasks, 214 files and 2.3 MB of Markdown.** Each still reads
+  with `git show 8a33f9b:<path>`. A link or a provenance stamp that pointed at one keeps its text and
+  points at the file at that commit, by its permalink or, in five memory records, four of them at the
+  2 KB cap, as `8a33f9b:<path>`; the plan's milestone rows name their files under one pointer line. The
+  three `.ignore` files that kept searches out of them are gone, and `.portulan/handoffs/` keeps a
+  `.gitkeep`, so the declared slot exists while the series is empty; the README `init` drafts there
+  for a new workspace would be an undated Markdown file this repository's record check refuses.
+
+### Fixed
+
+- **The boot's commands work where the plugin or the project sits under a path with a space in it.**
+  Every command `/portulan`'s boot skill gives now quotes the plugin's and the project's directories, and
+  the `<workspace-dir>` a reader fills in. Claude Code writes both into
+  [`SKILL.md`](plugin/skills/portulan/SKILL.md) as text, so a directory such as `My Projects` reached
+  the shell as two words, and the line that closes the boot failed before it measured anything. Step 5 in
+  [`steps.md`](plugin/skills/portulan/steps.md) now says, as step 2 does, that the working directory
+  stands in for an unset project directory.
+
+- **A `gates` value `compile` will not read stops it even where a `gates.json` sits at the conventional
+  path.** A top-level `gates` key in `workspace.json` that is not a relative path to a file inside the
+  workspace (a number, an empty string, a path out of it) sent [`compile`](cli/compile.mjs) to the
+  conventional `gates.json` whenever one was there, so the settings it wrote enforced a policy the manifest
+  does not name, and `compile --check` stayed green. It now exits 2 and writes nothing, and the fixture
+  grader [`goldens`](cli/goldens.mjs) exits 2 in the same case. The gate hook still reads the
+  conventional file, since it runs on every tool call.
+
+- **A release's eval result no longer links a file its package does not carry.** The register each
+  release ships in `evals/releases/` cited the A/B baseline as `../../evals/ab/baseline.md`, and the
+  package carries no `evals/ab/`, so inside an installed package the link led nowhere
+  ([#420](https://github.com/sleepy-panda-srl/portulan/issues/420)). From `0.2.0` a register cites it at
+  the release's tag on GitHub, which resolves wherever the register is read once that tag exists, and a
+  test checks each link a register renders against what `npm pack` ships.
+  [`cli/release-eval.mjs`](cli/release-eval.mjs) still renders `0.1.3`'s register with the relative
+  link, byte for byte as npm froze it into that version's package.
+
+- **The Stop-gate no longer takes another session's handoff for this one's.** It counted any file in
+  `handoffs/` named with today's date, so a handoff committed and pushed already, as one merged on the base
+  branch is, released every session whose tree held uncommitted or unpushed work on the day it landed.
+  [`cli/stop-gate.mjs`](cli/stop-gate.mjs) now counts only a handoff the tree has not yet committed and
+  pushed: untracked, changed, or committed with content no remote has held, in whatever commit a rebase or a
+  squash merge put it. Its refusal names a dated handoff it did not count and says why. Its count of handoff
+  refusals starts again once nothing is left unrecorded, so work begun after a push meets the whole cap.
+
+- **A `workspace.json` that does not parse stops `compile` before it writes or removes anything.** Run from
+  the repository root, as the `compile` recipe runs it, [`compile`](cli/compile.mjs) read a manifest it
+  could not parse, or one that is not a JSON object, as one declaring nothing: a write removed every rule
+  and skill it had compiled from the workspace's guidance, and the marker that records them, and compiled a
+  `gates.json` found by convention in the manifest's place. It now exits 2 in write mode and under
+  `--check`, naming the file and the parse error, and the fixture grader [`goldens`](cli/goldens.mjs)
+  exits 2 on the same manifest. `init`, `vendor` and `upgrade`'s guidance planner, which read guidance
+  through the same reader, report it and leave what an earlier run compiled in place. A workspace with
+  no manifest at all is unchanged.
+
+- **`upgrade --write` counts each step it applied once.** A step the run applies again in a later pass,
+  as `0007` compiles a card before and after `0008` adds its section, was counted each time, so two
+  steps were reported as three. Its help also says exit 1 covers a step owed by hand only under
+  `--check` or `--write`; a bare run lists such a step and exits 0.
+
 ## 0.1.3 — 2026-09-16
 
 **The first release that carries its own eval result — and one refusal that can break an upgrade.** If
