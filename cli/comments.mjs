@@ -197,9 +197,70 @@ const HEREDOC = /^<<(-?)[ \t]*((?:'[^'\n]*'|"[^"\n]*"|\\.|[^\s;&|<>()'"\\])+)/;
 
 const unquoted = (word) => word.replace(/["'\\]/g, "");
 
-/** A program's comments where its strings cannot run across lines: each line opening `#`. */
-function lineSpans(program) {
-    return [...program.matchAll(/^[ \t]*(#.*)/gm)].map((m) => [m.index + m[0].length - m[1].length, m.index + m[0].length]);
+/** Where the line holding `i` ends. */
+const endOfLine = (source, i) => (source.includes("\n", i) ? source.indexOf("\n", i) : source.length);
+
+const AWK_WORD = /[\p{L}\p{N}_.]/u;
+const AWK_REGEX_AFTER = new Set(["print", "printf", "return", "case", "do", "else"]);
+
+/** awk's comments: `#` to the line's end outside strings and regular expressions, which cannot run across lines. */
+function awkSpans(program) {
+    const spans = [];
+    let divides = false;
+    for (let i = 0; i < program.length; ) {
+        const c = program[i];
+        if (c === "#") {
+            spans.push([i, endOfLine(program, i)]);
+            i = endOfLine(program, i);
+        } else if (c === '"' || (c === "/" && !divides)) {
+            i = c === '"' ? skipQuoted(program, i, c) : skipRegex(program, i);
+            divides = true;
+        } else if (AWK_WORD.test(c)) {
+            const start = i;
+            while (i < program.length && AWK_WORD.test(program[i])) i++;
+            divides = !AWK_REGEX_AFTER.has(program.slice(start, i));
+        } else if ((c === "+" || c === "-") && program[i + 1] === c) i += 2;
+        else {
+            if (c !== " " && c !== "\t") divides = c === ")" || c === "]";
+            i++;
+        }
+    }
+    return spans;
+}
+
+/**
+ * sed's comments: `#` where a command may start or once one ends, outside its addresses, its `s` and `y`
+ * operands, and the text, labels and file names its commands take.
+ */
+function sedSpans(program) {
+    const spans = [];
+    const delimited = (at, count) => {
+        let j = at + 1;
+        for (; j < program.length && program[j] !== "\n"; j++) {
+            if (program[j] === "\\") j++;
+            else if (program[j] === program[at] && --count === 0) return j + 1;
+        }
+        return j;
+    };
+    for (let i = 0; i < program.length; ) {
+        const c = program[i];
+        if (c === "#") {
+            spans.push([i, endOfLine(program, i)]);
+            i = endOfLine(program, i);
+        } else if (c === "/") i = delimited(i, 1);
+        else if (c === "\\") i = delimited(i + 1, 1);
+        else if (c === "s" || c === "y") {
+            i = delimited(i + 1, 2);
+            while (c === "s" && /[gpPeimIM\d]/.test(program[i] ?? "")) i++;
+            if (c === "s" && program[i] === "w") i = endOfLine(program, i);
+        } else if ("aic".includes(c)) i += /^(?:\\[^]|[^\\\n])*/.exec(program.slice(i))[0].length;
+        else if ("rRwWe".includes(c)) i = endOfLine(program, i);
+        else if (":btT".includes(c)) {
+            const stop = program.slice(i).search(/[;\n]/);
+            i = stop === -1 ? program.length : i + stop;
+        } else i++;
+    }
+    return spans;
 }
 
 /** jq's comments: `#` to the line's end outside strings, which may run across lines and interpolate `\( )`. */
@@ -235,20 +296,20 @@ const AWKS = ["awk", "gawk", "mawk", "nawk"];
 const SHELLS = ["bash", "sh", "zsh", "dash", "ksh"];
 
 /**
- * The interpreters whose single-quoted program is read: the flags taking it, and the lexer reading it. Python,
+ * The interpreters whose quoted program is read: the flags taking it, and the lexer reading it. Python,
  * Perl and Ruby strings run across lines, and no lexer here follows them, so their programs are data.
  */
 const INTERPRETERS = new Map([
     ["node", { flags: ["-e", "-p", "--eval", "--print"], spans: (program) => jsSpans(program).map(([from, to]) => [from, to, JS_MARKERS]) }],
     ...SHELLS.map((shell) => [shell, { flags: ["-c"], spans: shellSpans }]),
-    ...AWKS.map((awk) => [awk, { flags: ["-e", "--source"], operand: true, spans: lineSpans }]),
-    ["sed", { flags: ["-e", "--expression"], operand: true, spans: lineSpans }],
+    ...AWKS.map((awk) => [awk, { flags: ["-e", "--source"], operand: true, spans: awkSpans }]),
+    ["sed", { flags: ["-e", "--expression"], operand: true, spans: sedSpans }],
     ["jq", { flags: [], operand: true, spans: jqSpans }],
 ]);
 
 const interpreterOf = (word) => INTERPRETERS.get(path.posix.basename(unquoted(word ?? "")));
 
-/** The interpreter a single-quoted word is the program of: after a flag taking one, or as awk's, jq's or sed's operand. */
+/** The interpreter a quoted word is the program of: after a flag taking one, or as awk's, jq's or sed's operand. */
 function programOf(words, before) {
     const flag = unquoted(before);
     if (flag.startsWith("-")) {
@@ -505,7 +566,20 @@ export function jsonComments(source) {
 const PORTULAN_LINE = /^\s*<!--\s*portulan:\s[^\n]*?\s*-->\s*$/;
 const toolReads = (line) => PORTULAN_LINE.test(line) || [LEADS_LINE, ENGINE_LINE, GATES_LINE].some((form) => form.test(line.replace(/\r$/, "")));
 
-const FENCE_OPEN = /^ {0,3}(`{3,}(?!.*`)|~{3,})/;
+const FENCE_OPEN = /^[ \t]*(`{3,}(?!.*`)|~{3,})/;
+const LIST_ITEM = /^[ \t]*([-+*]|\d{1,9}[.)])([ \t]+|\r?$)/;
+const HEADING = /^[ \t]*#{1,6}(?:[ \t]|\r?$)/;
+
+/** The columns a line's leading blanks fill, a tab reaching the next multiple of four. */
+function indentOf(line) {
+    let columns = 0;
+    for (const c of line) {
+        if (c === " ") columns++;
+        else if (c === "\t") columns += 4 - (columns % 4);
+        else break;
+    }
+    return columns;
+}
 
 function backtickString(text, from, length) {
     for (let at = text.indexOf("`", from); at !== -1; at = text.indexOf("`", at)) {
@@ -542,15 +616,20 @@ function blankCodeSpans(line, open, later) {
     return { visible, open: null };
 }
 
-/** A Markdown file's HTML comments, outside fenced code and code spans, and other than a tool's directives. */
+/**
+ * A Markdown file's HTML comments, outside fenced and indented code and code spans, and other than a tool's
+ * directives. A list item's content, and a block quote's, is indented from its own margin.
+ */
 export function markdownComments(source) {
     const spans = [];
     const lines = source.split("\n");
     const paragraphAfter = (index) => {
         let end = index + 1;
-        while (end < lines.length && lines[end].trim() && !FENCE_OPEN.test(lines[end])) end++;
+        while (end < lines.length && lines[end].trim() && !(indentOf(lines[end]) <= 3 && FENCE_OPEN.test(lines[end]))) end++;
         return lines.slice(index + 1, end);
     };
+    const items = [];
+    let paragraph = false;
     let fence = null;
     let open = -1;
     let code = null;
@@ -559,16 +638,30 @@ export function markdownComments(source) {
         const lineStart = offset;
         offset += line.length + 1;
         if (open === -1) {
+            const body = line.replace(/^(?: {0,3}> ?)+/, "");
             if (fence) {
-                if (fence.test(line)) fence = null;
+                if (fence.close.test(fence.quoted ? body : line)) fence = null;
                 continue;
             }
-            const opening = FENCE_OPEN.exec(line)?.[1];
+            if (!body.trim()) {
+                paragraph = false;
+                continue;
+            }
+            const columns = indentOf(body);
+            const item = LIST_ITEM.exec(body);
+            if (item || !paragraph) while (items.at(-1) > columns) items.pop();
+            const block = columns - (items.at(-1) ?? 0) <= 3;
+            if (!paragraph && !block) continue;
+            const opening = block && FENCE_OPEN.exec(body)?.[1];
             if (opening) {
-                fence = new RegExp(`^ {0,3}${opening[0]}{${opening.length},}[ \\t\\r]*$`);
+                fence = { close: new RegExp(`^[ \\t]*${opening[0]}{${opening.length},}[ \\t\\r]*$`), quoted: body !== line };
                 code = null;
+                paragraph = false;
                 continue;
             }
+            const gap = item?.[2].replace("\r", "").length;
+            if (item && block) items.push(columns + item[1].length + (gap >= 1 && gap <= 4 ? gap : 1));
+            paragraph = !(block && (HEADING.test(body) || /^[ \t]*<!--/.test(body)));
         }
         let visible = line;
         if (open === -1) ({ visible, open: code } = blankCodeSpans(line, code, () => paragraphAfter(index)));

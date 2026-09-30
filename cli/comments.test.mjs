@@ -205,6 +205,26 @@ describe("shellComments", () => {
         ]);
     });
 
+    test("an awk or sed comment counts after code too, and never inside a string, a pattern or a command's text", () => {
+        const source = [
+            "awk '{ print 1 } # one'",
+            "awk '/#/ { x = a / 2 } # two'",
+            "awk '{ print \"#\" } $1 ~ /[#/]/ { n++ } # three'",
+            "sed 's/#/x/; /#/d # four'",
+            "sed -E 's/[[:space:]]*(#.*)?$//; y/#/x/ # five'",
+            "sed '1a # appended'",
+            "sed '$a\\",
+            "# appended'",
+        ].join("\n");
+        assert.deepEqual(texts(shellComments(source)), [
+            [1, "one"],
+            [2, "two"],
+            [3, "three"],
+            [4, "four"],
+            [5, "five"],
+        ]);
+    });
+
     test("a program in double quotes is read as the shell passes it on, and its substitutions stay shell", () => {
         const source = ['node -e "', "// one", 'console.log(\\"// no\\") // two', "$(echo x # three", ')"', 'echo "', '// data"'].join("\n");
         assert.deepEqual(texts(shellComments(source)), [
@@ -361,6 +381,40 @@ describe("markdownComments", () => {
             [1, "one"],
             [2, "two"],
             [3, "three"],
+        ]);
+    });
+
+    test("an indented line after a blank is code, but in a list item it is the item's, and a paragraph's own line", () => {
+        const source = [
+            "text",
+            "",
+            "    <!-- Added 2026-09-01 -->",
+            "- item",
+            "",
+            "    <!-- one -->",
+            "",
+            "para",
+            "    <!-- two -->",
+            "    <!-- three -->",
+            "",
+            "1. step",
+            "",
+            "       <!-- Added 2026-09-01 -->",
+            "    ```",
+            "    <!-- Added 2026-09-01 -->",
+            "    ```",
+            "> quote",
+            ">",
+            ">     <!-- Added 2026-09-01 -->",
+            "",
+            "\t<!-- Added 2026-09-01 -->",
+            "<!-- four -->",
+        ].join("\n");
+        assert.deepEqual(texts(markdownComments(source)), [
+            [6, "one"],
+            [9, "two"],
+            [10, "three"],
+            [23, "four"],
         ]);
     });
 
