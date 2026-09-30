@@ -19,6 +19,11 @@ export const registerPath = (version) => `${RECORD_DIR}/${version}.md`;
 
 export const FIRST_GOVERNED_VERSION = "0.1.3";
 
+// The payload does not carry `evals/ab/`, so from this version a register cites it at the release's tag.
+// Earlier registers keep rendering the relative link npm froze into their tarballs.
+export const PINNED_FROM = "0.2.0";
+export const REPOSITORY = "https://github.com/sleepy-panda-srl/portulan";
+
 export const SELF = "release-eval";
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;
@@ -222,8 +227,10 @@ export function renderRegister(snap) {
     if (snap.abBaseline === null) {
         L.push("None is committed in this tree.");
     } else {
+        const pinned = SEMVER.test(String(snap.version)) && compareVersions(snap.version, PINNED_FROM) >= 0;
+        const href = pinned ? `${REPOSITORY}/blob/v${snap.version}/${snap.abBaseline.register}` : `../../${snap.abBaseline.register}`;
         L.push(
-            `[\`${snap.abBaseline.register}\`](../../${snap.abBaseline.register}), rendered from ` +
+            `[\`${snap.abBaseline.register}\`](${href}), rendered from ` +
                 `\`${snap.abBaseline.snapshot}\` — captured ${snap.abBaseline.captured} at ` +
                 `\`${snap.abBaseline.commit}\`, over a tree that was ` +
                 `${snap.abBaseline.clean === true ? "clean" : "**not clean**"}.`,
