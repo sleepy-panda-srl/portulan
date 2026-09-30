@@ -14,7 +14,9 @@ process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true
 
 import {
     FIRST_GOVERNED_VERSION,
+    PINNED_FROM,
     RECORD_DIR,
+    REPOSITORY,
     SELF,
     abBaselineIdentity,
     changelogVersions,
@@ -29,6 +31,7 @@ import {
     verifyRecord,
     verifyShape,
 } from "./release-eval.mjs";
+import { packedPaths } from "./pack-identity.mjs";
 
 // ---------------------------------------------------------------- fixtures
 
@@ -420,6 +423,29 @@ test("the A/B baseline is cited by identity and its figures are never restated",
     assert.match(doc, /evals\/ab\/baseline\.md/);
     assert.match(doc, /Its figures are not repeated here/);
     assert.doesNotMatch(doc, /\b\d+\/20\b/, "no cell figure may appear in a release record");
+});
+
+test("from `PINNED_FROM` a register links nothing its package does not carry (#420)", () => {
+    const doc = renderRegister(goodSnap(PINNED_FROM));
+    const packed = new Set(packedPaths(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")));
+    const hrefs = [...doc.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]);
+    assert.ok(hrefs.length >= 4, `the sweep must reach every link the register renders (${hrefs.length})`);
+    for (const href of hrefs) {
+        if (/^[a-z]+:/.test(href)) {
+            assert.ok(href.startsWith(`${REPOSITORY}/blob/v${PINNED_FROM}/`), `${href} is not pinned to the release's tag`);
+            continue;
+        }
+        // The capture ships beside its register, and `--verify` holds the pair together.
+        if (href === path.basename(snapshotPath(PINNED_FROM))) continue;
+        const target = path.posix.join(RECORD_DIR, href);
+        assert.ok(packed.has(target), `${href} resolves to ${target}, which the package does not carry`);
+    }
+});
+
+test("a register before `PINNED_FROM` keeps the relative citation npm froze into its tarball", () => {
+    const doc = renderRegister(goodSnap("0.1.3"));
+    assert.match(doc, /\]\(\.\.\/\.\.\/evals\/ab\/baseline\.md\)/);
+    assert.ok(!doc.includes(REPOSITORY));
 });
 
 // ---------------------------------------------------------------- `--verify`, end to end
