@@ -84,7 +84,7 @@ such case and never re-read when it stopped being.
 
 **The first of them since milestone 2 to move this line.**
 [`verify/workflow-filters.sh`](../verify/workflow-filters.sh) needs **`jq`**, because what it checks is
-jq's own behaviour: two merge-gate workflows branch on what a jq program prints for null input, and no
+jq's own behaviour: a merge-gate workflow, `pr-labels.yml`, branches on what a jq program prints for null input, and no
 other tool can answer for that. Same test as milestone 2 applied to a different binary — the property
 that matters is not the letter *bash*, it is that nothing is installed before it runs, and `jq` is
 present on the maintainer's machine and on `ubuntu-latest` alike — **measured on the first CI run of

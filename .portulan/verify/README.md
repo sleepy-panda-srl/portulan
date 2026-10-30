@@ -177,7 +177,7 @@ in review as `Binary files differ`, a file nobody could read in a pull request t
 then reproduced twice more while being fixed. The defect was repaired in
 [#64](https://github.com/sleepy-panda-srl/portulan/pull/64) and the *rail* was filed as
 [#68](https://github.com/sleepy-panda-srl/portulan/issues/68) under
-[`a-review-loop-needs-a-bound`](../memory/a-review-loop-needs-a-bound.md) rule 4; this is that rail.
+[`a-review-loop-needs-a-bound`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md) rule 4, a record retired on 2026-10-30; this is that rail.
 
 **It scans BYTES, and its exemption is a NAME rather than a sniff.** Both follow from the incident.
 Reading bytes rather than decoded text is what makes it exact — decoding invalid UTF-8 yields U+FFFD,
@@ -266,9 +266,9 @@ default, and the cost is stated in [`../identity.md`](../identity.md) instead of
 discover on a machine without `node`.
 
 **Why `workflow-filters.sh` needs `jq`, and why it is a recipe rather than a test.** The thing under
-test *is* an external interpreter's behaviour: two merge-gate workflows branch on what jq prints for
-null, and only jq can answer for that. That makes the dependency unavoidable, and where a check with
-an unavoidable external dependency lives is decided by the third exit code. `node --test` has two
+test *is* an external interpreter's behaviour: a merge-gate workflow, `pr-labels.yml`, branches on what jq
+prints for null, and only jq can answer for that. That makes the dependency unavoidable, and where a check
+with an unavoidable external dependency lives is decided by the third exit code. `node --test` has two
 outcomes, not three — a skipped test still exits `0`, so the suite would report green over a check
 that never ran, and a failing one would say the repository is broken when only the environment is.
 Both are named on this page as the failures to avoid. `2` is the honest answer and only this layer
@@ -431,8 +431,9 @@ above. The scheduled librarian, a watcher rather than a rail, carries its own pr
   before that stay in the series, dated and never re-derived.
 - **A new proposal's pointer cannot exist before its pull request does**, so `proposal` is red on a
   branch that adds one until the number is known. The red is accurate — nothing has filed it yet — and
-  it costs no extra push in practice, because [`a-review-loop-needs-a-bound`](../memory/a-review-loop-needs-a-bound.md)
-  rule 2 already lands the records last, and the pointer rides that push.
+  the pointer rides the push that follows the pull request's opening. _(Until 2026-10-30 that push cost no
+  extra review round, because [`a-review-loop-needs-a-bound`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md)
+  rule 2 landed the records last; the record retired when Copilot review left the review path.)_
 - **Anchors are not checked.** A link to `file.md#section` verifies only that `file.md` exists. Checking
   fragments needs a heading parser, and the failure it would catch is milder than the one it would add:
   false reds train people to stop trusting the recipe.

@@ -70,21 +70,25 @@ describes the live configuration and that file describes what the policy *says* 
 agree today, checked by hand at this session's checkpoints. Nothing checks them automatically, and nothing
 here can: `doctor` does not fetch settings and no verify recipe may make a network call.
 
-**A second ruleset exists and is deliberately not part of the floor.** `copilot auto-review on pull
-requests` — id `19805871`, repository-sourced, added 2026-07-27 — targets the same `~DEFAULT_BRANCH` and
-carries the single rule `copilot_code_review`, so every pull request a person opens gets a Copilot review
-requested without anyone remembering to ask; a bot's is
-[`copilot-request.yml`](../../.github/workflows/copilot-request.yml)'s, see *Which identity acts*. It is recorded
-here because anyone auditing `repos/{owner}/{repo}/rulesets` will now find two and needs to know which is which.
+**A second ruleset, deliberately not part of the floor, was retired by the maintainer's decision of
+2026-10-30.** `copilot auto-review on pull requests` — id `19805871`, repository-sourced, added
+2026-07-27 — targets the same `~DEFAULT_BRANCH` with the single rule `copilot_code_review`, which, while
+the ruleset stands, has Copilot's review requested on every pull request a person opens without anyone
+remembering to ask; until 2026-10-30 a bot's was asked for by `copilot-request.yml`, see
+[*Which identity acts*](identity.md). It was retired when Copilot review left the review path
+([*Merge discipline*](merge-discipline.md)), and deleting it is a repository-settings change and his, and whether `repos/{owner}/{repo}/rulesets` still lists it is read
+there, never from here. It is recorded because an audit of that endpoint once found two rulesets and needed
+to know which was which.
 
-It gates nothing directly: required approving reviews remain 0, and a Copilot review arrives as `COMMENTED`
-rather than as an approval. The honest qualification is that it can still decide whether a change lands —
-conversation resolution is required on `main`, so a Copilot review that leaves an inline comment opens a
-thread that blocks merge until the maintainer resolves it, which is exactly what happened on
-[#25](https://github.com/sleepy-panda-srl/portulan/pull/25). Not a gate, then, but upstream of one.
+It gated nothing directly: required approving reviews were 0, and a Copilot review arrived as `COMMENTED`
+rather than as an approval. The honest qualification was that it could still decide whether a change landed —
+conversation resolution is required on `main`, so a Copilot review that left an inline comment opened a
+thread that blocked merge until the maintainer resolved it, which is exactly what happened on
+[#25](https://github.com/sleepy-panda-srl/portulan/pull/25). Not a gate, then, but upstream of one, as any
+reviewer's thread still is.
 _From 2026-07-29 to 2026-09-23 the round's outcome was also displayed as an approval, submitted by the
 agent identity rather than by Copilot; that derived verdict left with `copilot-review.yml`, and
-[*Merge discipline*](merge-discipline.md) says what carries the round now._
+[*Merge discipline*](merge-discipline.md) records what carried the round after it._
 
 It was added while this section was being written, which is as good an illustration as the section could
 ask for of why the layers needed counting in the first place.
@@ -217,7 +221,7 @@ worked examples of what the rule asks for:
 |---|---|
 | Dependabot version updates | the pin was deliberately regressed one patch to v7.0.0; Dependabot opened the bump back to v7.0.1, and merging that was simultaneously the proof and the revert |
 | Dependency graph, alerts, security updates | the SBOM went `404` → `200`, and then tracked a pin *through a change* — which the first reading alone could not have shown |
-| Copilot auto-review ruleset | recorded as unvouched-for with its test stated in advance — the first pull request opened after `09:30:38Z` — and Copilot was then requested on that pull request at open, unasked |
+| Copilot auto-review ruleset — retired 2026-10-30, when Copilot review left the review path | recorded as unvouched-for with its test stated in advance — the first pull request opened after `09:30:38Z` — and Copilot was then requested on that pull request at open, unasked. Kept as a worked example of the procedure; retired as a watcher by the maintainer's decision of 2026-10-30 |
 | The forced-red drill calendar — [`../../.github/workflows/drills.yml`](../../.github/workflows/drills.yml), 2026-08-25 | **Split, because its two halves are answerable at different times, and the procedure is written before either answer exists.** The **sweep** is demonstrated: `node cli/drills.mjs` forced all twenty-one rails red by hand on 2026-08-25 and every one fired, transcript in that session's handoff. The **`workflow_dispatch`** half is **observed**: run [`32883413709`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32883413709), dispatched on `da9c06e` immediately after the merge put the file on the default branch, 21 of 21 forced red and fired. The **`schedule`** half was answered by the first Thursday run and by nothing earlier: run [`33097801218`](https://github.com/sleepy-panda-srl/portulan/actions/runs/33097801218) on `733cea7` at 2026-08-27T17:19:20Z, and run [`33745581549`](https://github.com/sleepy-panda-srl/portulan/actions/runs/33745581549) on `6e8a5ed` at 2026-09-03T10:40:32Z, each 21 of 21 forced red and fired; later runs are read with `gh run list --workflow=drills.yml --event=schedule`. What is unchanged is that **a silence is still not evidence**: a scheduled run that never starts stays undetectable from inside ([#344](https://github.com/sleepy-panda-srl/portulan/issues/344)), so *the schedule is vouched* and *a missing run would be noticed* are two claims and only the first is true. _(This clause read *"until then this calendar is unvouched"* after the dispatch was recorded one sentence above it, which contradicted the split the same row establishes and the wording the two other carriers had already taken. A row that observes one half and then calls the whole thing unvouched is the carrier disagreement this file's own header warns about, inside the row whose subject is halves answered at different times. Copilot, round 1 on #349.)_ |
 
 **The honest limits, because the rule is weaker than it sounds.** Nothing here checks it: whether a watcher

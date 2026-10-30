@@ -10,7 +10,7 @@ This file is the index a session reads at boot: each gate with its rule, under i
 session holds whether or not it is on a gate's path. The rest of each tier and topic, its conditions,
 measurements, amendments and reasons, is in one file under [`gate-map/`](gate-map/), and every line here that has
 more links straight to it. **Open the linked text before acting on what it covers**: a merge, a release, a
-settings change, a branch deletion, a review round, or an edit to what a gate guards. Where a rule says
+settings change, a branch deletion, an answer to a review, or an edit to what a gate guards. Where a rule says
 *this gate map*, it means this index and those files together. Nothing is kept in both beyond a hole's
 title and an identity row's action, which name what the on-read text continues.
 
@@ -256,27 +256,26 @@ and refuses, the third outcome, composition, and how each watcher is observed.
 | **Filing a scheduled pass's report** — one standing issue, opened once and edited by each pass | **The workflow**, as `github-actions[bot]`, with `issues: write` in [`librarian.yml`](../.github/workflows/librarian.yml) |
 | **Filing an issue from `portulan feedback`** — by a person or a session here | **The maintainer's** GitHub credentials: the `gh` login already on the machine |
 | **Resolving a review thread** | **The maintainer decides**; the command is his or an agent's, on his explicit per-action approval of the merge the thread blocks |
-| **Requesting Copilot's review on a pull request a bot opened** | **The maintainer's** credentials, as a fine-grained token of his that [`copilot-request.yml`](../.github/workflows/copilot-request.yml) uses with nobody at a keyboard |
 | Everything Gated above — settings, releases, merges | **The maintainer decides**; the command is his or an agent's, on his explicit per-action approval |
 
 Who the three identities are, why each row is what it is, and why pull-request ownership is authorship
 rather than assignment: [`gate-map/identity.md`](gate-map/identity.md).
 
-## Merge discipline — the review is awaited, not just resolved
+## Merge discipline — an open thread blocks the merge
 
-**A pull request may not merge until Copilot's feedback has been *awaited* and *resolved*.** The
-maintainer's ruling, 2026-07-27, and the occasion is the useful part: browsing closed pull requests, he
-found merges that had landed **before** Copilot's round on the final push arrived. The review was
-requested, the review happened, and its feedback reached a pull request that was already closed — so it
-was disregarded by nobody in particular, which is the worst way for it to happen.
+**A pull request may not merge while a review thread on it is unresolved, whoever opened the thread.**
+`required_conversation_resolution` on `main` holds it ([the floor](#the-platform-floor)), resolving is the
+maintainer's judgement carried with his approval of the merge ([*Which identity acts*](#which-identity-acts)),
+and a thread is answered on the thread
+([`memory/an-answer-lands-on-the-thread-that-raised-it.md`](memory/an-answer-lands-on-the-thread-that-raised-it.md)).
+No CI job asks for a review, and nothing makes a merge wait for one to arrive.
 
-**Amended 2026-09-23, his ruling of 17:21 UTC: no check awaits the round; the session that owns the pull
-request does.** It awaits Copilot's round on the final head and says in its ready message which review, on
-which commit, it addressed; conversation resolution still blocks a merge while a thread is open. Merging
-without a round is his call, as he ruled at 14:07: *"This shouldn't be an error and it shouldn't cause the
-CI to fail."*
+**Copilot review left the review path on 2026-10-30, by the maintainer's decision**, and the rule this
+section carried from 2026-07-27 left with it: a pull request could not merge until Copilot's feedback had
+been *awaited* on its final head and *resolved*. From 2026-09-23 no check awaited the round; the session
+that owned the pull request did, and CI asked for the round on a pull request a bot opened.
 
-What carries each half, the form of the ready line, the bounds on the loop, and what left with the check:
+What that rule was, what carried each half, what the change gives up, and the records it retired:
 [`gate-map/merge-discipline.md`](gate-map/merge-discipline.md).
 
 ## The triage threshold

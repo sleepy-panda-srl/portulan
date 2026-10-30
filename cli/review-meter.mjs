@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The review-loop meter: the figures that bound this repository's review loop, derived from its reviews.
+// The review-loop meter: the historical figures of this repository's Copilot review loop, derived from its reviews.
 //
 // Fix-rounds are not derivable from the API: whether a push answers a submission is a fact about its contents.
 
@@ -13,7 +13,7 @@ export const SNAPSHOT_VERSION = "1";
 // A prefix, not an equality: the reviewer is `copilot-pull-request-reviewer[bot]` on reviews and `Copilot` on comments.
 export const REVIEWER_PREFIX = "copilot";
 
-// The review-loop rule retires once submissions per pull request stay below this for a full milestone.
+// The retirement threshold the review-loop rule stated: submissions per pull request below this for a full milestone.
 export const RETIRE_THRESHOLD = 2.0;
 
 const isReviewer = (login) =>
@@ -174,10 +174,14 @@ export function renderRegister(m) {
     lines.push("> it is regenerated and byte-compared, so a hand-edit survives exactly until the next run.");
     lines.push(">");
     lines.push("> **Every figure here is in SUBMISSION units** — every review the reviewer submits, one");
-    lines.push("> per push, including on the branch as opened. It is not the fix-round unit that");
-    lines.push("> `../../.portulan/memory/a-review-loop-needs-a-bound.md` rule 4 bounds, and no figure");
-    lines.push("> here may be read as one. See `../../cli/review-meter.mjs` for why fix-rounds are not");
-    lines.push("> derivable from the API at all.");
+    lines.push("> per push, including on the branch as opened. It is not the fix-round unit that rule 4");
+    lines.push("> of the retired `a-review-loop-needs-a-bound.md` bounded, and no figure here may be read");
+    lines.push("> as one. See `../../cli/review-meter.mjs` for why fix-rounds are not derivable from the");
+    lines.push("> API at all.");
+    lines.push(">");
+    lines.push("> **This register is historical.** It measures the Copilot review loop, which left this");
+    lines.push("> repository's review path on 2026-10-30, by the maintainer's decision; the record that");
+    lines.push("> bounded the loop retired with it.");
     lines.push("");
     lines.push(`- **Repository:** \`${m.repository}\``);
     lines.push(`- **Captured:** ${m.captured}`);
@@ -210,8 +214,9 @@ export function renderRegister(m) {
     lines.push("## Against the record's own retirement threshold");
     lines.push("");
     lines.push(
-        `\`a-review-loop-needs-a-bound.md\` retires when submissions per pull request measures below ` +
-            `**${RETIRE_THRESHOLD.toFixed(1)}** for a full milestone. This window measures ` +
+        `\`a-review-loop-needs-a-bound.md\` was to retire when submissions per pull request measured below ` +
+            `**${RETIRE_THRESHOLD.toFixed(1)}** for a full milestone, and retired on 2026-10-30 on its other ` +
+            `condition, Copilot review leaving the review path. This window measures ` +
             `**${round2(m.submissionsPerPullRequest)}**, which is ` +
             `${m.belowRetireThreshold === null ? "unmeasured" : m.belowRetireThreshold ? "**below**" : "**at or above**"} it.`,
     );
@@ -221,7 +226,7 @@ export function renderRegister(m) {
             "field the API carries, so this tool measures a window of merged pull requests and the " +
             "record's *for a full milestone* clause is not evaluated here. Reading this row as the " +
             "retirement condition met would be reading a different measure than the one the record " +
-            "states.",
+            "stated.",
     );
     lines.push("");
     lines.push("## Per pull request");

@@ -122,6 +122,9 @@ node cli/review-meter.mjs --fetch --repo <owner/name> --out <file>        the on
 with `--register evals/review-loop/register.md --write` regenerates it, and the recipe byte-compares it.
 The criterion's *"rounds per pull request"* is **submissions** per pull request — its unit before *round*
 was redefined — and the tool prints that name, never the bare word.
+**The register is historical.** The loop it measures is Copilot's, and Copilot review left this
+repository's review path on 2026-10-30, by the maintainer's decision, so the capture is the record of that
+loop rather than a reading of a live one.
 What each figure is, at length, is in the header at `git show a31da46:cli/review-meter.mjs`.
 
 **What it does NOT establish:**
@@ -133,9 +136,9 @@ What each figure is, at length, is in the header at `git show a31da46:cli/review
   workspace-layer matcher the engine tool refused to copy, since two spellings of one rule on opposite
   sides of that boundary cannot see each other drift; the matcher left with its workflow on 2026-09-23
   ([#355](https://github.com/sleepy-panda-srl/portulan/issues/355)).
-- **A bound.** It is a meter: rule 4 of
-  [`a-review-loop-needs-a-bound.md`](../.portulan/memory/a-review-loop-needs-a-bound.md) stops a loop, and
-  nothing here stops anything.
+- **A bound.** It is a meter, and nothing here stops anything. The bound was rule 4 of
+  [`a-review-loop-needs-a-bound.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md),
+  retired on 2026-10-30.
 - **Current data.** The recipe compares the register to the snapshot, never the snapshot to the world, so a
   stale capture and a current one are the same green. Refreshing is `--fetch`, run by a person
   ([#356](https://github.com/sleepy-panda-srl/portulan/issues/356)).
@@ -236,8 +239,9 @@ is a new consent question rather than a covered one. It neither queues nor retri
   through another script, or through a flag built at runtime, is invisible to it.
 - **Scheduled emission.** Nothing fires when nobody runs it —
   [#344](https://github.com/sleepy-panda-srl/portulan/issues/344)'s silence again.
-- **Enforcement of the review-loop bound.** An emitter with no backend reading it is not the checker
-  [`a-review-loop-needs-a-bound.md`](../.portulan/memory/a-review-loop-needs-a-bound.md) lacks.
+- **Enforcement of the review-loop bound.** An emitter with no backend reading it was never the checker
+  [`a-review-loop-needs-a-bound.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md) lacked, and that record
+  retired on 2026-10-30.
 - **Traces.** Metrics only.
 
 ## The A/B baseline

@@ -71,7 +71,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`plugin-lint.mjs`](plugin-lint.mjs) | `plugin-lint` — the packaging validator. |
 | [`recipe-set.mjs`](recipe-set.mjs) | The recipe set: the verify recipes a workspace yields, its own plus each composed pack's, namespaced by pack. |
 | [`release-eval.mjs`](release-eval.mjs) | Portulan — the eval result a release carries. |
-| [`review-meter.mjs`](review-meter.mjs) | The review-loop meter: the figures that bound this repository's review loop, derived from its reviews. |
+| [`review-meter.mjs`](review-meter.mjs) | The review-loop meter: the historical figures of this repository's Copilot review loop, derived from its reviews. |
 | [`roster.mjs`](roster.mjs) | The cli roster: `cli/README.md`, rendered from the files it lists and never edited by hand. Not shipped. |
 | [`rule-carriers.mjs`](rule-carriers.mjs) | `rule-carriers` — the rail that keeps a reduced rule reduced. |
 | [`sessions.mjs`](sessions.mjs) | The session switches' texts: the cache-lifetime offer `init` and `upgrade` print, and the one line `doctor` reports on them. |

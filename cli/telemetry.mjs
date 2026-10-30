@@ -157,7 +157,7 @@ export const PRODUCERS = {
             return [
                 { name: "portulan.review.pull_requests", unit: "{pull_request}", description: "Merged pull requests in the metered window.", value: m.pullRequests },
                 { name: "portulan.review.submissions", unit: "{submission}", description: "Reviews the reviewer submitted across the window. Submission units, never fix-rounds.", value: m.submissions },
-                { name: "portulan.review.submissions_per_pull_request", unit: "1", description: "The figure a-review-loop-needs-a-bound.md bounds the loop on.", value: m.submissionsPerPullRequest },
+                { name: "portulan.review.submissions_per_pull_request", unit: "1", description: "The figure the retired a-review-loop-needs-a-bound.md bounded the loop on.", value: m.submissionsPerPullRequest },
                 { name: "portulan.review.submissions_no_inline", unit: "{submission}", description: "Submissions raising no inline comment.", value: m.noInline },
                 { name: "portulan.review.no_inline_rate", unit: "1", description: "An UPPER BOUND on the found-nothing rate; a submission carrying only suppressed notes counts in it.", value: m.noInlineRate },
                 { name: "portulan.review.pushes", unit: "{push}", description: "Distinct heads the reviewer saw — a floor on pushes, not a count of them.", value: m.pushes },

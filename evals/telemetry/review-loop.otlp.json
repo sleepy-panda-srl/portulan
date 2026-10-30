@@ -117,7 +117,7 @@
             {
               "name": "portulan.review.submissions_per_pull_request",
               "unit": "1",
-              "description": "The figure a-review-loop-needs-a-bound.md bounds the loop on.",
+              "description": "The figure the retired a-review-loop-needs-a-bound.md bounded the loop on.",
               "gauge": {
                 "dataPoints": [
                   {

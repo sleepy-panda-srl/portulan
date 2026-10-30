@@ -54,7 +54,7 @@ export const NOT_DRILLED = [
         why: "deliberately not a verify recipe — `../.portulan/identity.md` argues why: CI installs nothing, so declaring it would make a recipe that exits 2 on every run. It is checked at the supervised checkpoints and before a release, which is a rail on no calendar, and that cost is already stated in `../.portulan/verify/README.md`.",
     },
     {
-        rail: "Dependabot, the `copilot auto-review` ruleset, and `pr-labels`",
+        rail: "Dependabot and `pr-labels`",
         why: "platform watchers whose triggering condition is an event this repository cannot manufacture on a schedule. `0007`'s own honest limit applies — not every watcher can be forced red safely — and each carries its own recorded observation instead.",
     },
     {
@@ -163,7 +163,7 @@ export const DRILLS = [
         },
         exit: 1,
         tell: "fixture(s) failed",
-        why: "The jq programs the merge gates branch on are executed rather than described. A filter that silently changed shape would take the label gate down with it.",
+        why: "The jq programs the label gate branches on are executed rather than described. A filter that silently changed shape would take the label gate down with it.",
     },
     {
         rail: "index",

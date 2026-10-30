@@ -62,10 +62,10 @@ its spelling.
   `rituals/checkpoints` pack.
 - **Prohibited**, where no approval exists: `self-certify-a-checkpoint`, from the same pack.
 
-**Open `.portulan/gate-map.md` before a merge, a release, a settings change, a branch deletion, a review
-round, or an edit to what a gate guards.** It holds each gate's conditions, the honest holes where no
-layer enforces and you hold the rule yourself, which identity acts, and the merge discipline: the session
-that owns a pull request awaits Copilot's round on its final head, and an open thread blocks the merge.
+**Open `.portulan/gate-map.md` before a merge, a release, a settings change, a branch deletion, an
+answer to a review, or an edit to what a gate guards.** It holds each gate's conditions, the honest holes
+where no layer enforces and you hold the rule yourself, which identity acts, and the merge discipline: an
+open review thread blocks the merge, whoever opened it, and is answered on that thread.
 
 **Lanes.** Triage is a change confined to one file, with no rule change, no new claim about the product
 and no milestone effect; everything else is full lane. Full-lane work is graded in a fresh context at

@@ -4,10 +4,14 @@
 > it is regenerated and byte-compared, so a hand-edit survives exactly until the next run.
 >
 > **Every figure here is in SUBMISSION units** — every review the reviewer submits, one
-> per push, including on the branch as opened. It is not the fix-round unit that
-> `../../.portulan/memory/a-review-loop-needs-a-bound.md` rule 4 bounds, and no figure
-> here may be read as one. See `../../cli/review-meter.mjs` for why fix-rounds are not
-> derivable from the API at all.
+> per push, including on the branch as opened. It is not the fix-round unit that rule 4
+> of the retired `a-review-loop-needs-a-bound.md` bounded, and no figure here may be read
+> as one. See `../../cli/review-meter.mjs` for why fix-rounds are not derivable from the
+> API at all.
+>
+> **This register is historical.** It measures the Copilot review loop, which left this
+> repository's review path on 2026-10-30, by the maintainer's decision; the record that
+> bounded the loop retired with it.
 
 - **Repository:** `sleepy-panda-srl/portulan`
 - **Captured:** 2026-08-26T11:14:20.052Z
@@ -31,9 +35,9 @@
 
 ## Against the record's own retirement threshold
 
-`a-review-loop-needs-a-bound.md` retires when submissions per pull request measures below **2.0** for a full milestone. This window measures **4.67**, which is **at or above** it.
+`a-review-loop-needs-a-bound.md` was to retire when submissions per pull request measured below **2.0** for a full milestone, and retired on 2026-10-30 on its other condition, Copilot review leaving the review path. This window measures **4.67**, which is **at or above** it.
 
-**A window is not a milestone.** Which pull requests belong to which milestone row is not a field the API carries, so this tool measures a window of merged pull requests and the record's *for a full milestone* clause is not evaluated here. Reading this row as the retirement condition met would be reading a different measure than the one the record states.
+**A window is not a milestone.** Which pull requests belong to which milestone row is not a field the API carries, so this tool measures a window of merged pull requests and the record's *for a full milestone* clause is not evaluated here. Reading this row as the retirement condition met would be reading a different measure than the one the record stated.
 
 ## Per pull request
 
