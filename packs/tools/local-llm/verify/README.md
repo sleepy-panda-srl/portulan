@@ -6,7 +6,7 @@ One recipe: `node ${PACK_ROOT}/runner/local-llm.mjs --verify-offline`, run from 
 
 | Exit | Means |
 |---|---|
-| `0` | all offline runner rails hold: non-loopback URLs are refused without `--allow-remote`, oversized inputs above `--max-input-bytes` are refused before network I/O, compacted pass receipts stay at one line, and atomic transform rollback restores original file bytes on a red verify command |
+| `0` | all offline runner rails hold: non-loopback URLs are refused without `--allow-remote`, oversized inputs above `--max-input-bytes` are refused before network I/O, a verify command ending in any exit but `0` or `1` is could-not-run with the file restored, pass receipts stay at one line, and transform rollback restores original file bytes on a red verify command |
 | `1` | at least one runner rail failed to fire (a forced-red check passed when it should have been refused, or rollback left modified bytes behind) |
 | `2` | **could not run** — [`runner/local-llm.mjs`](../runner/local-llm.mjs) or the Node.js runtime could not be executed |
 
@@ -14,5 +14,5 @@ One recipe: `node ${PACK_ROOT}/runner/local-llm.mjs --verify-offline`, run from 
 
 A verify recipe in Portulan may never make a network call, and a local LLM server (`localhost:1234`) is
 machine-specific state that is absent in CI. `--verify-offline` exercises the runner's guards against
-in-process synthetic fixtures and a temporary file rollback drill, proving the rails hold without
+in-process synthetic fixtures and two temporary-file rollback drills, proving the rails hold without
 touching a socket. Live model health checks and role grading use `status` or `eval` outside recipes.

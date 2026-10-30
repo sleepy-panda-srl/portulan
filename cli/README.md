@@ -121,6 +121,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`mutants.test.mjs`](mutants.test.mjs) | Tests for `mutants`, the mutation-census rail: its operator table, its imports, its corpus and its refusals. |
 | [`new.test.mjs`](new.test.mjs) | Tests for `new`: scaffolds that validate, written into the user's own layer and never into `core/`. |
 | [`pack-identity.test.mjs`](pack-identity.test.mjs) | Tests for the byte-identity rail: green, both findings and could-not-run, each exercised. |
+| [`pack-local-llm.test.mjs`](pack-local-llm.test.mjs) | Tests for the `tools/local-llm` pack's runner — its loopback, input-budget and rollback rails, and its eval screen. |
 | [`pack-version.test.mjs`](pack-version.test.mjs) | The pack-version rail, driven on REAL git repositories rather than an injected history. |
 | [`payload.test.mjs`](payload.test.mjs) | Tests for the payload-classification rail. |
 | [`pinned-roots.live.test.mjs`](pinned-roots.live.test.mjs) | Required checks name their resolution root, and every suite whose imports reach the host's plugin record empties it. |

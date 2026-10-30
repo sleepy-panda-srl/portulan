@@ -10,5 +10,5 @@ CLIs, design tools, databases), with the how-to and the gate classification for 
 > **tighten-only**, by the same compiler.
 >
 > [`local-llm/`](local-llm/README.md) is the first tool pack to ship a gate classification
-> (`local-llm-off-loopback` at `propose`) alongside a skill, a persona, and an offline verify recipe,
+> (`local-llm-off-loopback` at `propose`) alongside a persona and an offline verify recipe,
 > fulfilling the promise this file has carried since it was written.
