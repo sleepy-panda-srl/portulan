@@ -1,7 +1,7 @@
 # Merge discipline — enforcement, limits and history
 
 > The rest of the gate map's [Merge discipline](../gate-map.md#merge-discipline--an-open-thread-blocks-the-merge), after the
-> ruling it opens with.
+> rule it opens with.
 
 **One carrier holds a merge for review, and it is the platform's**: `required_conversation_resolution` on
 `main`, in [the floor](../gate-map.md#the-platform-floor). Every review thread blocks the merge until it is
@@ -62,18 +62,20 @@ one on a pull request a person opened and on every push to it; `copilot-request.
 maintainer's token, on one a bot opened ([identity.md](identity.md) records why the request was his). It
 judged no round.
 
-**Two records bounded the loop and retired with it**, both naming Copilot's leaving the review path as their
-condition:
+**Two records retired with the loop**, both naming Copilot's leaving the review path as their condition:
 [`a-review-loop-needs-a-bound.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md)
 bounded its length, and
 [`a-review-is-awaited-not-just-resolved.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-is-awaited-not-just-resolved.md)
-carried the awaited half. A third, on where an answer lands, keeps its reviewer-neutral part, cited above.
+carried the awaited half. A third, on where an answer lands, named the same condition; the maintainer's
+decision kept its reviewer-neutral part, cited above.
 
 **Whether Copilot was worth it was to be measured on demand, not in CI**, on the coordinator session's
 delegated call of 2026-09-23: over ten rounds on pull requests a session opened, against a bar of at least
 three rounds with a real finding the coordinator session's draft review had missed, at most one wrong
 finding per two real ones, and a median round of seven minutes or less, with Copilot to leave the review
-path on his word below it. [`cli/review-meter.mjs`](../../cli/review-meter.mjs) derives the submission counts, and its
+path on his word below it. **It never ran**: the review-loop snapshot was last refreshed on 2026-08-26,
+before that call, and no record of the ten rounds exists, so the 2026-10-30 decision is his word and not
+the measurement's outcome. [`cli/review-meter.mjs`](../../cli/review-meter.mjs) derives the submission counts, and its
 register, [`evals/review-loop/register.md`](../../evals/review-loop/register.md), is now the historical
 record of that loop rather than a reading of a live one.
 

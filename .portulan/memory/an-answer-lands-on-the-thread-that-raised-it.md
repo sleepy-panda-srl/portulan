@@ -17,8 +17,9 @@ the platform gives it nowhere better.
 resolving does, with the merge approval ([gate map](../gate-map.md#which-identity-acts)). A misplaced
 answer costs the reader a hunt, and whoever resolves finds nothing on the thread to judge.
 
-_Amended in place 2026-10-30, when Copilot review left the review path by the maintainer's decision: the
-record also governed Copilot's suppressed notes, promoted to threads until 2026-09-23 under proposal
+_Amended in place 2026-10-30, when Copilot review left the review path by the maintainer's decision. That
+was this record's retire condition, and it fired; he kept the reviewer-neutral rule instead. The record
+also governed Copilot's suppressed notes, promoted to threads until 2026-09-23 under proposal
 [`0021`](../proposals/0021-the-suppressed-channel-needs-a-state.md), and now keeps only what no reviewer
 changes. Before: `git show 7d72356:.portulan/memory/an-answer-lands-on-the-thread-that-raised-it.md`._
 

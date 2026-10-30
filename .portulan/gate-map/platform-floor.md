@@ -73,11 +73,11 @@ here can: `doctor` does not fetch settings and no verify recipe may make a netwo
 **A second ruleset, deliberately not part of the floor, was retired by the maintainer's decision of
 2026-10-30.** `copilot auto-review on pull requests` — id `19805871`, repository-sourced, added
 2026-07-27 — targets the same `~DEFAULT_BRANCH` with the single rule `copilot_code_review`, which, while
-the ruleset stands, has Copilot's review requested on every pull request a person opens without anyone
-remembering to ask; until 2026-10-30 a bot's was asked for by `copilot-request.yml`, see
+the ruleset stands, has Copilot's review requested on every pull request a person opens, and again on every push to
+it (`review_on_push`), without anyone remembering to ask; until 2026-10-30 a bot's was asked for by `copilot-request.yml`, see
 [*Which identity acts*](identity.md). It was retired when Copilot review left the review path
-([*Merge discipline*](merge-discipline.md)), and deleting it is a repository-settings change and his, and whether `repos/{owner}/{repo}/rulesets` still lists it is read
-there, never from here. It is recorded because an audit of that endpoint once found two rulesets and needed
+([*Merge discipline*](merge-discipline.md)). Deleting it is a repository-settings change and his, and
+whether `repos/{owner}/{repo}/rulesets` still lists it is read there, never from here. It is recorded because an audit of that endpoint once found two rulesets and needed
 to know which was which.
 
 It gated nothing directly: required approving reviews were 0, and a Copilot review arrived as `COMMENTED`
