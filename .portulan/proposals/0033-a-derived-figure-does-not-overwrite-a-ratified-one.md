@@ -2,7 +2,7 @@
 
 **Incident.** Milestone 8 session 3 built the review-loop meter that clause (c) asks for, and its first
 run disagreed with the record it was built to serve.
-[`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) bounds the loop on
+[`../memory/a-review-loop-needs-a-bound.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md) bounds the loop on
 a table measured by hand on 2026-07-28 — **110 submissions over 30 pull requests, 3.7 each, 29% finding
 nothing**. Re-derived over the 30 most recently merged pull requests on 2026-08-26:
 **140 submissions, 4.67 each**, with 67.1% raising no inline comment.

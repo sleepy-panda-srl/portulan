@@ -65,7 +65,7 @@ two superlatives._
 _Those are **occurrence** counts over whitespace-normalised text with blockquote and comment leaders
 stripped, which is not the same as a count of **carriers** — most are the rule being used to justify a
 decision, and this proposal's own argument is that a use is not a carrier. A figure without its unit is
-what this file's neighbour [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md)
+what this file's neighbour [`../memory/a-review-loop-needs-a-bound.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md)
 was amended to prevent. `core/templates/persona.md` was a fourteenth and is re-pointed by this change._
 
 The mechanism is the same in both: a rule is carried where it is enforced, several carriers exist with
@@ -93,7 +93,7 @@ exactly, and it is what this proposal repairs: not a missing rule, a missing car
 ## What is measurably true on `main` at `6c3c613`
 
 Every figure below was re-measured for this proposal. Units are named because this file's neighbour
-[`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) records what
+[`../memory/a-review-loop-needs-a-bound.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md) records what
 happens when they are not.
 
 | Rule | Independent enforcement sites |
@@ -143,7 +143,7 @@ interchangeably. **Membership was never defined**, so no figure was re-derivable
 gap `a-review-loop-needs-a-bound.md` closed for round counts on 2026-07-30 and nobody closed for this.
 
 **The test**, chosen so the count survives its author, is quoted from the rule that carries it —
-[`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md)'s rule 4, which is
+[`../memory/a-review-loop-needs-a-bound.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md)'s rule 4, which is
 where it has governing force and is therefore its one carrier:
 
 > a finding whose governing rule was already **enforced at another site of the same operation** — in this

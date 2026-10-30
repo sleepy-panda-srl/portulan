@@ -1,81 +1,86 @@
-# Merge discipline — enforcement and bounds
+# Merge discipline — enforcement, limits and history
 
-> The rest of the gate map's [Merge discipline](../gate-map.md#merge-discipline--the-review-is-awaited-not-just-resolved), after the
-> ruling it opens with.
+> The rest of the gate map's [Merge discipline](../gate-map.md#merge-discipline--an-open-thread-blocks-the-merge), after the
+> rule it opens with.
 
-The two halves have different carriers, and since 2026-09-23 neither is a check of this repository's own:
+**One carrier holds a merge for review, and it is the platform's**: `required_conversation_resolution` on
+`main`, in [the floor](../gate-map.md#the-platform-floor). Every review thread blocks the merge until it is
+resolved, whoever opened it — the maintainer, an agent's review, or any other reviewer — and resolving is
+the maintainer's judgement, carried with his approval of the merge ([identity.md](identity.md)). A thread is
+answered on that thread, and a finding with no thread, such as one in a review's body, in one pull-request
+comment: [`memory/an-answer-lands-on-the-thread-that-raised-it.md`](../memory/an-answer-lands-on-the-thread-that-raised-it.md).
+*Resolved* is still not *adjudicated*: a reviewer can resolve its own thread, as recorded in
+[the floor section](platform-floor.md), so `resolvedBy` says whose judgement closed one.
 
-| Half | What it means | What carries it |
+**What this gives up, stated rather than left to be found.** No CI job asks for a review and nothing waits
+for one. A review someone requests can land after the merge, on a closed pull request, which is the defect
+the 2026-07-27 ruling below was made against, and no rule here now prevents it. What stands there is the
+maintainer: every merge here is Gated ([identity.md](identity.md)), so whether to wait for a review he
+expects is his decision at the merge he approves.
+
+## Retired 2026-10-30: the review was awaited, not just resolved
+
+**Copilot review left this repository's review path on 2026-10-30, by the maintainer's decision.** His
+words: *"remove copilot request CI step. And anything related to Copilot reviews from the CI/CD"*. The
+`copilot-request.yml` workflow and its `workflow-filters` fixtures left the tree with it. The
+`copilot auto-review on pull requests` ruleset and the `copilot-request` environment with its secret are
+his to remove, as settings changes; whether they are gone is read from the API, never from here
+([platform-floor.md](platform-floor.md)). What follows is the rule as it stood.
+
+**Ruled 2026-07-27: a pull request could not merge until Copilot's feedback had been *awaited* and
+*resolved*.** Browsing closed pull requests, he had found merges that landed **before** Copilot's round on
+the final push arrived, so the feedback reached a pull request that was already closed. The two halves had
+different carriers:
+
+| Half | What it meant | What carried it |
 |---|---|---|
-| **Resolved** | No Copilot thread is left unaddressed | `required_conversation_resolution` on `main` — in [the floor](../gate-map.md#the-platform-floor) |
-| **Awaited** | A **round** on the **current head** has landed — and a review object is not a round | The session that owns the pull request, in the line its ready message carries (below); GitHub's own Copilot run shows on the head while the round is under way |
+| **Resolved** | No Copilot thread was left unaddressed | `required_conversation_resolution` on `main`, which still holds every reviewer's threads |
+| **Awaited** | A **round** on the **current head** had landed — and a review object was not a round | The `copilot-reviewed` check until 2026-09-23; from then the session that owned the pull request, in a line its ready message carried |
 
-**Copilot is asked for by CI, on the newest head.** The Copilot ruleset requests a round on a pull request a
-person opens and on every push to it; [`copilot-request.yml`](../../.github/workflows/copilot-request.yml)
-asks on one a bot opens, which the ruleset does not, and goes red only when the maintainer's token is missing
-or its request refused, when the job's own token is refused a read before the request, or when three reads
-after the request all show every reviewer and none is Copilot. It judges no round: it asks for its event's
-head once Copilot holds no request, and a head pushed over before then draws none, because its run stops or
-is cancelled and the newest head's run is the one left to ask. Whether a round landed on the final head is
-the session's to read. See *Which identity acts* in [identity.md](identity.md) for why the request is his.
+**No check awaited the round from 2026-09-23**, his ruling of 17:21 UTC and his choice at 21:22 UTC: *"Work
+with coordinator on this, the whole process needs to be rethought, discarded, approach completely
+differently if need be - anything that's actually more streamlined, with less friction than it is now.
+Today too many PRs have CI red because of the Copilot review step."* `copilot-reviewed` had never been a
+required context, so it never held a merge. It went red at its three-minute close on #431, before any round
+had been asked for, and on #432 a minute before the round landed, and it read every round of that day as
+unrecognised, because Copilot's review body had moved to a new format (`## Copilot review overview`) under
+its matcher.
 
-**No check awaits the round — amended 2026-09-23, his ruling of 17:21 UTC and his choice at 21:22 UTC.** His
-words: *"Work with coordinator on this, the whole process needs to be rethought, discarded, approach
-completely differently if need be - anything that's actually more streamlined, with less friction than it is
-now. Today too many PRs have CI red because of the Copilot review step."* The check that awaited the round,
-`copilot-reviewed`, was never a required context, so it never held a merge; what it added that day was colour.
-It went red at its three-minute close on #431, before any round had been asked for, and on #432 a minute
-before the round landed, and it read every round of the day as unrecognised, because Copilot's review body had
-moved to a new format (`## Copilot review overview`) under its matcher. So its workflow is removed, and what
-it did for this rule the owning session now does, from the review itself.
+**From then the session that owned the pull request awaited the round** on its current head, read the
+review in whatever form Copilot filed it, threads or body, and fixed or answered each finding; its ready
+message named the review, the commit it reviewed, and what was fixed and what answered, or that the round
+found nothing, or that no round landed and what was seen. Merging without a round was his call, in his
+words of 14:07 that day: *"This shouldn't be an error and it shouldn't cause the CI to fail."* The head SHA
+was the whole design: a review of an earlier commit described a different tree from the one merging. A body
+saying Copilot *"encountered an error and was unable to review this pull request"* was not a round
+([#286](https://github.com/sleepy-panda-srl/portulan/issues/286)), and a draft drew none. That half was
+discipline rather than a rail, taken knowingly, because the rail had cost a red on most of a day's pull
+requests and held none.
 
-**The session reads the review in whatever form Copilot files it**, threads or body, and addresses each
-finding, fixing it or answering it; unresolved threads still gate the merge. **Its ready message carries
-one line, in one form.** When the session that owns a pull request tells the maintainer it is ready, the
-message carries:
+**CI asked for the round where the ruleset did not**, from 2026-09-23 to 2026-10-30. The ruleset requested
+one on a pull request a person opened and on every push to it; `copilot-request.yml` asked, with the
+maintainer's token, on one a bot opened ([identity.md](identity.md) records why the request was his). It
+judged no round.
 
-> Copilot: review <id> on <commit>: fixed <what>; answered <what>.
+**Two records retired with the loop**, both naming Copilot's leaving the review path as their condition:
+[`a-review-loop-needs-a-bound.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md)
+bounded its length, and
+[`a-review-is-awaited-not-just-resolved.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-is-awaited-not-just-resolved.md)
+carried the awaited half. A third, on where an answer lands, named the same condition; the maintainer's
+decision kept its reviewer-neutral part, cited above.
 
-— the review's id, the commit it reviewed, what was fixed and what was answered instead of fixed, or
-`Copilot: review <id> on <commit> found nothing.` The commit is the pull request's **current head**: a
-push after the review draws a new round, which the session awaits before it says ready again. A body
-saying Copilot *"encountered an error and was unable to review this pull request"* is not a round
-([#286](https://github.com/sleepy-panda-srl/portulan/issues/286)). A draft draws none — the ruleset carries
-`review_draft_pull_requests: false` — so the session marks the pull request ready and then awaits. When no
-round lands on the head, the line says so and what was seen, `Copilot: no round on <commit>: <what was
-seen>`, and merging without one is his call, in his words of 14:07 that day: *"This shouldn't be an error
-and it shouldn't cause the CI to fail."* A pull request no session owns, such as the weekly librarian
-pass, is awaited by whoever merges it, from the pull request's own page.
+**Whether Copilot was worth it was to be measured on demand, not in CI**, on the coordinator session's
+delegated call of 2026-09-23: over ten rounds on pull requests a session opened, against a bar of at least
+three rounds with a real finding the coordinator session's draft review had missed, at most one wrong
+finding per two real ones, and a median round of seven minutes or less, with Copilot to leave the review
+path on his word below it. **It never ran**: the review-loop snapshot was last refreshed on 2026-08-26,
+before that call, and no record of the ten rounds exists, so the 2026-10-30 decision is his word and not
+the measurement's outcome. [`cli/review-meter.mjs`](../../cli/review-meter.mjs) derives the submission counts, and its
+register, [`evals/review-loop/register.md`](../../evals/review-loop/register.md), is now the historical
+record of that loop rather than a reading of a live one.
 
-**The head SHA is still the whole design.** A review of an earlier commit does not satisfy the rule,
-because that is the defect the ruling was about: the review existed and described a different tree from
-the one merging. The line names the commit so that it can be checked against the head in one look.
-
-**What this gives up, stated rather than left to be found.** The awaited half is now discipline, not a
-rail — the class [`memory/a-mandate-nothing-checks-is-already-broken.md`](../memory/a-mandate-nothing-checks-is-already-broken.md)
-names, taken knowingly: the rail cost a red on most of the day's pull requests and held none. Nothing
-refuses a merge whose line is missing or names an older commit. What stands there is the maintainer
-reading the line against the head at the merge he approves, since every merge here is Gated
-([identity.md](identity.md)). *Resolved* is still not *adjudicated*: a reviewer can resolve
-its own thread, as recorded in [the floor section](platform-floor.md).
-
-**The loop is bounded by its records**, cited rather than restated:
-[`memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) bounds its length, and
-[`memory/an-answer-lands-on-the-thread-that-raised-it.md`](../memory/an-answer-lands-on-the-thread-that-raised-it.md)
-says where an answer lands. A rule with a second, narrower carrier is obeyed at the narrower one, which is
-the class [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) names, so this map
-carries no copy of them.
-
-**Whether Copilot is worth it is measured on demand, not in CI**, on the coordinator session's delegated
-call of 2026-09-23: over the next ten rounds on pull requests a session opens, each round's handoff notes whether its findings were real, missed by the
-coordinator session's draft review, nits or wrong, and how many minutes the round took, against a bar of
-at least three rounds with a real finding the draft review missed, at most one wrong finding per two real
-ones, and a median round of seven minutes or less; below it, Copilot leaves the review path on his word.
-[`cli/review-meter.mjs`](../../cli/review-meter.mjs) derives the submission counts from the pull requests;
-the classification is the handoffs'.
-
-**What left with the check.** `copilot-review.yml` and its fixtures: the three-minute window and the
-20-minute budget before it, the round matcher and its #286 classifier, the promotion of suppressed
+**What left with the check on 2026-09-23.** `copilot-review.yml` and its fixtures: the three-minute window
+and the 20-minute budget before it, the round matcher and its #286 classifier, the promotion of suppressed
 low-confidence notes into threads, the derived verdict the agent identity submitted and dismissed, and the
 re-run re-request. Proposal [`0023`](../proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md)'s
 exit (2) had been retired earlier the same day. The history is in the handoffs:
@@ -86,3 +91,4 @@ exit (2) had been retired earlier the same day. The history is in the handoffs:
 [2026-09-23 c](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-09-23-c-the-copilot-review-window-is-three-minutes.md),
 [2026-09-23 g](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-09-23-g-a-copilot-window-with-no-round-is-reported-not-failed.md) and
 [2026-09-23 j](https://github.com/sleepy-panda-srl/portulan/blob/8a33f9b/.portulan/handoffs/2026-09-23-j-the-session-awaits-copilot-and-no-check-does.md).
+The text this file carried before 2026-10-30 is at `git show 7d72356:.portulan/gate-map/merge-discipline.md`.

@@ -9,7 +9,7 @@
 [#66](https://github.com/sleepy-panda-srl/portulan/issues/66) asks that Copilot's suppressed
 low-confidence notes be posted as real review comments at their `file:line`, so each becomes a thread
 and `required_conversation_resolution` — already required on `main` — gates it. Building that would
-**invert rule 3 of [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md)**,
+**invert rule 3 of [`../memory/a-review-loop-needs-a-bound.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md)**,
 which read *"Threads block; suppressed notes do not"* and carried the maintainer's ruling of
 2026-07-28 — amended in place by this change, on his ruling of 2026-08-07. It is a rule change, and [`../gate-map.md`](../gate-map.md)'s Propose tier says where a rule
 change starts:
@@ -29,7 +29,7 @@ question"* — which is the sentence that decides the route.
 
 Re-derived against the API on 2026-08-07. **Units: a *submission* is a Copilot review arriving on a
 push, which is what these figures count. It is not a *round*** — rule 4's unit — and
-[`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) exists in part
+[`../memory/a-review-loop-needs-a-bound.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md) exists in part
 because that conflation produced three disagreeing records of
 [#105](https://github.com/sleepy-panda-srl/portulan/pull/105).
 
@@ -166,7 +166,7 @@ Whichever is chosen, the observation procedure ships with it, per
   ruling arrived on the same day; shape 1 now ships in this pull request and this section is left
   standing rather than rewritten, because a proposal records what was argued *before* the ruling and
   editing that away destroys what makes the ruling legible.
-- **It does not amend [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md).**
+- **It does not amend [`../memory/a-review-loop-needs-a-bound.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md).**
   Rule 3 stands until the maintainer rules otherwise; this records what is now known against it.
 
 **Shapes 2 and 1 both ship with this proposal, on the maintainer's instructions of 2026-08-07** — *"address all of
@@ -199,5 +199,5 @@ the error this repository names most often and the reason the checkpoint is not 
 review thread at its `file:line`, the faithful reading of #66, taken over shape 3 (one aggregate thread
 per submission) and over closing #66 on the argument alone. The price was stated before the choice and
 is not a discovery — **26 threads on one pull request at #167's ratio, each needing his resolution** —
-and rule 3 of [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) is
+and rule 3 of [`../memory/a-review-loop-needs-a-bound.md`](https://github.com/sleepy-panda-srl/portulan/blob/7d72356/.portulan/memory/a-review-loop-needs-a-bound.md) is
 amended in place in the same change rather than left to contradict the machinery.
