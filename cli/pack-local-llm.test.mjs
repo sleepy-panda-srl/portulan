@@ -352,6 +352,96 @@ test("a loopback endpoint that redirects is refused, and nothing reaches the red
     }
 });
 
+const recordingServer = async () => {
+    const bodies = [];
+    const server = http.createServer((req, res) => {
+        let body = "";
+        req.on("data", (chunk) => (body += chunk));
+        req.on("end", () => {
+            bodies.push(JSON.parse(body));
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ choices: [{ message: { content: "```js\nexport const a = 2;\n```" } }] }));
+        });
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+    const sent = [];
+    const fetchImpl = (url, init) => {
+        sent.push(String(url));
+        if (!String(url).startsWith(baseUrl)) throw new Error(`left the recording server for ${url}`);
+        return fetch(url, init);
+    };
+    const run = async (expected, ...argv) => {
+        const before = bodies.length;
+        assert.equal(await main(argv, { fetchImpl }), expected, argv.join(" "));
+        return bodies.slice(before);
+    };
+    return { baseUrl, sent, run, close: () => server.close() };
+};
+
+test("a refused endpoint or prompt sends nothing, and every chat-completions request names the effort it was given", async () => {
+    const { baseUrl, sent, run, close } = await recordingServer();
+    const file = () => {
+        const target = path.join(scratch(), "mod.mjs");
+        fs.writeFileSync(target, "export const a = 1;\n");
+        return target;
+    };
+    const named = (bodies, effort, count) => {
+        assert.equal(bodies.length, count);
+        for (const body of bodies) {
+            assert.equal(body.reasoning_effort, effort);
+            assert.deepEqual(body.chat_template_kwargs, { enable_thinking: effort !== "low", reasoning_effort: effort });
+        }
+    };
+    try {
+        await run(1, "chat", "--base-url", "https://api.example.com/v1", "--prompt", "hi");
+        await run(1, "chat", "--base-url", baseUrl, "--max-input-bytes", "4", "--prompt", "hello");
+        assert.deepEqual(sent, []);
+
+        for (const effort of ["low", "high"]) {
+            const given = effort === "low" ? [] : ["--effort", effort];
+            named(await run(0, "chat", "--base-url", baseUrl, ...given, "--prompt", "hi"), effort, 1);
+            named(await run(0, "summarize", "--base-url", baseUrl, ...given, "--prompt", "hi"), effort, 1);
+            named(await run(0, "transform", "--base-url", baseUrl, ...given, "--file", file(), "--verify", "true", "--prompt", "set a"), effort, 1);
+            named(await run(1, "eval", "--base-url", baseUrl, ...given), effort, 3);
+        }
+    } finally {
+        close();
+    }
+});
+
+test("through main, a transform exits 0 keeping a green edit with one receipt line, and 1 or 2 leaving a red or unjudged one byte-identical", async () => {
+    const { baseUrl, run, close } = await recordingServer();
+    const target = path.join(scratch(), "mod.mjs");
+    const original = Buffer.from("export const a = 1;\n// kept as it was\n");
+    const transform = (expected, verify) =>
+        run(expected, "transform", "--base-url", baseUrl, "--file", target, "--verify", verify, "--retries", "0", "--prompt", "set a");
+    try {
+        for (const [verify, expected] of [
+            ["exit 1", 1],
+            ["exit 3", 2],
+        ]) {
+            fs.writeFileSync(target, original);
+            assert.equal((await transform(expected, verify)).length, 1, verify);
+            assert.deepEqual(fs.readFileSync(target), original, verify);
+        }
+        fs.writeFileSync(target, original);
+        const printed = [];
+        const log = console.log;
+        console.log = (...parts) => printed.push(parts.join(" "));
+        try {
+            await transform(0, "exit 0");
+        } finally {
+            console.log = log;
+        }
+        assert.equal(fs.readFileSync(target, "utf8"), "export const a = 2;\n");
+        assert.equal(printed.length, 1);
+        assert.match(printed[0], /^OK mode=transform model=\S+ target=mod\.mjs attempts=1 [^\n]* spend=\$0\.00$/);
+    } finally {
+        close();
+    }
+});
+
 describe("arguments", () => {
     test("a malformed count is could-not-run rather than a disabled rail", () => {
         for (const argv of [

@@ -534,13 +534,19 @@ export async function runOfflineVerify() {
         if (!(unjudged instanceof CouldNotRunError) || fs.readFileSync(sampleFile, "utf8") !== originalBytes) {
             return { status: 1, message: "FAIL: a verify exit other than 0 or 1 was not treated as could-not-run with the file restored" };
         }
+
+        const green = await verifyGatedTransform({
+            filePath: sampleFile,
+            instruction: "change x to 2",
+            verifyCmd: "exit 0",
+            chatFn: editing,
+            execFn: () => ({ status: 0, stdout: "", stderr: "" }),
+        });
+        if (!green.ok || fs.readFileSync(sampleFile, "utf8") !== "export const x = 2;\n" || green.receipt.includes("\n")) {
+            return { status: 1, message: "FAIL: a green verify did not keep the edit with a single-line receipt" };
+        }
     } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true });
-    }
-
-    const receipt = formatPassReceipt({ mode: "transform", model: "qwen/qwen3.8-27b", attempts: 1, promptTokens: 120, completionTokens: 45, totalMs: 310, tokPerSec: 32.4, target: "sample.mjs" });
-    if (receipt.includes("\n")) {
-        return { status: 1, message: "FAIL: pass receipt spanned more than one line" };
     }
 
     return { status: 0, message: "OK tools/local-llm:runner-rails (5/5 offline rails held)" };

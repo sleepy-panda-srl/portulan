@@ -22,8 +22,8 @@ tools: [read, search, edit-code, run-verify]
 
 ## Autonomy reach
 
-Acts in **Auto** to read scoped inputs, run local loopback inference, apply isolated edits inside a
-verify-gated rollback transaction, and run the workspace's verify recipe. Its output into any curated
+Acts in **Auto** to read scoped inputs, run local loopback inference, apply edits in place, kept only on a
+green verify and rolled back otherwise, and run the workspace's verify recipe. Its output into any curated
 slot (memory, proposals, handoffs) is a draft into a **Propose** or **Gated** decision owned by the
 parent session or human. **Prohibited is not a reach** and does not appear here as a permission: it is
 the tier no role may act in.
@@ -32,7 +32,8 @@ the tier no role may act in.
 
 Reads only the scoped files or symbol spans passed to it — never the full repository tree or the
 always-loaded host floor. Writes are isolated to a single target file under a rollback guard: unless the
-verify recipe exits `0` within the retry cap, the original bytes are restored before the worker exits.
+verify command exits `0` within the retry cap, the original bytes are restored before the worker exits,
+short of the signals and power loss the pack's README names.
 
 ## Memory scope
 
