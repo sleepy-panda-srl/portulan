@@ -45,7 +45,8 @@ observed through a *local* marketplace over a copy of this directory. The quoted
 exists and the feed's pin moves to it. Until then the green is demonstrated on the payload and inferred
 for the feed — a distinction this repository would rather write down than round off.
 
-> **Two packs exist.** [`rituals/checkpoints`](rituals/checkpoints/README.md), the supervised-build
-> ritual; and [`tools/github`](tools/github/README.md), one verify recipe. `stacks/` is still empty and
-> says why.
+> **Three packs exist.** [`rituals/checkpoints`](rituals/checkpoints/README.md), the supervised-build
+> ritual; [`tools/github`](tools/github/README.md), one verify recipe; and
+> [`tools/local-llm`](tools/local-llm/README.md), hybrid local-model execution under a zero-floor input
+> budget and a verify-gated rollback loop. `stacks/` is still empty and says why.
 

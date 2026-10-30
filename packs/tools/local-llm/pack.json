@@ -1,0 +1,32 @@
+{
+  "portulan": {
+    "pack": "1.0",
+    "version": "0.1.0"
+  },
+  "name": "local-llm",
+  "category": "tools",
+  "summary": "Zero-dependency local LLM and embedding runner (LM Studio / Ollama) with a verify-gated red-to-green file transform loop, a zero-floor input budget rail, role evals, and loopback-only enforcement.",
+  "doc": "README.md",
+  "contributes": {
+    "skills": ["skills/"],
+    "personas": ["personas/local-worker.md"],
+    "verify": [
+      {
+        "id": "runner-rails",
+        "run": "node ${PACK_ROOT}/runner/local-llm.mjs --verify-offline",
+        "requires": ["node"],
+        "doc": "verify/README.md"
+      }
+    ],
+    "gates": [
+      {
+        "id": "local-llm-off-loopback",
+        "tier": "propose",
+        "action": {
+          "none": "No honest shell matcher. Whether a local-model invocation stays on the machine depends on the resolved endpoint (`--base-url`, `PORTULAN_LOCAL_LLM_URL`, or a proxy config), not on the binary name. `runner/local-llm.mjs` refuses non-loopback hosts in code unless `--allow-remote` is passed; this fragment records the policy boundary that a host permission rule cannot see."
+        },
+        "reason": "Routing a task to a local model is a spend and confidentiality boundary only while the endpoint resolves to loopback (`127.0.0.1`, `localhost`, `[::1]`). Pointing a local worker at a remote endpoint sends workspace context off-machine under a local tool's name; propose the remote endpoint explicitly before running."
+      }
+    ]
+  }
+}
