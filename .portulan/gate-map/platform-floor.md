@@ -66,8 +66,9 @@ is a weaker claim than this section made before the audit, and it is the accurat
 for the platform-floor backend: an importable GitHub repository ruleset carrying a pull-request
 requirement, three required checks with loose freshness, a force-push block and a deletion block.
 It is **generated, never applied** — importing it is Gated, and nobody has. The
-[table](../gate-map.md#the-platform-floor) describes live protection: strict freshness and two checks.
-The deliberate prepared/live drift is pending the [activation procedure](../tools/branch-freshness.md).
+[table](../gate-map.md#the-platform-floor) describes classic protection: loose native freshness and
+three Actions-pinned checks since the [2026-11-03 activation](../tools/branch-freshness-activation-2026-11-03.md).
+The generated ruleset itself was not imported.
 Nothing compares them automatically: `doctor` does not fetch settings and no verify recipe may make a
 network call.
 
@@ -95,10 +96,11 @@ It was added while this section was being written, which is as good an illustrat
 ask for of why the layers needed counting in the first place.
 
 **Branch freshness, amended 2026-11-03.** [Proposal 0040](../proposals/0040-allow-ten-commits-behind-main.md)
-accepts at most ten commits behind `main`, with a required sync at eleven. The prepared workspace policy
-sets `floor.strict: false` and adds the Actions-pinned `branch-freshness` context; the live setting is
-still `strict: true`, with only `workspace-verify` and `pr-labeled` required, until the
-[activation procedure](../tools/branch-freshness.md) is completed and read back.
+accepts at most ten commits behind live `main`, with a required sync at eleven. Workspace policy
+sets `floor.strict: false`; live classic protection now matches it, requiring `workspace-verify`,
+`pr-labeled` and `branch-freshness` from Actions app 15368. The
+[activation record](../tools/branch-freshness-activation-2026-11-03.md) carries the exact head checks
+and full protection readback; other protection fields were unchanged.
 
 GitHub's native freshness setting is boolean. The replacement workflow therefore publishes exact-head
 checks on PR events and refreshes every open PR after a push to `main`, from trusted base code.
@@ -112,7 +114,7 @@ strict protection on 2026-07-27 after three PRs one commit behind had been merge
 settings readback preserved the check app pin, administrator enforcement, conversation resolution and
 ref protections. GitHub subsequently reported `BEHIND` beside `MERGEABLE` at `behind_by: 2`. That was a
 reported refusal, not an attempted merge. The accepted amendment deliberately relaxes that rule;
-this record does not claim the replacement is already active.
+the dated activation record above demonstrates the replacement separately.
 
 **Why zero required reviews, on purpose.** GitHub does not permit anyone to approve their own pull
 request. On a repository with one human, requiring an approving review *and* enforcing for

@@ -156,8 +156,8 @@ _Why it compiles to nothing, and why it was listed late:
   2026-11-03 amendment in [proposal 0040](proposals/0040-allow-ten-commits-behind-main.md).** Immediately
   before a merge, read the live `main` SHA from `branches/main` and the PR head SHA, compare those
   commits and require integer `behind_by` in 0–10. The PR's stored `base.sha` is not the live ref.
-  At 11 or more, sync and let the checks rerun; an unreadable comparison does not pass. The prepared
-  check and its asynchronous limits, and the still-strict live setting pending activation, are in
+  At 11 or more, sync and let the checks rerun; an unreadable comparison does not pass. The required
+  check, its asynchronous limits and the 2026-11-03 live activation record are in
   [`gate-map/gated.md`](gate-map/gated.md#the-merge-precondition).
 - `force-push-without-a-lease` — bare `--force`. `--force-with-lease` is Auto above; the lease is the
   whole difference, and it is why these are two rules rather than one with a caveat.
@@ -360,11 +360,11 @@ enforces:
 | Setting | Value | Configured in |
 |---|---|---|
 | Direct pushes | rejected — every change goes through a pull request | classic branch protection |
-| Required status checks | `workspace-verify` — the workspace's verify recipes — and, since 2026-07-27, `pr-labeled` — every pull request carries a label from the declared set. Both run by CI and both pinned to app 15368; `branch-freshness`, also pinned to app 15368, is prepared but not yet required live | classic branch protection |
+| Required status checks | `workspace-verify` — the workspace's verify recipes — and, since 2026-07-27, `pr-labeled` — every pull request carries a label from the declared set. All three checks, including `branch-freshness` since 2026-11-03, are required and pinned to GitHub Actions app 15368 | classic branch protection |
 | Administrators | **included**; the maintainer has no exemption | classic branch protection, `enforce_admins` |
 | Required approving reviews | 0 — see [`gate-map/platform-floor.md`](gate-map/platform-floor.md) | classic branch protection |
 | Conversation resolution | required before merge — every thread *resolved*, which is not *adjudicated*; see [`gate-map/platform-floor.md`](gate-map/platform-floor.md) | classic branch protection |
-| Branch up to date with `main` before merging | **Live: `strict: true` pending activation.** The accepted replacement allows 0–10 behind and blocks 11 or more through `branch-freshness`; see the activation procedure | classic branch protection, `required_status_checks.strict` |
+| Branch up to date with `main` before merging | **Live: `strict: false`, activated 2026-11-03.** Required `branch-freshness` allows 0–10 behind and fails at 11 or more; see the [activation record](tools/branch-freshness-activation-2026-11-03.md) and its asynchronous limits | classic branch protection, `required_status_checks.strict` |
 | Force-pushes and branch deletion | blocked | classic branch protection **and**, separately, the organisation ruleset in [`gate-map/platform-floor.md`](gate-map/platform-floor.md) |
 | SHA-pinned Actions | **required, and enforced by the platform** — `sha_pinning_required: true` | organisation *and* repository Actions policy |
 
