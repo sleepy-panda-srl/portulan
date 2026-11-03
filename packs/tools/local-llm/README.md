@@ -6,15 +6,14 @@ Composed through a workspace's `packs` array as `tools/local-llm`.
 
 | Contributes | What |
 |---|---|
+| Skill | [`delegate-local`](skills/delegate-local/SKILL.md) — the pass a frontier session follows to hand a bounded edit or digest to the runner; its description names the precondition, a workspace composing this pack and a server answering on loopback |
 | Persona | [`local-worker`](personas/local-worker.md) — a context-firewall worker operating with an omitted host floor (`omitClaudeMd`) and a hard input-byte ceiling |
 | Verify | [`runner-rails`](verify/README.md) — offline verification of the runner's loopback-only guard, input-budget rail, and rollback contract (zero network calls) |
 | Gate | `local-llm-off-loopback` (`propose`) — marks leaving loopback (`127.0.0.1` / `localhost` / `[::1]`) as a decision requiring explicit approval |
 
-**No skill ships yet.** A pack's skill registers only where a plugin manifest declares it, and this
-repository's manifest may declare only the skills of packs its own workspace composes; composing this
-one, and the `delegate-local` skill with it, is
-[#542](https://github.com/sleepy-panda-srl/portulan/issues/542). Until then the pass a skill would
-carry is [*Delegating to it*](#delegating-to-it) below.
+The skill registers where a plugin manifest declares `skills/`, and this repository's manifests may
+declare only the skills of packs its own workspace composes, as its `.portulan/workspace.json` composes
+this one.
 
 ## Why this pack exists
 
@@ -37,10 +36,9 @@ A receipt prints a figure the server did not report as `?`, never as `0`, and `t
 
 ## Delegating to it
 
-1. **Scope the input first.** Outline a file of 300 lines or more with `node <plugin root>/cli/symbols.mjs <file>` and pass `--lines <start>-<end>` (to `transform`, `chat` and `summarize` alike) rather than the whole file. Prefill scales with prompt bytes: proposal 0039 measured prompts of about 400–470 tokens prefilling in 0.85–1.9 s, and the `32 KB` default (about 8k tokens) is a ceiling, not a measured latency.
-2. **Choose the model by task shape.** Code transforms and strict syntax: `--role code` (`qwen/qwen3.8-27b`). Prose compression, `codify` drafts and digests: `--role prose` (`google/gemma-4-31b`). **This routing is not earned yet.** It rests on proposal 0039's one-sample figures: the runner can now capture the A/B record that would earn it, and [no record has been captured](#the-ab-record) ([#547](https://github.com/sleepy-panda-srl/portulan/issues/547)). Screen a newly installed model with `node <plugin root>/packs/tools/local-llm/runner/local-llm.mjs eval --model <id>` first.
-3. **Gate every edit.** `transform --file <path> --verify "<cmd>" --prompt "<instruction>"`; the runner keeps the edit only on the command's exit `0`.
-4. **Read only the receipt back.** On exit `0`, take the one-line receipt and do not re-read the file unless a later edit depends on its new line numbers. On exit `1` or `2`, escalate to the frontier implementer rather than looping locally again.
+The pass is the [`delegate-local`](skills/delegate-local/SKILL.md) skill: check the server with
+`status`, scope the input with [`cli/symbols.mjs`](../../../cli/symbols.mjs) and `--lines`, choose the
+model by task shape, gate every edit with `--verify`, and read only the receipt back.
 
 ## The A/B record
 
@@ -56,7 +54,7 @@ in `ROLE_MODELS` is not earned, and `eval --verify` exits `2`: no record is not 
   agent, given the same prompt as one text, as the last argument of the command `--host-cmd` names, in
   an empty directory it removes afterwards. Both arms are graded by `eval`'s predicates, `k = 5` per
   (task, arm) cell, the k ruled for `evals/ab/baseline.md`. The record names both models, the host's
-  version, the commit, the machine and the seed, and the sha256 fingerprints of the predicates and the
+  version, the commit, the machine and the seed, and the sha256 fingerprints of the loaded runner source, the predicates and the
   prompts it was graded under, as the capture recorded them, since nothing can later verify the first; the register carries `baseline.md`'s limit: `k = 5` per cell supports a
   recorded rate and nothing else. The machine is the CPU model, the memory, the platform and
   architecture, and the Node version, and never the hostname.
@@ -79,13 +77,17 @@ in `ROLE_MODELS` is not earned, and `eval --verify` exits `2`: no record is not 
   it. SIGINT, SIGTERM or SIGHUP stops the running host turn, removes its directory, keeps the journal
   and exits `2`; the same command run again resumes, re-running only turns the journal lacks, and
   refuses with exit `2` a journal taken under other conditions (commit, tree, machine, seed, models,
-  endpoint, host command, version and model, or either fingerprint), since its arm-H turns were paid
+  endpoint, host command, version and model, or any fingerprint), since its arm-H turns were paid
   for and removing it is the operator's act. A host that writes more than 16 MiB stops the capture with
   exit `2` and the turn is re-run on resume. **The limit:** SIGKILL, or a power loss, leaves the running
   host turn's directory behind and, since the host runs in a process group of its own, the host still
   running and billing a turn the journal will not hold; the journal still resumes, and that turn runs again. The journal is removed once the
   record is written, and a capture is refused where `evals/ab/local-worker.json` exists: a record is
-  captured once, and removing it is the operator's deliberate act.
+  captured once, and removing it is the operator's deliberate act. The final record is created
+  exclusively too: if another record appears during capture, it and its register are preserved,
+  exit `2` leaves the current journal for recovery. This prevents overwrites; it is not a lock on
+  concurrent journal writers or a crash-atomic publication. Different loaded runner bytes refuse
+  journal resume even at the same commit and with both trees dirty.
 - **`eval --verify` checks it without running a model**: the record's shape, its matrix total over `k`,
   every arm-L seed against `--seed`, every turn's model against the routing, **every completed turn
   regraded** by the predicates as they ship, the prompts' fingerprint, the cells re-folded from the

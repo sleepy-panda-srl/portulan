@@ -24,6 +24,7 @@
 - **Arm H's model:** `fixture/host-model`, as the operator declared it — the runner does not observe it
 - **Prompt:** `EVAL_PROMPTS`' own, verbatim. Arm L receives its system and user messages; arm H the two joined by a blank line, as its command's last argument
 - **Graded by:** `gradeRoleOutput()`, the predicates `eval` screens with, the same for both arms
+- **Runner source:** sha256 `00ab289e05ad4e4856a202e8daf27ca3a870893433c5fd58232fe4ea95e6a4f1`
 - **Screen fingerprints:** predicates `0000000000000000000000000000000000000000000000000000000000000000`, the sha256 over `cli/comments.mjs`, `cli/doctor.mjs`, `cli/skill-goldens.mjs`, `gradeRoleOutput()` and its required tokens; prompts `c60ce823e1551fee7644f1c376a19cf697f825900c92adfa39a13c6a99058132`
 
 ## The figures
@@ -112,4 +113,3 @@ effect, and the block below is not a formality.
   ended by a signal the capture did not send, and is folded into neither count.
 - **Which routing these figures support is not stated here.** It is stated where the routing ships,
   the pack's README and `ROLE_MODELS`, which cite this record.
-

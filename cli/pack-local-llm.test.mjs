@@ -1,6 +1,7 @@
 // Tests for the `tools/local-llm` pack's runner — its loopback, input-budget and rollback rails, its eval screen, and its A/B record.
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
@@ -28,6 +29,7 @@ import {
     loadPredicates,
     main,
     parseArgs,
+    publishAb,
     RailError,
     renderAbRegister,
     RESTORE_SIGNALS,
@@ -366,13 +368,14 @@ test("a loopback endpoint that redirects is refused, and nothing reaches the red
     }
 });
 
-const recordingServer = async () => {
+const recordingServer = async ({ onRequest = () => {} } = {}) => {
     const bodies = [];
     const server = http.createServer((req, res) => {
         let body = "";
         req.on("data", (chunk) => (body += chunk));
         req.on("end", () => {
             bodies.push(JSON.parse(body));
+            onRequest(bodies.length);
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify({ choices: [{ message: { content: "```js\nexport const a = 2;\n```" } }] }));
         });
@@ -859,6 +862,82 @@ describe("the A/B record", () => {
         assert.equal(await main(abArgs(fixture, baseUrl)), 2);
         assert.deepEqual(fixture.calls(), []);
         assert.equal(fs.existsSync(path.join(fixture.root, AB_RECORD)), false);
+    });
+
+    test("publication refuses an existing record without changing it or its register", async () => {
+        const root = repoWith();
+        const before = [AB_RECORD, AB_REGISTER].map((name) => fs.readFileSync(path.join(root, name)));
+        assert.throws(() => publishAb(root, fixtureRecord(), {}), CouldNotRunError);
+        for (const [i, name] of [AB_RECORD, AB_REGISTER].entries()) assert.deepEqual(fs.readFileSync(path.join(root, name)), before[i]);
+    });
+
+    test("a record appearing during CLI capture is preserved and leaves the journal for recovery", async () => {
+        const fixture = capturable();
+        const prior = ["an earlier irreproducible capture\n", "its existing register\n"];
+        const { baseUrl, run, close } = await recordingServer({ onRequest: (n) => {
+            if (n !== 15) return;
+            fs.mkdirSync(path.join(fixture.root, path.dirname(AB_RECORD)), { recursive: true });
+            for (const [i, name] of [AB_RECORD, AB_REGISTER].entries()) fs.writeFileSync(path.join(fixture.root, name), prior[i]);
+        } });
+        try {
+            assert.equal((await run(2, ...abArgs(fixture, baseUrl))).length, 15);
+        } finally {
+            close();
+        }
+        for (const [i, name] of [AB_RECORD, AB_REGISTER].entries()) assert.equal(fs.readFileSync(path.join(fixture.root, name), "utf8"), prior[i]);
+        assert.equal(fs.readdirSync(fixture.journal).length, 31, "conditions and all30 completed turns remain recoverable");
+        assert.equal(fixture.calls().length, 15, "only the fake host was invoked");
+    });
+
+    test("unruled k values fail promptly before verification or rendering work", () => {
+        for (const k of [4, 1_000_000_000]) {
+            for (const mode of ["--verify", "--write"]) {
+                const rec = unfixtured();
+                rec.k = k;
+                const root = repoWith({ record: rec });
+                const before = fs.readFileSync(path.join(root, AB_REGISTER));
+                const child = spawnSync(process.execPath, ["--max-old-space-size=64", RUNNER, "eval", mode, "--repo-root", root], { encoding: "utf8", timeout: 2000, maxBuffer: 64 * 1024 });
+                assert.equal(child.status, 1, child.stderr || child.error?.message);
+                assert.match(child.stderr, /the maintainer ruled 5/);
+                assert.deepEqual(fs.readFileSync(path.join(root, AB_REGISTER)), before);
+            }
+        }
+    });
+
+    test("resuming pins the loaded runner bytes even with identical dirty-tree conditions", async () => {
+        const dir = scratch();
+        const source = fs.readFileSync(RUNNER, "utf8");
+        const textA = source.replace("maxTokens = 4096", "maxTokens = 2048");
+        const textB = source.replace("maxTokens = 4096", "maxTokens = 1024");
+        assert.notEqual(textA, textB);
+        const fileA = path.join(dir, "runner-a.mjs");
+        const fileB = path.join(dir, "runner-b.mjs");
+        fs.writeFileSync(fileA, textA);
+        fs.writeFileSync(fileB, textB);
+        const a = await import(pathToFileURL(fileA));
+        const b = await import(pathToFileURL(fileB));
+        const { predicates, screen } = await grading();
+        const journal = path.join(dir, "journal");
+        const conditions = { commit: "a".repeat(40), clean: false, machine: "synthetic", hostVersion: "fake", captured: "2000-01-01T00:00:00.000Z", runner: "caller cannot choose this" };
+        const caps = [];
+        const fetchImpl = async (_url, init) => {
+            caps.push(JSON.parse(init.body).max_tokens);
+            return new Response(JSON.stringify({ choices: [{ message: { content: "synthetic" } }] }));
+        };
+        const options = { seed: "s", hostCommand: ["fake-host"], hostModel: "fake/model", baseUrl: "http://127.0.0.1:1234/v1", conditions, screen, journal, predicates,
+            hostFn: async () => ({ completed: true, exit: 0, timedOut: false, ms: 1, output: "synthetic" }) };
+        let taken = 0;
+        await assert.rejects(a.captureAb({ ...options, chatFn: (o) => a.callLocalChat({ ...o, fetchImpl }), onTurn: () => { if (++taken === 2) throw new Error("synthetic interruption"); } }), /synthetic interruption/);
+        assert.deepEqual(caps, [2048, 2048]);
+        const before = fs.readdirSync(journal).sort().map((name) => [name, fs.readFileSync(path.join(journal, name), "utf8")]);
+        await assert.rejects(b.captureAb({ ...options, chatFn: (o) => b.callLocalChat({ ...o, fetchImpl }) }), /other conditions.*runner/);
+        assert.deepEqual(caps, [2048, 2048], "changed runner is rejected before a model request");
+        assert.deepEqual(fs.readdirSync(journal).sort().map((name) => [name, fs.readFileSync(path.join(journal, name), "utf8")]), before);
+        const resumed = await a.captureAb({ ...options, chatFn: (o) => a.callLocalChat({ ...o, fetchImpl }) });
+        assert.equal(resumed.turns.length, 30);
+        assert.equal(caps.length, 15, "the same runner reuses its first two local turns");
+        assert.ok(caps.every((cap) => cap === 2048));
+        assert.equal(resumed.source.runner, createHash("sha256").update(textA).digest("hex"));
     });
 
     test("eval --ab --write captures both arms through a recording server and a fake host, and its record verifies", async () => {

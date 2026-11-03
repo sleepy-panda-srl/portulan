@@ -5,7 +5,8 @@
   "captured": "2000-01-01T00:00:00.000Z",
   "source": {
     "commit": "0000000000000000000000000000000000000000",
-    "clean": true
+    "clean": true,
+    "runner": "00ab289e05ad4e4856a202e8daf27ca3a870893433c5fd58232fe4ea95e6a4f1"
   },
   "machine": "none: a synthetic fixture, and no machine ran these turns",
   "k": 5,

@@ -61,6 +61,18 @@
         }
       }
     ],
+    "local": {
+      "receipts": 0,
+      "sessions": 0,
+      "in": null,
+      "out": null,
+      "time": null,
+      "unreported": {
+        "in": 0,
+        "out": 0,
+        "time": 0
+      }
+    },
     "threshold": 80004
   }
 }

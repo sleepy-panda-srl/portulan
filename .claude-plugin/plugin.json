@@ -20,6 +20,7 @@
   "skills": [
     "./core/skills/",
     "./plugin/skills/",
-    "./packs/rituals/checkpoints/skills/"
+    "./packs/rituals/checkpoints/skills/",
+    "./packs/tools/local-llm/skills/"
   ]
 }

@@ -31,7 +31,9 @@ registers nothing, silently, while a validator walking deeper counts three;
 manifests therefore sit in this tree and they answer different questions: the repository's own at
 [`../.claude-plugin/plugin.json`](../.claude-plugin/plugin.json), which declares
 `./packs/rituals/checkpoints/skills/` because *its* root is the repository; and this one, whose root is
-`packs/`. Neither is redundant, and the paths differ by exactly the prefix their roots differ by.
+`packs/`. Neither is redundant, and the paths differ by exactly the prefix their roots differ by. Both
+also declare `tools/local-llm`'s `skills/` root, the same way, since this repository's workspace composes
+that pack too; the plugin's name and version here are the checkpoints pack's.
 
 **The version here mirrors the pack's own** — `portulan.version` in
 [`rituals/checkpoints/pack.json`](rituals/checkpoints/pack.json), which the Pack Definition names as how

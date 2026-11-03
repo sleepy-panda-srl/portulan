@@ -97,6 +97,16 @@ Reversible but consequential: it changes what the repository says, or how it beh
 - `change-a-verify-recipe` — and *relaxing* a check is the case to scrutinise hardest, because it is the
   one change that makes every future "green" mean less.
 
+**Composed into this tier: `local-llm-off-loopback`** — contributed by the `tools/local-llm` pack rather
+than declared in [`gates.json`](gates.json), and it carries no matcher: whether a local model's call stays
+on the machine turns on the endpoint it resolves to, not on a command's name. Proposed, for the pack's
+reason: pointing a local worker off loopback sends this workspace's context off the machine under a local
+tool's name. The runner refuses a non-loopback host in code unless `--allow-remote` is passed, and cannot
+see a loopback proxy that forwards elsewhere, so passing `--allow-remote` or setting such an endpoint is
+proposed before it runs. Nothing enforces that: `compile` refuses the fragment, which makes it honest
+hole 5 under [What the compiler refuses](#what-the-compiler-refuses), a rule whose sentence is broader
+than its matcher, and the agent holds it.
+
 **An idea that adds an axis, a mode, or a surface starts as a proposal.** It is written into
 [`proposals/`](proposals/) and ruled on there — never opened as an implementation pull request with
 tests. [Why, and what building first cost](gate-map/propose.md).
@@ -144,7 +154,8 @@ _Why it compiles to nothing, and why it was listed late:
 
   **The merge precondition allows at most ten commits behind `main`, by the maintainer's
   2026-11-03 amendment in [proposal 0040](proposals/0040-allow-ten-commits-behind-main.md).** Immediately
-  before a merge, compare its exact current base/head SHAs and require integer `behind_by` in 0–10.
+  before a merge, read the live `main` SHA from `branches/main` and the PR head SHA, compare those
+  commits and require integer `behind_by` in 0–10. The PR's stored `base.sha` is not the live ref.
   At 11 or more, sync and let the checks rerun; an unreadable comparison does not pass. The prepared
   check and its asynchronous limits, and the still-strict live setting pending activation, are in
   [`gate-map/gated.md`](gate-map/gated.md#the-merge-precondition).

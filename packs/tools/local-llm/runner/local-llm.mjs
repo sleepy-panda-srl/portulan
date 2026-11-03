@@ -12,6 +12,8 @@ import { performance } from "node:perf_hooks";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
+const RUNNER_FINGERPRINT = createHash("sha256").update(fs.readFileSync(new URL(import.meta.url))).digest("hex");
+
 export const DEFAULT_BASE_URL = process.env.PORTULAN_LOCAL_LLM_URL ?? "http://127.0.0.1:1234/v1";
 export const DEFAULT_MAX_INPUT_BYTES = 32 * 1024;
 export const DEFAULT_RETRIES = 2;
@@ -694,6 +696,7 @@ export async function captureAb({
         seed,
         commit: conditions.commit,
         clean: conditions.clean,
+        runner: RUNNER_FINGERPRINT,
         machine: conditions.machine,
         endpoint,
         models,
@@ -764,7 +767,7 @@ export async function captureAb({
     const record = {
         portulan: { abLocalWorker: "1" },
         captured: opened.captured,
-        source: { commit: conditions.commit, clean: conditions.clean },
+        source: { commit: conditions.commit, clean: conditions.clean, runner: opened.runner },
         machine: conditions.machine,
         k,
         seed,
@@ -813,10 +816,11 @@ export function verifyAbShape(rec) {
     if (!isNonEmpty(rec?.captured)) red.push("the record carries no `captured` time");
     if (!isNonEmpty(rec?.source?.commit) || typeof rec?.source?.clean !== "boolean") red.push("the record's `source` names no commit, or does not say whether its tree was clean");
     if (!isNonEmpty(rec?.machine)) red.push("the record names no machine");
-    if (!Number.isInteger(rec?.k) || rec.k < 1) red.push(`the record records k as ${JSON.stringify(rec?.k)}, which is not a run count`);
+    if (rec?.k !== AB_K) red.push(`the record's k is ${JSON.stringify(rec?.k)} where the maintainer ruled ${AB_K}`);
     if (!isNonEmpty(rec?.seed)) red.push("the record carries no seed, so no arm-L seed in it can be recomputed");
     if (!isNonEmpty(rec?.rulings?.k)) red.push("the record carries no ruling for its k");
     const sha = (v) => typeof v === "string" && /^[0-9a-f]{64}$/.test(v);
+    if (!sha(rec?.source?.runner)) red.push("the record carries no sha256 fingerprint of the loaded runner source");
     if (!sha(rec?.screen?.predicates) || !sha(rec?.screen?.prompts)) red.push("the record carries no sha256 fingerprint of the predicates and the prompts it was graded under");
     if (rec?.fixture !== undefined && !isNonEmpty(rec.fixture)) red.push("the record's `fixture` is present and is not a non-empty string");
     const l = rec?.arms?.l;
@@ -873,7 +877,6 @@ export function verifyAb(rec, { predicates, screen }) {
             );
         }
     }
-    if (rec.k !== AB_K) red.push(`the record's k is ${rec.k} where the maintainer ruled ${AB_K}`);
     try {
         assertLoopback(rec.arms.l.endpoint);
     } catch (cause) {
@@ -943,6 +946,7 @@ export function renderAbRegister(rec) {
     lines.push(`- **Arm H's model:** \`${rec.arms.h.model}\`, as the operator declared it — the runner does not observe it`);
     lines.push("- **Prompt:** `EVAL_PROMPTS`' own, verbatim. Arm L receives its system and user messages; arm H the two joined by a blank line, as its command's last argument");
     lines.push("- **Graded by:** `gradeRoleOutput()`, the predicates `eval` screens with, the same for both arms");
+    lines.push(`- **Runner source:** sha256 \`${rec.source.runner}\``);
     lines.push(`- **Screen fingerprints:** predicates \`${rec.screen.predicates}\`, the sha256 over ${PREDICATE_SOURCES.map((p) => `\`${p}\``).join(", ")}, \`gradeRoleOutput()\` and its required tokens; prompts \`${rec.screen.prompts}\``);
     lines.push("");
     lines.push("## The figures");
@@ -984,7 +988,6 @@ export function renderAbRegister(rec) {
     }
     lines.push("");
     lines.push(...AB_LIMITATIONS);
-    lines.push("");
     return `${lines.join("\n")}\n`;
 }
 
@@ -1050,7 +1053,12 @@ export async function writeAbRegister(repoRoot, { allowFixture = false } = {}) {
 
 export function publishAb(repoRoot, rec, grading) {
     fs.mkdirSync(path.join(repoRoot, path.dirname(AB_RECORD)), { recursive: true });
-    fs.writeFileSync(path.join(repoRoot, AB_RECORD), `${JSON.stringify(rec, null, 2)}\n`);
+    try {
+        fs.writeFileSync(path.join(repoRoot, AB_RECORD), `${JSON.stringify(rec, null, 2)}\n`, { flag: "wx" });
+    } catch (cause) {
+        if (cause.code === "EEXIST") throw new CouldNotRunError(`${AB_RECORD} exists at publication: its bytes and register were preserved; the current journal remains for recovery`);
+        throw new CouldNotRunError(`${AB_RECORD} could not be published — ${cause.code ?? cause.message}; the current journal remains for recovery`);
+    }
     const red = verifyAb(rec, grading);
     if (red.length > 0) return { ok: false, message: `wrote ${AB_RECORD}, which is kept because its turns do not repeat; ${findings(red)}\n${AB_REGISTER} was NOT written` };
     fs.writeFileSync(path.join(repoRoot, AB_REGISTER), renderAbRegister(rec));
@@ -1200,8 +1208,9 @@ export const USAGE = `local-llm.mjs — a zero-dependency runner for a loopback 
                  git directory (${JOURNAL_GIT_PATH}) before the next starts, so an interrupted capture
                  (SIGINT, SIGTERM, SIGHUP: exit 2) resumes from it when run again under the same
                  conditions, and refuses a journal of others. Refuses where ${AB_RECORD} exists: a
-                 record is captured once. Writes ${AB_RECORD} always, since its turns do not repeat,
-                 removes the journal, and writes ${AB_REGISTER} only where the capture passes --verify.
+                 record is captured once. Creates ${AB_RECORD} exclusively; a late existing record is
+                 preserved with the journal (exit2). Removes the journal after writing a new record,
+                 and writes ${AB_REGISTER} only where the capture passes --verify.
   eval --verify  no model: the record's shape, its matrix total over k, every arm-L seed, every completed
                  turn REGRADED by the predicates as they ship, the cells re-folded from the turns, and
                  ${AB_REGISTER} byte-compared with a fresh render. Exit 2 where no record exists or cli/
