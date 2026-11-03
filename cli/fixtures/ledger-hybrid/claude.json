@@ -1,0 +1,11 @@
+{
+  "projects": {
+    "/work/hybrid": {
+      "lastSessionId": "a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1",
+      "lastTotalInputTokens": 10,
+      "lastTotalOutputTokens": 1180,
+      "lastTotalCacheCreationInputTokens": 45300,
+      "lastTotalCacheReadInputTokens": 177902
+    }
+  }
+}

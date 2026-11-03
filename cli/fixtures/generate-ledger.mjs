@@ -254,6 +254,8 @@ const expect = {
     rebuilt: rebuilds.reduce((a, r) => a + r.tokens, 0),
     causes: Object.fromEntries(Object.entries(causes).sort(([a], [z]) => (a < z ? -1 : 1))),
     host: [{ session: B, difference: Object.fromEntries(Object.keys(bLedger).map((k) => [k, bLedger[k] - hostB[k]])) }],
+    // No local runner ran here; `./generate-ledger-hybrid.mjs` writes the session where one did.
+    local: { receipts: 0, sessions: 0, in: null, out: null, time: null, unreported: { in: 0, out: 0, time: 0 } },
     threshold: Math.round(ctx(B1) * (1 + 2 / (20 * 0.1))),
 };
 fs.writeFileSync(path.join(out, "fixture.json"), `${JSON.stringify({ roots: [demo, featureDir], branch: "feature/x", expect }, null, 2)}\n`);
