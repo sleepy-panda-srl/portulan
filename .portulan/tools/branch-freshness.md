@@ -2,8 +2,10 @@
 
 The accepted boundary is **0–10 behind passes; 11 or more requires a sync**. The code and compiled
 policy in PR [#557](https://github.com/sleepy-panda-srl/portulan/pull/557) are merged. The correction
-that reads live `main` still needs review and merge. Native strict protection remains enabled until
-the following sequence is completed.
+that reads live `main` merged in [#560](https://github.com/sleepy-panda-srl/portulan/pull/560).
+The following sequence completed on 2026-11-03: live native `strict` is false and `branch-freshness`
+is required from Actions app 15368. The [activation record](branch-freshness-activation-2026-11-03.md)
+contains the evidence. Retain this order for any future reactivation.
 
 1. Obtain the maintainer's approval of the live-main correction and merge it under the current floor.
 2. Let the `branch freshness` workflow on `main` refresh all open PRs. It checks out trusted `main`,
@@ -15,7 +17,7 @@ the following sequence is completed.
    on the base SHA is not this evidence. Force a synthetic count of 11 red in the offline test and
    inspect a real head result; do not claim a live merge rejection was attempted.
 4. Read live required-status-check protection. Preserve every existing context and app pin, adding
-   `branch-freshness` from app 15368. Generate the prepared payload from policy with
+   `branch-freshness` from app 15368. Generate the declared payload from policy with
    `node .portulan/tools/branch-freshness.mjs --activation-payload`, and compare it with that readback
    before using it. If another required context has appeared, retain it and reconcile policy first.
 5. Through a supported Panda administration route, PATCH only

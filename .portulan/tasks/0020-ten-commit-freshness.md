@@ -1,6 +1,6 @@
 # Task 0020 — allow ten commits behind main
 
-**Lane:** full · **Opened:** 2026-11-03 · **Status:** PREPARED — activation pending
+**Lane:** full · **Opened:** 2026-11-03 · **Status:** COMPLETE — activated 2026-11-03
 
 The maintainer requested that the out-of-date merge rule apply once a branch exceeds ten commits
 behind live `main`. His clarification allows 0–10 and requires a sync at 11 or more. This amends proposal 0011;
@@ -46,15 +46,19 @@ Fresh-context session-open, Codex, 2026-11-03: **APPROVE-WITH-ADJUSTMENTS**. Its
 the prior proposal, gate-policy 2.3, whole-scan failure handling, honest asynchronous limits, and
 separate preparation/activation evidence; all are folded into this plan.
 
-Live protection was read back: `strict: true`, `workspace-verify` and `pr-labeled` pinned to app
-15368, administrators included, conversations required, force pushes and deletion blocked. It remains
-unchanged. GitHub's native strict setting is boolean and cannot express a ten-commit threshold.
+Before activation, live protection was read back: `strict: true`, `workspace-verify` and `pr-labeled` pinned to app
+15368, administrators included, conversations required, force pushes and deletion blocked. These non-freshness protections remain
+unchanged after activation. GitHub's native strict setting is boolean and cannot express a ten-commit threshold.
 The installed Panda helper now supports the exact approved status-check PATCH with a scoped
 Administration token; other routine calls retain their prior scopes. No maintainer-identity write
-is needed. PR #557 is merged, while the live-main correction and settings activation are pending.
+is needed. PR #557 and the approved live-main correction #560 are merged. Actions head checks were
+demonstrated before the narrow protection PATCH; full readback confirms `strict: false` and all three
+checks required from Actions app 15368. The [activation record](../tools/branch-freshness-activation-2026-11-03.md)
+contains dated heads, counts and protection evidence. PR #555 subsequently merged without a branch sync.
 
-Completion requires the replacement check active and the narrow settings change read back; a prepared
-PR alone does not demonstrate the live rule.
+Completion is demonstrated by the active replacement check and narrow settings change readback; a
+prepared PR alone did not establish the live rule. Eleven-behind rejection was forced offline, not
+attempted through a live merge. The asynchronous limits in the activation guide remain applicable.
 
 The implementation pre-commit checkpoint and its final verification are recorded in the implementation commit.
 
