@@ -47,6 +47,88 @@ A change's commit message is the fuller record: it says why, and `git log` finds
 Each entry for the next release is a file in [`changes/`](changes/), so two open changes never edit the
 same lines; `node cli/index.mjs --changes changes` prints them as the cut pastes them.
 
+## 0.3.0 — 2026-11-03
+
+**Bounded local development, with measured routing and visible usage.** A workspace can compose
+`tools/local-llm` to delegate verified code edits to a loopback model without loading the host floor.
+The acquired five-run cells support Qwen for code; Gemma's shared prose route remains disabled after
+its rule drafts failed provenance checks. Enable the pack in the governing workspace and run a local
+server; installing or bootstrapping Portulan alone does not start automatic delegation.
+
+**Upgrade notes.** `doctor` now reports local usage records by default; automation that needs only
+reproducible validation should pass `--static`. Operational local roles require the measured model at
+low effort: unsupported prose defaults, role/model substitutions and unmeasured efforts refuse before
+I/O. Deliberate `--model` calls without a role remain candidates. Persona context fields reach Claude
+Code through an existing binding in a plugin root; outside a plugin the compiler states degradation.
+M12 and M13 remain open, and five-run rates support no general quality or billing claim.
+The release carries its [eval register](evals/releases/0.3.0.md), cited rather than restated.
+
+### Added
+
+- **A local-worker pack and delegation skill.** The zero-dependency runner supports bounded chat,
+  summaries, verified one-file transforms and evaluation against Portulan's predicates. It enforces a
+  prompt-byte ceiling, explicit thinking effort and loopback by default. Edits survive only a green
+  verification; other verdicts and SIGINT/SIGTERM/SIGHUP restore original bytes. This is rollback,
+  not atomic recovery from SIGKILL, SIGQUIT or power loss. Both plugin roots register the skill;
+  the workspace composes its offline recipe and gate metadata without raising the descriptions cap.
+  See the [pack contract](packs/tools/local-llm/README.md) and
+  [hybrid clauses](core/operating/context.md).
+
+- **Acquired routing evidence and permanent offline checks.** The
+  [raw capture](evals/ab/local-worker.json) and [generated register](evals/ab/local-worker.md) contain
+  30 actual turns: code local 5/5 versus Sonnet 5.5 5/5; codify 0/5 versus 3/5; handoff 5/5 versus 5/5.
+  The rule fixed before outcomes enables code and withholds shared prose. CI regrades outputs,
+  recomputes cells/seeds, reproduces the register and checks shipped role flags, model IDs and the
+  acquired digest without inference calls. The [acquisition note](evals/ab/local-worker-acquisition.md)
+  retains the failed authentication acquisition and authorized host-only recovery. Candidate screens
+  and captures never enable a role automatically; packs-only runtime uses checked embedded metadata.
+  From a repository checkout, `eval --ab --write` acquires the matrix with a declared seed and host
+  model. Its explicit `--host-cmd` sends prompts off-machine under that account and consumes host
+  usage. Each turn is journalled; resuming under the same conditions and loaded-source fingerprints
+  reuses journalled turns and runs missing ones. Final capture creation is exclusive: an existing or
+  late-arriving capture is refused and preserved. Interruption/crash limits remain in the pack contract.
+
+- **Hybrid usage accounting through the ledger and doctor.** Host token classes and local receipt
+  counts, tokens and request time are reported separately; missing figures stay unknown, local API
+  spend is reported as `$0.00`, and the restart threshold remains the host's alone and finite.
+  Accounting uses Bash-result receipt lines recorded on the owned branch, not arbitrary agent prose;
+  matching quoted logs can still count, and results absent from the inline transcript can be missed.
+  Doctor resolves ownership from the workspace's declared tree and current branch, including linked
+  worktrees. Optional unreadable/malformed usage data stays nonfatal without exposing raw snippets.
+  `--static` skips usage-record discovery, and recipes/A/B construction explicitly select it.
+  The [hybrid fixture](cli/fixtures/ledger-hybrid/) holds the known totals.
+
+- **A duplicate-file screen.** `dedup` embeds Markdown entries in a curated slot through a loopback
+  embeddings endpoint and ranks candidate pairs by cosine similarity. Its threshold, ranking and edge
+  cases are tested on synthetic vectors. The per-file ceiling applies before embedding; the summary
+  and shared receipt remain separate so the ledger preserves input tokens and time without inventing
+  output tokens. It proposes candidates and never merges or edits a file.
+
+- **Compiled persona context fields.** Personas can declare model, effort, omitted host floor and
+  cache lifetime; doctor validates them and compile writes declared fields into an existing agent
+  binding, checked against a golden. Unsupported hosts receive a degradation report. Compilation
+  refuses duplicate binding owners, parent-link escapes and malformed declarations before emission;
+  boolean fields accept only unquoted true/false. See [personas](core/personas/README.md).
+
+- **This repository's ten-commit branch freshness.** A trusted required check allows heads up to ten commits behind
+  live main and blocks eleven or more. Gate-policy 2.3 adds a validated optional `floor.strict`,
+  preserving true as the default. The workflow and narrow protection activation were read back with
+  other protections preserved. Event delays, outages and movement after the final read remain limits;
+  an agent still compares exact live commits immediately before an approved merge.
+
+### Removed
+
+- **Copilot review from this repository's review path**, by the maintainer's decision. The request
+  workflow and its filter fixtures are removed; reviewer-neutral open-thread and merge discipline
+  remain. The review-loop register is historical. See
+  [merge discipline](.portulan/gate-map/merge-discipline.md).
+
+### Fixed
+
+- **Freshness compares the live main ref.** A PR's stored base SHA can lag main. The check now reads
+  `branches/main` before comparison and before publishing, retries movement boundedly and refuses
+  malformed or unavailable data. Regression cases hold the ten/eleven boundary against stale PR data.
+
 ## 0.2.0 — 2026-09-30
 
 **A boot that reads a fraction of what it did, a workspace form in which open changes stop colliding over

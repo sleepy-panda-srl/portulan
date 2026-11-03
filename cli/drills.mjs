@@ -259,7 +259,7 @@ export const DRILLS = [
         rail: "pack-identity",
         perturb: {
             file: "README.md",
-            find: "**Current release: `0.2.0`**",
+            find: "**Current release: `0.3.0`**",
             replace: "**Current release: `0.1.3`** <!-- the drill edited this and did not stage it -->",
         },
         stage: false,
@@ -343,7 +343,7 @@ export const DRILLS = [
         rail: "version-carriers",
         perturb: {
             file: "README.md",
-            find: "**Current release: `0.2.0`**",
+            find: "**Current release: `0.3.0`**",
             replace: "**Current release: `0.1.3`**",
         },
         // Staged: this rail reads the index (`git show :<path>`), so an unstaged edit is invisible to it.
