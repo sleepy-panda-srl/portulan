@@ -82,7 +82,7 @@ refuses three kinds of rule, all printed on every run:
 | action `none` | No tool-level surface, or none a matcher could honestly cover, and the rule's own reason is what is printed. **Five**, and the enumeration is the count: `rename-or-transfer-a-repository`, `spend-money-or-register-a-domain` and `send-something-outside-this-repository` are declared here; `commit-without-the-hooks` and `self-certify-a-checkpoint` are composed from `rituals/checkpoints`. |
 
 **The floor backend** compiles one branch ruleset for the ref `floor` names. The `propose` rules become a
-pull-request requirement and required status checks, always strict and emitted together or not at all; the
+pull-request requirement and required status checks, strict by default and emitted together or not at all; the
 exact spellings `git push --force` and `git push --delete` become `non_fast_forward` and `deletion`, and
 `git push -f` is refused rather than generalised. Every other rule is refused with a reason scoped to this
 export rather than to the platform: a path rule needs `CODEOWNERS` or a push ruleset, a tag or release needs
@@ -90,7 +90,8 @@ a tag ruleset, and `gh pr merge` is constrained by the floor but, with zero requ
 yes. The coarseness is printed in both directions — stricter (it blocks `--force-with-lease`, which is
 Auto), narrower (one ref), partial (it adds a layer beside classic protection rather than replacing one).
 It **generates and never applies**: importing a ruleset is a settings change, and Gated. A policy with no
-`floor` compiles nothing here, `strict` cannot be declared, and `bypass_actors` is always empty. Section 3b
+`floor` compiles nothing here. Gate-policy 2.3 permits a boolean `floor.strict`; older policies and an
+omitted option remain strict. `bypass_actors` is always empty. Section 3b
 of `git show a31da46:cli/compile.mjs` carries the argument; [`platform-floor.md`](platform-floor.md)
 compares the artifact with the floor in force.
 
@@ -206,7 +207,7 @@ its result recorded, and where there is none it says so. Everything the compiler
 | [`gate.mjs`](../../cli/gate.mjs), a write gate's shell half | Against a policy with a Prohibited `write:` rule, which this one has not declared since 2026-09-24, `<path>` being the path it guards. Payloads on stdin, as the host sends them: `echo x >> <path>`, `bash -c "sed -i .bak s/a/b/ <path>"` and `cp /tmp/x <path>` each return `permissionDecision: "deny"` with the rule's sentence, while `cat <path>` and `git status` print nothing and exit 0. In a live session a shell write to the path is refused with text beginning ``PORTULAN GATE `<id>` ``, which no permission rule produces: that shows the host invokes the hook for `Bash` and passes its sentence on. |
 | [`stop-gate.mjs`](../../cli/stop-gate.mjs), the recipe | One dead link planted, and a session told to reply `done` is refused with the recipe's output naming the file and line, until it is released at its reason's cap, naming the reason. Green, it ends in one turn. |
 | [`stop-gate.mjs`](../../cli/stop-gate.mjs), the handoff | The recipe left green, so a block can only come from this half; no handoff dated today, and a scratch file so the tree holds work. Refused naming the date until released at the handoff's own cap, not the ceiling. Run it in a clone where no session has written today's handoff. |
-| [`github-ruleset.json`](../compile/github-ruleset.json) | Compared field by field with the live protection: `strict`, the required contexts and their app pin, the review count, conversation resolution, and the force-push and deletion blocks. It is never imported, which is Gated, so GitHub's acceptance of the file is inferred. The envelope and the fields to omit were read from live rulesets; the `pull_request` and `required_status_checks` parameter blocks come from GitHub's documented schema, not from any ruleset read here. |
+| [`github-ruleset.json`](../compile/github-ruleset.json) | Earlier strict artifacts were compared field by field with live protection: strictness, contexts/app pins, reviews, conversations and ref blocks. The current artifact deliberately prepares loose freshness and three contexts while live protection remains strict with two. That drift is pending the [activation procedure](../tools/branch-freshness.md), not an agreement claim. Nothing imports this artifact. Its ruleset envelope was read from live rulesets; parameter blocks came from GitHub documentation. |
 
 **Where the rule settles for an admission**, said plainly: nothing proves the artifact still works after the
 session that observed it. Each result is a fact about one CLI version, nothing re-runs these on a schedule, CI

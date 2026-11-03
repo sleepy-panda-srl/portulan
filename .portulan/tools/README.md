@@ -11,6 +11,7 @@
 
 | Script | What it does |
 |---|---|
+| [`branch-freshness.mjs`](branch-freshness.mjs) | Refreshes every open PR's exact-head freshness check; [activation and limits](branch-freshness.md) |
 | [`gh-bot-token.mjs`](gh-bot-token.mjs) | Mints a short-lived GitHub App installation token and prints it |
 | [`gh-bot`](gh-bot) | Runs a `gh` command as the agent identity rather than as the maintainer |
 | [`portulan-agent-logo.svg`](portulan-agent-logo.svg) | The App's avatar, in source form |
