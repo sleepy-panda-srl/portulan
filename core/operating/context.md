@@ -148,6 +148,66 @@ each section's anchor and size, the same way. It prints from the file as it is, 
 go stale. Nothing checks that a session outlined first; what the rule saves is measured by rerunning a
 task, never by a recipe, which may not read the host's usage records.
 
+## A local model runs without the host floor
+
+A model served on the machine itself costs nothing per token, so `0038`'s dollar arithmetic gives it no
+restart threshold. What it does cost is time to prefill, memory for each context it holds, and recall that
+still sags in a long context. And every turn it takes is a turn the parent session does not send again on
+each request after. So a local model is called as a context firewall, and four rules hold it:
+
+1. **A local worker runs without the host floor (`omitClaudeMd`) and under a hard input-byte ceiling.** It
+   is given one bounded input: a symbol span from [`cli/symbols.mjs`](../../cli/symbols.mjs), a file under
+   300 lines, a diff, or a log to compress, and never the parent session's instruction files. A prompt over
+   the ceiling is refused before a socket opens. _Why: a host floor of 44k to 85k tokens is prefilled into
+   a local model's cache on every cold context, where `0039` measured prompts of about 400 to 470 tokens
+   prefilling in 0.85 to 1.88 seconds._
+2. **Thinking effort is set explicitly at invocation**: low or off for a mechanical transform, bounded for
+   prose or review, never left to the chat template's default. _Why: one template `0039` read sets
+   reasoning effort to `xhigh` unless thinking is switched off, and under a 1,500-token cap that model
+   returned no answer on any of three tasks, every token spent thinking; at low effort it passed both
+   tasks it was rerun on._
+3. **A local edit is kept only on its verify command's exit `0`.** The runner applies the edit and runs the
+   command. On exit `0` one receipt line is all that enters the parent context (`0038` rule 5). On exit `1`
+   after its retries, or at once on any other exit, which is no verdict, it restores the file's original
+   bytes, and it does the same on SIGINT, SIGTERM and SIGHUP. **This is a rollback, not an atomic write**:
+   the verify needs the edited file in place, so any other signal that ends the runner, SIGKILL and SIGQUIT
+   among them, or a power loss between the edit and its verdict leaves the edit, and a transform with no
+   receipt is unverified. _Why not atomic: a scratch worktree would judge the last commit plus the edit
+   rather than the working copy plus the edit, would lack the untracked files a verify reads, and moving
+   the edit back after exit `0` would not be atomic either (`0039` ruling 4)._
+4. **Loopback is a rail, and routing is earned.** A local runner refuses an endpoint outside loopback
+   (`127.0.0.1`, `localhost`, `[::1]`) unless leaving it is proposed and approved. A screen grades an
+   installed model once per task against Portulan's own predicates, from
+   [`cli/comments.mjs`](../../cli/comments.mjs), [`cli/doctor.mjs`](../../cli/doctor.mjs) and
+   [`cli/skill-goldens.mjs`](../../cli/skill-goldens.mjs), and a model that fails it is not routed. Passing
+   it earns nothing. A role is routed to a local model by an A/B record under `0038` rule 4: the local model
+   as routed against the host's model on the same tasks, `k` runs per cell, captured once and railed to its
+   register in `evals/ab/`. _Why: an endpoint off the machine sends workspace context away under a local
+   tool's name, and the screen takes one sample per task with no baseline arm, while a cheaper model for a
+   role is earned by an A/B run, never assumed (`0039` ruling 5)._
+
+**What the runner holds today.** The [`tools/local-llm`](../../packs/tools/local-llm/README.md) pack's
+runner holds rules 1 to 3 and rule 4's loopback rail for the calls it makes. It sends the model its own
+short instructions and the input it was given, with the end of a red verify's output on a retry, and
+nothing else. It refuses a prompt over its ceiling before a socket opens, names the effort on every chat
+request, low unless set, requires a verify command for an edit and rolls back as rule 3 says, and refuses
+a host off loopback and a redirect away from it. Which inputs it is given is the caller's: only their
+bytes are checked. `--allow-remote` lifts the loopback rail on the caller's word, and the pack's
+`local-llm-off-loopback` gate has no matcher, so approval to leave loopback is the human's. Its `eval`
+subcommand is the screen. Its `runner-rails` recipe holds the loopback and ceiling refusals and the
+rollback on a red or no-verdict verify offline, with no network call; the rollback on a signal is held by
+the runner's tests. **Still to land, under row 14 of [`../../docs/plan.md`](../../docs/plan.md)**: this
+repository composing the pack, which registers its skill; the ledger reporting local receipts beside the
+host's tokens; `compile` emitting the `local-worker` persona's `omitClaudeMd` and effort, which its
+frontmatter does not carry today; and the A/B record. Until that record lands, the pack's `code` and
+`prose` routing rests on `0039`'s one-sample figures and is not earned, and the human gate holds rule 4's
+second half.
+
+_(Provenance: proposal
+[`0039`](../../.portulan/proposals/0039-a-local-model-runs-without-the-host-floor-and-under-a-thinking-cap.md)'s
+measurement of two local models against three of this repository's tasks on 2026-10-27, and its rulings 4
+and 5 of 2026-10-30.)_
+
 ## What is machinery today, and what is not
 
 As of Workspace Definition 2.9 a workspace can declare the budget and the ratio, and both are checked
