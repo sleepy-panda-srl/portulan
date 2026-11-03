@@ -315,8 +315,8 @@ export async function runDedup({
     };
 }
 
-export function formatDedupReceipt({ model, files, pairs, threshold, promptTokens = null, totalMs = null }) {
-    return `OK mode=dedup model=${model} files=${files} pairs=${pairs} threshold=${threshold} in=${figure(promptTokens, "t")} time=${figure(totalMs, "ms")} spend=$0.00`;
+export function formatDedupReceipt({ model, promptTokens = null, totalMs = null }) {
+    return formatPassReceipt({ mode: "dedup", model, promptTokens, totalMs });
 }
 
 function splitLines(text) {
@@ -861,7 +861,8 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
                 fetchImpl,
             });
             for (const p of res.pairs) console.log(`${p.score.toFixed(3)} ${p.a} ${p.b}`);
-            console.error(formatDedupReceipt({ model: chosen, files: res.files, pairs: res.pairs.length, threshold, promptTokens: res.promptTokens, totalMs: res.totalMs }));
+            console.error(`dedup files=${res.files} pairs=${res.pairs.length} threshold=${threshold}`);
+            console.error(formatDedupReceipt({ model: chosen, promptTokens: res.promptTokens, totalMs: res.totalMs }));
             return 0;
         }
 

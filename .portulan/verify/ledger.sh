@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Portulan workspace — verify recipe: the spend ledger reproduces a fixture's known totals, and the restart
-# advisory speaks once.
+# Portulan workspace — verify recipe: the spend ledger reproduces two fixtures' known totals, reports a
+# hybrid session's local receipts on their own line, and the restart advisory speaks once.
 #
 # Exit 0 green · 1 red · 2 could not run.
 
@@ -17,11 +17,14 @@ root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd) || exit 2
 cd -- "$root" || exit 2
 
 FIXTURE=cli/fixtures/ledger
+HYBRID=cli/fixtures/ledger-hybrid
+HYBRID_SESSION="$HYBRID/projects/-work-hybrid/hybrid.jsonl"
+HYBRID_SUBAGENT="$HYBRID/projects/-work-hybrid/hybrid/subagents/agent-local-worker.jsonl"
 PAST_THRESHOLD="$FIXTURE/projects/-work-demo--claude-worktrees-w1/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.jsonl"
 BELOW_THRESHOLD="$FIXTURE/projects/-work-demo/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jsonl"
 
 # node exits 1 on a missing file, which would read as a red verdict.
-for file in cli/ledger.mjs cli/advisory.mjs "$FIXTURE/fixture.json" "$PAST_THRESHOLD" "$BELOW_THRESHOLD"; do
+for file in cli/ledger.mjs cli/advisory.mjs "$FIXTURE/fixture.json" "$HYBRID/fixture.json" "$HYBRID/claude.json" "$HYBRID_SESSION" "$HYBRID_SUBAGENT" "$PAST_THRESHOLD" "$BELOW_THRESHOLD"; do
     [ -f "$file" ] || {
         printf 'verify: %s not found — this recipe cannot run\n' "$file" >&2
         exit 2
@@ -37,6 +40,22 @@ export HOME="$tmp/home" CLAUDE_CONFIG_DIR="$tmp/home/.claude" TMPDIR="$tmp/state
 node cli/ledger.mjs --fixture "$FIXTURE"
 fixture=$?
 printf '\n'
+
+node cli/ledger.mjs --fixture "$HYBRID" >"$tmp/hybrid"
+hybrid=$?
+cat -- "$tmp/hybrid"
+printf '\n'
+local_line=0
+# The fixture's figures pin the counts; these pin the sentence a reader is shown.
+if ! grep -q '^  local worker: 4 line(s) in the runner'"'"'s receipt format, from Bash results in 1 session(s), at \$0\.00, none of it in the host'"'"'s tokens or the restart threshold: in 5,017 tokens, ' "$tmp/hybrid"; then
+    printf '  ✗ ledger: the hybrid session'"'"'s local receipts were not reported on their own line at $0.00\n'
+    local_line=1
+fi
+if ! grep -q '^  restart: session hybrid is at 43,601 tokens and is below its threshold of 76,006 = ' "$tmp/hybrid"; then
+    printf '  ✗ ledger: the hybrid session was not given the host'"'"'s finite restart threshold of 76,006\n'
+    local_line=1
+fi
+[ "$local_line" -eq 0 ] && printf '  ok ledger: the hybrid session reports its local receipts on their own line at $0.00, beside the host'"'"'s tokens and its finite restart threshold\n\n'
 
 # Built by node, so a JSON encoder escapes any quote or backslash in a path.
 hook_payload() {
@@ -122,15 +141,20 @@ fi
 
 # Could-not-run outranks red: a run that judged nothing cannot vouch for the one that did.
 worst=$advisory
-case "$fixture" in
-    0) ;;
-    1) worst=1 ;;
-    2) worst=2 ;;
-    *)
-        printf 'verify: the ledger exited %s, which is not a verdict it documents — refusing to translate it into one\n' "$fixture" >&2
-        exit 2
-        ;;
-esac
+[ "$local_line" -eq 1 ] && worst=1
+could_not_run=0
+for status in "$fixture" "$hybrid"; do
+    case "$status" in
+        0) ;;
+        1) worst=1 ;;
+        2) could_not_run=1 ;;
+        *)
+            printf 'verify: the ledger exited %s, which is not a verdict it documents — refusing to translate it into one\n' "$status" >&2
+            exit 2
+            ;;
+    esac
+done
+[ "$could_not_run" -eq 1 ] && worst=2
 
 case "$worst" in
     0) printf '\nGREEN — verify recipe passed.\n'; exit 0 ;;

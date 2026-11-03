@@ -36,6 +36,8 @@ import {
     verifyGatedTransform,
 } from "../packs/tools/local-llm/runner/local-llm.mjs";
 
+import { receiptOf } from "./ledger.mjs";
+
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const RUNNER = path.join(REPO, "packs", "tools", "local-llm", "runner", "local-llm.mjs");
 
@@ -717,13 +719,19 @@ describe("dedup", () => {
             assert.equal(ran.code, 0, ran.err.join("\n"));
             assert.deepEqual(requests, [{ method: "POST", url: "/v1/embeddings", body: { model: ROLE_MODELS.embed, input: ["alpha", "alpha too", "gamma"] } }]);
             assert.deepEqual(ran.out, ["0.994 a.md b.md"]);
-            assert.equal(ran.err.length, 1);
-            assert.match(ran.err[0], /^OK mode=dedup model=\S+ files=3 pairs=1 threshold=0\.8 in=7t time=\d+ms spend=\$0\.00$/);
+            assert.equal(ran.err.length, 2);
+            assert.equal(ran.err[0], "dedup files=3 pairs=1 threshold=0.8");
+            assert.equal(receiptOf(ran.err[0]), null);
+            const receipts = ran.err.map(receiptOf).filter((r) => r !== null);
+            assert.equal(receipts.length, 1, "exactly one canonical receipt is printed");
+            assert.deepEqual({ ...receipts[0], time: null }, { mode: "dedup", model: ROLE_MODELS.embed, attempts: 1, in: 7, out: null, time: null });
+            assert.match(ran.err[1], /^OK mode=dedup model=\S+ attempts=1 in=7t out=\? time=\d+ms rate=\? spend=\$0\.00$/);
 
             const none = await captured(() => main(["dedup", "--dir", dir, "--base-url", baseUrl, "--threshold", "0.999", "--model", "other-embedder"]));
             assert.equal(none.code, 0);
             assert.deepEqual(none.out, []);
-            assert.match(none.err[0], /model=other-embedder files=3 pairs=0 threshold=0\.999/);
+            assert.equal(none.err[0], "dedup files=3 pairs=0 threshold=0.999");
+            assert.match(none.err[1], /mode=dedup model=other-embedder attempts=1/);
             assert.equal(requests[1].body.model, "other-embedder");
         } finally {
             server.close();

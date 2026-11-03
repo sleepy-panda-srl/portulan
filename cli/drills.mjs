@@ -200,6 +200,17 @@ export const DRILLS = [
         why: "The host writes one usage record per content block, so a reader that stops deduplicating by message id multiplies every figure by the blocks per request and still prints plausible numbers. The fixture's known totals are the only thing that tells those numbers from the true ones.",
     },
     {
+        rail: "ledger",
+        perturb: {
+            file: "cli/ledger.mjs",
+            find: "if (!calls.has(result.call)) continue;",
+            replace: "if (result.call === null) continue;",
+        },
+        exit: 1,
+        tell: "✗ fixture: local is",
+        why: "A local worker's subagent reports its receipt back to the session that delegated it, so a reader that takes a receipt from any tool result counts the same local work twice, once from the Bash call that ran it and once from the report quoting it, and the hybrid line still reads like a figure. Only the hybrid fixture's known receipt count tells the two apart.",
+    },
+    {
         rail: "control-chars",
         perturb: {
             file: "CONTRIBUTING.md",
@@ -457,6 +468,17 @@ export const DRILLS = [
         exit: 1,
         tell: "is a tag or branch, not a commit",
         why: "The composed pack's own rail, drilled from the adopting workspace exactly as a workspace-owned one is — which is the property milestone 7's composition amendment bought and nothing else here re-checks.",
+    },
+    {
+        rail: "tools/local-llm:runner-rails",
+        perturb: {
+            file: "packs/tools/local-llm/runner/local-llm.mjs",
+            find: "    if (!allowRemote && !LOOPBACK_HOSTS.has(parsed.hostname.toLowerCase())) {",
+            replace: "    if (!allowRemote && false) {",
+        },
+        exit: 1,
+        tell: "non-loopback endpoint was not refused by assertLoopback",
+        why: "Loopback is the rail that keeps a local worker's context on the machine, and the runner holds it in code rather than in any permission rule the compiler emits, so a guard that stopped refusing would leave every other rail green. The drill removes the refusal and requires the pack's own recipe to see it.",
     },
 
     // ------------------------------------------------------- the coverage rail, which is itself a rail

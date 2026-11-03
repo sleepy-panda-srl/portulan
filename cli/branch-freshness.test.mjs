@@ -12,12 +12,15 @@ const moved = "c".repeat(40);
 const pr = (number = 1, sha = head, baseSha = base) => ({ number, state: "open", head: { sha }, base: { ref: "main", sha: baseSha, repo: { full_name: repo } } });
 const comparison = (behind = 0, sha = base) => ({ base_commit: { sha }, behind_by: behind });
 
-function transport({ pulls = [pr()], compare = () => comparison(), read = (p) => p } = {}) {
+const branch = (sha = base) => ({ name: "main", commit: { sha } });
+
+function transport({ pulls = [pr()], compare = () => comparison(), read = (p) => p, readBranch = () => branch() } = {}) {
     const checks = [];
     const requests = [];
     const api = async (method, route, body) => {
         requests.push({ method, route, body });
         if (route.includes("/pulls?")) return pulls;
+        if (route.endsWith("/branches/main")) return readBranch();
         if (method === "GET" && /\/pulls\/\d+$/.test(route)) return read(pulls.find((p) => route.endsWith(`/${p.number}`)));
         if (route.includes("/compare/")) return compare(route);
         if (method === "POST") {
@@ -104,11 +107,56 @@ test("an unreadable comparison fails its head check and does not skip other PRs"
 
 test("head and base movement are retried using new SHAs", async () => {
     let reads = 0;
-    const t = transport({ read: () => ++reads === 1 ? pr() : pr(1, moved, moved), compare: (route) => comparison(0, route.includes(`${moved}...`) ? moved : base) });
+    let branchReads = 0;
+    const t = transport({ read: () => ++reads === 1 ? pr() : pr(1, moved, moved), readBranch: () => branch(++branchReads === 1 ? base : moved), compare: (route) => comparison(0, route.includes(`${moved}...`) ? moved : base) });
     assert.equal((await refreshAll({ api: t.api, repository: repo, say: () => {} })).errors, 0);
     assert.equal(t.checks.at(-1).head_sha, moved);
     assert.equal(t.checks.at(-1).conclusion, "success");
     assert.equal(t.checks[0].conclusion, "failure");
+});
+
+test("a stale PR base cannot replace the live main ref at the ten/eleven boundary", async () => {
+    for (const behind of [10, 11]) {
+        const t = transport({ readBranch: () => branch(moved), compare: () => comparison(behind, moved) });
+        const result = await refreshAll({ api: t.api, repository: repo, say: () => {} });
+        assert.equal(result.errors, 0);
+        const compared = t.requests.filter((r) => r.route.includes("/compare/"));
+        assert.deepEqual(compared.map((r) => r.route), [`/repos/${repo}/compare/${moved}...${head}`]);
+        assert.equal(t.checks.at(-1).conclusion, behind === 10 ? "success" : "failure");
+        assert.match(t.checks.at(-1).output.summary, new RegExp(`Base: ${moved}\\nHead: ${head}\\nCommits behind: ${behind}\\n`));
+    }
+});
+
+test("live main movement retries even while the PR payload stays unchanged", async () => {
+    let reads = 0;
+    const t = transport({ readBranch: () => branch(++reads === 1 ? base : moved), compare: (route) => route.includes(`${moved}...`) ? comparison(11, moved) : comparison() });
+    assert.equal((await refreshAll({ api: t.api, repository: repo, say: () => {} })).errors, 0);
+    assert.deepEqual(t.requests.filter((r) => r.route.includes("/compare/")).map((r) => r.route), [`/repos/${repo}/compare/${base}...${head}`, `/repos/${repo}/compare/${moved}...${head}`]);
+    assert.ok(t.checks.every((c) => c.conclusion === "failure"));
+    assert.match(t.checks.at(-1).output.summary, /Commits behind: 11/);
+});
+
+test("malformed live refs never fall back to a stored PR base", async () => {
+    for (const live of [null, {}, { name: "other", commit: { sha: base } }, branch("invalid")]) {
+        const t = transport({ readBranch: () => live });
+        assert.equal((await refreshAll({ api: t.api, repository: repo, say: () => {} })).errors, 1);
+        assert.equal(t.checks.at(-1).conclusion, "failure");
+        assert.equal(t.requests.filter((r) => r.route.includes("/compare/")).length, 0);
+    }
+});
+
+test("a failed live-ref read fails its head and continues the scan", async () => {
+    let reads = 0;
+    const t = transport({ pulls: [pr(1), pr(2, moved)], readBranch: () => { if (++reads === 1) throw new Error("unavailable"); return branch(); } });
+    assert.equal((await refreshAll({ api: t.api, repository: repo, say: () => {} })).errors, 1);
+    assert.deepEqual(t.checks.map((c) => c.conclusion), ["failure", "success"]);
+});
+
+test("a failed final live-ref read cannot publish a passing result", async () => {
+    let reads = 0;
+    const t = transport({ readBranch: () => { if (++reads === 2) throw new Error("unavailable"); return branch(); } });
+    assert.equal((await refreshAll({ api: t.api, repository: repo, say: () => {} })).errors, 1);
+    assert.equal(t.checks.at(-1).conclusion, "failure");
 });
 
 test("repeated movement stops with a nonpassing check on the latest head", async () => {

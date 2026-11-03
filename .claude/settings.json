@@ -12,6 +12,11 @@
         "pack": "tools/github",
         "origin": "tree",
         "version": "0.1.0"
+      },
+      {
+        "pack": "tools/local-llm",
+        "origin": "tree",
+        "version": "0.2.0"
       }
     ],
     "warning": "Generated file. Edit .portulan/gates.json and recompile; `verify/compile.sh` fails on drift."

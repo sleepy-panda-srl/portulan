@@ -1,0 +1,71 @@
+{
+  "roots": [
+    "/work/hybrid"
+  ],
+  "branch": "feature/local",
+  "expect": {
+    "records": 9,
+    "duplicates": 2,
+    "synthetic": 0,
+    "malformed": 0,
+    "requests": [
+      5,
+      2
+    ],
+    "uncached": [
+      7,
+      3
+    ],
+    "written1h": [
+      35600,
+      0
+    ],
+    "written5m": [
+      0,
+      9700
+    ],
+    "writtenUnknown": [
+      0,
+      0
+    ],
+    "read": [
+      168900,
+      9002
+    ],
+    "output": [
+      970,
+      210
+    ],
+    "sessions": 1,
+    "subagentContexts": 1,
+    "compactions": 0,
+    "largest": 43601,
+    "rebuilds": 0,
+    "rebuilt": 0,
+    "causes": {},
+    "host": [
+      {
+        "session": "hybrid",
+        "difference": {
+          "uncached": 0,
+          "written": 0,
+          "read": 0,
+          "output": 0
+        }
+      }
+    ],
+    "local": {
+      "receipts": 4,
+      "sessions": 1,
+      "in": 5017,
+      "out": 600,
+      "time": 7714,
+      "unreported": {
+        "in": 0,
+        "out": 2,
+        "time": 1
+      }
+    },
+    "threshold": 76006
+  }
+}

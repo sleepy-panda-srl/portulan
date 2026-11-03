@@ -38,6 +38,12 @@ async function refreshPull({ api, repository, candidate, detailsUrl }) {
     let current = validPull(candidate, repository);
     let active = null;
     let observed = "unavailable";
+    const readCurrent = async () => {
+        const pull = validPull(await api("GET", `${root}/pulls/${current.number}`), repository);
+        const live = await api("GET", `${root}/branches/main`);
+        if (live?.name !== "main" || !sha(live?.commit?.sha)) throw new Error("The live main ref did not identify main and an exact SHA");
+        return { ...pull, base: { ...pull.base, sha: live.commit.sha } };
+    };
     const summary = (message) => `Base: ${current.base.sha}\nHead: ${current.head.sha}\nCommits behind: ${observed}\nAllowed: 0–${MAX_BEHIND}\n\n${message}`;
     const pending = async () => {
         active = null;
@@ -56,7 +62,7 @@ async function refreshPull({ api, repository, candidate, detailsUrl }) {
     try {
         await pending();
         for (let attempt = 0; attempt < 3; attempt += 1) {
-            const fresh = validPull(await api("GET", `${root}/pulls/${current.number}`), repository);
+            const fresh = await readCurrent();
             if (fresh.head.sha !== current.head.sha || fresh.base.sha !== current.base.sha) {
                 await finish("failure", "PR moved; comparison superseded", "A fresh head/base check follows.");
                 current = fresh;
@@ -66,7 +72,7 @@ async function refreshPull({ api, repository, candidate, detailsUrl }) {
             const compared = await api("GET", `${root}/compare/${current.base.sha}...${current.head.sha}`);
             const conclusion = judge(compared, current.base.sha);
             observed = compared.behind_by;
-            const confirmed = validPull(await api("GET", `${root}/pulls/${current.number}`), repository);
+            const confirmed = await readCurrent();
             if (confirmed.head.sha === current.head.sha && confirmed.base.sha === current.base.sha) {
                 await finish(conclusion, `${observed} commit(s) behind main; up to ${MAX_BEHIND} allowed`, conclusion === "success" ? "Within the freshness allowance." : "Sync with main and let the checks rerun.");
                 return;

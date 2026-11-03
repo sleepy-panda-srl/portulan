@@ -235,8 +235,9 @@ is a new consent question rather than a covered one. It neither queues nor retri
   path. The send is proven only in the suite, against an injected transport, and no yielded recipe may
   ever exercise `--export`.
 - **A network mode reached indirectly.** The suite derives the set of network-capable modules from the
-  tree, and the offline audit matches a module as a path suffix and a flag as a token; a mode reached
-  through another script, or through a flag built at runtime, is invisible to it.
+  tree, and the offline audit matches a module as a path suffix and a flag as a token, or, for the
+  local-llm runner, any invocation but `--verify-offline` alone on its command; a mode reached through
+  another script, or through a flag built at runtime, is invisible to it.
 - **Scheduled emission.** Nothing fires when nobody runs it —
   [#344](https://github.com/sleepy-panda-srl/portulan/issues/344)'s silence again.
 - **Enforcement of the review-loop bound.** An emitter with no backend reading it was never the checker
