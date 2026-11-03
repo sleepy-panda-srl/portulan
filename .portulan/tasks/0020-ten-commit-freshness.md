@@ -3,18 +3,18 @@
 **Lane:** full · **Opened:** 2026-11-03 · **Status:** PREPARED — activation pending
 
 The maintainer requested that the out-of-date merge rule apply once a branch exceeds ten commits
-behind its base. His clarification allows 0–10 and requires a sync at 11 or more. This amends proposal 0011;
+behind live `main`. His clarification allows 0–10 and requires a sync at 11 or more. This amends proposal 0011;
 no milestone status changes.
 
 **Acceptance criteria.**
 
-- When a PR is 0–10 commits behind its base, the freshness check shall pass; when it is 11 or more,
+- When a PR is 0–10 commits behind live `main`, the freshness check shall pass; when it is 11 or more,
   the check shall fail and require a sync.
 - When comparison data is invalid or unavailable and check writes succeed, the head check shall
   fail and the scan shall continue to other PRs; a transport failure shall fail the updater run
   and report which PR could not be judged, with its stale-result limit documented.
-- When a PR or `main` changes, the workflow shall refresh all open PRs targeting `main` from current
-  exact SHAs, retry movement boundedly, and execute trusted base code rather than a PR's code.
+- When a PR or `main` changes, the workflow shall refresh all open PRs targeting `main` from
+  the live `branches/main` SHA and PR head SHA, retry movement boundedly, and execute trusted base code rather than a PR's code.
 - When an existing gate policy omits the new option, the compiler shall retain strict freshness;
   only gate-policy 2.3 shall accept a boolean `floor.strict`.
 - When activating the change, the maintainer shall first approve its PR's merge and the operator
@@ -49,10 +49,15 @@ separate preparation/activation evidence; all are folded into this plan.
 Live protection was read back: `strict: true`, `workspace-verify` and `pr-labeled` pinned to app
 15368, administrators included, conversations required, force pushes and deletion blocked. It remains
 unchanged. GitHub's native strict setting is boolean and cannot express a ten-commit threshold.
-The installed Panda helper currently requests Administration write only for archival, so a supported
-bot route for the eventual protection PATCH is still needed. Do not bypass it with maintainer writes.
+The installed Panda helper now supports the exact approved status-check PATCH with a scoped
+Administration token; other routine calls retain their prior scopes. No maintainer-identity write
+is needed. PR #557 is merged, while the live-main correction and settings activation are pending.
 
 Completion requires the replacement check active and the narrow settings change read back; a prepared
 PR alone does not demonstrate the live rule.
 
 The implementation pre-commit checkpoint and its final verification are recorded in the implementation commit.
+
+The 2026-11-03 correction reproduces #555's stale stored base SHA: current `main` was three commits
+newer while the earlier check reported zero. The updater now reads the live branch ref before each
+comparison and again before publishing. The corrective commit records its independent checkpoint.

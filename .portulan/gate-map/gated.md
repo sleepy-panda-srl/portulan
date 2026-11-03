@@ -122,7 +122,8 @@ into the very paragraph about clarifications that cannot be found. Caught by the
 
 [Proposal 0040](../proposals/0040-allow-ten-commits-behind-main.md) records the maintainer's 2026-11-03
 amendment: allow up to ten commits behind `main`; require a sync at eleven or more. Immediately before
-an approved merge, read its current base/head SHAs and compare those exact commits. `behind_by` must
+an approved merge, read the live `main` SHA from `branches/main` and the PR's head SHA, then compare
+those exact commits. A PR's stored `base.sha` can lag `main` and must not supply the base. `behind_by` must
 be an integer in 0–10; a failed read is not zero. Syncing and rerunning the checks is the remedy at 11.
 
 The prepared `branch-freshness` workflow runs trusted `main` code on PR events and base pushes, scans
@@ -132,7 +133,7 @@ applicable temporarily. It does not prove that CI tested the newest base. The im
 above remains the agent's precondition, not a platform guarantee.
 
 **Live strict freshness remains enabled until activation is demonstrated.** The replacement requires
-the specifically approved merge, Actions-attributed head checks, and a narrow protection PATCH through
+the live-main correction's specifically approved merge, Actions-attributed head checks, and a narrow protection PATCH through
 a supported Panda administration route. See [the activation procedure](../tools/branch-freshness.md).
 The gate reason reaches a wrapped merge spelling; the native permission prompt can discard it, as
 [`cli/gate.mjs`](../../cli/gate.mjs) records.
