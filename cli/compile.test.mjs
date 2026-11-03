@@ -4034,6 +4034,20 @@ function withPersona(lines, binding = bindingText()) {
     return { dir, workspace, root, binding: path.join(dir, "agents", "my-role.md") };
 }
 
+function personaSnapshot(dir) {
+    const files = [];
+    const walk = (rel) => {
+        for (const entry of fs.readdirSync(path.join(dir, rel), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+            const file = path.join(rel, entry.name);
+            if (entry.isSymbolicLink()) files.push([file, "link", fs.readlinkSync(path.join(dir, file))]);
+            else if (entry.isDirectory()) walk(file);
+            else files.push([file, fs.readFileSync(path.join(dir, file)).toString("base64")]);
+        }
+    };
+    walk("");
+    return files;
+}
+
 describe("personas: a persona declares its model, effort, instruction floor and cache lifetime, and nothing is defaulted", () => {
     test("every host says what it does with each field: Claude Code expresses all four, a vendored AGENTS.md none", () => {
         assert.deepEqual(PERSONA_FIELDS, ["model", "effort", "omitClaudeMd", "cacheLifetime"]);
@@ -4063,6 +4077,9 @@ describe("personas: a persona declares its model, effort, instruction floor and 
         ["effort:", /`effort` to ""/],
         ['omitClaudeMd: "true"', /`omitClaudeMd` takes `true` or `false`, unquoted/],
         ["omitClaudeMd: yes", /`omitClaudeMd` to "yes"/],
+        ["omitClaudeMd: constructor", /`omitClaudeMd` to "constructor"/],
+        ["omitClaudeMd: __proto__", /`omitClaudeMd` to "__proto__"/],
+        ["omitClaudeMd: toString", /`omitClaudeMd` to "toString"/],
         ["cacheLifetime: 2h", /`cacheLifetime` takes one of 5m, 1h/],
         ["model: two words", /`model` to "two words"/],
         ["model: [a, b]", /`model` to "\[a, b\]"/],
@@ -4241,7 +4258,85 @@ describe("personas: compile writes the declared fields into the binding, byte-co
         assert.equal(fs.readFileSync(away, "utf8"), bindingText());
     });
 
+    test("a symlinked agents parent cannot write outside the declared tree", (t) => {
+        for (const mode of [[], ["--check"]]) {
+            const { dir, workspace, root, binding } = withPersona(["effort: low"]);
+            const outside = scratch();
+            const target = path.join(outside, "my-role.md");
+            fs.renameSync(binding, target);
+            fs.rmdirSync(path.dirname(binding));
+            fs.symlinkSync(outside, path.dirname(binding), "dir");
+            const before = fs.readFileSync(target);
+            const artifacts = personaSnapshot(dir);
+            const { code, out } = said(t, ["--workspace", workspace, "--pack-root", root, ...mode]);
+            assert.equal(code, 2, out);
+            assert.match(out, /outside.*declared.*tree/i);
+            assert.deepEqual(fs.readFileSync(target), before);
+            assert.deepEqual(personaSnapshot(dir), artifacts, "no artifact is emitted before refusal");
+        }
+    });
+
+    test("a parent link within the declared tree remains contained and converges", (t) => {
+        const { dir, workspace, root, binding } = withPersona(["effort: low"]);
+        const inside = path.join(dir, "real-agents");
+        fs.renameSync(path.dirname(binding), inside);
+        fs.symlinkSync(inside, path.dirname(binding), "dir");
+        assert.equal(said(t, ["--workspace", workspace, "--pack-root", root]).code, 0);
+        const { code, out } = said(t, ["--workspace", workspace, "--pack-root", root, "--check"]);
+        assert.equal(code, 0, out);
+    });
+
+    for (const scenario of [
+        { name: "conflicting fields", first: ["effort: low"], second: ["effort: high"] },
+        { name: "identical fields", first: ["effort: low"], second: ["effort: low"] },
+        { name: "already converged first owner", first: ["effort: low"], second: ["effort: high"], converged: true },
+        { name: "first owner declares no fields", first: [], second: ["effort: low"] },
+        { name: "both owners unbound", first: [], second: ["effort: low"], unbound: true },
+    ]) {
+        test(`binding ownership refuses ${scenario.name} before any artifact changes`, (t) => {
+            for (const mode of [[], ["--check"]]) {
+                const { dir, workspace, root } = withPersona(scenario.first, scenario.unbound ? null : bindingText());
+                if (scenario.converged) assert.equal(said(t, ["--workspace", workspace, "--pack-root", root]).code, 0);
+                const pack = path.join(root, "tools", "other-pack");
+                fs.mkdirSync(path.join(pack, "personas"), { recursive: true });
+                fs.writeFileSync(path.join(pack, "pack.json"), JSON.stringify({ portulan: { pack: "1.0" }, name: "other-pack", category: "tools", contributes: { personas: ["personas/my-role.md"] } }));
+                fs.writeFileSync(path.join(pack, "personas", "my-role.md"), personaText(scenario.second));
+                const manifest = path.join(workspace, "workspace.json");
+                const data = JSON.parse(fs.readFileSync(manifest, "utf8"));
+                fs.writeFileSync(manifest, JSON.stringify({ ...data, packs: [...data.packs, "tools/other-pack"] }));
+                const before = personaSnapshot(dir);
+                const { code, out } = said(t, ["--workspace", workspace, "--pack-root", root, ...mode]);
+                assert.equal(code, 2, out);
+                assert.match(out, /agents\/my-role\.md.*(owner|contribut|shared|both)/i);
+                assert.match(out, /tools\/my-pack/);
+                assert.match(out, /tools\/other-pack/);
+                assert.deepEqual(personaSnapshot(dir), before, "all emissions wait for destination ownership validation");
+            }
+        });
+    }
+
     const MARK_LINE = "# compiled by `portulan compile` from a/b's p.md; edit that file, then recompile";
+
+    for (const fields of [["effort: extreme"], ['model: {"hand":"written"}'], ['model: ["haiku"]'], ["experimental:", "  cacheTtl: 2h"]]) {
+        test(`malformed marked fields are refused without erasure: ${fields.join(" ")}`, (t) => {
+            for (const mode of [[], ["--check"]]) {
+                const marker = "# compiled by `portulan compile` from tools/my-pack's personas/my-role.md; edit that file, then recompile";
+                const { dir, workspace, root } = withPersona([], bindingText([marker, ...fields]));
+                const before = personaSnapshot(dir);
+                const { code, out } = said(t, ["--workspace", workspace, "--pack-root", root, ...mode]);
+                assert.equal(code, 2, out);
+                assert.match(out, /compiled block holds.*which this compiler did not write/);
+                assert.deepEqual(personaSnapshot(dir), before);
+            }
+        });
+    }
+
+    test("a compiled boolean must still be true or false, never a malformed hand edit", () => {
+        for (const value of ["constructor", "__proto__", "toString", "yes", '\"true\"']) {
+            assert.throws(() => boundAgent(bindingText([MARK_LINE, `omitClaudeMd: ${value}`]), { omitClaudeMd: true }, "a/b's p.md", "agents/my-role.md"), CompileError);
+        }
+        assert.match(boundAgent(bindingText([MARK_LINE, "omitClaudeMd: false"]), { omitClaudeMd: true }, "a/b's p.md", "agents/my-role.md"), /omitClaudeMd: true/);
+    });
 
     test("a hand-written owned key after the mark is refused, never swallowed, and a line outside the block keeps its place", () => {
         const text = bindingText([MARK_LINE, "effort: low", "model: opus", "color: blue"]);

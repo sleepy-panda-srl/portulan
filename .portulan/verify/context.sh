@@ -32,8 +32,7 @@ RAIL_DEMO_BOOT=36975      # examples' boot read-set with the combcount card, 36,
                           # boot reads the skill, which routes, and then its steps
 RAIL_ENGINE=12936         # the boot skill, its steps and the kernel, 12,682 B
 RAIL_STEPS=10944          # the skill's step files, pointer-manifest.md and packs.md, 10,729 B
-RAIL_DESCRIPTIONS=3454    # the plugin's 7 skill and 3 agent descriptions, 3,386 B; 3,405 B since the boot
-                          # card, whose skill description now names the card
+RAIL_DESCRIPTIONS=3454    # the plugin's skill and agent descriptions, 3,386 B
 RAIL_ADOPTER_BOOT=8208    # a consumer `init` drafts, 8,047 B: the skill, the plugin's kernel, and the card
                           # `init` compiles, with the identity it imports; the card carries every rule on
                           # reading and the cache, the one on comments included, since a consumer is owed them

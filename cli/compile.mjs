@@ -2348,10 +2348,12 @@ export const EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"];
 
 const MODEL_NAME = /^[A-Za-z0-9][A-Za-z0-9._:@/[\]-]{0,199}$/;
 
+const readBoolean = (raw) => raw === "true" ? true : raw === "false" ? false : undefined;
+
 const PERSONA_VALUES = {
     model: { read: (raw) => (MODEL_NAME.test(raw) ? raw : undefined), takes: "one model name or alias, written as a single token" },
     effort: { read: (raw) => (EFFORT_LEVELS.includes(raw) ? raw : undefined), takes: `one of ${EFFORT_LEVELS.join(", ")}` },
-    omitClaudeMd: { read: (raw) => ({ true: true, false: false })[raw], takes: "`true` or `false`, unquoted" },
+    omitClaudeMd: { read: readBoolean, takes: "`true` or `false`, unquoted" },
     cacheLifetime: { read: (raw) => (CACHE_LIFETIMES.includes(raw) ? raw : undefined), takes: `one of ${CACHE_LIFETIMES.join(", ")}` },
 };
 
@@ -2423,8 +2425,8 @@ function bindingLines(declared) {
     return lines;
 }
 
-/** The fields a compiled block's lines spell, read back leniently: whatever it reads, `bindingLines` must rewrite it byte for byte. */
-function blockFields(lines) {
+/** Read recognized compiled fields strictly; the rewritten lines must still match byte for byte. */
+function blockFields(lines, where) {
     const read = {};
     let under = null;
     for (const line of lines) {
@@ -2434,14 +2436,14 @@ function blockFields(lines) {
         const raw = (nested?.[2] ?? match?.[2] ?? "").trim();
         if (!nested) under = key;
         const field = PERSONA_FIELDS.find((f) => CLAUDE_CODE_KEYS[f] === key);
+        if (!field) continue;
+        let input = raw;
         if (field === "model") {
-            try {
-                read.model = JSON.parse(raw);
-            } catch {
-                read.model = raw;
-            }
-        } else if (field === "omitClaudeMd") read.omitClaudeMd = { true: true, false: false }[raw] ?? raw;
-        else if (field) read[field] = raw;
+            try { input = JSON.parse(raw); } catch { /* The byte comparison rejects noncanonical quoting. */ }
+        }
+        const value = typeof input === "string" ? PERSONA_VALUES[field].read(input) : undefined;
+        if (value === undefined) throw new CompileError(`${where}: the compiled block holds \`${line}\`, which this compiler did not write — ${PERSONA_VALUES[field].takes}`);
+        read[field] = value;
     }
     return read;
 }
@@ -2469,7 +2471,7 @@ export function boundAgent(text, declared, source, where) {
         at = front.length;
         const block = [];
         while (i + 1 < close && (/^\s/.test(lines[i + 1]) || owned.has(BINDING_KEY.exec(lines[i + 1])?.[1]))) block.push(lines[(i += 1)]);
-        const written = bindingLines(blockFields(block));
+        const written = bindingLines(blockFields(block, where));
         const stray = block.find((line) => !written.includes(line)) ?? block.find((line, n) => line !== written[n]);
         if (stray !== undefined) {
             throw new CompileError(
@@ -2513,6 +2515,7 @@ export function planPersonas(contributions, workspaceRoot, workspaceDir = ".port
     const files = [];
     const lines = [];
     const degraded = [];
+    const owners = new Map();
     let compared = 0;
     for (const contribution of contributions) {
         for (const rel of contribution.personas ?? []) {
@@ -2542,11 +2545,16 @@ export function planPersonas(contributions, workspaceRoot, workspaceDir = ".port
                 }
             }
             if (!SLUG.test(name)) continue;
+            const bindingRel = `${BINDING_DIR}/${name}.md`;
+            if (owners.has(bindingRel)) {
+                const sources = [owners.get(bindingRel), source].sort();
+                throw new CompileError(`${bindingRel} has multiple persona owners: ${sources.join(" and ")}. Each binding must have one owner`);
+            }
+            owners.set(bindingRel, source);
             if (!treeRoot) {
                 if (fields.length) lines.push(`persona  ${name.padEnd(22)} UNBOUND — declares ${listed(fields)}, and this workspace declares no \`tree\` to hold its binding`);
                 continue;
             }
-            const bindingRel = `${BINDING_DIR}/${name}.md`;
             const binding = path.join(treeRoot, BINDING_DIR, `${name}.md`);
             const shown = path.relative(workspaceRoot, binding).split(path.sep).join("/");
             let stat = null;
@@ -2561,6 +2569,14 @@ export function planPersonas(contributions, workspaceRoot, workspaceDir = ".port
             }
             if (!stat.isFile()) {
                 throw new CompileError(`${shown} binds ${where} and is not a regular file, so nothing is compiled through it`);
+            }
+            try {
+                if (!isInside(fs.realpathSync(treeRoot), fs.realpathSync(binding))) {
+                    throw new CompileError(`${shown} resolves outside the declared tree, so nothing is compiled through it`);
+                }
+            } catch (cause) {
+                if (cause instanceof CompileError) throw cause;
+                throw new CompileError(`${shown} could not be resolved against the declared tree — ${cause.code ?? cause.message}`);
             }
             const current = fs.readFileSync(binding, "utf8");
             const next = boundAgent(current, declared, source, shown);

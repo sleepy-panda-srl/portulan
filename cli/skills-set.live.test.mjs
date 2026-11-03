@@ -41,6 +41,14 @@ describe("this workspace's own registrable set", () => {
         assert.ok(plugin.skills.map(canonical).includes(checkpoints[0].path));
     });
 
+    test("the local-llm pack contributes its skills root, and it is the one the manifest names", () => {
+        const set = live();
+        const local = set.paths.filter((p) => p.pack === "tools/local-llm");
+        assert.equal(local.length, 1);
+        assert.equal(local[0].path, "./packs/tools/local-llm/skills/");
+        assert.ok(plugin.skills.map(canonical).includes(local[0].path));
+    });
+
     test("a pack contributing no skills contributes none — `tools/github` is composed and adds nothing", () => {
         const set = live();
         assert.ok(manifest.packs.includes("tools/github"), "this test is about a pack this workspace composes");

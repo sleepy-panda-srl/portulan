@@ -196,9 +196,9 @@ bytes are checked. `--allow-remote` lifts the loopback rail on the caller's word
 `local-llm-off-loopback` gate has no matcher, so approval to leave loopback is the human's. Its `eval`
 subcommand is the screen. Its `runner-rails` recipe holds the loopback and ceiling refusals and the
 rollback on a red or no-verdict verify offline, with no network call; the rollback on a signal is held by
-the runner's tests. **Still to land, under row 14 of [`../../docs/plan.md`](../../docs/plan.md)**: this
-repository composing the pack, which registers its skill; the ledger reporting local receipts beside the
-host's tokens; and the A/B record. The `local-worker` persona declares `omitClaudeMd: true` and
+the runner's tests. This repository composes the pack and registers its skill; the ledger reports local
+receipts beside the host's tokens. **Still to land, under row 14 of [`../../docs/plan.md`](../../docs/plan.md)**:
+the captured A/B record. The `local-worker` persona declares `omitClaudeMd: true` and
 `effort: low`, and `compile` writes both into the binding a workspace composing the pack gives it, against
 a committed golden. Until that record lands, the pack's `code` and
 `prose` routing rests on `0039`'s one-sample figures and is not earned, and the human gate holds rule 4's

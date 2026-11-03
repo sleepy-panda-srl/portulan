@@ -490,9 +490,88 @@ test("a --workspace resolving OUTSIDE the pinned root is could-not-run", () =>
 
 test("every network mode in the table names a module that exists", () => {
     for (const m of NETWORK_MODES) {
-        assert.ok(readFileSync(join(REPO, m.module), "utf8").includes(m.flag), `${m.module} does not carry ${m.flag} — the table names a mode that is not there`);
+        const file = m.module.startsWith("cli/") ? join(REPO, m.module) : join(REPO, "packs", m.module);
+        const flag = m.flag ?? m.unless;
+        assert.ok(readFileSync(file, "utf8").includes(flag), `${m.module} does not carry ${flag} — the table names a mode that is not there`);
     }
 });
+
+test("every pack module that can reach the network has a row in NETWORK_MODES", () => {
+    const derived = [];
+    const walk = (dir) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = join(dir, entry.name);
+            if (entry.isDirectory()) walk(full);
+            else if (/\.[cm]?js$/.test(entry.name) && !entry.name.includes(".test.")) {
+                if (/\bfetch\(|globalThis\.fetch\b/.test(readFileSync(full, "utf8"))) derived.push(path.relative(join(REPO, "packs"), full).split(path.sep).join("/"));
+            }
+        }
+    };
+    walk(join(REPO, "packs"));
+    assert.ok(derived.length > 0, "the local-llm runner reaches its endpoint, so a derivation finding nothing has stopped looking");
+    const rostered = new Set(NETWORK_MODES.map((m) => m.module));
+    const missing = derived.filter((m) => !rostered.has(m));
+    assert.deepEqual(missing, [], `network-capable pack module(s) with no NETWORK_MODES row: ${missing.join(", ")}`);
+});
+
+test("the local-llm runner reaches its endpoint in every invocation but --verify-offline", () => {
+    for (const src of [
+        "node packs/tools/local-llm/runner/local-llm.mjs",
+        "node packs/tools/local-llm/runner/local-llm.mjs status",
+        "node /cache/portulan/packs/tools/local-llm/runner/local-llm.mjs transform --file a.mjs --verify 'exit 0'",
+        'bash -c "node packs/tools/local-llm/runner/local-llm.mjs eval"',
+    ]) {
+        assert.equal(auditRecipeSource(src).length, 1, `not caught: ${src}`);
+    }
+    assert.deepEqual(auditRecipeSource("node packs/tools/local-llm/runner/local-llm.mjs --verify-offline"), []);
+    assert.deepEqual(auditRecipeSource('bash -c "node packs/tools/local-llm/runner/local-llm.mjs --verify-offline" && echo done'), []);
+});
+
+test("--verify-offline clears only the invocation it ends, alone on its command", () => {
+    const runner = "node packs/tools/local-llm/runner/local-llm.mjs";
+    for (const src of [
+        `${runner} status; ${runner} --verify-offline`,
+        `${runner} --verify-offline\n${runner} chat`,
+        `${runner} eval # --verify-offline`,
+        `${runner} status --prompt --verify-offline`,
+        `${runner} --verify-offline status`,
+        `${runner} \\\n    status \\\n    --verify-offline`,
+    ]) {
+        assert.equal(auditRecipeSource(src).length, 1, `not caught: ${JSON.stringify(src)}`);
+    }
+});
+
+test("a run line that is itself a node invocation is graded on that line", () =>
+    withTemp((dir) => {
+        mkdirSync(join(dir, ".portulan"), { recursive: true });
+        mkdirSync(join(dir, "tools", "local-llm", "runner"), { recursive: true });
+        writeFileSync(join(dir, "tools", "local-llm", "runner", "local-llm.mjs"), "");
+        const recipes = [
+            { id: "offline", run: "node tools/local-llm/runner/local-llm.mjs --verify-offline", requires: ["node"] },
+            { id: "online", run: "node tools/local-llm/runner/local-llm.mjs status", requires: ["node"] },
+        ];
+        writeFileSync(
+            join(dir, ".portulan", "workspace.json"),
+            JSON.stringify({ portulan: { spec: "2.8" }, name: "direct", kind: "repository", tree: "../", slots: {}, verify: { default: "offline", recipes } }),
+        );
+        const res = auditRecipes({ workspaceDir: join(dir, ".portulan"), repoRoot: dir });
+        assert.equal(res.ok, true, res.why);
+        assert.deepEqual(res.examined, ["offline", "online"]);
+        assert.deepEqual(res.findings.map((f) => f.recipe), ["online"]);
+    }));
+
+test("a run line naming neither a script nor a node module is could-not-run, never a pass", () =>
+    withTemp((dir) => {
+        mkdirSync(join(dir, ".portulan"), { recursive: true });
+        const recipes = [{ id: "py", run: "python3 check.py", requires: ["python3"] }];
+        writeFileSync(
+            join(dir, ".portulan", "workspace.json"),
+            JSON.stringify({ portulan: { spec: "2.8" }, name: "opaque", kind: "repository", tree: "../", slots: {}, verify: { default: "py", recipes } }),
+        );
+        const res = auditRecipes({ workspaceDir: join(dir, ".portulan"), repoRoot: dir });
+        assert.equal(res.ok, false);
+        assert.ok(res.why.includes("no readable script"), res.why);
+    }));
 
 test("the audit refuses an EMPTY recipe set rather than passing vacuously", () =>
     withTemp((dir) => {

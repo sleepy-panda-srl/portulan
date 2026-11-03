@@ -20,12 +20,19 @@ import { isInside } from "./inside.mjs";
 // The offline audit: no verify recipe may reach the network
 // ---------------------------------------------------------------------------------------------
 
-/** Every mode in cli/ that can reach the network; a new one is unrailed until it has a row here. */
+/** Every network mode in cli/ or a pack (named from `<category>/<name>/`); a new one is unrailed until it has a row here. */
 export const NETWORK_MODES = Object.freeze([
     { module: "cli/review-meter.mjs", flag: "--fetch", what: "fetches review data from GitHub" },
     { module: "cli/telemetry.mjs", flag: "--export", what: "posts an OTLP payload to a collector" },
     { module: "cli/feedback.mjs", flag: "--approve", what: "files a GitHub issue with `gh issue create`" },
+    {
+        module: "tools/local-llm/runner/local-llm.mjs",
+        unless: "--verify-offline",
+        what: "calls the model endpoint from every subcommand, `status` the default among them",
+    },
 ]);
+
+export const modeSpelling = (m) => (m.flag ? `${m.module} ${m.flag}` : `${m.module} with anything but ${m.unless} alone`);
 
 /** Whole-line comments only: a trailing `#` may sit inside a quote. */
 export const stripShellComments = (source) =>
@@ -40,9 +47,21 @@ const tokenNamesModule = (token, module) => token === module || token.endsWith(`
 
 const tokenIsFlag = (token, flag) => token === flag || token.startsWith(`${flag}=`);
 
+/** An `unless` row passes only where every invocation is the module and its one safe flag, alone on its command. */
+const onlySafeInvocations = (source, m) =>
+    stripShellComments(source)
+        .replace(/\\\n/g, " ")
+        .split(/\n|;|&&|\|\|?/)
+        .every((segment) => {
+            const tokens = shellTokens(segment);
+            return tokens.every((t, i) => !tokenNamesModule(t, m.module) || (tokens.length === i + 2 && tokens[i + 1] === m.unless));
+        });
+
 export function auditRecipeSource(source) {
     const tokens = shellTokens(stripShellComments(source));
-    return NETWORK_MODES.filter((m) => tokens.some((t) => tokenNamesModule(t, m.module)) && tokens.some((t) => tokenIsFlag(t, m.flag)));
+    return NETWORK_MODES.filter((m) =>
+        m.flag ? tokens.some((t) => tokenNamesModule(t, m.module)) && tokens.some((t) => tokenIsFlag(t, m.flag)) : !onlySafeInvocations(source, m),
+    );
 }
 
 export function auditRecipes({ workspaceDir, repoRoot, packRoots = [] }) {
@@ -72,9 +91,10 @@ export function auditRecipes({ workspaceDir, repoRoot, packRoots = [] }) {
     const findings = [];
     const read = [];
     for (const r of recipes) {
-        const script = String(r.run ?? "")
-            .split(/\s+/)
-            .find((t) => t.endsWith(".sh"));
+        const words = String(r.run ?? "").split(/\s+/).filter(Boolean);
+        // A run line that is itself a `node` invocation is the whole shell text the recipe runs, so it is graded as read.
+        const direct = words[0] === "node" && !words.some((t) => t.endsWith(".sh"));
+        const script = direct ? words.find((t) => /\.[cm]?js$/.test(t)) : words.find((t) => t.endsWith(".sh"));
         if (!script) {
             return { ok: false, why: `recipe ${JSON.stringify(r.id)} has no readable script in its run line (${JSON.stringify(r.run ?? null)}); this audit cannot grade what it cannot read` };
         }
@@ -89,7 +109,7 @@ export function auditRecipes({ workspaceDir, repoRoot, packRoots = [] }) {
             return { ok: false, why: `recipe ${JSON.stringify(r.id)} names ${script}, which could not be read — ${cause.message}` };
         }
         read.push(r.id);
-        for (const hit of auditRecipeSource(source)) findings.push({ recipe: r.id, script, ...hit });
+        for (const hit of auditRecipeSource(direct ? r.run : source)) findings.push({ recipe: r.id, script, ...hit });
     }
     return { ok: true, examined: read, findings };
 }
@@ -404,14 +424,14 @@ export async function run(argv = process.argv.slice(2), io = console, { env = pr
         }
         if (res.findings.length > 0) {
             io.error(`telemetry: ${res.findings.length} verify recipe(s) can reach the network:`);
-            for (const f of res.findings) io.error(`  - ${f.recipe} (${f.script}) invokes ${f.module} ${f.flag}, which ${f.what}`);
+            for (const f of res.findings) io.error(`  - ${f.recipe} (${f.script}) invokes ${modeSpelling(f)}, which ${f.what}`);
             io.error("A verify recipe may not make a network call: spec/slots.md and .portulan/verify/README.md");
             io.error("both prohibit it, because a rail that moves with the network goes red about the world");
             io.error("rather than about the tree.");
             return 1;
         }
         io.log(`telemetry: ${res.examined.length} yielded recipe(s) examined; none reaches a network mode`);
-        io.log(`  Modes railed: ${NETWORK_MODES.map((m) => `${m.module} ${m.flag}`).join(", ")}.`);
+        io.log(`  Modes railed: ${NETWORK_MODES.map(modeSpelling).join(", ")}.`);
         io.log("  A network mode with no row here is UNRAILED, and nothing can audit that a row was added.");
         return 0;
     }

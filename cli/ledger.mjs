@@ -120,10 +120,60 @@ const writtenOf = (r) => r.written1h + r.written5m + r.writtenUnknown;
 
 const chainOf = (r) => (r.sidechain ? `agent:${r.agent ?? ""}` : "session");
 
+/** The local runner's receipt format, a whole line or nothing: a format, so any line that matches it is read as one. */
+const RECEIPT =
+    /^OK mode=([a-z]+) model=(\S+)(?: target=.+?)? attempts=([1-9]\d*) in=(?:(0|[1-9]\d*)t|\?) out=(?:(0|[1-9]\d*)t|\?) time=(?:(0|[1-9]\d*)ms|\?) rate=(?:(?:0|[1-9]\d*)(?:\.\d)?tok\/s|\?) spend=\$0\.00$/;
+
+/** A figure the runner printed as `?` is null, never 0. */
+export function receiptOf(line) {
+    const m = RECEIPT.exec(line);
+    if (m === null) return null;
+    const [attempts, input, output, time] = [m[3], m[4], m[5], m[6]].map((v) => (v === undefined ? null : Number(v)));
+    if (![attempts, input, output, time].every((v) => v === null || Number.isSafeInteger(v))) return null;
+    return { mode: m[1], model: m[2], attempts, in: input, out: output, time };
+}
+
+/** The ids of the Bash calls a record makes: each block's type, name and id, and nothing it says. */
+function bashCallsOf(record) {
+    const content = record.message?.content;
+    if (!Array.isArray(content)) return [];
+    return content.filter((b) => b !== null && typeof b === "object" && b.type === "tool_use" && b.name === "Bash" && text(b.id) !== null).map((b) => b.id);
+}
+
+/** A tool result's output as the host writes it: a string, or text blocks and nothing else. */
+function outputOf(content) {
+    if (typeof content === "string") return content;
+    if (!Array.isArray(content) || !content.length || !content.every((b) => b?.type === "text" && typeof b.text === "string")) return null;
+    return content.map((b) => b.text).join("\n");
+}
+
+/** The receipts in a user record's tool results, each still to be matched to the Bash call it answers. */
+function resultsOf(record) {
+    if (record === null || typeof record !== "object" || record.type !== "user" || !Array.isArray(record.message?.content)) return [];
+    const at = Date.parse(record.timestamp);
+    const found = [];
+    for (const block of record.message.content) {
+        if (block === null || typeof block !== "object" || block.type !== "tool_result" || text(block.tool_use_id) === null) continue;
+        const receipts = (outputOf(block.content) ?? "").split("\n").map(receiptOf).filter((r) => r !== null);
+        if (!receipts.length) continue;
+        found.push({
+            call: block.tool_use_id,
+            receipts,
+            branch: text(record.gitBranch),
+            cwd: text(record.cwd),
+            at: Number.isFinite(at) ? at : null,
+            sidechain: record.isSidechain === true,
+            agent: text(record.agentId),
+        });
+    }
+    return found;
+}
+
 export function readLine(line) {
     const usageLike = line.includes('"usage":');
     const boundaryLike = line.includes('"compact_boundary"');
-    if (!usageLike && !boundaryLike) return null;
+    const resultLike = line.includes('"tool_result"') && line.includes("spend=$0.00");
+    if (!usageLike && !boundaryLike && !resultLike) return null;
     let record;
     try {
         record = JSON.parse(line);
@@ -134,7 +184,12 @@ export function readLine(line) {
         return { boundary: true, sidechain: record.isSidechain === true, agent: text(record.agentId) };
     }
     const request = requestOf(record);
-    return request === null ? null : { request };
+    if (request !== null) {
+        const calls = bashCallsOf(record);
+        return calls.length ? { request, calls } : { request };
+    }
+    const results = resultLike ? resultsOf(record) : [];
+    return results.length ? { results } : null;
 }
 
 /** Claude Code 2.1.280, undocumented: one record per content block, so one request per message id. */
@@ -144,6 +199,8 @@ export function readTranscript(file) {
     const requests = [];
     const tally = { records: 0, duplicates: 0, malformed: 0, synthetic: 0, compactions: 0 };
     const figures = sessionFigures();
+    const calls = new Set();
+    const receipts = [];
     // Compacted contexts awaiting their next request, by chain, so a subagent's compaction is never the session's.
     const awaiting = new Set();
     for (const line of source.split("\n")) {
@@ -154,6 +211,15 @@ export function readTranscript(file) {
             tally.malformed += 1;
             continue;
         }
+        if (read.results) {
+            // Only a Bash result is read for the format: an agent's report quoting a receipt is no second one.
+            for (const result of read.results) {
+                if (!calls.has(result.call)) continue;
+                const { call, receipts: lines, ...where } = result;
+                lines.forEach((receipt, i) => receipts.push({ key: `${call}#${i}`, ...receipt, ...where }));
+            }
+            continue;
+        }
         foldFigures(figures, read);
         if (read.boundary) {
             tally.compactions += 1;
@@ -161,6 +227,7 @@ export function readTranscript(file) {
             continue;
         }
         const request = read.request;
+        for (const id of read.calls ?? []) calls.add(id);
         tally.records += 1;
         if (request.synthetic) {
             tally.synthetic += 1;
@@ -177,7 +244,7 @@ export function readTranscript(file) {
         request.compacted = awaiting.delete(chainOf(request));
         requests.push(request);
     }
-    return { requests, figures, ...tally };
+    return { requests, receipts, figures, ...tally };
 }
 
 /** The lifetime a request's writes used, or null where it wrote nothing it named. */
@@ -375,6 +442,8 @@ export function collect({ projects, roots }) {
     const contexts = [];
     const tally = { files: 0, records: 0, duplicates: 0, malformed: 0, synthetic: 0 };
     const seen = new Set();
+    const receipts = [];
+    const seenReceipts = new Set();
     for (const entry of transcriptFiles(projects, roots)) {
         let transcript;
         try {
@@ -400,8 +469,13 @@ export function collect({ projects, roots }) {
             tally.duplicates += inside.length - kept.length;
             if (kept.length) contexts.push({ file: entry.file, session: entry.session, agent, requests: kept, transcript: agent === null ? transcript : null });
         }
+        for (const r of transcript.receipts) {
+            if (!insideAny(r.cwd, roots) || seenReceipts.has(r.key)) continue;
+            seenReceipts.add(r.key);
+            receipts.push({ ...r, session: entry.session, agent: entry.agent ?? (r.sidechain ? `inline:${r.agent ?? "unnamed"}` : null) });
+        }
     }
-    return { contexts, ...tally };
+    return { contexts, receipts, ...tally };
 }
 
 const zero = () => ({ requests: 0, uncached: 0, written1h: 0, written5m: 0, writtenUnknown: 0, read: 0, output: 0 });
@@ -448,6 +522,20 @@ export function tally(contexts, branch) {
         rebuilds,
         rebuilt,
         causes: Object.fromEntries(Object.entries(causes).sort(([a], [b]) => (a < b ? -1 : 1))),
+    };
+}
+
+/** What the lines in the receipt format on `branch` say, apart from every host figure: each null where none reported it. */
+export function tallyLocal(receipts, branch) {
+    const own = receipts.filter((r) => r.branch === branch);
+    const figure = (k) => (own.some((r) => r[k] !== null) ? own.reduce((sum, r) => sum + (r[k] ?? 0), 0) : null);
+    return {
+        receipts: own.length,
+        sessions: new Set(own.map((r) => r.session)).size,
+        in: figure("in"),
+        out: figure("out"),
+        time: figure("time"),
+        unreported: Object.fromEntries(["in", "out", "time"].map((k) => [k, own.filter((r) => r[k] === null).length])),
     };
 }
 
@@ -574,7 +662,8 @@ export function ledger({ projects, config, roots, branch, lines = null, spend = 
     const latest = latestSession(collected.contexts, branch);
     const priced = { declared: spend.multipliers, horizon: spend.horizon ?? HORIZON };
     const restart = latest === null ? null : { session: latest.session, ...thresholdFor(latest.transcript, priced) };
-    return { projects, roots, branch, collected, figures, host, restart, lines, priced };
+    const local = tallyLocal(collected.receipts, branch);
+    return { projects, roots, branch, collected, figures, local, host, restart, lines, priced };
 }
 
 const signed = (n) => (n > 0 ? `+${grouped(n)}` : n < 0 ? `−${grouped(-n)}` : "0");
@@ -590,9 +679,21 @@ function unjudged({ declared, horizon } = { declared: null, horizon: HORIZON }) 
     );
 }
 
+function localLine({ local: l, branch }) {
+    if (l.receipts === 0) return `  local worker: no line in the runner's receipt format on ${branch} is recorded here`;
+    const figure = (k, unit) => {
+        if (l[k] === null) return `${k} unreported`;
+        return `${k} ${grouped(l[k])} ${unit}${l.unreported[k] ? ` (${grouped(l.unreported[k])} receipt(s) did not report it)` : ""}`;
+    };
+    return (
+        `  local worker: ${grouped(l.receipts)} line(s) in the runner's receipt format, from Bash results in ${grouped(l.sessions)} session(s), at $0.00, none of it in the host's tokens or the restart threshold: ` +
+        `${figure("in", "tokens")}, ${figure("out", "tokens")}, ${figure("time", "ms")}`
+    );
+}
+
 export function print(report, say) {
     const { collected, figures: f, host, restart, lines, priced } = report;
-    say(`ledger: branch ${report.branch} — what this change spent, from Claude Code's own usage records (numbers only: nothing a context said is read)`);
+    say(`ledger: branch ${report.branch} — what this change spent, from Claude Code's own usage records (numbers only: nothing a context said is read but a line in the runner's receipt format in a Bash result)`);
     say(`  worktrees: ${report.roots.join(", ")}`);
     say(
         `  read: ${grouped(collected.files)} transcript(s) under ${report.projects}, ${grouped(collected.records)} usage record(s): ` +
@@ -601,6 +702,7 @@ export function print(report, say) {
     );
     if (f.main.requests + f.subagents.requests === 0) {
         say(`  no request on ${report.branch} is recorded here`);
+        say(localLine(report));
         say(unjudged(priced));
         return;
     }
@@ -613,6 +715,7 @@ export function print(report, say) {
     row("written, unstated", "writtenUnknown");
     row("read", "read");
     row("output", "output");
+    say(localLine(report));
     say(`  contexts opened: ${grouped(f.sessions + f.subagentContexts)} (${grouped(f.sessions)} session(s), ${grouped(f.subagentContexts)} subagent(s)); compactions: ${grouped(f.compactions)}`);
     say(`  largest context: ${grouped(f.largest)} tokens`);
     if (f.hitRate === null) say("  hit rate: none — no input was recorded, so none could be read from cache");
@@ -665,6 +768,7 @@ export function pinned(report) {
         rebuilt: f.rebuilt,
         causes: f.causes,
         host: report.host.map((h) => ({ session: h.session, difference: h.difference })),
+        local: report.local,
         threshold: report.restart?.threshold ?? null,
     };
 }

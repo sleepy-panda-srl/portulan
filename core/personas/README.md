@@ -49,6 +49,11 @@ is installed and enabled, and `compile` cannot see that. _(Provenance:
 proposal `0036`'s order of work, item 7, and proposal `0039`'s first two rules. The host's keys, values
 and agent locations were read in Claude Code 2.1.317's program text on 2026-11-03.)_
 
+A binding has one persona owner across composed packs, including an unbound persona or one declaring
+no fields; duplicate destinations are refused before any artifact is written. The binding must be a
+regular file whose real path stays in the real declared tree, including its parent directories.
+`omitClaudeMd` accepts only unquoted `true` or `false`, in both declarations and compiled blocks.
+
 ## Status
 
 **Milestone 3 — contract, exemplars, and one host binding.** This README fixes the persona contract; the

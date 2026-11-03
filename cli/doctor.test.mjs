@@ -2740,6 +2740,9 @@ describe("a pack's skills and personas are validated, not counted", () => {
         for (const [line, pattern] of [
             ["effort: extreme", /`effort` to "extreme".*one of low, medium, high, xhigh, max/],
             ['omitClaudeMd: "true"', /`omitClaudeMd`.*unquoted/],
+            ["omitClaudeMd: constructor", /`omitClaudeMd` to "constructor"/],
+            ["omitClaudeMd: __proto__", /`omitClaudeMd` to "__proto__"/],
+            ["omitClaudeMd: toString", /`omitClaudeMd` to "toString"/],
             ["cacheLifetime: 2h", /`cacheLifetime` to "2h"/],
             ["model: two words", /`model` to "two words"/],
             ["effort: low\neffort: high", /declares `effort` twice/],

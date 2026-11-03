@@ -43,13 +43,24 @@ describe("this workspace's own composed set", () => {
         assert.equal(composed.source.pack, "tools/github");
     });
 
-    test("the composed run is expanded and points at a file that exists", () => {
+    test("`tools/local-llm` contributes its offline recipe, namespaced, into the runnable set", () => {
         const set = live();
-        const composed = set.recipes.find((r) => r.source.kind === "pack");
-        assert.doesNotMatch(composed.run, /\$\{PACK_ROOT\}/, "`${PACK_ROOT}` must be expanded before anyone sees the command");
-        const script = composed.run.split(/\s+/).find((word) => word.endsWith(".sh"));
-        assert.ok(script, `no script path found in ${JSON.stringify(composed.run)}`);
-        assert.ok(fs.existsSync(path.join(REPO, script)), `${script} does not exist relative to the repository root`);
+        const id = composedId("tools/local-llm", "runner-rails");
+        const composed = set.recipes.find((r) => r.id === id);
+        assert.ok(composed, `expected ${id} in the composed set, got: ${set.recipes.map((r) => r.id).join(", ")}`);
+        assert.equal(composed.source.pack, "tools/local-llm");
+        assert.match(composed.run, /--verify-offline$/, "the yielded run must be the offline mode, the only one that opens no socket");
+    });
+
+    test("every composed run is expanded and points at a file that exists", () => {
+        const composed = live().recipes.filter((r) => r.source.kind === "pack");
+        assert.ok(composed.length >= 2, "both tool packs contribute a recipe");
+        for (const r of composed) {
+            assert.doesNotMatch(r.run, /\$\{PACK_ROOT\}/, "`${PACK_ROOT}` must be expanded before anyone sees the command");
+            const script = r.run.split(/\s+/).find((word) => /\.(sh|[cm]?js)$/.test(word));
+            assert.ok(script, `no script path found in ${JSON.stringify(r.run)}`);
+            assert.ok(fs.existsSync(path.join(REPO, script)), `${script} does not exist relative to the repository root`);
+        }
     });
 
     test("`rituals/checkpoints` resolves and contributes NO recipe, which is not an error", () => {
