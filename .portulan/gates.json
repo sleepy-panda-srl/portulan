@@ -1,15 +1,17 @@
 {
   "portulan": {
-    "spec": "2.2"
+    "spec": "2.3"
   },
 
   "why": "gate-map.md",
 
   "floor": {
     "branch": "main",
+    "strict": false,
     "checks": [
       { "context": "workspace-verify", "integration_id": 15368 },
-      { "context": "pr-labeled", "integration_id": 15368 }
+      { "context": "pr-labeled", "integration_id": 15368 },
+      { "context": "branch-freshness", "integration_id": 15368 }
     ],
     "reviews": 0,
     "resolve_conversations": true
@@ -32,7 +34,7 @@
       "id": "merge-a-pull-request",
       "tier": "gated",
       "action": { "shell": "gh pr merge" },
-      "reason": "An agent never decides for itself that a change is ready to land. The maintainer may instruct an agent to perform a merge he has decided on; he may not have it decided for him. This is the gate the push gate used to stand in for: a commit enters the repository's record here, not at the push. A merge also has a precondition his approval does not waive: the head must not be behind `main`. Check it with `gh api repos/{owner}/{repo}/compare/main...<head> --jq .behind_by` — zero, or rebase onto `origin/main`, push with `--force-with-lease`, and let the checks re-run first, because CI tested this branch against a `main` that has since moved."
+      "reason": "An agent never decides for itself that a change is ready to land. The maintainer may instruct an agent to perform a merge he has decided on. Immediately before that merge, compare the exact current base and head SHAs: behind_by must be an integer from 0 through 10. At 11 or more, sync with main and let the checks rerun; an unreadable comparison is no permission. Proposal 0040 records the maintainer's 2026-11-03 amendment to proposal 0011. The replacement branch-freshness check is asynchronous, and native strict protection remains enabled until ordered activation is demonstrated."
     },
     {
       "id": "change-repository-settings",
