@@ -1,0 +1,14 @@
+{
+  "portulan": {
+    "spec": "2.2"
+  },
+
+  "rules": [
+    {
+      "id": "merge-a-pull-request",
+      "tier": "gated",
+      "action": { "shell": "gh pr merge" },
+      "reason": "A merge lands work on the shared branch, so a person approves each one."
+    }
+  ]
+}

@@ -18,6 +18,7 @@ import {
     composeFragments,
     packDifferences,
     shadowedCopy,
+    personaDeclarations,
 } from "./compile.mjs";
 import { isInside, recordType } from "./index.mjs";
 import { parseFrontmatter, AGENT_DIR } from "./plugin-lint.mjs";
@@ -505,6 +506,9 @@ export function validatePersona(text, { fail, pack, rel }) {
         if (!find(fields, text)) {
             fail("packs", `\`${pack}\`'s persona \`${rel}\` is missing ${part} — the five-part contract core/personas/README.md fixes`);
         }
+    }
+    for (const problem of personaDeclarations(text).problems) {
+        fail("packs", `\`${pack}\`'s persona \`${rel}\` ${problem} — core/personas/README.md gives the fields a persona may declare, and none is defaulted`);
     }
     const reach = text.split(/^##\s+Autonomy reach\b.*$/im)[1]?.split(/^##\s/m)[0];
     if (reach && claimsProhibited(reach)) {
@@ -1499,7 +1503,7 @@ export async function inspect(workspaceDir, options = {}) {
                     report(
                         "bindings",
                         `${where} has no host binding at \`${rel}\`${keyed} — reported, not failed: a persona without one is unbound rather than wrong, ` +
-                            "and this is the one location a Claude Code host loads agents from",
+                            "and this is where a Claude Code plugin's agents load from — a repository that is not a plugin loads its agents from `.claude/agents/`",
                     );
                 } else {
                     report("bindings", `${where}'s binding at \`${rel}\` could not be read — ${cause.code ?? cause.message}. Unread, not absent`);

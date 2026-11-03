@@ -119,7 +119,7 @@ commit, refusing any packed file that differs from its source.
 |---|---|
 | [`init`](cli/init.mjs) | Interview plus codebase scan, producing a drafted workspace |
 | [`doctor`](cli/doctor.mjs) | Validate a workspace against the Workspace Definition |
-| [`compile`](cli/compile.mjs) | Turn gates and verify recipes into host enforcement |
+| [`compile`](cli/compile.mjs) | Turn gates and verify recipes into host enforcement, and what a pack's persona declares about its context into the agent binding it is given, which Claude Code loads only at a plugin root |
 | [`vendor`](cli/vendor.mjs) | Materialise a workspace where it is needed, in either direction |
 | [`index`](cli/index.mjs) | Rebuild the declared indexes over memory, handoffs and personas; print changelog fragments for a release |
 | [`upgrade`](cli/upgrade.mjs) | Migrate a workspace across Workspace Definition versions |

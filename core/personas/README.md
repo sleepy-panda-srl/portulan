@@ -21,6 +21,34 @@ context firewalls; Cognition — read-parallel / write-isolated.)_
 - **Read / write posture** — most personas read in parallel; writes are isolated to one place so two
   agents never clobber the same file.
 
+## What a persona may declare about its context
+
+Four optional frontmatter fields say what a fresh context for the role should cost, per
+[`../operating/context.md`](../operating/context.md): `model`, one model name or alias as a single
+token; `effort`, one of `low`, `medium`, `high`, `xhigh` or `max`; `omitClaudeMd`, `true` or `false`
+unquoted, whether the role runs without the project's instruction files; and `cacheLifetime`, `5m` or
+`1h`. The effort levels and the name `omitClaudeMd` are adopted from Claude Code's vocabulary, the first
+host to express them. `effort` sets the host subagent's reasoning effort, and is not the thinking cap the
+`tools/local-llm` runner's `--effort` sends with each request it makes. `doctor` fails a
+malformed value and `compile` refuses one, and neither supplies a value the persona did not write. For a
+persona a composed pack ships, `compile` writes the declared fields into the frontmatter of the role's
+hand-written host binding, `agents/<name>.md` in the workspace's tree, and leaves every other line of
+that file as its author wrote it; `--check` byte-compares the result, and a line inside the compiled
+block that `compile` did not write is refused rather than removed. One it cannot catch: a line added inside
+the block in exactly the spelling and order `compile` writes reads as compiled, and is dropped once the
+persona no longer declares that field, since the two cannot be told apart. And once a persona declares any
+field, `compile` owns every top-level key it could write, so a hand-written `experimental:` is refused
+even for a key other than `cacheTtl`. A field a host cannot express is
+named, with the persona and the host, in the degradation report `compile` prints. Claude Code takes all
+four on an agent (`cacheLifetime` as `experimental.cacheTtl`), and a vendored `AGENTS.md` takes none.
+**Claude Code loads `agents/` only from a plugin root**, and a repository that is not a plugin loads its
+agents from `.claude/agents/`, which `compile` does not write. So outside a plugin the compiled block is
+loaded by nothing, and the degradation report says so for each persona it applies to. Where the tree is
+a plugin root the report is silent, which is not proof of loading: a plugin's agents load only while it
+is installed and enabled, and `compile` cannot see that. _(Provenance:
+proposal `0036`'s order of work, item 7, and proposal `0039`'s first two rules. The host's keys, values
+and agent locations were read in Claude Code 2.1.317's program text on 2026-11-03.)_
+
 ## Status
 
 **Milestone 3 — contract, exemplars, and one host binding.** This README fixes the persona contract; the
