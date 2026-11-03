@@ -6,15 +6,14 @@ Composed through a workspace's `packs` array as `tools/local-llm`.
 
 | Contributes | What |
 |---|---|
+| Skill | [`delegate-local`](skills/delegate-local/SKILL.md) — the pass a frontier session follows to hand a bounded edit or digest to the runner; its description names the precondition, a workspace composing this pack and a server answering on loopback |
 | Persona | [`local-worker`](personas/local-worker.md) — a context-firewall worker operating with an omitted host floor (`omitClaudeMd`) and a hard input-byte ceiling |
 | Verify | [`runner-rails`](verify/README.md) — offline verification of the runner's loopback-only guard, input-budget rail, and rollback contract (zero network calls) |
 | Gate | `local-llm-off-loopback` (`propose`) — marks leaving loopback (`127.0.0.1` / `localhost` / `[::1]`) as a decision requiring explicit approval |
 
-**No skill ships yet.** A pack's skill registers only where a plugin manifest declares it, and this
-repository's manifest may declare only the skills of packs its own workspace composes; composing this
-one, and the `delegate-local` skill with it, is
-[#542](https://github.com/sleepy-panda-srl/portulan/issues/542). Until then the pass a skill would
-carry is [*Delegating to it*](#delegating-to-it) below.
+The skill registers where a plugin manifest declares `skills/`, and this repository's manifests may
+declare only the skills of packs its own workspace composes, as its `.portulan/workspace.json` composes
+this one.
 
 ## Why this pack exists
 
@@ -37,9 +36,6 @@ A receipt prints a figure the server did not report as `?`, never as `0`, and `t
 
 ## Delegating to it
 
-1. **Scope the input first.** Outline a file of 300 lines or more with `node <plugin root>/cli/symbols.mjs <file>` and pass `--lines <start>-<end>` (to `transform`, `chat` and `summarize` alike) rather than the whole file. Prefill scales with prompt bytes: proposal 0039 measured prompts of about 400–470 tokens prefilling in 0.85–1.9 s, and the `32 KB` default (about 8k tokens) is a ceiling, not a measured latency.
-2. **Choose the model by task shape.** Code transforms and strict syntax: `--role code` (`qwen/qwen3.8-27b`). Prose compression, `codify` drafts and digests: `--role prose` (`google/gemma-4-31b`). This routing rests on proposal 0039's one-sample figures until its A/B record lands ([#547](https://github.com/sleepy-panda-srl/portulan/issues/547)). Screen a newly installed model with `node <plugin root>/packs/tools/local-llm/runner/local-llm.mjs eval --model <id>` first.
-3. **Gate every edit.** `transform --file <path> --verify "<cmd>" --prompt "<instruction>"`; the runner keeps the edit only on the command's exit `0`.
-4. **Read only the receipt back.** On exit `0`, take the one-line receipt and do not re-read the file unless a later edit depends on its new line numbers. On exit `1` or `2`, escalate to the frontier implementer rather than looping locally again.
-
-Not for multi-file architectural planning, ambiguous requirements (`clarify`), or pre-merge verdicts (`reviewer`).
+The pass is the [`delegate-local`](skills/delegate-local/SKILL.md) skill: check the server with
+`status`, scope the input with [`cli/symbols.mjs`](../../../cli/symbols.mjs) and `--lines`, choose the
+model by task shape, gate every edit with `--verify`, and read only the receipt back.

@@ -350,7 +350,8 @@
   ],
   "packs": [
     "rituals/checkpoints",
-    "tools/github"
+    "tools/github",
+    "tools/local-llm"
   ],
   "sessions": {
     "headless": {

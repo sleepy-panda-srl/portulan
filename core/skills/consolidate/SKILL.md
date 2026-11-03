@@ -1,6 +1,6 @@
 ---
 name: consolidate
-description: Bring a memory store back under its budget by merging, compressing, splitting, and retiring records — the repair a breached memory budget calls for. Use when the index verify recipe reports a breach, or on the librarian's scheduled pass. The output is drafts through the human gate; raising the budget is not one of the moves.
+description: Bring a memory store back under its budget by merging, compressing, splitting, and retiring records. Use when the index verify recipe reports a breach, or on the librarian's scheduled pass. The output is drafts through the human gate; raising the budget is not one of the moves.
 ---
 
 # Skill — Consolidate

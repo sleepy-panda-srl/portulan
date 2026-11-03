@@ -47,8 +47,9 @@ its spelling.
   full-lane work the pre-commit checkpoint, are still owed.
 - **Propose**, reviewed before it counts: `open-a-pull-request`, with a label from
   `.portulan/labels.json` and `agent-driven` beside it; `change-doctrine`, `change-this-workspace`,
-  `change-the-constitution`, `change-the-plan` and `change-a-verify-recipe`. An idea that adds an axis,
-  a mode or a surface starts as a proposal in `.portulan/proposals/`.
+  `change-the-constitution`, `change-the-plan` and `change-a-verify-recipe`; and
+  `local-llm-off-loopback`, from the `tools/local-llm` pack. An idea that adds an axis, a mode or a
+  surface starts as a proposal in `.portulan/proposals/`.
 - **Gated**, the maintainer's approval for each action, never inferred and never standing:
   `merge-a-pull-request`, its head not behind `main`; `delete-a-remote-branch`,
   `force-push-without-a-lease`, `change-repository-settings`, `create-a-repository`,
@@ -87,9 +88,9 @@ one call runs every recipe CI runs, checks the changelog fragment, commits and p
 commits and pushes nothing. `node cli/portulan.mjs <subcommand>` runs the CLI. A build-session bootstrap
 file at the root is git-ignored and never committed: in a diff, it is the bug.
 
-## Packs: `rituals/checkpoints` and `tools/github`
+## Packs: `rituals/checkpoints`, `tools/github` and `tools/local-llm`
 
-The manifest composes both, and a declared pack is not an invocable one. What each delivers here, and the
+The manifest composes all three, and a declared pack is not an invocable one. What each delivers here, and the
 four things a report on them must state, are in `plugin/skills/portulan/packs.md`, which the rule on the
 packs' paths sends a session to: read it before you change how they compose or report what they deliver.
 

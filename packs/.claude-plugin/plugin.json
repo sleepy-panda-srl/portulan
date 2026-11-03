@@ -17,6 +17,7 @@
     "supervision"
   ],
   "skills": [
-    "./rituals/checkpoints/skills/"
+    "./rituals/checkpoints/skills/",
+    "./tools/local-llm/skills/"
   ]
 }
