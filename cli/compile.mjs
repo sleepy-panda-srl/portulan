@@ -2220,10 +2220,18 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
                     `Refusing to compose it — run \`doctor\` to validate the pack against the Pack Definition.`,
             );
         }
+        const personas = packManifest?.contributes?.personas;
+        if (personas !== undefined && !Array.isArray(personas)) {
+            throw new CompileError(
+                `the pack manifest for \`${found.name}\` declares \`contributes.personas\` as ${typeof personas} rather than an array. ` +
+                    `Refusing to compose it — run \`doctor\` to validate the pack against the Pack Definition.`,
+            );
+        }
         contributions.push({
             pack: found.name,
             dir: found.dir,
             fragments: fragments ?? [],
+            personas: personas ?? [],
             origin: recordedOrigin(found.root, plan, workspaceRoot),
             version: typeof packManifest?.portulan?.version === "string" ? packManifest.portulan.version : null,
         });
@@ -2329,6 +2337,291 @@ function readJson(file, what) {
 
 export function render(settings) {
     return `${JSON.stringify(settings, null, 2)}\n`;
+}
+
+// ---------------------------------------------------------------- personas: what a role declares about its context
+
+/** The fields a persona may declare about the context it runs in, in the order a binding carries them. */
+export const PERSONA_FIELDS = ["model", "effort", "omitClaudeMd", "cacheLifetime"];
+
+export const EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"];
+
+const MODEL_NAME = /^[A-Za-z0-9][A-Za-z0-9._:@/[\]-]{0,199}$/;
+
+const readBoolean = (raw) => raw === "true" ? true : raw === "false" ? false : undefined;
+
+const PERSONA_VALUES = {
+    model: { read: (raw) => (MODEL_NAME.test(raw) ? raw : undefined), takes: "one model name or alias, written as a single token" },
+    effort: { read: (raw) => (EFFORT_LEVELS.includes(raw) ? raw : undefined), takes: `one of ${EFFORT_LEVELS.join(", ")}` },
+    omitClaudeMd: { read: readBoolean, takes: "`true` or `false`, unquoted" },
+    cacheLifetime: { read: (raw) => (CACHE_LIFETIMES.includes(raw) ? raw : undefined), takes: `one of ${CACHE_LIFETIMES.join(", ")}` },
+};
+
+/** Claude Code's frontmatter key for each field, a dotted one nested under its first word. */
+const CLAUDE_CODE_KEYS = { model: "model", effort: "effort", omitClaudeMd: "omitClaudeMd", cacheLifetime: "experimental.cacheTtl" };
+
+/** `null` is a field the host cannot express; `why` is the sentence the degradation report gives for it. */
+export const PERSONA_HOSTS = {
+    "claude-code": {
+        label: "Claude Code",
+        ...Object.fromEntries(PERSONA_FIELDS.map((field) => [field, `\`${CLAUDE_CODE_KEYS[field]}\``])),
+    },
+    "agents-md": {
+        label: "AGENTS.md, vendored",
+        model: null,
+        effort: null,
+        omitClaudeMd: null,
+        cacheLifetime: null,
+        why: "AGENTS.md defines no agent to carry it, so the role runs with the session's own",
+    },
+};
+
+/** Where a Claude Code binding sits in a tree, as `AGENT_DIR` in ./plugin-lint.mjs, which a test holds it to. */
+export const BINDING_DIR = "agents";
+
+const PLUGIN_MANIFEST = ".claude-plugin/plugin.json";
+
+const unquoted = (raw) => (raw.length >= 2 && `"'`.includes(raw[0]) && raw.at(-1) === raw[0] ? raw.slice(1, -1) : raw);
+
+/** What a persona's top-level frontmatter lines declare: `{ name, declared, problems }`, a malformed value a problem and never a default. */
+export function personaDeclarations(text) {
+    const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/);
+    const close = lines[0]?.trim() === "---" ? lines.indexOf("---", 1) : -1;
+    const declared = {};
+    const problems = [];
+    const seen = new Set();
+    let name = null;
+    for (const line of close === -1 ? [] : lines.slice(1, close)) {
+        const match = /^([A-Za-z_][\w-]*)\s*:(.*)$/.exec(line);
+        if (match?.[1] === "name") name = unquoted(match[2].trim()).trim() || null;
+        if (!match || !Object.hasOwn(PERSONA_VALUES, match[1])) continue;
+        const [, key, rest] = match;
+        if (seen.has(key)) {
+            problems.push(`declares \`${key}\` twice`);
+            continue;
+        }
+        seen.add(key);
+        const raw = key === "omitClaudeMd" ? rest.trim() : unquoted(rest.trim());
+        const value = PERSONA_VALUES[key].read(raw);
+        if (value === undefined) problems.push(`sets \`${key}\` to ${JSON.stringify(rest.trim())}, and \`${key}\` takes ${PERSONA_VALUES[key].takes}`);
+        else declared[key] = value;
+    }
+    return { name, declared, problems };
+}
+
+const PERSONA_MARK = "# compiled by `portulan compile` from ";
+const PERSONA_MARK_TAIL = "; edit that file, then recompile";
+const BINDING_KEY = /^([A-Za-z_][\w-]*)\s*:(.*)$/;
+const topKey = (field) => CLAUDE_CODE_KEYS[field].split(".")[0];
+
+function bindingLines(declared) {
+    const lines = [];
+    for (const field of PERSONA_FIELDS) {
+        if (declared[field] === undefined) continue;
+        const value = field === "model" ? quoted(declared[field]) : String(declared[field]);
+        const [top, nested] = CLAUDE_CODE_KEYS[field].split(".");
+        lines.push(...(nested ? [`${top}:`, `  ${nested}: ${value}`] : [`${top}: ${value}`]));
+    }
+    return lines;
+}
+
+/** Read recognized compiled fields strictly; the rewritten lines must still match byte for byte. */
+function blockFields(lines, where) {
+    const read = {};
+    let under = null;
+    for (const line of lines) {
+        const nested = /^\s+([A-Za-z_][\w-]*)\s*:\s*(.*)$/.exec(line);
+        const match = nested ? null : BINDING_KEY.exec(line);
+        const key = nested ? `${under}.${nested[1]}` : match?.[1];
+        const raw = (nested?.[2] ?? match?.[2] ?? "").trim();
+        if (!nested) under = key;
+        const field = PERSONA_FIELDS.find((f) => CLAUDE_CODE_KEYS[f] === key);
+        if (!field) continue;
+        let input = raw;
+        if (field === "model") {
+            try { input = JSON.parse(raw); } catch { /* The byte comparison rejects noncanonical quoting. */ }
+        }
+        const value = typeof input === "string" ? PERSONA_VALUES[field].read(input) : undefined;
+        if (value === undefined) throw new CompileError(`${where}: the compiled block holds \`${line}\`, which this compiler did not write — ${PERSONA_VALUES[field].takes}`);
+        read[field] = value;
+    }
+    return read;
+}
+
+/** A Claude Code binding's text with its compiled block rewritten in place from `declared`; every other byte is the binding's own. */
+export function boundAgent(text, declared, source, where) {
+    const eol = text.includes("\r\n") ? "\r\n" : "\n";
+    if (eol === "\r\n" && text.replaceAll("\r\n", "").includes("\n")) {
+        throw new CompileError(`${where} mixes CRLF and LF line endings, so which lines are its own cannot be told apart. Give it one ending, then compile again`);
+    }
+    const lines = text.split(eol);
+    const close = lines[0] === "---" ? lines.indexOf("---", 1) : -1;
+    if (close === -1) {
+        throw new CompileError(`${where} has no frontmatter block to compile ${source}'s fields into — a host reads an agent's \`name\`, \`description\` and \`tools\` from one`);
+    }
+    const owned = new Set(PERSONA_FIELDS.map(topKey));
+    const front = [];
+    let at = null;
+    for (let i = 1; i < close; i += 1) {
+        if (!lines[i].startsWith(PERSONA_MARK)) {
+            front.push(lines[i]);
+            continue;
+        }
+        if (at !== null) throw new CompileError(`${where} carries two compiled blocks. Delete one, then compile again`);
+        at = front.length;
+        const block = [];
+        while (i + 1 < close && (/^\s/.test(lines[i + 1]) || owned.has(BINDING_KEY.exec(lines[i + 1])?.[1]))) block.push(lines[(i += 1)]);
+        const written = bindingLines(blockFields(block, where));
+        const stray = block.find((line) => !written.includes(line)) ?? block.find((line, n) => line !== written[n]);
+        if (stray !== undefined) {
+            throw new CompileError(
+                `${where}: the block compiled from ${source} holds \`${stray}\`, which this compiler did not write. Move the line above the ` +
+                    "mark or delete it, then compile again: removing it unasked would lose a line somebody wrote",
+            );
+        }
+    }
+    const writes = new Set(PERSONA_FIELDS.filter((f) => declared[f] !== undefined).map(topKey));
+    for (const line of front) {
+        const key = BINDING_KEY.exec(line)?.[1];
+        if (writes.has(key)) {
+            throw new CompileError(
+                `${where} sets \`${key}\` by hand, and ${source} declares it. Remove the line from the binding: the persona's value is the one compiled, and two would leave the host to pick`,
+            );
+        }
+        if (writes.size && owned.has(key)) {
+            throw new CompileError(
+                `${where} sets \`${key}\` by hand, which ${source} does not declare. Declare it in the persona or remove the line: in a binding ` +
+                    "it compiles into, `compile` owns every key a persona may declare",
+            );
+        }
+    }
+    const block = writes.size ? [`${PERSONA_MARK}${source}${PERSONA_MARK_TAIL}`, ...bindingLines(declared)] : [];
+    const place = at ?? front.length;
+    return [lines[0], ...front.slice(0, place), ...block, ...front.slice(place), ...lines.slice(close)].join(eol);
+}
+
+const listed = (names) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
+
+/** Each composed persona against its host binding: the bindings to rewrite, the lines to say, and what each host cannot carry. */
+export function planPersonas(contributions, workspaceRoot, workspaceDir = ".portulan") {
+    const base = path.join(workspaceRoot, workspaceDir);
+    let tree = null;
+    try {
+        tree = JSON.parse(fs.readFileSync(path.join(base, "workspace.json"), "utf8"))?.tree;
+    } catch {
+        // `run` refuses an unreadable manifest before this is reached; an absent one declares no tree.
+    }
+    const treeRoot = typeof tree === "string" && tree.trim() ? path.resolve(base, tree) : null;
+    const files = [];
+    const lines = [];
+    const degraded = [];
+    const owners = new Map();
+    let compared = 0;
+    for (const contribution of contributions) {
+        for (const rel of contribution.personas ?? []) {
+            const where = `\`${contribution.pack}\`'s persona \`${rel}\``;
+            const file = path.resolve(contribution.dir, rel);
+            let text;
+            try {
+                if (!isInside(fs.realpathSync(contribution.dir), fs.realpathSync(file))) throw new CompileError(`${where} resolves outside its pack`);
+                text = fs.readFileSync(file, "utf8");
+            } catch (cause) {
+                if (cause instanceof CompileError) throw cause;
+                throw new CompileError(`${where} could not be read — ${cause.code ?? cause.message}, so what it declares is unknown. Run \`doctor\` to validate the pack`);
+            }
+            const { name: declaredName, declared, problems } = personaDeclarations(text);
+            if (problems.length) {
+                throw new CompileError(`${where} ${problems.join("; it ")}. core/personas/README.md gives the fields a persona may declare`);
+            }
+            const fields = PERSONA_FIELDS.filter((f) => declared[f] !== undefined);
+            const name = declaredName ?? path.basename(rel, ".md");
+            if (fields.length && !SLUG.test(name)) {
+                throw new CompileError(`${where} is named \`${name}\`, which is not a slug, so no binding file can be named for it`);
+            }
+            const source = `${contribution.pack}'s ${rel}`;
+            for (const field of fields) {
+                for (const [id, host] of Object.entries(PERSONA_HOSTS)) {
+                    if (host[field] === null) degraded.push({ persona: name, field, host: id, line: `degraded ${name.padEnd(22)} ${field.padEnd(14)} ${id} (${host.label}): ${host.why}` });
+                }
+            }
+            if (!SLUG.test(name)) continue;
+            const bindingRel = `${BINDING_DIR}/${name}.md`;
+            if (owners.has(bindingRel)) {
+                const sources = [owners.get(bindingRel), source].sort();
+                throw new CompileError(`${bindingRel} has multiple persona owners: ${sources.join(" and ")}. Each binding must have one owner`);
+            }
+            owners.set(bindingRel, source);
+            if (!treeRoot) {
+                if (fields.length) lines.push(`persona  ${name.padEnd(22)} UNBOUND — declares ${listed(fields)}, and this workspace declares no \`tree\` to hold its binding`);
+                continue;
+            }
+            const binding = path.join(treeRoot, BINDING_DIR, `${name}.md`);
+            const shown = path.relative(workspaceRoot, binding).split(path.sep).join("/");
+            let stat = null;
+            try {
+                stat = fs.lstatSync(binding);
+            } catch (cause) {
+                if (cause.code !== "ENOENT") throw new CompileError(`${shown} could not be examined — ${cause.code ?? cause.message}`);
+            }
+            if (stat === null) {
+                if (fields.length) lines.push(`persona  ${name.padEnd(22)} UNBOUND — declares ${listed(fields)}, and no host binding at \`${bindingRel}\` carries them`);
+                continue;
+            }
+            if (!stat.isFile()) {
+                throw new CompileError(`${shown} binds ${where} and is not a regular file, so nothing is compiled through it`);
+            }
+            try {
+                if (!isInside(fs.realpathSync(treeRoot), fs.realpathSync(binding))) {
+                    throw new CompileError(`${shown} resolves outside the declared tree, so nothing is compiled through it`);
+                }
+            } catch (cause) {
+                if (cause instanceof CompileError) throw cause;
+                throw new CompileError(`${shown} could not be resolved against the declared tree — ${cause.code ?? cause.message}`);
+            }
+            const current = fs.readFileSync(binding, "utf8");
+            const next = boundAgent(current, declared, source, shown);
+            if (fields.length) lines.push(`persona  ${name.padEnd(22)} ${listed(fields)} → ${shown} (${PERSONA_HOSTS["claude-code"].label})`);
+            if (fields.length && !fs.existsSync(path.join(treeRoot, ...PLUGIN_MANIFEST.split("/")))) {
+                degraded.push({
+                    persona: name,
+                    field: null,
+                    host: "claude-code",
+                    line:
+                        `degraded ${name.padEnd(22)} ${listed(fields)} claude-code (Claude Code): ${shown} loads only from a plugin root, and this tree ` +
+                        `has no ${PLUGIN_MANIFEST}; compile writes no .claude/agents/, so nothing here loads the compiled fields`,
+                });
+            }
+            if (fields.length || next !== current) compared += 1;
+            if (next !== current) files.push({ path: shown, file: binding, text: next, source });
+        }
+    }
+    return { files, lines, degraded, compared };
+}
+
+const unresolvedLine = (u) => `pack    ${u.name.padEnd(30)} UNRESOLVED — ${u.why}; it contributes nothing`;
+
+function printPersonaReport(say, personas) {
+    if (!personas.lines.length && !personas.degraded.length) return;
+    say();
+    for (const line of [...personas.lines, ...personas.degraded.map((d) => d.line)]) say(`  ${line}`);
+}
+
+function emitPersonas(personas, { check, say }) {
+    if (!personas) return 0;
+    for (const line of personas.lines) say(line);
+    for (const d of personas.degraded) say(d.line);
+    let drifted = 0;
+    for (const f of personas.files) {
+        if (check) {
+            say(`RED — ${f.path} has drifted from ${f.source}. Recompile.`);
+            drifted += 1;
+        } else {
+            fs.writeFileSync(f.file, f.text);
+            say(`wrote ${f.file}`);
+        }
+    }
+    if (personas.lines.length || personas.degraded.length || personas.files.length) say();
+    return drifted;
 }
 
 // ---------------------------------------------------------------- the command line
@@ -2543,14 +2836,19 @@ export function run(argv, options = {}) {
                 );
             }
             say();
+            const packs = packContributions(workspaceRoot, workspaceDir, packOptions);
+            for (const u of packs.unresolved) say(unresolvedLine(u));
+            if (packs.unresolved.length) say();
+            const personas = planPersonas(packs.contributions, workspaceRoot, workspaceDir);
             if (showMatrix) {
                 printGuidanceMatrix(say, guidance);
+                printPersonaReport(say, personas);
                 return 0;
             }
-            const drifted = emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
+            const drifted = emitPersonas(personas, { check, say }) + emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
             if (!check) return 0;
             if (drifted) return 1;
-            say("GREEN — every compiled guidance file matches its unit");
+            say(`GREEN — every compiled guidance file matches its unit${personas.compared ? ", and every persona binding its persona" : ""}`);
             return 0;
         }
         const policy = readJson(policyFile, "the gate policy");
@@ -2560,6 +2858,7 @@ export function run(argv, options = {}) {
             discovery: () => discoverPackRoots(),
             forced,
         });
+        const personas = planPersonas(contributions, workspaceRoot, workspaceDir);
         // Only under `--matrix`, as it moves with what is installed; but a union is never silent.
         if (plan && (showMatrix || plan.source === "union")) say(`packs: resolution root ${plan.source} — ${plan.why}`);
         const composed = composeFragments(policy, contributions);
@@ -2578,9 +2877,7 @@ export function run(argv, options = {}) {
         for (const t of composed.tightened) {
             say(`pack    ${t.pack.padEnd(30)} tightens \`${t.id}\` ${t.from} → ${t.to}`);
         }
-        for (const u of unresolved) {
-            say(`pack    ${u.name.padEnd(30)} UNRESOLVED — ${u.why}; it contributes nothing`);
-        }
+        for (const u of unresolved) say(unresolvedLine(u));
         if (composed.added.length || composed.tightened.length || unresolved.length) say();
 
         if (showMatrix) {
@@ -2589,6 +2886,7 @@ export function run(argv, options = {}) {
                 say();
                 printGuidanceMatrix(say, guidance);
             }
+            printPersonaReport(say, personas);
             return 0;
         }
 
@@ -2645,9 +2943,12 @@ export function run(argv, options = {}) {
                     drifted += 1;
                 }
             }
+            drifted += emitPersonas(personas, { check, say });
             drifted += emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
             if (drifted) return 1;
-            say(guidance ? "GREEN — every emitted artifact matches the policy, and every guidance file its unit" : "GREEN — every emitted artifact matches the policy");
+            const bindings = personas.compared ? ", and every persona binding its persona" : "";
+            const guided = bindings ? `, every guidance file its unit${bindings}` : ", and every guidance file its unit";
+            say(`GREEN — every emitted artifact matches the policy${guidance ? guided : bindings}`);
             return 0;
         }
 
@@ -2666,6 +2967,7 @@ export function run(argv, options = {}) {
             fs.writeFileSync(file, column.artifact.text);
             say(`wrote ${file}`);
         }
+        emitPersonas(personas, { check, say });
         emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
         return 0;
     } catch (error) {

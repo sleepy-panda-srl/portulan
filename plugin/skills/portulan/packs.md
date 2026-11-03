@@ -60,9 +60,11 @@ do.**
   *demonstration* — a composed pack's skill **invoked** through a host the same way a core skill is —
   is still owed by a session that runs and records it. Derivable is not demonstrated, and a boot that
   reported this as parity would be making exactly the claim the clause refuses.
-- **A pack's personas reach the workspace's own layer, and not the host.** A composing workspace lands
-  the scope a pack's persona declares, and an index over it can be generated — so this one is not
-  simply absent, and reporting it as absent would be as wrong as reporting it as loaded.
+- **A pack's personas reach the workspace's own layer, and the host only through a binding the
+  workspace wrote.** A composing workspace lands the scope a pack's persona declares, and an index over
+  it can be generated — so this one is not simply absent, and reporting it as absent would be as wrong as
+  reporting it as loaded. `compile` writes a persona's declared context fields into that binding and
+  creates none; at `agents/` it loads only in a plugin.
 - **A pack's verify recipes reach the runnable set.**
   [`../../../cli/recipe-set.mjs`](../../../cli/recipe-set.mjs) is the composing consumer and the
   **one carrier** of the runnable set — CI calls it instead of enumerating a manifest, so *what the

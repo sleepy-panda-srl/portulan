@@ -2,6 +2,8 @@
 name: local-worker
 description: Executes bounded file transformations, test-fixture drafts, handoff compressions, and research digests on a local OpenAI-compatible model (LM Studio / Ollama) with an omitted host floor and a verify-gated rollback loop. Delegate surgical, single-file or read-parallel summarization work to it; never ask it to own multi-file architecture or merge decisions.
 tools: [read, search, edit-code, run-verify]
+effort: low
+omitClaudeMd: true
 ---
 
 # Persona — Local Worker

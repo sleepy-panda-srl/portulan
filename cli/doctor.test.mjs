@@ -2732,6 +2732,28 @@ describe("a pack's skills and personas are validated, not counted", () => {
         }
     });
 
+    test("a persona's declared model, effort, omitClaudeMd and cache lifetime are validated, and a malformed one fails naming it", async () => {
+        const declaring = (lines) => goodPersona.replace("tools: Read, Grep\n", `tools: Read, Grep\n${lines.join("\n")}\n`);
+        const clean = withPack({ personas: ["personas/my-role.md"] }, { "personas/my-role.md": declaring(["model: haiku", "effort: low", "omitClaudeMd: true", "cacheLifetime: 1h"]) });
+        const ok = await inspect(clean.dir, { schema: SCHEMA, packRoots: [clean.root] });
+        assert.equal(severities(checks(ok.findings, "packs"), "fail").length, 0, text(ok.findings));
+        for (const [line, pattern] of [
+            ["effort: extreme", /`effort` to "extreme".*one of low, medium, high, xhigh, max/],
+            ['omitClaudeMd: "true"', /`omitClaudeMd`.*unquoted/],
+            ["omitClaudeMd: constructor", /`omitClaudeMd` to "constructor"/],
+            ["omitClaudeMd: __proto__", /`omitClaudeMd` to "__proto__"/],
+            ["omitClaudeMd: toString", /`omitClaudeMd` to "toString"/],
+            ["cacheLifetime: 2h", /`cacheLifetime` to "2h"/],
+            ["model: two words", /`model` to "two words"/],
+            ["effort: low\neffort: high", /declares `effort` twice/],
+        ]) {
+            const { dir, root } = withPack({ personas: ["personas/my-role.md"] }, { "personas/my-role.md": declaring([line]) });
+            const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+            assert.equal(severities(checks(findings, "packs"), "fail").length, 1, `${line}: ${text(findings)}`);
+            assert.match(text(checks(findings, "packs")), pattern);
+        }
+    });
+
     test("a persona with no `tools:` allow-list fails — default-deny is the first part", async () => {
         const { dir, root } = withPack({ personas: ["personas/my-role.md"] }, { "personas/my-role.md": goodPersona.replace("tools: Read, Grep\n", "") });
         const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });

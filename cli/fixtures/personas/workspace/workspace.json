@@ -1,0 +1,28 @@
+{
+  "portulan": {
+    "spec": "2.10"
+  },
+  "name": "personas",
+  "summary": "A fixture workspace composing tools/local-llm and binding its local-worker persona by hand — the source compile writes that persona's declared frontmatter into.",
+  "kind": "repository",
+
+  "tree": "../",
+  "gates": "gates.json",
+  "packs": ["tools/local-llm"],
+
+  "slots": {
+    "identity": "identity.md",
+    "principles": "principles.md",
+    "gates": "gate-map.md"
+  },
+
+  "verify": {
+    "default": "check",
+    "recipes": [
+      {
+        "id": "check",
+        "run": "./verify.sh"
+      }
+    ]
+  }
+}

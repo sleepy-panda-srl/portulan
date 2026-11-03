@@ -58,7 +58,13 @@ import {
     BOOT_CARD_UNIT,
     BOOT_CARD_LINE,
     IMPORT_DEPTH,
+    PERSONA_FIELDS,
+    PERSONA_HOSTS,
+    BINDING_DIR,
+    personaDeclarations,
+    boundAgent,
 } from "./compile.mjs";
+import { AGENT_DIR } from "./plugin-lint.mjs";
 import { alwaysTier } from "./context.mjs";
 import { spendFlags } from "./advisory.mjs";
 import { inspect } from "./doctor.mjs";
@@ -3981,5 +3987,389 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         );
         assert.equal(carried.match(/`\.portulan\/identity\.md`/g).length, 1, "a file the card imports itself is named once, on its own line");
         assert.doesNotMatch(carried, /^@/m);
+    });
+});
+
+
+// ===========================================================================================
+// Personas — what a role declares about its context, compiled into its host binding
+// ===========================================================================================
+
+const PERSONA_FIXTURE = path.join(HERE, "fixtures", "personas");
+const PERSONA_GOLDEN = fs.readFileSync(path.join(PERSONA_FIXTURE, "golden", "local-worker.md"), "utf8");
+const PACKS = path.join(REPO, "packs");
+
+function personaCopy() {
+    const dir = scratch();
+    fs.cpSync(PERSONA_FIXTURE, dir, { recursive: true });
+    return { dir, workspace: path.join(dir, "workspace"), binding: path.join(dir, "agents", "local-worker.md") };
+}
+
+const personaText = (lines) =>
+    [
+        "---", "name: my-role", "description: A role.", "tools: [read]", ...lines, "---", "",
+        "# Persona — my role", "", "## Charter", "It reads.", "", "## Autonomy reach", "Auto.", "",
+        "## Read / write posture", "Reads.", "", "## Memory scope", "Its own.", "",
+    ].join("\n");
+
+const bindingText = (extra = []) => ["---", "name: my-role", "description: A role.", "tools: Read", ...extra, "---", "", "Bound by hand.", ""].join("\n");
+
+/** A copy of the persona fixture composing one invented pack, `tools/my-pack`, whose one persona carries `lines`. */
+function withPersona(lines, binding = bindingText()) {
+    const { dir, workspace } = personaCopy();
+    fs.rmSync(path.join(dir, "agents"), { recursive: true });
+    const manifest = JSON.parse(fs.readFileSync(path.join(workspace, "workspace.json"), "utf8"));
+    fs.writeFileSync(path.join(workspace, "workspace.json"), JSON.stringify({ ...manifest, packs: ["tools/my-pack"] }, null, 2));
+    const root = scratch();
+    fs.mkdirSync(path.join(root, "tools", "my-pack", "personas"), { recursive: true });
+    fs.writeFileSync(
+        path.join(root, "tools", "my-pack", "pack.json"),
+        JSON.stringify({ portulan: { pack: "1.0" }, name: "my-pack", category: "tools", contributes: { personas: ["personas/my-role.md"] } }),
+    );
+    fs.writeFileSync(path.join(root, "tools", "my-pack", "personas", "my-role.md"), personaText(lines));
+    if (binding !== null) {
+        fs.mkdirSync(path.join(dir, "agents"));
+        fs.writeFileSync(path.join(dir, "agents", "my-role.md"), binding);
+    }
+    return { dir, workspace, root, binding: path.join(dir, "agents", "my-role.md") };
+}
+
+function personaSnapshot(dir) {
+    const files = [];
+    const walk = (rel) => {
+        for (const entry of fs.readdirSync(path.join(dir, rel), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+            const file = path.join(rel, entry.name);
+            if (entry.isSymbolicLink()) files.push([file, "link", fs.readlinkSync(path.join(dir, file))]);
+            else if (entry.isDirectory()) walk(file);
+            else files.push([file, fs.readFileSync(path.join(dir, file)).toString("base64")]);
+        }
+    };
+    walk("");
+    return files;
+}
+
+describe("personas: a persona declares its model, effort, instruction floor and cache lifetime, and nothing is defaulted", () => {
+    test("every host says what it does with each field: Claude Code expresses all four, a vendored AGENTS.md none", () => {
+        assert.deepEqual(PERSONA_FIELDS, ["model", "effort", "omitClaudeMd", "cacheLifetime"]);
+        for (const field of PERSONA_FIELDS) {
+            assert.notEqual(PERSONA_HOSTS["claude-code"][field], null, `Claude Code expresses ${field}`);
+            assert.equal(PERSONA_HOSTS["agents-md"][field], null, `AGENTS.md expresses no ${field}`);
+        }
+        assert.equal(BINDING_DIR, AGENT_DIR, "compile writes the binding doctor reads");
+    });
+
+    test("local-worker declares a low effort and no host instruction floor, and a persona declaring none reads as none", () => {
+        const worker = personaDeclarations(fs.readFileSync(path.join(PACKS, "tools", "local-llm", "personas", "local-worker.md"), "utf8"));
+        assert.deepEqual(worker, { name: "local-worker", declared: { effort: "low", omitClaudeMd: true }, problems: [] });
+        const supervisor = personaDeclarations(fs.readFileSync(path.join(PACKS, "rituals", "checkpoints", "personas", "supervisor.md"), "utf8"));
+        assert.deepEqual(supervisor.declared, {});
+        assert.deepEqual(supervisor.problems, []);
+        assert.deepEqual(personaDeclarations(personaText(['model: "claude-haiku-4-5"', "cacheLifetime: '1h'", "omitClaudeMd: false"])).declared, {
+            model: "claude-haiku-4-5",
+            omitClaudeMd: false,
+            cacheLifetime: "1h",
+        });
+    });
+
+    for (const [line, pattern] of [
+        ["effort: extreme", /sets `effort` to "extreme", and `effort` takes one of low, medium, high, xhigh, max/],
+        ["effort: 3", /`effort` to "3"/],
+        ["effort:", /`effort` to ""/],
+        ['omitClaudeMd: "true"', /`omitClaudeMd` takes `true` or `false`, unquoted/],
+        ["omitClaudeMd: yes", /`omitClaudeMd` to "yes"/],
+        ["omitClaudeMd: constructor", /`omitClaudeMd` to "constructor"/],
+        ["omitClaudeMd: __proto__", /`omitClaudeMd` to "__proto__"/],
+        ["omitClaudeMd: toString", /`omitClaudeMd` to "toString"/],
+        ["cacheLifetime: 2h", /`cacheLifetime` takes one of 5m, 1h/],
+        ["model: two words", /`model` to "two words"/],
+        ["model: [a, b]", /`model` to "\[a, b\]"/],
+    ]) {
+        test(`a malformed value is a problem, never a default: ${line || "(empty)"}`, () => {
+            const { declared, problems } = personaDeclarations(personaText([line]));
+            assert.deepEqual(declared, {});
+            assert.equal(problems.length, 1);
+            assert.match(problems[0], pattern);
+        });
+    }
+
+    test("a field declared twice is a problem, since the host would keep one of them silently", () => {
+        assert.deepEqual(personaDeclarations(personaText(["effort: low", "effort: high"])).problems, ["declares `effort` twice"]);
+    });
+});
+
+describe("personas: compile writes the declared fields into the binding, byte-compared against a committed golden", () => {
+    test("local-worker, bound by hand in a workspace composing tools/local-llm, compiles to the golden, and the report names each host that cannot carry a field", (t) => {
+        const { workspace, binding } = personaCopy();
+        const { code, out } = said(t, ["--workspace", workspace, "--pack-root", PACKS]);
+        assert.equal(code, 0, out);
+        assert.equal(fs.readFileSync(binding, "utf8"), PERSONA_GOLDEN);
+        assert.match(out, /^persona  local-worker +effort and omitClaudeMd → agents\/local-worker\.md \(Claude Code\)$/m);
+        for (const field of ["effort", "omitClaudeMd"]) {
+            assert.match(out, new RegExp(`^degraded local-worker +${field} +agents-md \\(AGENTS\\.md, vendored\\): AGENTS\\.md defines no agent to carry it`, "m"));
+        }
+        assert.match(
+            out,
+            /^degraded local-worker +effort and omitClaudeMd claude-code \(Claude Code\): agents\/local-worker\.md loads only from a plugin root, and this tree has no \.claude-plugin\/plugin\.json; compile writes no \.claude\/agents\/, so nothing here loads the compiled fields$/m,
+            "Claude Code expresses both fields, and loads this binding only at a plugin root",
+        );
+        const checked = said(t, ["--workspace", workspace, "--pack-root", PACKS, "--check"]);
+        assert.equal(checked.code, 0, checked.out);
+        assert.match(checked.out, /^GREEN — every emitted artifact matches the policy, and every persona binding its persona$/m);
+    });
+
+    test("the golden is a fixed point: compiling it again changes no byte", (t) => {
+        const { workspace, binding } = personaCopy();
+        fs.writeFileSync(binding, PERSONA_GOLDEN);
+        const { code, out } = said(t, ["--workspace", workspace, "--pack-root", PACKS]);
+        assert.equal(code, 0, out);
+        assert.doesNotMatch(out, /wrote .*local-worker\.md/);
+        assert.equal(fs.readFileSync(binding, "utf8"), PERSONA_GOLDEN);
+    });
+
+    test("a hand-edit to a compiled field is drift under --check, and a recompile restores the golden", (t) => {
+        const { workspace, binding } = personaCopy();
+        assert.equal(said(t, ["--workspace", workspace, "--pack-root", PACKS]).code, 0);
+        fs.writeFileSync(binding, PERSONA_GOLDEN.replace("effort: low", "effort: high"));
+        const { code, out } = said(t, ["--workspace", workspace, "--pack-root", PACKS, "--check"]);
+        assert.equal(code, 1, out);
+        assert.match(out, /RED — agents\/local-worker\.md has drifted from tools\/local-llm's personas\/local-worker\.md\. Recompile\./);
+        assert.equal(said(t, ["--workspace", workspace, "--pack-root", PACKS]).code, 0);
+        assert.equal(fs.readFileSync(binding, "utf8"), PERSONA_GOLDEN);
+    });
+
+    test("--matrix reports the same lines and writes nothing", (t) => {
+        const { workspace, binding } = personaCopy();
+        const before = fs.readFileSync(binding, "utf8");
+        const { code, out } = said(t, ["--workspace", workspace, "--pack-root", PACKS, "--matrix"]);
+        assert.equal(code, 0, out);
+        assert.match(out, /^ {2}degraded local-worker +omitClaudeMd +agents-md/m);
+        assert.equal(fs.readFileSync(binding, "utf8"), before);
+    });
+
+    test("every field compiles in the host's own spelling, the cache lifetime under `experimental.cacheTtl`", (t) => {
+        const { workspace, root, binding } = withPersona(["model: haiku", "effort: max", "omitClaudeMd: false", "cacheLifetime: 1h"]);
+        const { code, out } = said(t, ["--workspace", workspace, "--pack-root", root]);
+        assert.equal(code, 0, out);
+        assert.equal(
+            fs.readFileSync(binding, "utf8"),
+            bindingText([
+                "# compiled by `portulan compile` from tools/my-pack's personas/my-role.md; edit that file, then recompile",
+                'model: "haiku"',
+                "effort: max",
+                "omitClaudeMd: false",
+                "experimental:",
+                "  cacheTtl: 1h",
+            ]),
+        );
+        assert.equal(out.match(/^degraded my-role .* agents-md/gm).length, 4, "AGENTS.md carries none of the four");
+    });
+
+    test("a guidance-only workspace whose composed pack cannot be read is refused, since what its personas declare is unknown; one merely unresolved still compiles", (t) => {
+        const withPack = (manifestText) => {
+            const dir = guidanceCopy();
+            const manifest = JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8"));
+            fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify({ ...manifest, packs: [manifestText === null ? "tools/absent" : "tools/broken"] }, null, 2));
+            const root = scratch();
+            if (manifestText !== null) {
+                fs.mkdirSync(path.join(root, "tools", "broken"), { recursive: true });
+                fs.writeFileSync(path.join(root, "tools", "broken", "pack.json"), manifestText);
+            }
+            return { dir, root };
+        };
+        const broken = withPack("{");
+        const refused = said(t, ["--workspace", broken.dir, "--pack-root", broken.root]);
+        assert.equal(refused.code, 2, refused.out);
+        assert.match(refused.out, /the pack manifest for `tools\/broken` at .* is not valid JSON/);
+        assert.ok(!fs.existsSync(path.join(broken.dir, ".claude")), "a refusal writes no guidance either");
+        const absent = withPack(null);
+        const compiled = said(t, ["--workspace", absent.dir, "--pack-root", absent.root]);
+        assert.equal(compiled.code, 0, compiled.out);
+        assert.match(compiled.out, /^pack {4}tools\/absent +UNRESOLVED — no pack\.json under any resolution root; it contributes nothing$/m);
+        const checked = said(t, ["--workspace", absent.dir, "--pack-root", absent.root, "--check"]);
+        assert.equal(checked.code, 0, checked.out);
+        assert.match(checked.out, /^pack {4}tools\/absent +UNRESOLVED/m, "a green beside an unresolved pack names it, as the policy branch does");
+    });
+
+    test("at a plugin root the report says nothing of Claude Code, since whether the plugin is enabled is not compile's to see", (t) => {
+        const { dir, workspace } = personaCopy();
+        fs.mkdirSync(path.join(dir, ".claude-plugin"));
+        fs.writeFileSync(path.join(dir, ".claude-plugin", "plugin.json"), "{\"name\": \"fixture\"}\n");
+        const { code, out } = said(t, ["--workspace", workspace, "--pack-root", PACKS]);
+        assert.equal(code, 0, out);
+        assert.doesNotMatch(out, /^degraded .* claude-code/m);
+        assert.match(out, /^degraded local-worker +omitClaudeMd +agents-md/m);
+    });
+
+    test("a persona declaring none emits nothing: its binding keeps every byte, and the report is silent", (t) => {
+        const { workspace, root, binding } = withPersona([]);
+        const { code, out } = said(t, ["--workspace", workspace, "--pack-root", root]);
+        assert.equal(code, 0, out);
+        assert.equal(fs.readFileSync(binding, "utf8"), bindingText());
+        assert.doesNotMatch(out, /^(persona|degraded) /m);
+    });
+
+    test("a persona that stops declaring its fields has the block an earlier compile wrote removed, and only that block", (t) => {
+        const stale = bindingText(["# compiled by `portulan compile` from tools/my-pack's personas/my-role.md; edit that file, then recompile", "effort: low", "experimental:", "  cacheTtl: 5m"]);
+        const { workspace, root, binding } = withPersona([]);
+        assert.equal(said(t, ["--workspace", workspace, "--pack-root", root]).code, 0);
+        fs.writeFileSync(binding, stale);
+        const checked = said(t, ["--workspace", workspace, "--pack-root", root, "--check"]);
+        assert.equal(checked.code, 1, checked.out);
+        assert.match(checked.out, /RED — agents\/my-role\.md has drifted from tools\/my-pack's personas\/my-role\.md/);
+        assert.equal(said(t, ["--workspace", workspace, "--pack-root", root]).code, 0);
+        assert.equal(fs.readFileSync(binding, "utf8"), bindingText());
+    });
+
+    test("a persona with no binding is reported unbound, not failed, since nothing exists to write into", (t) => {
+        const { workspace, root, binding } = withPersona(["effort: low"], null);
+        assert.equal(said(t, ["--workspace", workspace, "--pack-root", root]).code, 0);
+        const { code, out } = said(t, ["--workspace", workspace, "--pack-root", root, "--check"]);
+        assert.equal(code, 0, out);
+        assert.match(out, /^persona  my-role +UNBOUND — declares effort, and no host binding at `agents\/my-role\.md` carries them$/m);
+        assert.match(out, /^degraded my-role +effort +agents-md/m);
+        assert.ok(!fs.existsSync(binding));
+    });
+
+    for (const [why, lines, binding, pattern] of [
+        ["a malformed value", ["effort: extreme"], bindingText(), /`tools\/my-pack`'s persona `personas\/my-role\.md` sets `effort` to "extreme"/],
+        ["a field the binding also sets by hand", ["effort: low"], bindingText(["effort: high"]), /agents\/my-role\.md sets `effort` by hand, and tools\/my-pack's personas\/my-role\.md declares it/],
+        ["a cache lifetime beside a hand-written `experimental` block", ["cacheLifetime: 5m"], bindingText(["experimental:", "  other: 1"]), /sets `experimental` by hand/],
+        ["a binding with no frontmatter", ["effort: low"], "Bound by hand.\n", /has no frontmatter block/],
+        ["a compiled block holding a line compile did not write", ["effort: low"], bindingText(["# compiled by `portulan compile` from tools/my-pack's personas/my-role.md; edit that file, then recompile", "effort: low", "model: opus"]), /holds `model: opus`, which this compiler did not write/],
+    ]) {
+        test(`refused as could-not-compile, and nothing is written: ${why}`, (t) => {
+            const fixture = withPersona(lines, binding);
+            const { code, out } = said(t, ["--workspace", fixture.workspace, "--pack-root", fixture.root]);
+            assert.equal(code, 2, out);
+            assert.match(out, pattern);
+            assert.equal(fs.readFileSync(fixture.binding, "utf8"), binding);
+            assert.ok(!fs.existsSync(path.join(fixture.dir, ".claude")), "a refusal writes no artifact at all");
+        });
+    }
+
+    test("a binding that is a link is refused rather than written through", (t) => {
+        const { dir, workspace, root, binding } = withPersona(["effort: low"]);
+        const away = path.join(dir, "elsewhere.md");
+        fs.renameSync(binding, away);
+        fs.symlinkSync(away, binding);
+        const { code, out } = said(t, ["--workspace", workspace, "--pack-root", root]);
+        assert.equal(code, 2, out);
+        assert.match(out, /is not a regular file, so nothing is compiled through it/);
+        assert.equal(fs.readFileSync(away, "utf8"), bindingText());
+    });
+
+    test("a symlinked agents parent cannot write outside the declared tree", (t) => {
+        for (const mode of [[], ["--check"]]) {
+            const { dir, workspace, root, binding } = withPersona(["effort: low"]);
+            const outside = scratch();
+            const target = path.join(outside, "my-role.md");
+            fs.renameSync(binding, target);
+            fs.rmdirSync(path.dirname(binding));
+            fs.symlinkSync(outside, path.dirname(binding), "dir");
+            const before = fs.readFileSync(target);
+            const artifacts = personaSnapshot(dir);
+            const { code, out } = said(t, ["--workspace", workspace, "--pack-root", root, ...mode]);
+            assert.equal(code, 2, out);
+            assert.match(out, /outside.*declared.*tree/i);
+            assert.deepEqual(fs.readFileSync(target), before);
+            assert.deepEqual(personaSnapshot(dir), artifacts, "no artifact is emitted before refusal");
+        }
+    });
+
+    test("a parent link within the declared tree remains contained and converges", (t) => {
+        const { dir, workspace, root, binding } = withPersona(["effort: low"]);
+        const inside = path.join(dir, "real-agents");
+        fs.renameSync(path.dirname(binding), inside);
+        fs.symlinkSync(inside, path.dirname(binding), "dir");
+        assert.equal(said(t, ["--workspace", workspace, "--pack-root", root]).code, 0);
+        const { code, out } = said(t, ["--workspace", workspace, "--pack-root", root, "--check"]);
+        assert.equal(code, 0, out);
+    });
+
+    for (const scenario of [
+        { name: "conflicting fields", first: ["effort: low"], second: ["effort: high"] },
+        { name: "identical fields", first: ["effort: low"], second: ["effort: low"] },
+        { name: "already converged first owner", first: ["effort: low"], second: ["effort: high"], converged: true },
+        { name: "first owner declares no fields", first: [], second: ["effort: low"] },
+        { name: "both owners unbound", first: [], second: ["effort: low"], unbound: true },
+    ]) {
+        test(`binding ownership refuses ${scenario.name} before any artifact changes`, (t) => {
+            for (const mode of [[], ["--check"]]) {
+                const { dir, workspace, root } = withPersona(scenario.first, scenario.unbound ? null : bindingText());
+                if (scenario.converged) assert.equal(said(t, ["--workspace", workspace, "--pack-root", root]).code, 0);
+                const pack = path.join(root, "tools", "other-pack");
+                fs.mkdirSync(path.join(pack, "personas"), { recursive: true });
+                fs.writeFileSync(path.join(pack, "pack.json"), JSON.stringify({ portulan: { pack: "1.0" }, name: "other-pack", category: "tools", contributes: { personas: ["personas/my-role.md"] } }));
+                fs.writeFileSync(path.join(pack, "personas", "my-role.md"), personaText(scenario.second));
+                const manifest = path.join(workspace, "workspace.json");
+                const data = JSON.parse(fs.readFileSync(manifest, "utf8"));
+                fs.writeFileSync(manifest, JSON.stringify({ ...data, packs: [...data.packs, "tools/other-pack"] }));
+                const before = personaSnapshot(dir);
+                const { code, out } = said(t, ["--workspace", workspace, "--pack-root", root, ...mode]);
+                assert.equal(code, 2, out);
+                assert.match(out, /agents\/my-role\.md.*(owner|contribut|shared|both)/i);
+                assert.match(out, /tools\/my-pack/);
+                assert.match(out, /tools\/other-pack/);
+                assert.deepEqual(personaSnapshot(dir), before, "all emissions wait for destination ownership validation");
+            }
+        });
+    }
+
+    const MARK_LINE = "# compiled by `portulan compile` from a/b's p.md; edit that file, then recompile";
+
+    for (const fields of [["effort: extreme"], ['model: {"hand":"written"}'], ['model: ["haiku"]'], ["experimental:", "  cacheTtl: 2h"]]) {
+        test(`malformed marked fields are refused without erasure: ${fields.join(" ")}`, (t) => {
+            for (const mode of [[], ["--check"]]) {
+                const marker = "# compiled by `portulan compile` from tools/my-pack's personas/my-role.md; edit that file, then recompile";
+                const { dir, workspace, root } = withPersona([], bindingText([marker, ...fields]));
+                const before = personaSnapshot(dir);
+                const { code, out } = said(t, ["--workspace", workspace, "--pack-root", root, ...mode]);
+                assert.equal(code, 2, out);
+                assert.match(out, /compiled block holds.*which this compiler did not write/);
+                assert.deepEqual(personaSnapshot(dir), before);
+            }
+        });
+    }
+
+    test("a compiled boolean must still be true or false, never a malformed hand edit", () => {
+        for (const value of ["constructor", "__proto__", "toString", "yes", '\"true\"']) {
+            assert.throws(() => boundAgent(bindingText([MARK_LINE, `omitClaudeMd: ${value}`]), { omitClaudeMd: true }, "a/b's p.md", "agents/my-role.md"), CompileError);
+        }
+        assert.match(boundAgent(bindingText([MARK_LINE, "omitClaudeMd: false"]), { omitClaudeMd: true }, "a/b's p.md", "agents/my-role.md"), /omitClaudeMd: true/);
+    });
+
+    test("a hand-written owned key after the mark is refused, never swallowed, and a line outside the block keeps its place", () => {
+        const text = bindingText([MARK_LINE, "effort: low", "model: opus", "color: blue"]);
+        assert.throws(() => boundAgent(text, { effort: "low" }, "a/b's p.md", "agents/my-role.md"), (error) => {
+            assert.ok(error instanceof CompileError);
+            assert.match(error.message, /agents\/my-role\.md: the block compiled from a\/b's p\.md holds `model: opus`, which this compiler did not write/);
+            return true;
+        });
+        const kept = bindingText([MARK_LINE, "effort: low", "color: blue"]);
+        assert.equal(boundAgent(kept, { effort: "high" }, "a/b's p.md", "agents/my-role.md"), bindingText([MARK_LINE, "effort: high", "color: blue"]));
+    });
+
+    test("a hand-written line under a compiled `experimental:` is refused, never deleted", () => {
+        const text = bindingText([MARK_LINE, "experimental:", "  cacheTtl: 5m", "  other: 1"]);
+        assert.throws(() => boundAgent(text, { cacheLifetime: "5m" }, "a/b's p.md", "agents/my-role.md"), /holds `  other: 1`, which this compiler did not write/);
+        assert.throws(() => boundAgent(text, {}, "a/b's p.md", "agents/my-role.md"), /holds `  other: 1`/);
+    });
+
+    test("an owned key the persona does not declare is refused where compile writes a block", () => {
+        assert.throws(
+            () => boundAgent(bindingText(["model: opus"]), { effort: "low" }, "a/b's p.md", "agents/my-role.md"),
+            /agents\/my-role\.md sets `model` by hand, which a\/b's p\.md does not declare/,
+        );
+        assert.equal(boundAgent(bindingText(["model: opus"]), {}, "a/b's p.md", "agents/my-role.md"), bindingText(["model: opus"]), "a persona declaring none emits nothing");
+    });
+
+    test("boundAgent keeps every line it does not own, in place", () => {
+        const text = bindingText(["color: blue"]);
+        const bound = boundAgent(text, { omitClaudeMd: true }, "a/b's p.md", "agents/my-role.md");
+        assert.equal(bound, bindingText(["color: blue", "# compiled by `portulan compile` from a/b's p.md; edit that file, then recompile", "omitClaudeMd: true"]));
+        assert.equal(boundAgent(bound, {}, "a/b's p.md", "agents/my-role.md"), text);
+        const crlf = text.replaceAll("\n", "\r\n");
+        assert.equal(boundAgent(crlf, { omitClaudeMd: true }, "a/b's p.md", "agents/my-role.md"), bound.replaceAll("\n", "\r\n"), "a binding keeps its own line ending");
+        assert.throws(() => boundAgent(crlf.replace("color: blue\r\n", "color: blue\n"), { effort: "low" }, "a/b's p.md", "agents/my-role.md"), /mixes CRLF and LF line endings/);
     });
 });

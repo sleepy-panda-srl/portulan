@@ -196,10 +196,11 @@ bytes are checked. `--allow-remote` lifts the loopback rail on the caller's word
 `local-llm-off-loopback` gate has no matcher, so approval to leave loopback is the human's. Its `eval`
 subcommand is the screen. Its `runner-rails` recipe holds the loopback and ceiling refusals and the
 rollback on a red or no-verdict verify offline, with no network call; the rollback on a signal is held by
-the runner's tests. **Still to land, under row 14 of [`../../docs/plan.md`](../../docs/plan.md)**: this
-repository composing the pack, which registers its skill; the ledger reporting local receipts beside the
-host's tokens; `compile` emitting the `local-worker` persona's `omitClaudeMd` and effort, which its
-frontmatter does not carry today; and the A/B record. Until that record lands, the pack's `code` and
+the runner's tests. This repository composes the pack and registers its skill; the ledger reports local
+receipts beside the host's tokens. **Still to land, under row 14 of [`../../docs/plan.md`](../../docs/plan.md)**:
+the captured A/B record. The `local-worker` persona declares `omitClaudeMd: true` and
+`effort: low`, and `compile` writes both into the binding a workspace composing the pack gives it, against
+a committed golden. Until that record lands, the pack's `code` and
 `prose` routing rests on `0039`'s one-sample figures and is not earned, and the human gate holds rule 4's
 second half.
 
@@ -229,10 +230,21 @@ a section is never moved for its size alone. Claude Code 2.1.281 drops a comment
 before it loads an instruction file or rule (read in its program text on 2026-09-24), so the mark and the
 marker left behind cost nothing. This repository's own card holds its boot under the 7,500-token line of
 2026-09-23, railed at today's figure plus 2% by the same recipe. A pointer's repository is not measured,
-because a pointer declares no tree. **Still to land**: the exact mode that
-calibrates a ratio, the degradation report that says which tiers a host can express, the Stop-gate's
-named demotion, persona frontmatter and the librarian pass, one change at a time, in `0036`'s order of work
-and under row 12 of [`../../docs/plan.md`](../../docs/plan.md).
+because a pointer declares no tree. **A persona can declare what its context costs**: `model`, `effort`,
+`omitClaudeMd` and `cacheLifetime`, refused when malformed and never defaulted, which `compile` writes into
+the hand-written binding of a persona a composed pack ships and byte-compares under `--check`, printing
+each field a host cannot express, with the persona and the host, as its degradation report for personas.
+Claude Code 2.1.317 takes all four on an agent, and loads `agents/` only from a plugin root (both read
+in its program text on 2026-11-03), so in a tree that is not a plugin the compiled block is loaded by
+nothing, and the degradation report says so; in one that is, only while the plugin is installed and
+enabled, which `compile` cannot see. That stops short of the row: `compile` writes no
+`.claude/agents/`, where a repository that is not a plugin loads its agents, and no binding where none
+exists; a core persona's binding in this plugin's `agents/` is not compiled; and no host has been shown
+honouring a compiled field. **Still to land**: the
+exact mode that calibrates a ratio, the degradation report's half that says which tiers a host can
+express, the Stop-gate's named demotion and the librarian pass, one change at a time, in `0036`'s order
+of work and under row 12 of
+[`../../docs/plan.md`](../../docs/plan.md).
 Until each lands, the rule it would enforce is held by the human gate, and saying so is the point: a rule
 nothing checks, presented as one that something does, is the failure this page exists to prevent.
 
