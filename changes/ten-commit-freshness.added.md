@@ -1,0 +1,1 @@
+- **A ten-commit branch freshness rule is planned in [task 0020](../.portulan/tasks/0020-ten-commit-freshness.md).** Implementation and activation remain pending; live strict branch protection is unchanged.
