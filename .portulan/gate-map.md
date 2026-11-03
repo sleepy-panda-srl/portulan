@@ -154,7 +154,8 @@ _Why it compiles to nothing, and why it was listed late:
 
   **The merge precondition allows at most ten commits behind `main`, by the maintainer's
   2026-11-03 amendment in [proposal 0040](proposals/0040-allow-ten-commits-behind-main.md).** Immediately
-  before a merge, compare its exact current base/head SHAs and require integer `behind_by` in 0–10.
+  before a merge, read the live `main` SHA from `branches/main` and the PR head SHA, compare those
+  commits and require integer `behind_by` in 0–10. The PR's stored `base.sha` is not the live ref.
   At 11 or more, sync and let the checks rerun; an unreadable comparison does not pass. The prepared
   check and its asynchronous limits, and the still-strict live setting pending activation, are in
   [`gate-map/gated.md`](gate-map/gated.md#the-merge-precondition).

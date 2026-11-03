@@ -6,8 +6,8 @@
 **provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/557`
 — the maintainer amended proposal 0011: allow up to ten commits behind, fail at eleven or more.
 
-Immediately before an approved merge, read the PR's current base/head SHAs and compare those exact
-commits. `behind_by` must be an integer in 0–10. At eleven or more, sync with `main` and rerun the
+Immediately before an approved merge, read live `main` from `branches/main` and the PR head SHA,
+then compare those exact commits. A PR's stored `base.sha` can lag the live ref. `behind_by` must be an integer in 0–10. At eleven or more, sync with `main` and rerun the
 checks. A failed or unreadable comparison is not zero and does not permit the merge.
 
 **Why it holds:** the maintainer accepts limited drift to avoid syncing after every merge. Earlier CI
