@@ -59,6 +59,13 @@ above had already overtaken it: `pack-identity` is declared in [`../workspace.js
 Deleted rather than left beside them, because two carriers that contradict each other leave a reader to
 guess which one is live.)_
 
+**Re-measured at the 0.3.0 cut: 117 files.** Packed a clean `git archive` export of the staged cut
+outside the working copy and compared every tarball entry with its indexed Git blob: all 117 are
+byte-identical, `package.json` included. The payload carries the local-worker pack and the
+[0.3.0 release eval pair](../../evals/releases/0.3.0.md). Earlier cut measurements above remain
+historical; this is the new cut's roster, and the release act checks the approved merged/tagged tree
+again before publication.
+
 ## Where the line sits, and the one tool outside it
 
 **Where the line sits now, precisely.** [`verify/docs.sh`](../verify/docs.sh) needs `git`, `bash`, and the
