@@ -19,7 +19,7 @@ const T0 = Date.parse("2026-11-02T14:00:00.000Z");
 const iso = (ms) => new Date(ms).toISOString();
 const S = 1000;
 
-const H = "a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1";
+const H = "hybrid";
 const cwd = "/work/hybrid";
 const branch = "feature/local";
 const VERSION = "2.1.317";
@@ -90,7 +90,7 @@ function result(rel, agent, at, id, content, receipts = []) {
 
 const ctx = (r) => r.uncached + r.w1h + r.w5m + r.read;
 const main = `projects/-work-hybrid/${H}.jsonl`;
-const sub = `projects/-work-hybrid/${H}/subagents/agent-lw1.jsonl`;
+const sub = `projects/-work-hybrid/${H}/subagents/agent-local-worker.jsonl`;
 let t = T0;
 
 add(main, { type: "user", isSidechain: false, cwd, sessionId: H, gitBranch: branch, timestamp: iso(t), uuid: "prompt-1", message: { role: "user", content: `a prompt quoting a receipt is no receipt:\n${QUOTED}` } });
@@ -119,9 +119,9 @@ result(main, null, (t += 5 * S), "toolu_hybrid03", near.join("\n"));
 // A local-worker subagent runs the runner itself, and its report quotes the receipt back.
 request(main, null, (t += S), { uncached: 1, w1h: 2000, read: 40700, output: 300 }, [said(`the last receipt read:\n${QUOTED}`), call("toolu_hybrid04", "Agent")]);
 let s = t + S;
-request(sub, "lw1", s, { uncached: 2, w5m: 9000, output: 120 }, [call("toolu_hybrid05", "Bash")]);
-result(sub, "lw1", (s += 10 * S), "toolu_hybrid05", receipt(DELEGATED), [DELEGATED]);
-request(sub, "lw1", (s += S), { uncached: 1, w5m: 700, read: 9002, output: 90 }, [said("(synthetic report)")]);
+request(sub, "local-worker", s, { uncached: 2, w5m: 9000, output: 120 }, [call("toolu_hybrid05", "Bash")]);
+result(sub, "local-worker", (s += 10 * S), "toolu_hybrid05", receipt(DELEGATED), [DELEGATED]);
+request(sub, "local-worker", (s += S), { uncached: 1, w5m: 700, read: 9002, output: 90 }, [said("(synthetic report)")]);
 result(main, null, (t = s + 5 * S), "toolu_hybrid04", [said(`lexer.mjs kept:\n${receipt(DELEGATED)}`)]);
 // A result answering no call this transcript made.
 result(main, null, (t += S), "toolu_hybrid99", receipt(TRANSFORM));

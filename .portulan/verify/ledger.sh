@@ -18,8 +18,8 @@ cd -- "$root" || exit 2
 
 FIXTURE=cli/fixtures/ledger
 HYBRID=cli/fixtures/ledger-hybrid
-HYBRID_SESSION="$HYBRID/projects/-work-hybrid/a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1.jsonl"
-HYBRID_SUBAGENT="$HYBRID/projects/-work-hybrid/a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1/subagents/agent-lw1.jsonl"
+HYBRID_SESSION="$HYBRID/projects/-work-hybrid/hybrid.jsonl"
+HYBRID_SUBAGENT="$HYBRID/projects/-work-hybrid/hybrid/subagents/agent-local-worker.jsonl"
 PAST_THRESHOLD="$FIXTURE/projects/-work-demo--claude-worktrees-w1/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.jsonl"
 BELOW_THRESHOLD="$FIXTURE/projects/-work-demo/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jsonl"
 
@@ -51,7 +51,7 @@ if ! grep -q '^  local worker: 3 line(s) in the runner'"'"'s receipt format, fro
     printf '  ✗ ledger: the hybrid session'"'"'s local receipts were not reported on their own line at $0.00\n'
     local_line=1
 fi
-if ! grep -q '^  restart: session a1a1a1a1 is at 43,601 tokens and is below its threshold of 76,006 = ' "$tmp/hybrid"; then
+if ! grep -q '^  restart: session hybrid is at 43,601 tokens and is below its threshold of 76,006 = ' "$tmp/hybrid"; then
     printf '  ✗ ledger: the hybrid session was not given the host'"'"'s finite restart threshold of 76,006\n'
     local_line=1
 fi

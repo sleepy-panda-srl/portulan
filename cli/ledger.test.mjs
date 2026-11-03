@@ -651,7 +651,7 @@ describe("the command", () => {
             out.lines[at],
             "  local worker: 3 line(s) in the runner's receipt format, from Bash results in 1 session(s), at $0.00, none of it in the host's tokens or the restart threshold: in 5,010 tokens, out 600 tokens (1 receipt(s) did not report it), time 7,710 ms (1 receipt(s) did not report it)",
         );
-        assert.ok(out.lines.some((l) => l.startsWith("  restart: session a1a1a1a1 is at 43,601 tokens and is below its threshold of 76,006 = ")), out.lines.join("\n"));
+        assert.ok(out.lines.some((l) => l.startsWith("  restart: session hybrid is at 43,601 tokens and is below its threshold of 76,006 = ")), out.lines.join("\n"));
         const plain = say();
         run(["--fixture", FIXTURE], plain.fn);
         assert.ok(plain.lines.includes("  local worker: no line in the runner's receipt format on feature/x is recorded here"));
