@@ -458,6 +458,17 @@ export const DRILLS = [
         tell: "is a tag or branch, not a commit",
         why: "The composed pack's own rail, drilled from the adopting workspace exactly as a workspace-owned one is — which is the property milestone 7's composition amendment bought and nothing else here re-checks.",
     },
+    {
+        rail: "tools/local-llm:runner-rails",
+        perturb: {
+            file: "packs/tools/local-llm/runner/local-llm.mjs",
+            find: "    if (!allowRemote && !LOOPBACK_HOSTS.has(parsed.hostname.toLowerCase())) {",
+            replace: "    if (!allowRemote && false) {",
+        },
+        exit: 1,
+        tell: "non-loopback endpoint was not refused by assertLoopback",
+        why: "Loopback is the rail that keeps a local worker's context on the machine, and the runner holds it in code rather than in any permission rule the compiler emits, so a guard that stopped refusing would leave every other rail green. The drill removes the refusal and requires the pack's own recipe to see it.",
+    },
 
     // ------------------------------------------------------- the coverage rail, which is itself a rail
     {

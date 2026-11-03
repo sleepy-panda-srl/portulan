@@ -97,6 +97,16 @@ Reversible but consequential: it changes what the repository says, or how it beh
 - `change-a-verify-recipe` — and *relaxing* a check is the case to scrutinise hardest, because it is the
   one change that makes every future "green" mean less.
 
+**Composed into this tier: `local-llm-off-loopback`** — contributed by the `tools/local-llm` pack rather
+than declared in [`gates.json`](gates.json), and it carries no matcher: whether a local model's call stays
+on the machine turns on the endpoint it resolves to, not on a command's name. Proposed, for the pack's
+reason: pointing a local worker off loopback sends this workspace's context off the machine under a local
+tool's name. The runner refuses a non-loopback host in code unless `--allow-remote` is passed, and cannot
+see a loopback proxy that forwards elsewhere, so passing `--allow-remote` or setting such an endpoint is
+proposed before it runs. Nothing enforces that: `compile` refuses the fragment, which makes it honest
+hole 5 under [What the compiler refuses](#what-the-compiler-refuses), a rule whose sentence is broader
+than its matcher, and the agent holds it.
+
 **An idea that adds an axis, a mode, or a surface starts as a proposal.** It is written into
 [`proposals/`](proposals/) and ruled on there — never opened as an implementation pull request with
 tests. [Why, and what building first cost](gate-map/propose.md).

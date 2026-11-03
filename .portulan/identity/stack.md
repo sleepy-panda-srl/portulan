@@ -71,7 +71,8 @@ in prose is a second carrier of what [`workspace.json`](../workspace.json) alrea
 declaration is the authority. The same repair, on the same day, as the recipe **counts** in
 [`repos/portulan.md`](../repos/portulan.md).)_ **Declared is no longer the whole runnable set**, and this
 paragraph is not the floor: since milestone 7's composition amendment the set CI runs also carries
-`tools/github:actions-pinned`, which needs neither `node` nor `git` and so stops *short* of `docs.sh`.
+`tools/github:actions-pinned`, which needs neither `node` nor `git` and so stops *short* of `docs.sh`,
+and `tools/local-llm:runner-rails`, which needs `node` alone.
 Each recipe declares its own needs — in [`workspace.json`](../workspace.json) for these, in its own pack's
 manifest for a composed one — which is the authority on this line rather than the paragraph you are
 reading, and is what keeps *could not run* distinguishable from *ran and failed*.

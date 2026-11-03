@@ -1,13 +1,14 @@
 {
   "portulan": {
     "pack": "1.0",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "name": "local-llm",
   "category": "tools",
   "summary": "Zero-dependency local LLM runner (LM Studio / Ollama) with a verify-gated red-to-green file transform loop, a zero-floor input budget rail, role evals, and loopback-only enforcement.",
   "doc": "README.md",
   "contributes": {
+    "skills": ["skills/"],
     "personas": ["personas/local-worker.md"],
     "verify": [
       {

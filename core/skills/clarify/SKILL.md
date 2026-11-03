@@ -1,6 +1,6 @@
 ---
 name: clarify
-description: Run a bounded clarification pass before planning a full-lane task whose intent is ambiguous or whose acceptance criteria are not yet testable. Use when the ask is underspecified, the constraints conflict, or the criteria can't be written as observable checks — surface the smallest set of decision-questions, get human answers, and fold them into EARS-shaped acceptance criteria before any code is planned.
+description: Run a bounded clarification pass before planning a full-lane task. Use when the ask is underspecified, the constraints conflict, or the criteria can't be written as observable checks — surface the smallest set of decision-questions, get human answers, and fold them into EARS-shaped acceptance criteria before any code is planned.
 ---
 
 # Skill — Clarify
