@@ -40,7 +40,7 @@ import {
     thresholdFor,
     worktrees,
 } from "./ledger.mjs";
-import { formatPassReceipt } from "../packs/tools/local-llm/runner/local-llm.mjs";
+import { formatDedupReceipt, formatPassReceipt } from "../packs/tools/local-llm/runner/local-llm.mjs";
 
 // The ledger's defaults read the host's configuration home: point it at an empty one.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
@@ -243,6 +243,16 @@ describe("the local runner's receipts", () => {
         assert.deepEqual(receiptOf(unreported), { mode: "summarize", model: "m", attempts: 1, in: null, out: null, time: null });
         const reported = formatPassReceipt({ mode: "chat", model: "m", promptTokens: 0, completionTokens: 7, totalMs: 1, tokPerSec: 7000 });
         assert.deepEqual(receiptOf(reported), { mode: "chat", model: "m", attempts: 1, in: 0, out: 7, time: 1 });
+    });
+
+    test("dedup uses the shared receipt contract for known and unreported figures", () => {
+        assert.deepEqual(receiptOf(formatDedupReceipt({ model: "local-embedder", promptTokens: 7, totalMs: 4 })), {
+            mode: "dedup", model: "local-embedder", attempts: 1, in: 7, out: null, time: 4,
+        });
+        assert.deepEqual(receiptOf(formatDedupReceipt({ model: "local-embedder" })), {
+            mode: "dedup", model: "local-embedder", attempts: 1, in: null, out: null, time: null,
+        });
+        assert.equal(receiptOf("dedup files=3 pairs=1 threshold=0.8"), null);
     });
 
     test("a line one edit from a receipt is no receipt", () => {
@@ -649,7 +659,7 @@ describe("the command", () => {
         assert.equal(out.lines[at - 1].trimStart().split(/\s+/)[0], "output", "it follows the host's token rows");
         assert.equal(
             out.lines[at],
-            "  local worker: 3 line(s) in the runner's receipt format, from Bash results in 1 session(s), at $0.00, none of it in the host's tokens or the restart threshold: in 5,010 tokens, out 600 tokens (1 receipt(s) did not report it), time 7,710 ms (1 receipt(s) did not report it)",
+            "  local worker: 4 line(s) in the runner's receipt format, from Bash results in 1 session(s), at $0.00, none of it in the host's tokens or the restart threshold: in 5,017 tokens, out 600 tokens (2 receipt(s) did not report it), time 7,714 ms (1 receipt(s) did not report it)",
         );
         assert.ok(out.lines.some((l) => l.startsWith("  restart: session hybrid is at 43,601 tokens and is below its threshold of 76,006 = ")), out.lines.join("\n"));
         const plain = say();
@@ -665,7 +675,7 @@ describe("the command", () => {
             fs.writeFileSync(path.join(dir, "fixture.json"), JSON.stringify(spec));
             const out = say();
             assert.equal(run(["--fixture", dir], out.fn), 1);
-            assert.ok(out.lines.some((l) => l.startsWith('  ✗ fixture: local is {"receipts":3,')), out.lines.join("\n"));
+            assert.ok(out.lines.some((l) => l.startsWith('  ✗ fixture: local is {"receipts":4,')), out.lines.join("\n"));
         });
     });
 

@@ -1,4 +1,4 @@
-// Tests for the `tools/local-llm` pack's runner — its loopback, input-budget and rollback rails, and its eval screen.
+// Tests for the `tools/local-llm` pack's runner — its loopback, input-budget and rollback rails, its eval screen, and its dedup ranking.
 
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
@@ -14,7 +14,9 @@ import {
     assertLoopback,
     buildPrompt,
     callLocalChat,
+    cosine,
     CouldNotRunError,
+    DEFAULT_DEDUP_THRESHOLD,
     extractFencedCode,
     FEEDBACK_CHARS,
     formatPassReceipt,
@@ -22,13 +24,19 @@ import {
     loadPredicates,
     main,
     parseArgs,
+    parseThreshold,
     RailError,
+    rankDuplicatePairs,
+    readSlot,
     RESTORE_SIGNALS,
+    ROLE_MODELS,
     runOfflineVerify,
     runRoleEval,
     stripThinking,
     verifyGatedTransform,
 } from "../packs/tools/local-llm/runner/local-llm.mjs";
+
+import { receiptOf } from "./ledger.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const RUNNER = path.join(REPO, "packs", "tools", "local-llm", "runner", "local-llm.mjs");
@@ -43,6 +51,25 @@ const scratch = () => {
     return dir;
 };
 const reply = (content, extra = {}) => async () => ({ content, promptTokens: 25, completionTokens: 8, totalMs: 120, tokPerSec: 30, ...extra });
+
+const slot = (files) => {
+    const dir = scratch();
+    for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), text);
+    return dir;
+};
+
+const captured = async (fn) => {
+    const out = [];
+    const err = [];
+    const [log, error] = [console.log, console.error];
+    console.log = (...parts) => out.push(parts.join(" "));
+    console.error = (...parts) => err.push(parts.join(" "));
+    try {
+        return { code: await fn(), out, err };
+    } finally {
+        [console.log, console.error] = [log, error];
+    }
+};
 
 const listening = () => RESTORE_SIGNALS.map((signal) => process.listenerCount(signal));
 
@@ -345,6 +372,7 @@ test("a loopback endpoint that redirects is refused, and nothing reaches the red
         const baseUrl = `http://127.0.0.1:${redirector.address().port}/v1`;
         await assert.rejects(callLocalChat({ baseUrl, messages: [{ role: "user", content: "secret" }] }), CouldNotRunError);
         assert.equal(await main(["status", "--base-url", baseUrl]), 2);
+        assert.equal(await main(["dedup", "--dir", slot({ "a.md": "one", "b.md": "two" }), "--base-url", baseUrl]), 2);
         assert.equal(reached, 0);
     } finally {
         redirector.close();
@@ -451,6 +479,8 @@ describe("arguments", () => {
             ["chat", "--base-url"],
             ["chat", "--promt", "typo"],
             ["chat", "--role", "embed"],
+            ["dedup", "--threshold", "high"],
+            ["dedup", "--threshold", "1.5"],
         ]) {
             assert.throws(() => parseArgs(argv), CouldNotRunError, JSON.stringify(argv));
         }
@@ -526,7 +556,7 @@ test("from a payload that carries packs/ without cli/, the offline rails still r
 
     const offline = spawnSync(process.execPath, [copy, "--verify-offline"], { encoding: "utf8" });
     assert.equal(offline.status, 0, offline.stderr);
-    assert.match(offline.stdout, /5\/5 offline rails held/);
+    assert.match(offline.stdout, /6\/6 offline rails held/);
 
     const graded = spawnSync(process.execPath, [copy, "eval"], { encoding: "utf8" });
     assert.equal(graded.status, 2, graded.stderr);
@@ -538,4 +568,173 @@ test("runOfflineVerify exits 0 and formatPassReceipt stays on one line", async (
     assert.equal(res.status, 0, res.message);
     const receipt = formatPassReceipt({ mode: "chat", model: "qwen/qwen3.8-27b", promptTokens: 50, completionTokens: 20, totalMs: 200, tokPerSec: 25 });
     assert.equal(receipt.includes("\n"), false);
+});
+
+describe("dedup", () => {
+    test("cosine is 1, 0 and -1 for parallel, orthogonal and opposite vectors at any finite scale, 0 for a zero vector, and refuses unequal lengths", () => {
+        assert.equal(cosine([1, 2, 3], [2, 4, 6]), 1);
+        assert.equal(cosine([1, 0], [0, 5]), 0);
+        assert.equal(cosine([-2, 0], [1, 0]), -1);
+        assert.equal(cosine([1, 1], [-1, -1]), -1);
+        assert.equal(cosine([3, 4], [1, 0]), 0.6);
+        assert.equal(cosine([0, 0, 0], [1, 2, 3]), 0);
+        assert.equal(cosine([0, 0], [0, 0]), 0);
+        assert.throws(() => cosine([1, 2], [1, 2, 3]), CouldNotRunError);
+        assert.equal(cosine([1e-200], [1e-200]), 1);
+        assert.equal(cosine([1e200], [1]), 1);
+        assert.equal(cosine([1e300, 1e300], [-1e-300, -1e-300]), -1);
+        assert.equal(cosine([1e200, 0], [0, 1e-200]), 0);
+        assert.throws(() => cosine([Infinity, 0], [1, 0]), CouldNotRunError);
+    });
+
+    test("pairs rank by descending similarity, the threshold is inclusive, and ties fall back to file names", () => {
+        const names = ["a.md", "b.md", "c.md", "d.md"];
+        const vectors = [
+            [1, 0],
+            [3, 4],
+            [1, 0],
+            [4, 3],
+        ];
+        assert.deepEqual(rankDuplicatePairs(names, vectors, 0.6), [
+            { a: "a.md", b: "c.md", score: 1 },
+            { a: "b.md", b: "d.md", score: 0.96 },
+            { a: "a.md", b: "d.md", score: 0.8 },
+            { a: "c.md", b: "d.md", score: 0.8 },
+            { a: "a.md", b: "b.md", score: 0.6 },
+            { a: "b.md", b: "c.md", score: 0.6 },
+        ]);
+        assert.deepEqual(
+            rankDuplicatePairs(names, vectors, 0.8).map((p) => p.score),
+            [1, 0.96, 0.8, 0.8],
+        );
+        assert.deepEqual(
+            rankDuplicatePairs(names, vectors, 0.8000001).map((p) => p.score),
+            [1, 0.96],
+        );
+        assert.deepEqual(rankDuplicatePairs(names, vectors, 1).length, 1);
+        assert.equal(DEFAULT_DEDUP_THRESHOLD, 0.8);
+    });
+
+    test("a zero vector ranks at 0, never NaN, and a count or length mismatch is could-not-run", () => {
+        const ranked = rankDuplicatePairs(["a.md", "b.md", "z.md"], [[1, 0], [1, 0], [0, 0]], -1);
+        assert.deepEqual(ranked.map((p) => [p.a, p.b, p.score]), [
+            ["a.md", "b.md", 1],
+            ["a.md", "z.md", 0],
+            ["b.md", "z.md", 0],
+        ]);
+        assert.equal(rankDuplicatePairs(["a.md", "z.md"], [[1, 0], [0, 0]], 0.8).length, 0);
+        assert.throws(() => rankDuplicatePairs(["a.md", "b.md"], [[1, 0]], 0.8), CouldNotRunError);
+        assert.throws(() => rankDuplicatePairs(["a.md", "b.md"], [[1, 0], [1, 0, 0]], 0.8), CouldNotRunError);
+    });
+
+    test("a threshold is a plain number from -1 to 1, and anything else is refused rather than read as the default", async () => {
+        for (const [spec, value] of [
+            ["0.8", 0.8],
+            ["1", 1],
+            ["-1", -1],
+            [".5", 0.5],
+            ["0", 0],
+        ]) {
+            assert.equal(parseThreshold(spec), value, spec);
+        }
+        for (const spec of ["1.5", "-1.01", "high", "", "NaN", "Infinity", "0.8x", "1e-1", "0x1"]) {
+            assert.throws(() => parseThreshold(spec), CouldNotRunError, spec);
+        }
+        assert.equal(await main(["dedup", "--dir", ".", "--threshold", "2"]), 2);
+    });
+
+    test("a slot is its Markdown files in name order, its README, other files and subdirectories left out", () => {
+        const dir = slot({ "b.md": "bee", "README.md": "index", "a.md": "ay", "C.MD": "sea", "notes.txt": "skip" });
+        fs.mkdirSync(path.join(dir, "nested.md"));
+        assert.deepEqual(readSlot(dir), { names: ["C.MD", "a.md", "b.md"], texts: ["sea", "ay", "bee"] });
+        assert.throws(() => readSlot(slot({ "a.md": "alone", "readme.md": "index" })), CouldNotRunError);
+        assert.throws(() => readSlot(path.join(dir, "missing")), CouldNotRunError);
+    });
+
+    test("an off-loopback endpoint and a file over the per-file ceiling, measured before and after it is read, are refused with exit 1 before any request, and --role with exit 2", async () => {
+        const sent = [];
+        const fetchImpl = async (url) => {
+            sent.push(String(url));
+            throw new Error("reached the network");
+        };
+        const dir = slot({ "a.md": "short", "b.md": "x".repeat(64) });
+        assert.equal(await main(["dedup", "--dir", dir, "--base-url", "https://api.example.com/v1"], { fetchImpl }), 1);
+        const over = await captured(() => main(["dedup", "--dir", dir, "--base-url", "http://127.0.0.1:1/v1", "--max-input-bytes", "32"], { fetchImpl }));
+        assert.equal(over.code, 1);
+        assert.match(over.err.join("\n"), /Refused 1 file\(s\) over the 32-byte per-file ceiling: b\.md \(64 bytes\)\./);
+
+        const huge = slot({ "a.md": "short" });
+        fs.closeSync(fs.openSync(path.join(huge, "huge.md"), "w"));
+        fs.truncateSync(path.join(huge, "huge.md"), 600 * 2 ** 20);
+        const unread = await captured(() => main(["dedup", "--dir", huge, "--base-url", "http://127.0.0.1:1/v1"], { fetchImpl }));
+        assert.equal(unread.code, 1, unread.err.join("\n"));
+        assert.match(unread.err.join("\n"), /huge\.md \(629145600 bytes\)/);
+
+        const decoded = slot({ "a.md": "short", "b.md": Buffer.alloc(20, 0xff) });
+        const grown = await captured(() => main(["dedup", "--dir", decoded, "--base-url", "http://127.0.0.1:1/v1", "--max-input-bytes", "32"], { fetchImpl }));
+        assert.equal(grown.code, 1);
+        assert.match(grown.err.join("\n"), /b\.md \(60 bytes\)/);
+
+        assert.equal(await main(["dedup", "--dir", dir, "--base-url", "http://127.0.0.1:1/v1", "--role", "code"], { fetchImpl }), 2);
+        assert.deepEqual(sent, []);
+    });
+
+    test("a server error or an embedding response that cannot be ranked is could-not-run", async () => {
+        const dir = slot({ "a.md": "one", "b.md": "two" });
+        const answering = (status, body) => async () => new Response(typeof body === "string" ? body : JSON.stringify(body), { status });
+        const vector = (embedding, index) => ({ embedding, index });
+        for (const [label, fetchImpl] of [
+            ["HTTP 500", answering(500, "boom")],
+            ["not JSON", answering(200, "<html>")],
+            ["no data", answering(200, {})],
+            ["one embedding for two files", answering(200, { data: [vector([1, 0], 0)] })],
+            ["a non-number", answering(200, { data: [vector([1, null], 0), vector([1, 0], 1)] })],
+            ["an empty vector", answering(200, { data: [vector([], 0), vector([], 1)] })],
+            ["unequal lengths", answering(200, { data: [vector([1, 0], 0), vector([1, 0, 0], 1)] })],
+            ["a repeated index", answering(200, { data: [vector([1, 0], 0), vector([1, 0], 0)] })],
+        ]) {
+            assert.equal(await main(["dedup", "--dir", dir, "--base-url", "http://127.0.0.1:1/v1"], { fetchImpl }), 2, label);
+        }
+    });
+
+    test("through main, dedup posts the slot to /v1/embeddings with the embed model and prints each pair over the threshold on one line", async () => {
+        const vectors = { alpha: [1, 0, 0], "alpha too": [0.9, 0.1, 0], gamma: [0, 0, 1] };
+        const requests = [];
+        const server = http.createServer((req, res) => {
+            let body = "";
+            req.on("data", (chunk) => (body += chunk));
+            req.on("end", () => {
+                const parsed = JSON.parse(body);
+                requests.push({ method: req.method, url: req.url, body: parsed });
+                const data = parsed.input.map((text, index) => ({ object: "embedding", index, embedding: vectors[text] })).reverse();
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ data, usage: { prompt_tokens: 7 } }));
+            });
+        });
+        await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+        const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+        const dir = slot({ "c.md": "gamma", "b.md": "alpha too", "a.md": "alpha", "README.md": "index" });
+        try {
+            const ran = await captured(() => main(["dedup", "--dir", dir, "--base-url", baseUrl]));
+            assert.equal(ran.code, 0, ran.err.join("\n"));
+            assert.deepEqual(requests, [{ method: "POST", url: "/v1/embeddings", body: { model: ROLE_MODELS.embed, input: ["alpha", "alpha too", "gamma"] } }]);
+            assert.deepEqual(ran.out, ["0.994 a.md b.md"]);
+            assert.equal(ran.err.length, 2);
+            assert.equal(ran.err[0], "dedup files=3 pairs=1 threshold=0.8");
+            assert.equal(receiptOf(ran.err[0]), null);
+            const receipts = ran.err.map(receiptOf).filter((r) => r !== null);
+            assert.equal(receipts.length, 1, "exactly one canonical receipt is printed");
+            assert.deepEqual({ ...receipts[0], time: null }, { mode: "dedup", model: ROLE_MODELS.embed, attempts: 1, in: 7, out: null, time: null });
+            assert.match(ran.err[1], /^OK mode=dedup model=\S+ attempts=1 in=7t out=\? time=\d+ms rate=\? spend=\$0\.00$/);
+
+            const none = await captured(() => main(["dedup", "--dir", dir, "--base-url", baseUrl, "--threshold", "0.999", "--model", "other-embedder"]));
+            assert.equal(none.code, 0);
+            assert.deepEqual(none.out, []);
+            assert.equal(none.err[0], "dedup files=3 pairs=0 threshold=0.999");
+            assert.match(none.err[1], /mode=dedup model=other-embedder attempts=1/);
+            assert.equal(requests[1].body.model, "other-embedder");
+        } finally {
+            server.close();
+        }
+    });
 });

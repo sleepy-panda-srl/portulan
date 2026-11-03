@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { formatPassReceipt as receipt } from "../../packs/tools/local-llm/runner/local-llm.mjs";
+import { formatDedupReceipt, formatPassReceipt as receipt } from "../../packs/tools/local-llm/runner/local-llm.mjs";
 
 const out = process.argv[2];
 if (out === undefined || out === "") {
@@ -27,6 +27,7 @@ const VERSION = "2.1.317";
 const TRANSFORM = { mode: "transform", model: "local-coder", target: "parse.mjs", attempts: 2, promptTokens: 1840, completionTokens: 412, totalMs: 5310, tokPerSec: 77.6 };
 const SUMMARIZE = { mode: "summarize", model: "local-prose", attempts: 1, promptTokens: 2210 };
 const DELEGATED = { mode: "transform", model: "local-coder", target: "lexer.mjs", attempts: 1, promptTokens: 960, completionTokens: 188, totalMs: 2400, tokPerSec: 78.3 };
+const DEDUP = { model: "local-embedder", promptTokens: 7, totalMs: 4 };
 const QUOTED = receipt({ mode: "chat", model: "local-prose", attempts: 1, promptTokens: 90, completionTokens: 30, totalMs: 800, tokPerSec: 37.5 });
 
 let n = 0;
@@ -99,7 +100,7 @@ add(main, { type: "user", isSidechain: false, cwd, sessionId: H, gitBranch: bran
 const H1 = request(main, null, t, { uncached: 3, w1h: 30000, read: 8000, output: 200 }, [said("(synthetic)"), call("toolu_hybrid01", "Bash")]);
 result(main, null, (t += 20 * S), "toolu_hybrid01", `kept parse.mjs lines 10-42\n${receipt(TRANSFORM)}`, [TRANSFORM]);
 request(main, null, (t += S), { uncached: 1, w1h: 1500, read: 38000, output: 150 }, [call("toolu_hybrid02", "Bash")]);
-result(main, null, (t += 20 * S), "toolu_hybrid02", `(a synthetic digest)\n${receipt(SUMMARIZE)}`, [SUMMARIZE]);
+result(main, null, (t += 20 * S), "toolu_hybrid02", `(a synthetic digest)\n${receipt(SUMMARIZE)}\ndedup files=3 pairs=1 threshold=0.8\n${formatDedupReceipt(DEDUP)}`, [SUMMARIZE, DEDUP]);
 
 // Lines a runner never prints, each one edit from a receipt.
 const near = [
