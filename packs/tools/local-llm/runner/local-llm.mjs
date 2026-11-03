@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Zero-dependency local LLM runner for Portulan: loopback guard, input-byte rail, verify-gated transform with rollback, role eval, and offline self-test.
+// Zero-dependency local LLM runner for Portulan: loopback guard, input-byte rail, verify-gated transform with rollback, role eval, embedding dedup, and offline self-test.
 //
 // Exit codes: 0 green · 1 red check or model/verify failure · 2 could not run.
 
@@ -177,6 +177,146 @@ export async function callLocalChat({
         totalMs,
         tokPerSec: rate(completionTokens, totalMs),
     };
+}
+
+export const DEFAULT_DEDUP_THRESHOLD = 0.8;
+
+export function parseThreshold(spec) {
+    const value = /^-?(\d+(\.\d*)?|\.\d+)$/.test(String(spec)) ? Number(spec) : NaN;
+    if (!(value >= -1 && value <= 1)) {
+        throw new CouldNotRunError(`--threshold takes a cosine similarity from -1 to 1, not ${JSON.stringify(spec)}`);
+    }
+    return value;
+}
+
+export function cosine(a, b) {
+    if (a.length !== b.length) throw new CouldNotRunError(`Cannot compare vectors of ${a.length} and ${b.length} dimensions`);
+    const scaleA = a.reduce((m, x) => Math.max(m, Math.abs(x)), 0);
+    const scaleB = b.reduce((m, x) => Math.max(m, Math.abs(x)), 0);
+    if (!Number.isFinite(scaleA) || !Number.isFinite(scaleB)) throw new CouldNotRunError("Cannot compare a vector that is not all finite numbers");
+    if (scaleA === 0 || scaleB === 0) return 0;
+    let dot = 0;
+    let aa = 0;
+    let bb = 0;
+    for (let i = 0; i < a.length; i += 1) {
+        const x = a[i] / scaleA;
+        const y = b[i] / scaleB;
+        dot += x * y;
+        aa += x * x;
+        bb += y * y;
+    }
+    return Math.min(1, Math.max(-1, dot / Math.sqrt(aa * bb)));
+}
+
+const byName = (x, y) => (x < y ? -1 : x > y ? 1 : 0);
+
+export function rankDuplicatePairs(names, vectors, threshold) {
+    if (names.length !== vectors.length) throw new CouldNotRunError(`${vectors.length} vectors for ${names.length} files`);
+    const pairs = [];
+    for (let i = 0; i < names.length; i += 1) {
+        for (let j = i + 1; j < names.length; j += 1) {
+            const score = cosine(vectors[i], vectors[j]);
+            if (score >= threshold) pairs.push({ a: names[i], b: names[j], score });
+        }
+    }
+    return pairs.sort((x, y) => y.score - x.score || byName(x.a, y.a) || byName(x.b, y.b));
+}
+
+export function readSlot(dir, { maxInputBytes = DEFAULT_MAX_INPUT_BYTES } = {}) {
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (err) {
+        throw new CouldNotRunError(`Cannot read --dir ${dir}: ${err.message}`);
+    }
+    const names = entries
+        .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".md") && e.name.toLowerCase() !== "readme.md")
+        .map((e) => e.name)
+        .sort(byName);
+    if (names.length < 2) {
+        throw new CouldNotRunError(`--dir ${dir} holds ${names.length} Markdown file(s) besides its README; dedup needs two to compare`);
+    }
+    const each = (fn) =>
+        names.map((name) => {
+            try {
+                return fn(path.join(dir, name));
+            } catch (err) {
+                throw new CouldNotRunError(`Cannot read ${path.join(dir, name)}: ${err.message}`);
+            }
+        });
+    const refuseOver = (bytes) => {
+        const over = names.flatMap((name, i) => (bytes[i] > maxInputBytes ? [`${name} (${bytes[i]} bytes)`] : []));
+        if (over.length) {
+            throw new RailError(
+                `Refused ${over.length} file(s) over the ${maxInputBytes}-byte per-file ceiling: ${over.join(", ")}. dedup embeds whole files and never truncates one; raise --max-input-bytes only as far as the embedding model's context holds.`,
+            );
+        }
+    };
+    refuseOver(each((file) => fs.statSync(file).size));
+    const texts = each((file) => fs.readFileSync(file, "utf8"));
+    refuseOver(texts.map((text) => Buffer.byteLength(text, "utf8")));
+    return { names, texts };
+}
+
+function parseEmbeddings(data, count) {
+    const items = Array.isArray(data?.data) ? data.data : null;
+    if (!items || items.length !== count) {
+        throw new CouldNotRunError(`Local LLM server returned ${items ? items.length : "no"} embeddings for ${count} files`);
+    }
+    const vectors = new Array(count);
+    items.forEach((item, position) => {
+        const index = item?.index ?? position;
+        if (!Number.isInteger(index) || index < 0 || index >= count || vectors[index]) {
+            throw new CouldNotRunError(`Local LLM server returned an embedding with index ${JSON.stringify(item?.index)}`);
+        }
+        const vector = item.embedding;
+        if (!Array.isArray(vector) || vector.length === 0 || !vector.every((x) => typeof x === "number" && Number.isFinite(x))) {
+            throw new CouldNotRunError(`Local LLM server returned embedding ${index} that is not a list of finite numbers`);
+        }
+        vectors[index] = vector;
+    });
+    return vectors;
+}
+
+export async function runDedup({
+    dir,
+    threshold = DEFAULT_DEDUP_THRESHOLD,
+    model = ROLE_MODELS.embed,
+    baseUrl = DEFAULT_BASE_URL,
+    allowRemote = false,
+    maxInputBytes = DEFAULT_MAX_INPUT_BYTES,
+    fetchImpl = globalThis.fetch,
+}) {
+    const endpoint = assertLoopback(baseUrl, { allowRemote });
+    const { names, texts } = readSlot(dir, { maxInputBytes });
+
+    const t0 = performance.now();
+    const res = await localFetch(
+        `${endpoint}/embeddings`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, input: texts }) },
+        fetchImpl,
+    );
+    if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new CouldNotRunError(`Local LLM server returned HTTP ${res.status}: ${body.slice(0, 200)}`);
+    }
+    let data;
+    try {
+        data = await res.json();
+    } catch (err) {
+        throw new CouldNotRunError(`Local LLM server returned a body that is not JSON — ${err.message}`);
+    }
+    const vectors = parseEmbeddings(data, names.length);
+    return {
+        pairs: rankDuplicatePairs(names, vectors, threshold),
+        files: names.length,
+        promptTokens: data.usage?.prompt_tokens ?? null,
+        totalMs: Math.max(1, Math.round(performance.now() - t0)),
+    };
+}
+
+export function formatDedupReceipt({ model, files, pairs, threshold, promptTokens = null, totalMs = null }) {
+    return `OK mode=dedup model=${model} files=${files} pairs=${pairs} threshold=${threshold} in=${figure(promptTokens, "t")} time=${figure(totalMs, "ms")} spend=$0.00`;
 }
 
 function splitLines(text) {
@@ -545,11 +685,30 @@ export async function runOfflineVerify() {
         if (!green.ok || fs.readFileSync(sampleFile, "utf8") !== "export const x = 2;\n" || green.receipt.includes("\n")) {
             return { status: 1, message: "FAIL: a green verify did not keep the edit with a single-line receipt" };
         }
+
+        fs.writeFileSync(path.join(tmpDir, "a.md"), "short\n");
+        fs.writeFileSync(path.join(tmpDir, "b.md"), "x".repeat(1024));
+        let requested = 0;
+        const recording = async () => {
+            requested += 1;
+            throw new Error("dedup reached the network");
+        };
+        const refusals = [];
+        for (const options of [{ baseUrl: "https://api.openai.com/v1" }, { baseUrl: "http://127.0.0.1:1/v1", maxInputBytes: 512 }]) {
+            try {
+                await runDedup({ dir: tmpDir, fetchImpl: recording, ...options });
+            } catch (e) {
+                refusals.push(e instanceof RailError);
+            }
+        }
+        if (requested !== 0 || refusals.length !== 2 || !refusals.every(Boolean)) {
+            return { status: 1, message: "FAIL: dedup did not refuse a non-loopback endpoint and an over-ceiling file before any request" };
+        }
     } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true });
     }
 
-    return { status: 0, message: "OK tools/local-llm:runner-rails (5/5 offline rails held)" };
+    return { status: 0, message: "OK tools/local-llm:runner-rails (6/6 offline rails held)" };
 }
 
 const BOOLEAN_FLAGS = Object.freeze({ "--verify-offline": "verifyOffline", "--allow-remote": "allowRemote" });
@@ -565,6 +724,8 @@ const VALUE_FLAGS = Object.freeze({
     "--retries": "retries",
     "--max-input-bytes": "maxInputBytes",
     "--prompt": "prompt",
+    "--dir": "dir",
+    "--threshold": "threshold",
 });
 const COUNT_FLAGS = Object.freeze({ retries: ["--retries", 0], maxInputBytes: ["--max-input-bytes", 1] });
 
@@ -590,6 +751,7 @@ export function parseArgs(argv) {
         }
         args[key] = Number(args[key]);
     }
+    if (args.threshold !== undefined) args.threshold = parseThreshold(args.threshold);
     if (args.role !== undefined && !CHAT_ROLES.has(args.role)) {
         throw new CouldNotRunError(`--role is one of ${[...CHAT_ROLES].join(", ")}, not ${JSON.stringify(args.role)}`);
     }
@@ -678,6 +840,29 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
             }
             console.error(res.error);
             return 1;
+        }
+
+        if (cmd === "dedup") {
+            if (!args.dir) {
+                throw new CouldNotRunError(
+                    "Usage: local-llm.mjs dedup --dir <slot-dir> [--threshold 0.80] [--model <embedding model>] [--max-input-bytes <per file>]",
+                );
+            }
+            if (args.role) throw new CouldNotRunError(`--role picks a chat model; dedup embeds with ${ROLE_MODELS.embed} unless --model names another`);
+            const chosen = args.model ?? ROLE_MODELS.embed;
+            const threshold = args.threshold ?? DEFAULT_DEDUP_THRESHOLD;
+            const res = await runDedup({
+                dir: args.dir,
+                threshold,
+                model: chosen,
+                baseUrl,
+                allowRemote: args.allowRemote,
+                maxInputBytes: args.maxInputBytes ?? DEFAULT_MAX_INPUT_BYTES,
+                fetchImpl,
+            });
+            for (const p of res.pairs) console.log(`${p.score.toFixed(3)} ${p.a} ${p.b}`);
+            console.error(formatDedupReceipt({ model: chosen, files: res.files, pairs: res.pairs.length, threshold, promptTokens: res.promptTokens, totalMs: res.totalMs }));
+            return 0;
         }
 
         if (cmd === "eval") {
