@@ -47,7 +47,7 @@ cat -- "$tmp/hybrid"
 printf '\n'
 local_line=0
 # The fixture's figures pin the counts; these pin the sentence a reader is shown.
-if ! grep -q '^  local worker: 3 line(s) in the runner'"'"'s receipt format, from Bash results in 1 session(s), at \$0\.00, none of it in the host'"'"'s tokens or the restart threshold: in 5,010 tokens, ' "$tmp/hybrid"; then
+if ! grep -q '^  local worker: 4 line(s) in the runner'"'"'s receipt format, from Bash results in 1 session(s), at \$0\.00, none of it in the host'"'"'s tokens or the restart threshold: in 5,017 tokens, ' "$tmp/hybrid"; then
     printf '  ✗ ledger: the hybrid session'"'"'s local receipts were not reported on their own line at $0.00\n'
     local_line=1
 fi
