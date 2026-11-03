@@ -1,0 +1,1 @@
+- Acquire the local-worker A/B record against Sonnet 5.5, retain the failed authentication acquisition and authorized host-only recovery, and hold its register and shipped model routing offline in CI. Code qualifies at L5/H5; shared prose is disabled after codify L0/H3, with operational role/model/effort guards before I/O and explicit model-only candidates still available.

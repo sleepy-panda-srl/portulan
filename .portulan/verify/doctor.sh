@@ -49,4 +49,4 @@ if [ "$present" != "$named" ]; then
 fi
 
 # The pack root is pinned so the verdict is about this tree, never the host's plugin cache.
-node cli/doctor.mjs --pack-root packs "${WORKSPACES[@]}"
+node cli/doctor.mjs --static --pack-root packs "${WORKSPACES[@]}"

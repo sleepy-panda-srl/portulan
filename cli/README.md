@@ -22,7 +22,7 @@ in [`../.portulan/verify/`](../.portulan/verify/), and its operator tooling in
 |---|---|
 | [`portulan.mjs`](portulan.mjs) | Portulan — the one entry point the `npx` package exposes. |
 | [`init.mjs`](init.mjs) | `portulan init`: draft a workspace for a repository that has none. |
-| [`doctor.mjs`](doctor.mjs) | `portulan doctor`: validate a workspace against the Workspace Definition. |
+| [`doctor.mjs`](doctor.mjs) | `portulan doctor`: validate a workspace and report branch-owned host tokens beside local receipts; --static skips usage records. |
 | [`compile.mjs`](compile.mjs) | `portulan compile`: compile a workspace's gate policy into host enforcement. |
 | [`vendor.mjs`](vendor.mjs) | `portulan vendor`: materialise a workspace where it is needed: into a host, or between residences. |
 | [`index.mjs`](index.mjs) | `portulan index`: regenerate the memory, handoff and scope indexes. |
@@ -63,6 +63,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`instructions.mjs`](instructions.mjs) | `instructions` — the sections a team marks in its own instruction file, moved to on-read units and proved. |
 | [`ledger.mjs`](ledger.mjs) | What a change spends, measured from the host's own usage records. |
 | [`librarian.mjs`](librarian.mjs) | `librarian` — the scheduled pass over the curated layer: reindex, staleness, nags, demotion drafts. |
+| [`local-routing.mjs`](local-routing.mjs) | Verify the shipped operational local roles against their immutable acquired A/B record. No model. Not shipped. |
 | [`manifest.mjs`](manifest.mjs) | The two facts every tool here needs out of `package.json`, read once and in a module that imports nothing of ours. |
 | [`mutants.mjs`](mutants.mjs) | Mutation-test this repository's two gate matchers against the corpus that claims to cover them. |
 | [`pack-identity.mjs`](pack-identity.mjs) | Every file `npm pack` emits is byte-identical to the tracked blob it came from. |
@@ -101,7 +102,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`context.test.mjs`](context.test.mjs) | Tests for `context` — what a boot reads and what the host loads into every context, measured. |
 | [`control-chars.test.mjs`](control-chars.test.mjs) | Tests for `control-chars` — the rail on bytes a reader cannot see. |
 | [`discover.test.mjs`](discover.test.mjs) | Tests for host plugin-cache discovery. |
-| [`doctor.test.mjs`](doctor.test.mjs) | Tests for `doctor` — the Workspace Definition validator. |
+| [`doctor.test.mjs`](doctor.test.mjs) | Tests for `doctor` — workspace validation, branch-owned hybrid usage and static-mode isolation. |
 | [`drills.test.mjs`](drills.test.mjs) | Tests for `drills` — the forced-red drill harness: its table, perturbation guards, pair oracle, hook rails and tree choice. |
 | [`eval-bundle.test.mjs`](eval-bundle.test.mjs) | The evaluation-bundle cutter, driven on this repository AND on real fixture repositories. |
 | [`feedback.live.test.mjs`](feedback.live.test.mjs) | The sender's field map, against the real issue forms rather than against a fixture. |

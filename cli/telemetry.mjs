@@ -17,7 +17,7 @@ import { recipeSet, resolverFor } from "./recipe-set.mjs";
 import { isInside } from "./inside.mjs";
 
 // ---------------------------------------------------------------------------------------------
-// The offline audit: no verify recipe may reach the network
+// The offline audit: recipes reach neither the network nor local usage records
 // ---------------------------------------------------------------------------------------------
 
 /** Every network mode in cli/ or a pack (named from `<category>/<name>/`); a new one is unrailed until it has a row here. */
@@ -28,11 +28,19 @@ export const NETWORK_MODES = Object.freeze([
     {
         module: "tools/local-llm/runner/local-llm.mjs",
         unless: "--verify-offline",
-        what: "calls the model endpoint from every subcommand, `status` the default among them",
+        alsoUnless: ["eval", "--verify"],
+        what: "calls the model endpoint except offline rails and captured-record verification",
     },
 ]);
 
-export const modeSpelling = (m) => (m.flag ? `${m.module} ${m.flag}` : `${m.module} with anything but ${m.unless} alone`);
+/** Local usage is machine-specific too; static mode must be explicit on each recipe invocation. */
+export const LOCAL_RECORD_MODES = Object.freeze([
+    { module: "cli/doctor.mjs", requiresStatic: "--static", what: "reads local usage records by default" },
+    { module: "cli/portulan.mjs", subcommand: "doctor", requiresStatic: "--static", what: "dispatches to the local usage-record reader" },
+    { module: "portulan", subcommand: "doctor", requiresStatic: "--static", what: "dispatches to the local usage-record reader" },
+]);
+
+export const modeSpelling = (m) => m.requiresStatic ? `${m.module}${m.subcommand ? ` ${m.subcommand}` : ""} without an immediate ${m.requiresStatic}` : (m.flag ? `${m.module} ${m.flag}` : `${m.module} with anything but ${m.unless} alone${m.alsoUnless ? ` or ${m.alsoUnless.join(" ")} alone` : ""}`);
 
 /** Whole-line comments only: a trailing `#` may sit inside a quote. */
 export const stripShellComments = (source) =>
@@ -51,17 +59,31 @@ const tokenIsFlag = (token, flag) => token === flag || token.startsWith(`${flag}
 const onlySafeInvocations = (source, m) =>
     stripShellComments(source)
         .replace(/\\\n/g, " ")
-        .split(/\n|;|&&|\|\|?/)
+        .split(/\n|;|&&?|\|\|?|\$\(|<\(|>\(|`/)
         .every((segment) => {
             const tokens = shellTokens(segment);
-            return tokens.every((t, i) => !tokenNamesModule(t, m.module) || (tokens.length === i + 2 && tokens[i + 1] === m.unless));
+            if (tokens[0] === "for" || ["[", "test"].includes(tokens[0]) || (tokens[0] === "if" && ["[", "test"].includes(tokens[1]))) return true;
+            return tokens.every((t, i) => !tokenNamesModule(t, m.module) || ((tokens.length === i + 2 && tokens[i + 1] === m.unless) || (m.alsoUnless && JSON.stringify(tokens.slice(i + 1)) === JSON.stringify(m.alsoUnless))));
         });
+
+const onlyStaticInvocations = (source, mode) => stripShellComments(source)
+    .replace(/\\\n/g, " ")
+    .split(/\n|;|&&?|\|\|?|\$\(|<\(|>\(|`/)
+    .every((segment) => {
+        const words = shellTokens(segment);
+        const first = words[0];
+        // A path in a file test or dependency list is data, not a CLI invocation.
+        if (["for", "printf", "echo", "[", "test"].includes(first) || (first === "if" && words.slice(1, 3).some((w) => ["[", "test"].includes(w)))) return true;
+        return words.every((word, i) => !tokenNamesModule(word, mode.module) || (mode.subcommand && words[i + 1] !== mode.subcommand) || words[i + (mode.subcommand ? 2 : 1)] === mode.requiresStatic);
+    });
 
 export function auditRecipeSource(source) {
     const tokens = shellTokens(stripShellComments(source));
-    return NETWORK_MODES.filter((m) =>
+    const network = NETWORK_MODES.filter((m) =>
         m.flag ? tokens.some((t) => tokenNamesModule(t, m.module)) && tokens.some((t) => tokenIsFlag(t, m.flag)) : !onlySafeInvocations(source, m),
     );
+    const local = LOCAL_RECORD_MODES.filter((m) => !onlyStaticInvocations(source, m));
+    return [...network, ...local];
 }
 
 export function auditRecipes({ workspaceDir, repoRoot, packRoots = [] }) {
@@ -356,7 +378,7 @@ const USAGE = [
     "                    first: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT (used as given) else",
     "                    OTEL_EXPORTER_OTLP_ENDPOINT (a base, +/v1/metrics); and",
     "                    OTEL_EXPORTER_OTLP_METRICS_HEADERS replacing OTEL_EXPORTER_OTLP_HEADERS",
-    "  --audit-recipes   assert that no recipe the workspace YIELDS can reach a network mode;",
+    "  --audit-recipes   assert that no recipe the workspace YIELDS can reach a network mode or read local usage records;",
     "                    takes --workspace and --pack-root, and needs no --config",
     "",
     "exit 0 the thing asked for happened · 1 a verdict (golden drift, or export while opted out)",
@@ -423,16 +445,16 @@ export async function run(argv = process.argv.slice(2), io = console, { env = pr
             return 2;
         }
         if (res.findings.length > 0) {
-            io.error(`telemetry: ${res.findings.length} verify recipe(s) can reach the network:`);
+            io.error(`telemetry: ${res.findings.length} verify recipe(s) can reach the network or local usage records:`);
             for (const f of res.findings) io.error(`  - ${f.recipe} (${f.script}) invokes ${modeSpelling(f)}, which ${f.what}`);
-            io.error("A verify recipe may not make a network call: spec/slots.md and .portulan/verify/README.md");
+            io.error("A verify recipe may not make a network call or read local usage records: spec/slots.md and .portulan/verify/README.md");
             io.error("both prohibit it, because a rail that moves with the network goes red about the world");
             io.error("rather than about the tree.");
             return 1;
         }
-        io.log(`telemetry: ${res.examined.length} yielded recipe(s) examined; none reaches a network mode`);
-        io.log(`  Modes railed: ${NETWORK_MODES.map(modeSpelling).join(", ")}.`);
-        io.log("  A network mode with no row here is UNRAILED, and nothing can audit that a row was added.");
+        io.log(`telemetry: ${res.examined.length} yielded recipe(s) examined; none reaches a network mode or reads local usage records`);
+        io.log(`  Modes railed: ${[...NETWORK_MODES, ...LOCAL_RECORD_MODES].map(modeSpelling).join(", ")}.`);
+        io.log("  A network or local-record mode with no row here is UNRAILED, and nothing can audit that a row was added.");
         return 0;
     }
 

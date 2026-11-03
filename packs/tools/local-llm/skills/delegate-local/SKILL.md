@@ -28,8 +28,8 @@ decision, proposed before it runs.
 
 - **A verify-gated file transform:** a mechanical refactor, a history-comment cleanup, or a unit test
   added, where a verify command can prove the edit green or have it rolled back.
-- **A research digest:** reading a long file or log so only a short digest enters the parent context.
-- **A librarian or handoff draft:** compressing a handoff under its byte cap, or drafting a `codify` or
+- **An explicitly selected candidate research digest:** reading a long file or log so only a short digest enters the parent context.
+- **An explicitly selected candidate librarian or handoff draft:** compressing a handoff under its byte cap, or drafting a `codify` or
   `consolidate` candidate for human review.
 
 Not for multi-file architectural planning, ambiguous requirements (`clarify`), or pre-merge verdicts
@@ -44,12 +44,15 @@ Not for multi-file architectural planning, ambiguous requirements (`clarify`), o
    `grep -n`. Prefill scales with prompt bytes: proposal 0039 measured prompts of about 400–470 tokens
    prefilling in 0.85–1.88 s, and the `32 KB` default of `--max-input-bytes` (about 8k tokens) is a
    ceiling, not a measured latency.
-2. **Choose the model by task shape.** Code transforms and strict syntax: `--role code`
-   (`qwen/qwen3.8-27b`). Prose compression, `codify` drafts and digests: `--role prose`
-   (`google/gemma-4-31b`). This routing rests on proposal 0039's one-sample figures until its A/B record
-   lands ([#547](https://github.com/sleepy-panda-srl/portulan/issues/547)). Screen a newly installed model
-   with `node <runner> eval --model <id>` first; `eval` grades with `cli/`'s predicates, so it too needs
-   the repository-root plugin, and exits `2` without it.
+2. **Use an earned role.** Code transforms and strict syntax use `--role code`
+   (`qwen/qwen3.8-27b`) at `--effort low`, supported by the
+   [captured A/B](../../../../../evals/ab/local-worker.md)'s L5/H5 code cell. Shared `--role prose`
+   (`google/gemma-4-31b`) is disabled: codify scored L0/H3, despite handoff's L5/H5. Keep digests and
+   librarian drafts in the parent session. `summarize` defaults to prose and refuses; explicit roles,
+   model overrides and environment mismatches cannot bypass the guard. An operator can select a
+   candidate with `--model <id>` and no `--role`; that is deliberate evaluation, not earned routing.
+   Screen a candidate with `node <runner> eval --model <id>`; it needs `cli/` beside `packs/` and exits
+   `2` without it. Passing a screen never enables a role.
 3. **Gate every edit.** `node <runner> transform --file <path> --verify "<cmd>" --prompt "<instruction>"`,
    where `--verify` is required. The runner applies the edit, runs `<cmd>`, retries with the end of its
    output on exit `1`, and keeps the edit only on exit `0`; any other exit, and SIGINT, SIGTERM or

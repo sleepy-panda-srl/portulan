@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // `doctor` — the Workspace Definition validator.
 //
-//   node cli/doctor.mjs [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir>...
+//   node cli/doctor.mjs [--static] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir>...
 //
 // Exit 0 every workspace validates · 1 at least one does not · 2 could not run.
 
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -27,6 +28,7 @@ import { composedId } from "./recipe-set.mjs";
 import { alwaysLine } from "./context.mjs";
 import { formLine } from "./form.mjs";
 import { sessionsLine } from "./sessions.mjs";
+import { hostPaths, ledger, print, readSpend, worktrees, linesChanged } from "./ledger.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -1854,7 +1856,7 @@ export async function inspect(workspaceDir, options = {}) {
               (stats.unassessed
                   ? `; ${stats.unassessed} unreadable and never assessed`
                   : "") +
-              ". Size and count only: ages live in git, which doctor does not read, so staleness belongs to `cli/librarian.mjs` — the scheduled pass, which may ask git and does"
+              ". Size and count only: memory ages are not measured here, so staleness belongs to `cli/librarian.mjs` — the scheduled pass, which may ask git and does"
             : "no memory records — nothing measured, nothing awaiting retirement",
     );
 
@@ -1893,6 +1895,32 @@ export async function inspect(workspaceDir, options = {}) {
     return { dir, workspace, findings, stats };
 }
 
+/** Optional usage accounting: a data failure never changes the workspace-validation verdict. */
+export async function workspaceUsageReport(workspaceDir, workspace, options = {}) {
+    const unmeasured = (why) => [`  note spend      unmeasured — ${why}`];
+    if (typeof workspace?.tree !== "string" || workspace.tree.trim() === "") return unmeasured("the workspace declares no tree to attribute usage to");
+    try {
+        const repo = path.resolve(workspaceDir, workspace.tree);
+        const roots = worktrees(repo);
+        if (roots === null || roots.length === 0) return unmeasured("the declared tree has no Git worktree ownership");
+        const branch = execFileSync("git", ["-C", repo, "rev-parse", "--abbrev-ref", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 10_000 }).trim();
+        if (!branch || branch === "HEAD") return unmeasured("the declared tree has no current named Git branch");
+        const host = hostPaths(options.env ?? process.env, options.home);
+        if (host.why !== undefined) return unmeasured("the configured usage-record location is ambiguous");
+        const report = ledger({ ...host, roots, branch, lines: linesChanged(repo, branch), spend: readSpend(workspace.spend, "this workspace") });
+        const lines = [];
+        if (report.collected.malformed) lines.push(`  note spend      partial data — ${report.collected.malformed} malformed usage line(s) were ignored`);
+        if (report.figures.main.requests + report.figures.subagents.requests === 0 && report.local.receipts === 0) {
+            return [...lines, ...unmeasured("no host requests or local receipts on this branch are recorded here")];
+        }
+        print(report, (line) => lines.push(line));
+        return lines;
+    } catch {
+        // Parser messages can quote a private record. Never print them or a raw usage line.
+        return unmeasured("optional local usage data could not be read or parsed; no totals were reported");
+    }
+}
+
 // ---------------------------------------------------------------- the command
 
 const ICON = { fail: "FAIL ", report: "note " };
@@ -1907,8 +1935,9 @@ function usage() {
     return [
         "portulan doctor — validate a workspace against the Workspace Definition",
         "",
-        "  portulan doctor [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]",
+        "  portulan doctor [--static] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]",
         "",
+        "  --static      skip local usage records; validation and plugin discovery remain unchanged.",
         "  --pack-root   where declared packs are resolved from; `auto` discovers the host's plugin cache.",
         "                A named root REPLACES every other source. A directory actually named `auto` is `./auto`",
         "  --repo-root   where the repositories this workspace's cards NAME are checked out, so their",
@@ -1931,6 +1960,7 @@ export async function run(argv, options = {}) {
         return 0;
     }
     try {
+        let staticMode = false;
         const namedRoots = [];
         let discoverPacks = false;
         const repoRoots = [];
@@ -1957,7 +1987,9 @@ export async function run(argv, options = {}) {
         };
         const REPO_ROOT = { unresolvable: "a repository ungoverned", holds: "repositories" };
         for (let i = 0; i < argv.length; i += 1) {
-            if (argv[i] === "--repo-root") {
+            if (argv[i] === "--static") {
+                staticMode = true;
+            } else if (argv[i] === "--repo-root") {
                 repoRoots.push(directoryRoot("--repo-root", argv[i + 1], REPO_ROOT));
                 i += 1;
             } else if (argv[i] === "--pack-root") {
@@ -1975,7 +2007,7 @@ export async function run(argv, options = {}) {
         if (bothAsked) throw new DoctorError(bothAsked);
         if (dirs.length === 0) {
             if (!options.quiet) {
-                process.stderr.write("usage: node cli/doctor.mjs [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");
+                process.stderr.write("usage: node cli/doctor.mjs [--static] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");
             }
             return 2;
         }
@@ -1987,7 +2019,7 @@ export async function run(argv, options = {}) {
                 ...(discoverPacks ? { discoverPacks } : {}),
                 ...(repoRoots.length ? { repoRoots } : {}),
             };
-            const { findings, stats } = await inspect(dir, { ...options, ...roots });
+            const { findings, stats, workspace } = await inspect(dir, { ...options, ...roots });
             const bad = findings.filter((f) => f.severity === "fail");
             say(display(dir));
             for (const f of findings) say(`  ${ICON[f.severity]} ${f.check.padEnd(10)} ${f.message}`);
@@ -1996,6 +2028,9 @@ export async function run(argv, options = {}) {
                     `${findings.length - bad.length} note(s), ${stats.claims} claim(s) checked` +
                     (stats.unverifiable ? `, ${stats.unverifiable} unverifiable` : ""),
             );
+            if (!staticMode && !options.quiet && !bad.length && workspace) {
+                for (const line of await workspaceUsageReport(path.resolve(dir), workspace, options)) say(line);
+            }
             say();
             if (bad.length) failed += 1;
         }

@@ -1,7 +1,9 @@
-// Tests for `doctor` — the Workspace Definition validator.
+// Tests for `doctor` — workspace validation, branch-owned hybrid usage and static-mode isolation.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { projectKey } from "./ledger.mjs";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -3199,7 +3201,7 @@ describe("--help is a request that succeeded", () => {
             const w = process.stderr.write.bind(process.stderr);
             process.stderr.write = (chunk) => (err.push(String(chunk)), true);
             try {
-                await run([flag, "--", "/nonexistent-workspace"]);
+                await run(flag === "--static" ? [flag, "/nonexistent-workspace"] : [flag, "--", "/nonexistent-workspace"]);
             } finally {
                 process.stderr.write = w;
             }
@@ -3322,4 +3324,137 @@ test("a workspace composing gates with no policy to join is reported, never fail
     const said = text(checks(findings, "enforcement"));
     assert.match(said, /composes \d+ gate rule\(s\) from the packs that resolved and declares no `gates` policy/);
     assert.equal(severities(checks(findings, "enforcement"), "fail").length, 0, "reported, because a required recipe grades this workspace");
+});
+
+
+// Usage data is optional; its fixture never reads this machine's account records.
+describe("workspace usage report", () => {
+    const setup = ({ linked = false, declared = true } = {}) => {
+        const repo = fs.realpathSync(scratch());
+        const git = (...args) => {
+            const r = spawnSync("git", ["-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "-C", repo, ...args], { encoding: "utf8" });
+            assert.equal(r.status, 0, r.stderr || r.stdout);
+        };
+        git("init", "-q", "-b", linked ? "main" : "feature/local");
+        fs.writeFileSync(path.join(repo, "seed"), "fixture\n");
+        git("add", "seed");
+        git("commit", "-qm", "fixture");
+        let owner = repo;
+        if (linked) {
+            owner = fs.realpathSync(scratch());
+            fs.rmdirSync(owner);
+            git("worktree", "add", "-q", "-b", "feature/local", owner);
+        }
+        const workspace = path.join(repo, "workspace");
+        const manifest = { ...wellFormed(), ...(declared ? { tree: path.relative(workspace, owner) + "/" } : {}) };
+        if (!declared) { delete manifest.tree; manifest.kind = "demo"; }
+        tree(workspace, { ...minimalFiles, "workspace.json": JSON.stringify(manifest), "verify.sh": "#!/bin/sh\nexit 0\n" });
+        return { repo, owner, workspace, home: scratch(), away: scratch() };
+    };
+    const hostFixture = ({ home, owner }) => {
+        const fixture = path.join(FIXTURES, "ledger-hybrid");
+        const into = path.join(home, "projects", projectKey(owner));
+        fs.mkdirSync(path.dirname(into), { recursive: true });
+        fs.cpSync(path.join(fixture, "projects", "-work-hybrid"), into, { recursive: true });
+        const rewrite = (dir) => {
+            for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+                const file = path.join(dir, item.name);
+                if (item.isDirectory()) rewrite(file);
+                else fs.writeFileSync(file, fs.readFileSync(file, "utf8").replaceAll('"/work/hybrid"', JSON.stringify(owner)));
+            }
+        };
+        rewrite(into);
+        fs.writeFileSync(path.join(home, ".claude.json"), fs.readFileSync(path.join(fixture, "claude.json"), "utf8").replaceAll('"/work/hybrid"', JSON.stringify(owner)));
+    };
+    const invoke = (f, flags = [], before = []) => spawnSync(process.execPath, [...before, path.join(REPO, "cli", "doctor.mjs"), ...flags, f.workspace], {
+        cwd: f.away, encoding: "utf8", env: { ...process.env, CLAUDE_CONFIG_DIR: f.home },
+    });
+    for (const linked of [false, true]) {
+        test(`default report uses the declared tree and branch from another cwd${linked ? " and a linked worktree" : ""}`, () => {
+            const f = setup({ linked });
+            hostFixture(f);
+            const result = invoke(f);
+            assert.equal(result.status, 0, result.stderr || result.stdout);
+            assert.match(result.stdout, /ledger: branch feature\/local/);
+            assert.match(result.stdout, /^  uncached +7 +3 +10$/m);
+            assert.match(result.stdout, /^  output +970 +210 +1,180$/m);
+            assert.match(result.stdout, /local worker: 4 line\(s\).*in 5,017 tokens, out 600 tokens.*time 7,714 ms/);
+            assert.match(result.stdout, /threshold of 76,006/);
+        });
+    }
+    test("static output is identical with and without usage records", () => {
+        const f = setup();
+        const empty = invoke(f, ["--static"]);
+        hostFixture(f);
+        const populated = invoke(f, ["--static"]);
+        assert.equal(empty.status, 0, empty.stderr);
+        assert.equal(populated.status, 0, populated.stderr);
+        assert.equal(populated.stdout, empty.stdout);
+        assert.doesNotMatch(populated.stdout, /ledger:|local worker:/);
+    });
+    test("static, help and quiet paths never consult usage files", async (t) => {
+        const f = setup();
+        hostFixture(f);
+        const marker = path.join(f.away, "usage-read");
+        const preload = path.join(f.away, "block-usage.mjs");
+        fs.writeFileSync(preload, `import fs from "node:fs";
+const marker=${JSON.stringify(marker)};
+const project=${JSON.stringify(path.join(f.home, "projects"))};
+const config=${JSON.stringify(path.join(f.home, ".claude.json"))};
+const write=fs.writeFileSync;
+for (const key of ["readFileSync","readdirSync","statSync","lstatSync"]) { const original=fs[key]; fs[key]=function(file,...args){const value=String(file);if(value===config||value.startsWith(project)){write(marker,"read");throw new Error("PRIVATE_USAGE_SENTINEL");}return original.call(this,file,...args);};}
+`);
+        for (const flags of [["--static"], ["--help"]]) {
+            const r = invoke(f, flags, ["--import", preload]);
+            assert.equal(r.status, 0, r.stderr || r.stdout);
+            assert.equal(fs.existsSync(marker), false);
+        }
+        let consulted = 0;
+        for (const key of ["readFileSync", "readdirSync", "statSync", "lstatSync"]) {
+            const original = fs[key];
+            t.mock.method(fs, key, function (file, ...args) {
+                const value = String(file);
+                if (value.startsWith(path.join(f.home, "projects")) || value === path.join(f.home, ".claude.json")) {
+                    consulted++;
+                    throw new Error("PRIVATE_USAGE_SENTINEL");
+                }
+                return original.call(this, file, ...args);
+            });
+        }
+        assert.equal(await run([f.workspace], { quiet: true, env: { CLAUDE_CONFIG_DIR: f.home } }), 0);
+        assert.equal(consulted, 0, "quiet mode never discovers or reads usage, even when errors would be caught");
+        const failed = invoke(f, [], ["--import", preload]);
+        assert.equal(failed.status, 0, failed.stderr);
+        assert.equal(fs.existsSync(marker), true, "the default tried to measure usage");
+        assert.match(failed.stdout, /spend.*unmeasured/i);
+        assert.doesNotMatch(failed.stdout + failed.stderr, /PRIVATE_USAGE_SENTINEL/);
+    });
+    test("missing records and missing ownership are unmeasured, never invented totals", () => {
+        for (const declared of [false, true]) {
+            const f = setup({ declared });
+            const r = invoke(f);
+            assert.equal(r.status, 0, r.stderr || r.stdout);
+            assert.match(r.stdout, /spend.*unmeasured/i);
+            assert.doesNotMatch(r.stdout, /uncached +0 +0 +0/);
+        }
+    });
+    test("malformed host config is nonfatal and does not leak its contents", () => {
+        const f = setup();
+        hostFixture(f);
+        fs.writeFileSync(path.join(f.home, ".claude.json"), '{"PRIVATE_USAGE_SENTINEL":');
+        const r = invoke(f);
+        assert.equal(r.status, 0, r.stderr || r.stdout);
+        assert.match(r.stdout, /spend.*unmeasured/i);
+        assert.doesNotMatch(r.stdout + r.stderr, /PRIVATE_USAGE_SENTINEL|SyntaxError/);
+    });
+    test("malformed transcript lines are counted as partial data without printing them", () => {
+        const f = setup();
+        hostFixture(f);
+        fs.appendFileSync(path.join(f.home, "projects", projectKey(f.owner), "hybrid.jsonl"), '{\"usage\":{\"PRIVATE_USAGE_SENTINEL\":\n');
+        const r = invoke(f);
+        assert.equal(r.status, 0, r.stderr || r.stdout);
+        assert.match(r.stdout, /spend.*partial/i);
+        assert.match(r.stdout, /local worker: 4 line\(s\)/);
+        assert.doesNotMatch(r.stdout + r.stderr, /PRIVATE_USAGE_SENTINEL/);
+    });
 });

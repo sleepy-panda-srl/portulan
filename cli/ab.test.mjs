@@ -15,6 +15,7 @@ process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true
 
 import {
     ArmRed,
+    constructArmA,
     seedOperator,
     armStopProbe,
     DISPOSITIONS,
@@ -529,3 +530,16 @@ test("a zero count is read as the agent never reaching a stop, not as the gate l
         );
     });
 });
+
+
+test("arm construction validates through doctor's static interface", () => withTemp((dir) => {
+    const cliRoot = path.join(dir, "tooling");
+    const trace = path.join(dir, "doctor-arguments.json");
+    fs.mkdirSync(path.join(cliRoot, "cli"), { recursive: true });
+    fs.writeFileSync(path.join(cliRoot, "cli", "doctor.mjs"), `import fs from "node:fs";
+fs.writeFileSync(${JSON.stringify(trace)},JSON.stringify(process.argv.slice(2)));
+process.exit(process.argv[2]==="--static"?0:2);
+`);
+    assert.throws(() => constructArmA({ workspaceDir: WORKSPACE, into: path.join(dir, "arm"), repoRoot: REPO, cliRoot, tracked: trackedUnder(REPO, WORKSPACE) }), /vendor --host/, "the static validator passes; only the deliberately absent downstream vendor refuses");
+    assert.equal(JSON.parse(fs.readFileSync(trace, "utf8"))[0], "--static");
+}));

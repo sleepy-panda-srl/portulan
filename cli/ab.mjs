@@ -761,7 +761,7 @@ export function constructArmA(options) {
     const staging = path.join(into, ".staging");
     const staged = stage(workspaceDir, staging, { tracked: options.tracked ?? null });
 
-    const doctor = spawnTool(process.execPath, [path.join(cliRoot, "cli", "doctor.mjs"), staging], { cwd: repoRoot });
+    const doctor = spawnTool(process.execPath, [path.join(cliRoot, "cli", "doctor.mjs"), "--static", staging], { cwd: repoRoot });
     if (doctor.status !== 0) {
         throw new CouldNotRun(
             `the staged arm is not \`doctor\` green (exit ${doctor.status}) — refusing to vendor a workspace the validator ` +

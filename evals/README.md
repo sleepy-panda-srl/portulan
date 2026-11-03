@@ -236,7 +236,7 @@ is a new consent question rather than a covered one. It neither queues nor retri
   ever exercise `--export`.
 - **A network mode reached indirectly.** The suite derives the set of network-capable modules from the
   tree, and the offline audit matches a module as a path suffix and a flag as a token, or, for the
-  local-llm runner, any invocation but `--verify-offline` alone on its command; a mode reached through
+  local-llm runner, any invocation but `--verify-offline` alone or `eval --verify` alone on its command; a mode reached through
   another script, or through a flag built at runtime, is invisible to it.
 - **Scheduled emission.** Nothing fires when nobody runs it —
   [#344](https://github.com/sleepy-panda-srl/portulan/issues/344)'s silence again.
@@ -266,6 +266,17 @@ capture. The recipes run no agent; the modes that do — `ab --stop-probe`, `ab-
 **What may not be concluded** from the baseline is [`ab/corpus.md`](ab/corpus.md)'s section of that name,
 and the register cites it rather than restating it. **The baseline is scoped to the vendored-and-compiled
 tier** [`ab/arm.md`](ab/arm.md) specifies, and closes row 8 for no other configuration of *Portulan on*.
+
+## The local-worker routing capture — milestone 14
+
+[`ab/local-worker.json`](ab/local-worker.json) is the immutable acquired local/host capture;
+[`ab/local-worker.md`](ab/local-worker.md) is its generated register. The
+[acquisition note](ab/local-worker-acquisition.md) records conditions, recovery and limitations.
+`node packs/tools/local-llm/runner/local-llm.mjs eval --verify` regrades and byte-compares without a
+model. `node cli/local-routing.mjs` additionally compares the shipped role flags, model IDs and
+capture digest with an independent derivation. Both run beside the original baseline in `ab-run`.
+The acquired five-turn cells support code, while the shared prose role is disabled. These rates
+support no general quality claim, and CI cannot replay the events that produced them.
 
 ## A release carries an eval result
 

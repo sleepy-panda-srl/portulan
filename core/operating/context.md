@@ -197,12 +197,15 @@ bytes are checked. `--allow-remote` lifts the loopback rail on the caller's word
 subcommand is the screen. Its `runner-rails` recipe holds the loopback and ceiling refusals and the
 rollback on a red or no-verdict verify offline, with no network call; the rollback on a signal is held by
 the runner's tests. This repository composes the pack and registers its skill; the ledger reports local
-receipts beside the host's tokens. **Still to land, under row 14 of [`../../docs/plan.md`](../../docs/plan.md)**:
-the captured A/B record. The `local-worker` persona declares `omitClaudeMd: true` and
-`effort: low`, and `compile` writes both into the binding a workspace composing the pack gives it, against
-a committed golden. Until that record lands, the pack's `code` and
-`prose` routing rests on `0039`'s one-sample figures and is not earned, and the human gate holds rule 4's
-second half.
+receipts beside the host's tokens. `doctor` includes that branch-owned usage report by default,
+with unavailable data reported as unmeasured; `--static` omits usage-record discovery for verification.
+The [captured A/B](../../evals/ab/local-worker.md) supports code
+at low effort (L5/H5), while shared prose is disabled because codify scored L0/H3, despite handoff's
+L5/H5. Operational defaults and explicit roles require the measured model at low effort; explicit
+model-only calls remain candidates. The record and register are regraded and byte-compared in CI,
+with shipped routing rederived from their turns. The `local-worker` persona declares
+`omitClaudeMd: true` and `effort: low`, and `compile` writes both into a workspace's binding against a
+committed golden.
 
 _(Provenance: proposal
 [`0039`](../../.portulan/proposals/0039-a-local-model-runs-without-the-host-floor-and-under-a-thinking-cap.md)'s
