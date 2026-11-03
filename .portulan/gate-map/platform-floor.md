@@ -64,11 +64,12 @@ is a weaker claim than this section made before the audit, and it is the accurat
 **This floor now has a compiled form, and it is not the one in force.**
 [`compile/github-ruleset.json`](../compile/github-ruleset.json) is what [`gates.json`](../gates.json) compiles to
 for the platform-floor backend: an importable GitHub repository ruleset carrying a pull-request
-requirement, these required checks (strict), a force-push block and a deletion block. It is **generated,
-never applied** — importing it is a settings change, Gated, and nobody has — so [the table](../gate-map.md#the-platform-floor) still
-describes the live configuration and that file describes what the policy *says* the floor should be. They
-agree today, checked by hand at this session's checkpoints. Nothing checks them automatically, and nothing
-here can: `doctor` does not fetch settings and no verify recipe may make a network call.
+requirement, three required checks with loose freshness, a force-push block and a deletion block.
+It is **generated, never applied** — importing it is Gated, and nobody has. The
+[table](../gate-map.md#the-platform-floor) describes live protection: strict freshness and two checks.
+The deliberate prepared/live drift is pending the [activation procedure](../tools/branch-freshness.md).
+Nothing compares them automatically: `doctor` does not fetch settings and no verify recipe may make a
+network call.
 
 **A second ruleset, deliberately not part of the floor, was retired by the maintainer's decision of
 2026-10-30.** `copilot auto-review on pull requests` — id `19805871`, repository-sourced, added
@@ -93,31 +94,25 @@ agent identity rather than by Copilot; that derived verdict left with `copilot-r
 It was added while this section was being written, which is as good an illustration as the section could
 ask for of why the layers needed counting in the first place.
 
-**The up-to-date row, added 2026-07-27 — the day the rule and the setting arrived together.** The
-maintainer ruled that a pull request may not merge while it is behind `main`, and then instructed that it
-be set in GitHub rather than left as a rule documents ask for. What made the ruling concrete was the state
-of the repository that morning: **three open pull requests, each exactly one commit behind**, one of them
-reported `CLEAN` and `MERGEABLE` with a green required check describing a merge against a `main` that had
-already moved. `strict` was `false`, so the platform had nothing to say about it.
+**Branch freshness, amended 2026-11-03.** [Proposal 0040](../proposals/0040-allow-ten-commits-behind-main.md)
+accepts at most ten commits behind `main`, with a required sync at eleven. The prepared workspace policy
+sets `floor.strict: false` and adds the Actions-pinned `branch-freshness` context; the live setting is
+still `strict: true`, with only `workspace-verify` and `pr-labeled` required, until the
+[activation procedure](../tools/branch-freshness.md) is completed and read back.
 
-`required_status_checks.strict = true` is now the fourth thing this floor refuses. It matters here more
-than the setting's name suggests, because CI runs on `pull_request` against `refs/pull/N/merge` — a test
-merge against `main` *as it stood when the run happened* — and nothing re-runs it when the base moves.
-`strict` forces the branch forward, which forces the check to re-run against the merge that will actually
-land. The reasoning, the one-command condition and the cost are in
-[`memory/a-branch-syncs-with-main-before-it-merges.md`](../memory/a-branch-syncs-with-main-before-it-merges.md)
-and [`proposals/0011-no-merge-from-behind-main.md`](../proposals/0011-no-merge-from-behind-main.md).
+GitHub's native freshness setting is boolean. The replacement workflow therefore publishes exact-head
+checks on PR events and refreshes every open PR after a push to `main`, from trusted base code.
+A missing or invalid comparison does not create a passing result. Events and API calls are
+asynchronous: delays, outages and a base change after the final read can leave an older green
+applicable temporarily. This does not preserve the synchronous native freshness guarantee or rerun
+CI against the newest base. The agent compares exact SHAs immediately before a merge too.
 
-**Verified at the settings layer and then demonstrated.** The protection was read back immediately after
-the change: `strict: true`, the required check still `workspace-verify` pinned to app 15368,
-`enforce_admins`, conversation resolution and the force-push and deletion blocks all intact — a `PATCH` to
-one sub-resource left the rest alone. The demonstration came from the pull request carrying this
-paragraph, when `main` moved two commits under it: **`mergeStateStatus: BEHIND`, `mergeable: MERGEABLE`,
-`behind_by: 2`.** No textual conflict — git would merge it cleanly — and the platform refuses anyway,
-which is the refusal this row buys. Before the setting, that same state read `CLEAN`. The limit worth
-naming: what was observed is GitHub reporting the refusal, not a merge attempted and rejected, because a
-merge attempt that is *not* refused lands the change — the reasoning that also leaves the ruleset-bypass
-interaction untested above.
+**Historical strict rule.** [Proposal 0011](../proposals/0011-no-merge-from-behind-main.md) introduced
+strict protection on 2026-07-27 after three PRs one commit behind had been mergeable. Its original
+settings readback preserved the check app pin, administrator enforcement, conversation resolution and
+ref protections. GitHub subsequently reported `BEHIND` beside `MERGEABLE` at `behind_by: 2`. That was a
+reported refusal, not an attempted merge. The accepted amendment deliberately relaxes that rule;
+this record does not claim the replacement is already active.
 
 **Why zero required reviews, on purpose.** GitHub does not permit anyone to approve their own pull
 request. On a repository with one human, requiring an approving review *and* enforcing for

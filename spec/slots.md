@@ -255,7 +255,7 @@ Two obligations, both learned from defects rather than designed in the abstract:
 ### `floor` — the platform floor this policy compiles to
 
 **Added in 2.2, optional**, inside the gate policy rather than the manifest — it is policy, and policy
-lives where the rules live. Four keys, and each one exists because it varies per repository and the
+lives where the rules live. Its keys exist because it varies per repository and the
 floor backend would otherwise have to guess it:
 
 | Key | What it declares |
@@ -265,11 +265,15 @@ floor backend would otherwise have to guess it:
 | `reviews` | Required approving reviews. Declared rather than defaulted: 0 and 1 are a real difference, and a repository with one maintainer cannot use 1, because GitHub does not permit approving one's own pull request. |
 | `resolve_conversations` | Whether review threads must be resolved before merge. Omitting it would export a floor weaker than the one many repositories already run. |
 
-**What is deliberately NOT declarable is `strict`.** A pull request may not merge from behind its base
-([proposal 0011](../.portulan/proposals/0011-no-merge-from-behind-main.md), applied live on
-2026-07-27), so the export forces strict required status checks unconditionally. A policy able to
-declare `strict: false` would be a compiled artifact quietly undoing a ruling, in a diff nobody would
-read as one.
+**Gate-policy 2.3 adds optional `strict`, a boolean defaulting to `true`.** It selects GitHub's native
+strict-versus-loose required-status-check policy. Older gate-policy versions retain strict freshness
+and refuse an explicit `strict` rather than silently ignoring it. A non-boolean is refused.
+
+The earlier unconditional strict export encoded this repository's 2026-07-27 ruling as universal
+mechanism. The maintainer's [2026-11-03 amendment](../.portulan/proposals/0040-allow-ten-commits-behind-main.md)
+allows ten commits behind and blocks eleven here, which needs loose native freshness plus a separate
+required check. The compiler emits the declared boolean; it neither implements that threshold for an
+adopter nor applies the settings. Defaulting to `true` preserves every policy that omits the new key.
 
 A workspace with no `floor` compiles no floor: the backend refuses every rule *by name*, says the key
 is missing, and writes nothing. That is a legitimate shape — a workspace whose repositories are not on

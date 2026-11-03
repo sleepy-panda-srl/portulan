@@ -23,7 +23,7 @@ export class CompileError extends Error {
 }
 
 /** The `portulan.spec` versions of `gates.json`: a train separate from the Workspace Definition's, though the numbers overlap. */
-export const KNOWN_GATE_POLICY_SPECS = new Set(["2.1", "2.2"]);
+export const KNOWN_GATE_POLICY_SPECS = new Set(["2.1", "2.2", "2.3"]);
 
 const TIERS = new Set(["auto", "propose", "gated", "prohibited"]);
 
@@ -131,11 +131,11 @@ export function parse(policy) {
         rules.push({ id, tier: rule.tier, kind, target: action[kind], reason: rule.reason, action });
     }
 
-    return { rules, floor: parseFloor(policy.floor) };
+    return { rules, floor: parseFloor(policy.floor, String(spec)) };
 }
 
-/** The optional `floor`, validated whole, or null; `strict` is not declarable, as no pull request merges from behind its base. */
-function parseFloor(floor) {
+/** The optional platform floor, with strict freshness unless the policy explicitly chooses otherwise. */
+function parseFloor(floor, spec) {
     if (floor === undefined || floor === null) return null;
     if (typeof floor !== "object" || Array.isArray(floor)) {
         throw new CompileError("`floor` is present but is not a JSON object");
@@ -180,7 +180,11 @@ function parseFloor(floor) {
     if (typeof floor.resolve_conversations !== "boolean") {
         throw new CompileError("`floor.resolve_conversations` must be a boolean — omitting it would export a floor weaker than the one in force");
     }
-    return { branch, checks, reviews: floor.reviews, resolve_conversations: floor.resolve_conversations };
+    if (Object.hasOwn(floor, "strict")) {
+        if (spec !== "2.3") throw new CompileError("`floor.strict` requires gate-policy 2.3");
+        if (typeof floor.strict !== "boolean") throw new CompileError("`floor.strict` must be a boolean");
+    }
+    return { branch, checks, reviews: floor.reviews, resolve_conversations: floor.resolve_conversations, strict: floor.strict ?? true };
 }
 
 // ---------------------------------------------------------------- what an action means, to the compiler and the gate alike
@@ -811,8 +815,7 @@ export function githubRuleset(parsed, options = {}) {
         rules.push({
             type: "required_status_checks",
             parameters: {
-                // Not declarable: a pull request may never merge from behind its base.
-                strict_required_status_checks_policy: true,
+                strict_required_status_checks_policy: floor.strict,
                 do_not_enforce_on_create: false,
                 required_status_checks: floor.checks,
             },

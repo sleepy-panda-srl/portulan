@@ -1,0 +1,2 @@
+- **[`core/operating/context.md`](../core/operating/context.md) carries proposal `0039`'s four rules for a local model.**
+  A local worker runs without the host floor and under an input-byte ceiling, its thinking effort is set at invocation, a local edit is kept only on its verify command's exit `0` and rolled back otherwise, which is a rollback and not an atomic write, and loopback is a rail while routing waits on an A/B record in `evals/ab/`. The page says which the `tools/local-llm` runner holds today and which wait on row 14.
