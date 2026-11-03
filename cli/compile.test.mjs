@@ -1027,6 +1027,29 @@ describe("the floor backend", () => {
         assert.equal(rule.parameters.strict_required_status_checks_policy, true);
     });
 
+    test("gate-policy 2.3 declares strict freshness explicitly and defaults to true", () => {
+        for (const strict of [true, false, undefined]) {
+            const p = withFloor(strict === undefined ? {} : { strict });
+            p.portulan.spec = "2.3";
+            const result = githubRuleset(parse(p));
+            const rule = result.artifact.value.rules.find((r) => r.type === "required_status_checks");
+            assert.equal(rule.parameters.strict_required_status_checks_policy, strict ?? true);
+        }
+    });
+
+    test("strict is a boolean opt-in under 2.3, never silently ignored in older policies", () => {
+        for (const spec of ["2.1", "2.2"]) {
+            const p = withFloor({ strict: false });
+            p.portulan.spec = spec;
+            assert.throws(() => parse(p), /floor.strict.*2\.3/);
+        }
+        for (const strict of [null, 0, 1, "false", {}, []]) {
+            const p = withFloor({ strict });
+            p.portulan.spec = "2.3";
+            assert.throws(() => parse(p), /floor.strict.*boolean/);
+        }
+    });
+
     test("every declared check reaches the emitted ruleset, with its app pin intact", () => {
         const rule = ruleset().rules.find((r) => r.type === "required_status_checks");
         assert.deepEqual(rule.parameters.required_status_checks, [{ context: "workspace-verify", integration_id: 15368 }]);
@@ -1890,9 +1913,10 @@ describe("customer zero", () => {
         assert.ok(result.compiled.length >= 6, "this repository has at least six enforceable gates");
     });
 
-    test("this repository declares a floor, and the export reproduces the checks `main` really requires", () => {
+    test("this repository prepares loose freshness and three Actions-pinned checks", () => {
         const contexts = parse(real).floor.checks.map((c) => c.context).sort();
-        assert.deepEqual(contexts, ["pr-labeled", "workspace-verify"]);
+        assert.deepEqual(contexts, ["branch-freshness", "pr-labeled", "workspace-verify"]);
+        assert.equal(parse(real).floor.strict, false);
         for (const check of parse(real).floor.checks) {
             assert.equal(check.integration_id, 15368, "an unpinned context is satisfiable by any app reporting that name");
         }
