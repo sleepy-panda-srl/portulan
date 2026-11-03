@@ -152,11 +152,11 @@ _Why it compiles to nothing, and why it was listed late:
   How to establish each condition, and why neither has a shortcut:
   [`gate-map/gated.md`](gate-map/gated.md#merge-a-pull-request-and-delete-a-remote-branch).
 
-  **The merge carries a precondition the approval does not waive: the head must not be behind `main`.**
-  Sync first — `git rebase origin/main`, then `git push --force-with-lease`, both Auto — let
-  `workspace-verify` re-run, and merge after that. The condition is one command —
-  `gh api repos/{owner}/{repo}/compare/main...<head> --jq .behind_by`, and zero is the only acceptable
-  answer. Why, and why it is also a rail:
+  **The merge precondition allows at most ten commits behind `main`, by the maintainer's
+  2026-11-03 amendment in [proposal 0040](proposals/0040-allow-ten-commits-behind-main.md).** Immediately
+  before a merge, compare its exact current base/head SHAs and require integer `behind_by` in 0–10.
+  At 11 or more, sync and let the checks rerun; an unreadable comparison does not pass. The prepared
+  check and its asynchronous limits, and the still-strict live setting pending activation, are in
   [`gate-map/gated.md`](gate-map/gated.md#the-merge-precondition).
 - `force-push-without-a-lease` — bare `--force`. `--force-with-lease` is Auto above; the lease is the
   whole difference, and it is why these are two rules rather than one with a caveat.
@@ -359,11 +359,11 @@ enforces:
 | Setting | Value | Configured in |
 |---|---|---|
 | Direct pushes | rejected — every change goes through a pull request | classic branch protection |
-| Required status checks | `workspace-verify` — the workspace's verify recipes — and, since 2026-07-27, `pr-labeled` — every pull request carries a label from the declared set. Both run by CI and both pinned to app 15368 | classic branch protection |
+| Required status checks | `workspace-verify` — the workspace's verify recipes — and, since 2026-07-27, `pr-labeled` — every pull request carries a label from the declared set. Both run by CI and both pinned to app 15368; `branch-freshness`, also pinned to app 15368, is prepared but not yet required live | classic branch protection |
 | Administrators | **included**; the maintainer has no exemption | classic branch protection, `enforce_admins` |
 | Required approving reviews | 0 — see [`gate-map/platform-floor.md`](gate-map/platform-floor.md) | classic branch protection |
 | Conversation resolution | required before merge — every thread *resolved*, which is not *adjudicated*; see [`gate-map/platform-floor.md`](gate-map/platform-floor.md) | classic branch protection |
-| Branch up to date with `main` before merging | **required** since 2026-07-27 — `strict: true`; a behind pull request reports `BEHIND` and cannot merge | classic branch protection, `required_status_checks.strict` |
+| Branch up to date with `main` before merging | **Live: `strict: true` pending activation.** The accepted replacement allows 0–10 behind and blocks 11 or more through `branch-freshness`; see the activation procedure | classic branch protection, `required_status_checks.strict` |
 | Force-pushes and branch deletion | blocked | classic branch protection **and**, separately, the organisation ruleset in [`gate-map/platform-floor.md`](gate-map/platform-floor.md) |
 | SHA-pinned Actions | **required, and enforced by the platform** — `sha_pinning_required: true` | organisation *and* repository Actions policy |
 

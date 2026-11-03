@@ -1,0 +1,32 @@
+name: branch freshness
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review, edited]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: write
+
+concurrency:
+  group: branch-freshness
+  cancel-in-progress: false
+
+jobs:
+  branch-freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Refresh every open PR head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .portulan/tools/branch-freshness.mjs

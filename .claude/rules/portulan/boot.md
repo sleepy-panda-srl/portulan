@@ -55,7 +55,7 @@ its spelling.
   `local-llm-off-loopback`, from the `tools/local-llm` pack. An idea that adds an axis, a mode or a
   surface starts as a proposal in `.portulan/proposals/`.
 - **Gated**, the maintainer's approval for each action, never inferred and never standing:
-  `merge-a-pull-request`, its head not behind `main`; `delete-a-remote-branch`,
+  `merge-a-pull-request`, its head at most ten commits behind `main`; `delete-a-remote-branch`,
   `force-push-without-a-lease`, `change-repository-settings`, `create-a-repository`,
   `rename-or-transfer-a-repository`, `delete-a-repository`, `tag-a-release`, `publish-a-release`,
   `publish-to-a-package-registry`, `spend-money-or-register-a-domain` and
