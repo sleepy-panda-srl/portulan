@@ -1,0 +1,1 @@
+- `portulan doctor` reports the declared tree's current branch usage through the existing ledger: host token classes and separate local receipt counts, tokens and elapsed time, with missing figures kept unknown. Optional missing or unreadable data stays non-fatal. `--static` skips usage-record discovery; repository verification and A/B construction use it explicitly.

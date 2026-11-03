@@ -23,7 +23,7 @@ export const SUBCOMMANDS = [
     {
         name: "doctor",
         module: "doctor.mjs",
-        summary: "validate a workspace against the Workspace Definition",
+        summary: "validate a workspace and report branch-owned host tokens beside local receipts; --static skips usage records",
     },
     {
         name: "compile",

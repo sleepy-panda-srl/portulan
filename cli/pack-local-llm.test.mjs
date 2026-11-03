@@ -23,6 +23,8 @@ import {
     currentScreen,
     DEFAULT_DEDUP_THRESHOLD,
     extractFencedCode,
+    EARNED_ROUTING,
+    operationalModel,
     FEEDBACK_CHARS,
     formatPassReceipt,
     foldAb,
@@ -52,6 +54,7 @@ import {
 } from "../packs/tools/local-llm/runner/local-llm.mjs";
 
 import { receiptOf } from "./ledger.mjs";
+import { deriveRouting, verifyRoutingRecord } from "./local-routing.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const RUNNER = path.join(REPO, "packs", "tools", "local-llm", "runner", "local-llm.mjs");
@@ -443,7 +446,7 @@ test("a refused endpoint or prompt sends nothing, and every chat-completions req
         assert.deepEqual(sent, []);
 
         for (const effort of ["low", "high"]) {
-            const given = effort === "low" ? [] : ["--effort", effort];
+            const given = ["--model", "explicit-candidate", ...(effort === "low" ? [] : ["--effort", effort])];
             named(await run(0, "chat", "--base-url", baseUrl, ...given, "--prompt", "hi"), effort, 1);
             named(await run(0, "summarize", "--base-url", baseUrl, ...given, "--prompt", "hi"), effort, 1);
             named(await run(0, "transform", "--base-url", baseUrl, ...given, "--file", file(), "--verify", "true", "--prompt", "set a"), effort, 1);
@@ -825,7 +828,7 @@ describe("the A/B record", () => {
 
         const help = spawnSync(process.execPath, [RUNNER, "--help"], { encoding: "utf8" });
         assert.equal(help.status, 0);
-        assert.match(help.stdout, /NO A\/B RECORD HAS BEEN CAPTURED YET/);
+        assert.match(help.stdout, /Routing evidence: evals\/ab\/local-worker.md/);
         assert.match(help.stdout, /PAID calls whose prompts LEAVE THIS MACHINE/);
     });
 
@@ -1225,4 +1228,129 @@ describe("dedup", () => {
             server.close();
         }
     });
+});
+
+describe("acquired local routing", () => {
+    const acquired = () => JSON.parse(fs.readFileSync(path.join(REPO, AB_RECORD), "utf8"));
+    test("rederives code support and withholds shared prose without changing historical task routing", async () => {
+        assert.deepEqual(TASK_ROLES, { code: "code", codify: "prose", handoff: "prose" });
+        assert.deepEqual(await deriveRouting(acquired()), EARNED_ROUTING.roles);
+        const rec = acquired();
+        const turn = rec.turns.find((t) => t.task === "code" && t.arm === "h");
+        Object.assign(turn, { completed: false, exit: 1, ok: null, detail: null, output: "authentication failed" });
+        rec.cells = foldAb(rec.turns, rec.k);
+        assert.equal((await deriveRouting(rec)).code.enabled, false, "incomplete H cannot earn a positive local tie");
+        rec.turns.pop();
+        await assert.rejects(deriveRouting(rec), RailError, "a malformed matrix earns nothing");
+    });
+
+    test("the acquired digest, role flags and model IDs are all held", async () => {
+        assert.match(await verifyRoutingRecord(REPO), /digest and models match/);
+        for (const edit of [
+            (r) => { r.sha256 = "0".repeat(64); },
+            (r) => { r.roles.prose.enabled = true; },
+            (r) => { r.roles.code.enabled = false; },
+            (r) => { r.roles.code.model = "unmeasured-model"; },
+        ]) {
+            const routing = structuredClone(EARNED_ROUTING); edit(routing);
+            await assert.rejects(verifyRoutingRecord(REPO, routing), /differs from its acquired record/);
+        }
+    });
+
+    test("unsupported defaults, explicit roles and overrides refuse before a socket or file change", async () => {
+        const target = path.join(scratch(), "mod.mjs");
+        fs.writeFileSync(target, "export const a = 1;\n");
+        let requests = 0;
+        const fetchImpl = async () => { requests++; throw new Error("no socket may open"); };
+        for (const args of [
+            ["summarize", "--prompt", "digest"],
+            ["chat", "--role", "prose", "--prompt", "draft"],
+            ["chat", "--role", "prose", "--model", "qwen/qwen3.8-27b", "--prompt", "draft"],
+            ["transform", "--role", "prose", "--file", target, "--verify", "true", "--prompt", "rewrite"],
+            ["transform", "--role", "code", "--model", "other", "--file", target, "--verify", "true", "--prompt", "rewrite"],
+            ["chat", "--effort", "high", "--prompt", "draft"],
+        ]) {
+            assert.equal((await captured(() => main(args, { fetchImpl }))).code, 1, args.join(" "));
+            assert.equal(fs.readFileSync(target, "utf8"), "export const a = 1;\n");
+        }
+        assert.equal(requests, 0);
+        assert.equal(operationalModel({ model: "candidate" }, "prose"), "candidate");
+        assert.equal(operationalModel({}, "code"), "qwen/qwen3.8-27b");
+        const mismatched = spawnSync(process.execPath, [RUNNER, "chat", "--base-url", "http://127.0.0.1:1/v1", "--prompt", "x"], {
+            encoding: "utf8", env: { ...process.env, PORTULAN_LOCAL_CODE_MODEL: "unmeasured" },
+        });
+        assert.equal(mismatched.status, 1, mismatched.stderr);
+        assert.match(mismatched.stderr, /was measured with/);
+    });
+
+    test("explicit model-only candidates and packs-only role dispatch remain usable without root records", async () => {
+        const root = scratch();
+        const copy = path.join(root, "runner.mjs"); fs.copyFileSync(RUNNER, copy);
+        const probe = spawnSync(process.execPath, ["--input-type=module", "-e", `
+            import assert from 'node:assert/strict';
+            import {main} from ${JSON.stringify(pathToFileURL(copy).href)};
+            let sent=0;
+            const fetchImpl=async (_url,init)=>{sent++;const body=JSON.parse(init.body);assert.equal(body.model,'qwen/qwen3.8-27b');return {ok:true,json:async()=>({choices:[{message:{content:'ok'}}]})};};
+            assert.equal(await main(['chat','--prompt','x'],{fetchImpl}),0);
+            assert.equal(await main(['summarize','--prompt','x'],{fetchImpl}),1);
+            assert.equal(await main(['summarize','--model','qwen/qwen3.8-27b','--prompt','x'],{fetchImpl}),0);
+            assert.equal(sent,2);
+        `], { encoding: "utf8", env: { ...process.env, PORTULAN_LOCAL_CODE_MODEL: "qwen/qwen3.8-27b" } });
+        assert.equal(probe.status, 0, probe.stderr);
+    });
+});
+
+test("authorized host replacement preserves every acquired local object and failed evidence byte", () => {
+    const dir = path.join(REPO, "evals/ab/acquisitions/2026-11-03-auth-failed");
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json")));
+    for (const file of ["local-worker.json", "local-worker.md"]) {
+        const bytes = fs.readFileSync(path.join(dir, file));
+        assert.equal(createHash("sha256").update(bytes).digest("hex"), manifest[file].sha256);
+        assert.equal(bytes.length, manifest[file].bytes);
+    }
+    const failed = JSON.parse(fs.readFileSync(path.join(dir, "local-worker.json")));
+    const final = JSON.parse(fs.readFileSync(path.join(REPO, AB_RECORD)));
+    assert.equal(fs.readFileSync(path.join(dir, "local-worker.md"), "utf8"), renderAbRegister(failed));
+    assert.deepEqual(final.turns.filter((t) => t.arm === "l"), failed.turns.filter((t) => t.arm === "l"));
+    assert.deepEqual({ ...final, turns: null, cells: null }, { ...failed, turns: null, cells: null });
+    assert.equal(failed.turns.filter((t) => t.arm === "h" && !t.completed && t.output.includes("OAuth session expired")).length, 15);
+    assert.equal(final.turns.filter((t) => t.arm === "h" && t.completed && t.exit === 0 && !t.timedOut && t.output.trim()).length, 15);
+});
+
+test("each A/B check result survives later greens and every check still runs", () => {
+    for (const codes of [[0,0,0],[1,0,0],[2,0,0],[0,1,0],[0,2,0],[1,2,0],[2,1,1],[0,0,1],[0,0,2],[3,0,0],[0,3,0]]) {
+        const dir = scratch();
+        const calls = path.join(dir, "calls");
+        const fake = path.join(dir, "node");
+        fs.writeFileSync(fake, `#!/bin/sh
+printf '%s\\n' "$1" >> '${calls}'
+case "$1" in
+cli/ab-run.mjs) exit ${codes[0]} ;;
+packs/tools/local-llm/runner/local-llm.mjs) exit ${codes[1]} ;;
+cli/local-routing.mjs) exit ${codes[2]} ;;
+*) exit 99 ;;
+esac
+`, { mode: 0o755 });
+        const result = spawnSync("bash", [path.join(REPO, ".portulan/verify/ab-run.sh")], { encoding: "utf8", env: { ...process.env, PATH: `${dir}${path.delimiter}${process.env.PATH}` } });
+        const want = codes.some((code) => code !== 0 && code !== 1) ? 2 : codes.includes(1) ? 1 : 0;
+        assert.equal(result.status, want, `${codes}: ${result.stderr}`);
+        assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), ["cli/ab-run.mjs", "packs/tools/local-llm/runner/local-llm.mjs", "cli/local-routing.mjs"]);
+    }
+});
+
+test("a zero-quality tie earns nothing and both prose tasks must qualify", async () => {
+    const record = () => JSON.parse(fs.readFileSync(path.join(REPO, AB_RECORD)));
+    const predicates = await loadPredicates();
+    const change = (rec, select, output) => {
+        for (const t of rec.turns.filter(select)) Object.assign(t, { output }, gradeRoleOutput(t.task, output, predicates));
+        rec.cells = foldAb(rec.turns, rec.k);
+    };
+    const zero = record();
+    change(zero, (t) => t.task === "code", "no exported code");
+    assert.equal((await deriveRouting(zero)).code.enabled, false);
+    const prose = record();
+    change(prose, (t) => t.task === "codify" && t.arm === "l", "**Incident.** x\n**Proposed rule.** x\n**Enforcement.** x\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n**Retire when.** x");
+    assert.equal((await deriveRouting(prose)).prose.enabled, true, "counterfactual codify support joins existing handoff support");
+    change(prose, (t) => t.task === "handoff" && t.arm === "l" && t.run === 0, "no handoff headings");
+    assert.equal((await deriveRouting(prose)).prose.enabled, false, "one failing handoff withholds the whole shared role");
 });

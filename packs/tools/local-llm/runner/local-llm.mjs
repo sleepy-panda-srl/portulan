@@ -21,12 +21,37 @@ export const FEEDBACK_CHARS = 1500;
 const VERIFY_KEEP_CHARS = 64 * 1024;
 export const RESTORE_SIGNALS = Object.freeze(["SIGINT", "SIGTERM", "SIGHUP"]);
 
+// Candidates retain the historical task map; operational roles are gated by EARNED_ROUTING below.
+// Evidence: evals/ab/local-worker.md; cli/local-routing.mjs checks the shipped support table.
 export const ROLE_MODELS = Object.freeze({
     code: process.env.PORTULAN_LOCAL_CODE_MODEL ?? "qwen/qwen3.8-27b",
     prose: process.env.PORTULAN_LOCAL_PROSE_MODEL ?? "google/gemma-4-31b",
     embed: process.env.PORTULAN_LOCAL_EMBED_MODEL ?? "text-embedding-nomic-embed-text-v1.5",
 });
 const CHAT_ROLES = new Set(["code", "prose"]);
+
+// Embedded so a packs-only install needs no root evals/ directory. CI rederives these values.
+export const EARNED_ROUTING = Object.freeze({
+    record: "evals/ab/local-worker.json",
+    sha256: "72501e02ce1284e96e19a29cfb60193552d3ac490e6e4c72391f6d68a42d01d2",
+    roles: Object.freeze({
+        code: Object.freeze({ model: "qwen/qwen3.8-27b", enabled: true }),
+        prose: Object.freeze({ model: "google/gemma-4-31b", enabled: false }),
+    }),
+});
+
+export function operationalModel(args, defaultRole) {
+    // An explicitly named model without a role is an operator's candidate, not earned routing.
+    if (args.model !== undefined && args.role === undefined) return args.model;
+    const role = args.role ?? defaultRole;
+    const earned = EARNED_ROUTING.roles[role];
+    if (!earned?.enabled) throw new RailError(`Local role ${role} is not supported by ${EARNED_ROUTING.record}; use the parent session, or explicitly evaluate a candidate with --model and no --role.`);
+    const model = args.model ?? ROLE_MODELS[role];
+    if (model !== earned.model) throw new RailError(`Local role ${role} was measured with ${earned.model}, not ${model}; use --model without --role for an explicit candidate.`);
+    if ((args.effort ?? "low") !== "low") throw new RailError(`Local role ${role} was measured at --effort low; use --model without --role for a candidate at another effort.`);
+    return model;
+}
+
 
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 
@@ -1378,8 +1403,10 @@ export const USAGE = `local-llm.mjs — a zero-dependency runner for a loopback 
                  is not beside packs/ to regrade with, 1 where anything disagrees.
   eval --write   re-render ${AB_REGISTER} from the committed record, refusing one --verify would red.
 
-NO A/B RECORD HAS BEEN CAPTURED YET: ${AB_RECORD} does not exist, so eval --verify is could-not-run,
-and the routing in ROLE_MODELS is not earned by one.
+Routing evidence: ${AB_REGISTER}, k=5. Code is enabled (L5/H5); shared prose is disabled
+(codify L0/H3, handoff L5/H5). Operational defaults and --role require the measured model at low
+effort. --model without --role is an explicit candidate; eval and eval --ab remain screens/captures
+and never enable a role automatically.
 
 Every chat request is refused off loopback unless --allow-remote is passed, and is refused over
 --max-input-bytes (default ${DEFAULT_MAX_INPUT_BYTES}). --effort defaults to low.
@@ -1535,7 +1562,7 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
         }
 
         if (cmd === "chat" || cmd === "summarize") {
-            const chosen = args.model ?? (cmd === "summarize" && !args.role ? ROLE_MODELS.prose : model);
+            const chosen = operationalModel(args, cmd === "summarize" ? "prose" : "code");
             const reply = await callLocalChat({
                 baseUrl,
                 allowRemote: args.allowRemote,
@@ -1561,7 +1588,7 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
                 lineRange: args.lines ?? null,
                 instruction: args.prompt,
                 verifyCmd: args.verify,
-                model,
+                model: operationalModel(args, "code"),
                 baseUrl,
                 allowRemote: args.allowRemote,
                 maxInputBytes: args.maxInputBytes ?? DEFAULT_MAX_INPUT_BYTES,

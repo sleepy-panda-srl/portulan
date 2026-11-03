@@ -912,3 +912,66 @@ test("the tool spawns nothing except on the --export consent check", () => {
 test("serialize is the one place bytes are made, so the golden and the wire agree", () => {
     assert.equal(serialize({ a: 1 }), '{\n  "a": 1\n}\n');
 });
+
+
+test("doctor static mode is required per invocation and is local-record isolation, not network", () => {
+    assert.deepEqual(auditRecipeSource("node cli/doctor.mjs --static --pack-root packs .portulan examples"), []);
+    assert.deepEqual(auditRecipeSource("[ -f cli/doctor.mjs ]"), []);
+    assert.deepEqual(auditRecipeSource("for required in cli/doctor.mjs cli/compile.mjs; do test -f \"$required\"; done"), []);
+    assert.deepEqual(auditRecipeSource("node --no-warnings cli/doctor.mjs --static .portulan"), []);
+    for (const source of [
+        "node cli/doctor.mjs --pack-root packs .portulan",
+        "node cli/doctor.mjs --static .portulan; node cli/doctor.mjs examples",
+        "node cli/doctor.mjs .portulan && node cli/doctor.mjs --static examples",
+        "echo $(node cli/doctor.mjs .portulan)",
+        "node --no-warnings cli/doctor.mjs .portulan",
+    ]) {
+        const hits = auditRecipeSource(source);
+        assert.equal(hits.length, 1, source);
+        assert.match(hits[0].what, /local.*usage|usage.*record/i);
+        assert.doesNotMatch(hits[0].what, /network/);
+    }
+});
+
+test("doctor dispatch and process substitutions each require their own static selection", () => {
+    for (const source of [
+        "echo <(node cli/doctor.mjs --static .portulan) <(node cli/doctor.mjs examples)",
+        "printf '%s' >(node cli/doctor.mjs examples)",
+        "node cli/portulan.mjs doctor examples",
+        "node cli/portulan.mjs doctor --static .portulan; node cli/portulan.mjs doctor examples",
+        "portulan doctor examples", "npx portulan doctor examples",
+    ]) assert.ok(auditRecipeSource(source).length > 0, source);
+    for (const source of [
+        "echo <(node cli/doctor.mjs --static .portulan)",
+        "node cli/portulan.mjs doctor --static examples --pack-root packs",
+        "portulan doctor --static .portulan", "npx portulan doctor --static .portulan",
+        "node cli/portulan.mjs context .portulan",
+    ]) assert.deepEqual(auditRecipeSource(source), [], source);
+});
+
+test("background command boundaries cannot hide usage readers or contaminate safe invocations", () => {
+    for (const launcher of ["node cli/doctor.mjs", "node cli/portulan.mjs doctor", "portulan doctor", "npx portulan doctor"]) {
+        for (const leader of ["echo ready", "printf ready"]) {
+            assert.ok(auditRecipeSource(`${launcher} --static .portulan; ${leader} & ${launcher} examples`).length > 0);
+            assert.deepEqual(auditRecipeSource(`${launcher} --static .portulan & ${leader}`), []);
+        }
+    }
+    const runner = "node packs/tools/local-llm/runner/local-llm.mjs";
+    assert.deepEqual(auditRecipeSource(`${runner} --verify-offline & echo ready`), []);
+    assert.ok(auditRecipeSource(`echo ready & ${runner} status`).length > 0);
+});
+
+test("only exact no-model captured-record verification is admitted beside offline rails", () => {
+    const runner = "node packs/tools/local-llm/runner/local-llm.mjs";
+    assert.deepEqual(auditRecipeSource(`${runner} eval --verify`), []);
+    assert.deepEqual(auditRecipeSource(`${runner} eval --verify; ${runner} --verify-offline`), []);
+    for (const source of [
+        `${runner} eval --verify; ${runner} eval --ab`,
+        `${runner} eval --verify --write`,
+        `${runner} eval --verify --host-cmd claude`,
+        `${runner} eval --verify --base-url http://127.0.0.1:1/v1`,
+        `${runner} eval`, `${runner} status`,
+        `echo <(${runner} eval --ab)`,
+        `printf '%s' $(${runner} status)`,
+    ]) assert.equal(auditRecipeSource(source).length, 1, source);
+});

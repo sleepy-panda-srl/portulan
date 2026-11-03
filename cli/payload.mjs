@@ -31,6 +31,7 @@ export const EXCLUDED = {
         "the rig has one subject and it is not the reader's repository (#382)",
     "ab-run.mjs": "the A/B runner; its `SNAPSHOT` is one baseline, of one arm, on one date (#382)",
     "ab-grade.mjs": "the A/B graders, and a register of this repository's own stimuli (#382)",
+    "local-routing.mjs": "this repository's earned-routing policy check against its own acquired capture; workshop tooling like the A/B instruments, with runtime support metadata embedded in the pack",
     "warm.mjs":
         "the warm-start A/B runner: it starts real sessions on this repository's own tasks, and whether an " +
         "adopter's A/B ships with the adopter path is that change's to rule, not this one's",

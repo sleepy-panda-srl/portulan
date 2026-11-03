@@ -14,7 +14,7 @@ done
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd) || exit 2
 cd -- "$root" || exit 2
 
-for required in cli/ab-run.mjs cli/ab-grade.mjs cli/ab.mjs evals/ab/corpus.md; do
+for required in cli/ab-run.mjs cli/ab-grade.mjs cli/ab.mjs cli/local-routing.mjs packs/tools/local-llm/runner/local-llm.mjs evals/ab/corpus.md; do
     if [ ! -f "$required" ]; then
         printf 'verify: %s is missing — cannot check the A/B baseline\n' "$required" >&2
         exit 2
@@ -33,4 +33,18 @@ case "$status" in
         ;;
 esac
 
+# Keep all three results: could-not-run takes precedence over red, and no later green hides either.
+printf 'ab-run: checking the acquired local-worker record and register — no model is run\n'
+node packs/tools/local-llm/runner/local-llm.mjs eval --verify
+local_status=$?
+node cli/local-routing.mjs
+routing_status=$?
+for code in "$local_status" "$routing_status"; do
+    case "$code" in
+        0) ;;
+        1) [ "$status" -eq 0 ] && status=1 ;;
+        2) status=2 ;;
+        *) printf 'verify: local A/B check exited undocumented status %s\n' "$code" >&2; status=2 ;;
+    esac
+done
 exit "$status"

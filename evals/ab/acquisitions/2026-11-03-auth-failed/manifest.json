@@ -1,0 +1,12 @@
+{
+  "local-worker.json": {
+    "sha256": "48c039945e187e276ff643c3438927bf109b4283ad6dc85a38b4969dbe2d8ed6",
+    "git_blob": "1492f0ce77f73b1846187c787543ec5ef2492576",
+    "bytes": 19746
+  },
+  "local-worker.md": {
+    "sha256": "5f1020dfa9a2999942998985b9c45ea761af21296ec033d7c60b01f7bdf71946",
+    "git_blob": "2b6d72f71b0306e32c18c3934a3697ea11755e39",
+    "bytes": 8016
+  }
+}

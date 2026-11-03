@@ -1,6 +1,6 @@
 # `tools/local-llm` — Hybrid local-model execution under Portulan's rails
 
-A tool pack for **Hybrid AI Orchestration**, argued in Proposal [`0039`](../../../.portulan/proposals/0039-a-local-model-runs-without-the-host-floor-and-under-a-thinking-cap.md). It lets a frontier orchestrator session offload bounded code transformations, verify-gated red→green retries, research summarization, librarian drafts, and a screen of a curated slot for duplicate files to a local OpenAI-compatible runtime (such as **LM Studio** on `http://127.0.0.1:1234/v1` or **Ollama** on `http://127.0.0.1:11434/v1`) at **zero API token cost** and with a **zero-floor prompt prefix**.
+A tool pack for **Hybrid AI Orchestration**, argued in Proposal [`0039`](../../../.portulan/proposals/0039-a-local-model-runs-without-the-host-floor-and-under-a-thinking-cap.md). It lets a frontier orchestrator session offload bounded code transformations, verify-gated red→green retries and a screen of a curated slot for duplicate files to a local OpenAI-compatible runtime (such as **LM Studio** on `http://127.0.0.1:1234/v1` or **Ollama** on `http://127.0.0.1:11434/v1`) at **zero API token cost** and with a **zero-floor prompt prefix**.
 
 Composed through a workspace's `packs` array as `tools/local-llm`.
 
@@ -49,15 +49,30 @@ A score is a candidate, not a verdict: the runner neither merges nor edits a fil
 
 The pass is the [`delegate-local`](skills/delegate-local/SKILL.md) skill: check the server with
 `status`, scope the input with [`cli/symbols.mjs`](../../../cli/symbols.mjs) and `--lines`, choose the
-model by task shape, gate every edit with `--verify`, and read only the receipt back.
+supported role by task shape, gate every edit with `--verify`, and read only the receipt back.
+The acquired [record](../../../evals/ab/local-worker.md) supports `code` at low effort; shared `prose`
+is disabled because codify failed all five local turns. `summarize` defaults to that disabled role and
+refuses. An explicit `--model` without `--role` is an operator-selected candidate, not automatic routing.
 
 ## The A/B record
 
-The routing above is earned by an A/B record in `evals/ab/`, the shape of `evals/ab/baseline.md`:
-captured once, and its register re-rendered from the capture and byte-compared. **Neither exists
-yet.** `evals/ab/local-worker.json` and `evals/ab/local-worker.md` are written by a capture on a
-machine with a loopback server and the host's paid CLI, and none has run. Until one does, the routing
-in `ROLE_MODELS` is not earned, and `eval --verify` exits `2`: no record is not a verdict about one.
+The acquired [capture](../../../evals/ab/local-worker.json) and its generated
+[register](../../../evals/ab/local-worker.md) record five turns per task and arm on 2026-11-03:
+code L5/H5, codify L0/H3, handoff L5/H5. The [acquisition note](../../../evals/ab/local-worker-acquisition.md)
+keeps the failed authentication acquisition and the authorized host-only replacement auditable.
+
+The rule fixed before outcomes requires all five local turns to pass and all five host turns to
+complete, with local passes at least host passes. A positive 5/5 tie qualifies; a 0/5 tie does not.
+Both tasks must qualify for the shared prose role. Thus **code is enabled and prose is disabled**.
+Operational defaults and explicit `--role` calls require the measured model at low effort; a model
+override or environment variable cannot silently substitute another. Explicit `--model` without
+`--role`, `eval` and `eval --ab` remain candidate paths and never enable routing by themselves.
+
+`EARNED_ROUTING` embeds the capture's SHA-256, measured model IDs and support bits, so packs-only
+installs need no root `evals/` directory at runtime. The repository's
+[`cli/local-routing.mjs`](../../../cli/local-routing.mjs) regrades the record, reproduces its register,
+and independently derives those bits and models before comparing them with the shipped table.
+It is repository workshop tooling, excluded from npm like the earlier A/B instruments.
 
 - **`eval --ab --k 5 --seed <s> --host-cmd "<command>" --host-model <id> --write` captures it.** Arm L
   is each task's model as routed (`code` to `--role code`; `codify` and `handoff` to `--role prose`)
@@ -69,8 +84,10 @@ in `ROLE_MODELS` is not earned, and `eval --verify` exits `2`: no record is not 
   prompts it was graded under, as the capture recorded them, since nothing can later verify the first; the register carries `baseline.md`'s limit: `k = 5` per cell supports a
   recorded rate and nothing else. The machine is the CPU model, the memory, the platform and
   architecture, and the Node version, and never the hostname.
-- **Arm H is a paid run whose prompts leave the machine**, fifteen host calls, so it crosses the loopback
-  rail the rest of the runner holds and that `local-llm-off-loopback` records. It runs only where
+- **Arm H consumes host-account usage and its prompts leave the machine**, fifteen host calls, so it crosses the loopback
+  rail the rest of the runner holds and that `local-llm-off-loopback` records. Usage may be charged
+  through an API account or covered by a subscription; this acquisition used Claude Max sign-in with
+  Sonnet 5.5 and a configured total ceiling of $2.25, not an independently measured invoice amount. It runs only where
   `--host-cmd` names the host command; without it `--ab` refuses with exit `1`, the answer the runner
   gives any refused endpoint, before anything is contacted. **It runs under the operator's full
   environment and credentials**, which is how it reaches the host's account and also how anything the
@@ -111,9 +128,9 @@ in `ROLE_MODELS` is not earned, and `eval --verify` exits `2`: no record is not 
   alike: a synthetic fixture is not a capture.
   `eval --write` re-renders the register from the record, refusing one `--verify` would red.
 
-No recipe runs `eval --verify` yet, since a check with no record to check could only refuse. Wiring it
-into `.portulan/verify/ab-run.sh` beside `cli/ab-run.mjs --verify` arrives with the record, as do the
-citations from this section and `ROLE_MODELS`, and dropping the routing of any task the record shows
-lost.
+The `ab-run` recipe runs the earlier baseline verifier, exact no-model `eval --verify`, and the
+shipped-routing verifier on every pull request. A red or could-not-run result survives later greens;
+exit `2` takes precedence over exit `1`. No model is rerun in CI. `k = 5` supports these recorded rates,
+not general reliability, arbitrary task quality or independently observed host model identity.
 
 Not for multi-file architectural planning, ambiguous requirements (`clarify`), or pre-merge verdicts (`reviewer`).
