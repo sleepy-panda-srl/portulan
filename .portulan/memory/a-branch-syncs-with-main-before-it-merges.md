@@ -15,11 +15,10 @@ still describes the base it tested, so this allowance trades some integration ce
 The historical strict rule remains in [proposal 0011](../proposals/0011-no-merge-from-behind-main.md);
 [proposal 0040](../proposals/0040-allow-ten-commits-behind-main.md) records the accepted replacement.
 
-**Enforcement and limit:** the prepared `branch-freshness` workflow checks each head and refreshes all
+**Enforcement and limit:** the required `branch-freshness` workflow checks each head and refreshes all
 open PRs on PR/base events. It is asynchronous: delays, outages and movement after the final read can
 leave an older green applicable temporarily. It neither reruns CI against the newest base nor replaces
-the agent's immediate comparison. Live `strict: true` remains until the
-[activation procedure](../tools/branch-freshness.md) is demonstrated; a prepared policy is not a
-settings readback.
+the agent's immediate comparison. The [2026-11-03 activation](../tools/branch-freshness-activation-2026-11-03.md)
+read back native `strict: false` and the Actions-pinned required check, preserving other protections.
 
 **Retire when:** a merge queue or replacement rule supersedes this explicit ten-commit allowance.

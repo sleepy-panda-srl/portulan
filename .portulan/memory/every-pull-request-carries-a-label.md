@@ -1,5 +1,5 @@
 **type:** rule
-**dated:** 2026-09-24
+**dated:** 2026-11-03
 **scope:** workspace — every pull request opened here
 **provenance:** `form=link` `href=8a33f9b:.portulan/handoffs/2026-07-27-nothing-merges-behind-main.md`
 — the maintainer, 2026-07-27: *"each PR should have a label and be labeled accordingly"*, ruled when 45
@@ -16,14 +16,10 @@ person judges that it fits.
 
 **The rail**, [`pr-labels.yml`](../../.github/workflows/pr-labels.yml), is required since 2026-07-27.
 Contexts go whole, each with its `app_id`: the array is replaced, and a context without one passes for
-any App reporting its name.
+any App reporting its name. The [2026-11-03 snapshot](../tools/branch-freshness-activation-2026-11-03.md)
+also retains the required freshness check; read current settings and preserve additional contexts
+before changing the array.
 
-```
-gh api -X PATCH repos/sleepy-panda-srl/portulan/branches/main/protection/required_status_checks \
-  --input - <<'JSON'
-{"strict":true,"checks":[{"context":"workspace-verify","app_id":15368},{"context":"pr-labeled","app_id":15368}]}
-JSON
-```
 
 **Adding a label to `labels.json` does not create it on GitHub**, and nobody can apply it until it
 exists. From the root, idempotent, skipping Dependabot's two:

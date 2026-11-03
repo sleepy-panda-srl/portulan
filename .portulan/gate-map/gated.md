@@ -126,15 +126,17 @@ an approved merge, read the live `main` SHA from `branches/main` and the PR's he
 those exact commits. A PR's stored `base.sha` can lag `main` and must not supply the base. `behind_by` must
 be an integer in 0–10; a failed read is not zero. Syncing and rerunning the checks is the remedy at 11.
 
-The prepared `branch-freshness` workflow runs trusted `main` code on PR events and base pushes, scans
+The required `branch-freshness` workflow runs trusted `main` code on PR events and base pushes, scans
 all open PRs and publishes a check on each head, retrying movement boundedly. It is asynchronous:
 event delays, workflow/API outages and movement after the final read can leave an earlier green
 applicable temporarily. It does not prove that CI tested the newest base. The immediate comparison
 above remains the agent's precondition, not a platform guarantee.
 
-**Live strict freshness remains enabled until activation is demonstrated.** The replacement requires
-the live-main correction's specifically approved merge, Actions-attributed head checks, and a narrow protection PATCH through
-a supported Panda administration route. See [the activation procedure](../tools/branch-freshness.md).
+**Activated 2026-11-03: native `strict: false` and Actions-pinned `branch-freshness` required.**
+The approved live-main correction merged, every existing head check was verified, and the narrow
+Panda protection PATCH was read back with other protections unchanged. See the
+[activation record](../tools/branch-freshness-activation-2026-11-03.md) and
+[procedure](../tools/branch-freshness.md).
 The gate reason reaches a wrapped merge spelling; the native permission prompt can discard it, as
 [`cli/gate.mjs`](../../cli/gate.mjs) records.
 
