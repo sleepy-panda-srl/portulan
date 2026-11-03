@@ -30,14 +30,17 @@ import {
     projectKey,
     readLine,
     readSpend,
+    receiptOf,
     readTranscript,
     restartThreshold,
     run,
     sessionFigures,
     tally,
+    tallyLocal,
     thresholdFor,
     worktrees,
 } from "./ledger.mjs";
+import { formatPassReceipt } from "../packs/tools/local-llm/runner/local-llm.mjs";
 
 // The ledger's defaults read the host's configuration home: point it at an empty one.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
@@ -47,6 +50,7 @@ process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const TOOL = path.join(REPO, "cli", "ledger.mjs");
 const FIXTURE = path.join(REPO, "cli", "fixtures", "ledger");
+const HYBRID = path.join(REPO, "cli", "fixtures", "ledger-hybrid");
 
 function withTemp(fn) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-ledger-"));
@@ -73,6 +77,20 @@ const write = (file, lines) => {
 };
 
 const boundary = (chain = {}) => JSON.stringify({ type: "system", subtype: "compact_boundary", timestamp: "2026-09-23T10:00:00.000Z", ...chain });
+
+/** A request whose one block calls a tool, as the host writes it. */
+function calling(call, { name = "Bash", ...o } = {}) {
+    const [line] = blocks(o);
+    const record = JSON.parse(line);
+    record.message.content = [{ type: "tool_use", id: call, name, input: {} }];
+    return JSON.stringify(record);
+}
+
+/** The host's record of a tool's output, which it writes as the next user turn. */
+const answering = (call, content, { cwd = "/r", branch = "b", sidechain = false, agentId = undefined } = {}) =>
+    JSON.stringify({ type: "user", isSidechain: sidechain, ...(agentId ? { agentId } : {}), cwd, gitBranch: branch, timestamp: "2026-09-23T10:00:01.000Z", message: { role: "user", content: [{ tool_use_id: call, type: "tool_result", content, is_error: false }] } });
+
+const RECEIPT = "OK mode=transform model=local-coder target=a b.mjs attempts=2 in=1840t out=412t time=5310ms rate=77.6tok/s spend=$0.00";
 
 describe("reading one transcript", () => {
     test("a request written once per content block is counted once, each class at the largest its records carry", () => {
@@ -182,9 +200,10 @@ describe("reading one transcript", () => {
     });
 
     test("folding a transcript in pieces gives the figures a whole read gives, wherever it is cut", () => {
-        for (const file of fs.readdirSync(path.join(FIXTURE, "projects"), { recursive: true }).filter((f) => f.endsWith(".jsonl"))) {
-            const source = fs.readFileSync(path.join(FIXTURE, "projects", file), "utf8");
-            const whole = readTranscript(path.join(FIXTURE, "projects", file)).figures;
+        const transcripts = [FIXTURE, HYBRID].flatMap((root) => fs.readdirSync(path.join(root, "projects"), { recursive: true }).filter((f) => f.endsWith(".jsonl")).map((f) => path.join(root, "projects", f)));
+        for (const file of transcripts) {
+            const source = fs.readFileSync(file, "utf8");
+            const whole = readTranscript(file).figures;
             const lines = source.split("\n");
             for (let cut = 0; cut <= lines.length; cut += 1) {
                 const figures = sessionFigures();
@@ -213,6 +232,131 @@ describe("reading one transcript", () => {
             const figures = readTranscript(path.join(dir, "blocks.jsonl")).figures;
             assert.deepEqual(figures.recent, ["msg_first", "msg_long", "msg_next"]);
             assert.deepEqual(figures, readTranscript(path.join(dir, "once.jsonl")).figures);
+        });
+    });
+});
+
+describe("the local runner's receipts", () => {
+    test("a receipt is the runner's whole line, read as it prints it, and a figure it printed as ? is unreported, never 0", () => {
+        assert.deepEqual(receiptOf(RECEIPT), { mode: "transform", model: "local-coder", attempts: 2, in: 1840, out: 412, time: 5310 });
+        const unreported = formatPassReceipt({ mode: "summarize", model: "m" });
+        assert.deepEqual(receiptOf(unreported), { mode: "summarize", model: "m", attempts: 1, in: null, out: null, time: null });
+        const reported = formatPassReceipt({ mode: "chat", model: "m", promptTokens: 0, completionTokens: 7, totalMs: 1, tokPerSec: 7000 });
+        assert.deepEqual(receiptOf(reported), { mode: "chat", model: "m", attempts: 1, in: 0, out: 7, time: 1 });
+    });
+
+    test("a line one edit from a receipt is no receipt", () => {
+        const near = [
+            RECEIPT.replace("spend=$0.00", "spend=$0.01"),
+            RECEIPT.replace("spend=$0.00", "spend=$0.00 (cached)"),
+            ` ${RECEIPT}`,
+            `${RECEIPT}\r`,
+            RECEIPT.replace("OK ", "ok "),
+            RECEIPT.replace("attempts=2", "attempts=0"),
+            RECEIPT.replace("attempts=2 ", ""),
+            RECEIPT.replace("in=1840t", "in=?t"),
+            RECEIPT.replace("in=1840t", "in=1840"),
+            RECEIPT.replace("in=1840t", "in=01840t"),
+            RECEIPT.replace("out=412t", "out=-412t"),
+            RECEIPT.replace("out=412t", "out=4.5t"),
+            RECEIPT.replace("time=5310ms", "time=5310s"),
+            RECEIPT.replace("in=1840t", `in=${"9".repeat(17)}t`),
+            RECEIPT.replace("model=local-coder", "model="),
+            `$ echo ${RECEIPT}`,
+        ];
+        for (const line of near) assert.equal(receiptOf(line), null, JSON.stringify(line));
+    });
+
+    test("only a Bash call's result is read for receipts: a prompt, an assistant's text, an agent's report and an unanswered result are not", () => {
+        withTemp((dir) => {
+            const file = path.join(dir, "s.jsonl");
+            const [said] = blocks({ id: "msg_said" });
+            const quoting = JSON.parse(said);
+            quoting.message.content = [{ type: "text", text: RECEIPT }];
+            write(file, [
+                JSON.stringify({ type: "user", cwd: "/r", gitBranch: "b", message: { role: "user", content: `${RECEIPT}\n` } }),
+                JSON.stringify(quoting),
+                calling("toolu_bash"),
+                answering("toolu_bash", `stdout first\n${RECEIPT}\nstderr after`),
+                calling("toolu_text", {}),
+                answering("toolu_text", [{ type: "text", text: RECEIPT }]),
+                calling("toolu_agent", { name: "Agent" }),
+                answering("toolu_agent", [{ type: "text", text: RECEIPT }]),
+                calling("toolu_mixed"),
+                answering("toolu_mixed", [{ type: "text", text: RECEIPT }, { type: "image" }]),
+                answering("toolu_unasked", RECEIPT),
+            ]);
+            const t = readTranscript(file);
+            assert.deepEqual(t.receipts.map((r) => r.key), ["toolu_bash#0", "toolu_text#0"]);
+            assert.equal(t.records, 5, "a tool result is no usage record");
+            assert.equal(t.malformed, 0);
+        });
+    });
+
+    test("a receipt counts once, inside the roots, on the branch its own record names, and its figures stay apart from the host's", () => {
+        withTemp((dir) => {
+            const projects = path.join(dir, "projects");
+            const session = [calling("toolu_1", { w1h: 1000 }), answering("toolu_1", RECEIPT), calling("toolu_2", { read: 1000 }), answering("toolu_2", formatPassReceipt({ mode: "chat", model: "m", promptTokens: 5 }), { branch: "other" })];
+            write(path.join(projects, projectKey("/r"), "s.jsonl"), session);
+            write(path.join(projects, projectKey("/r"), "t.jsonl"), session.slice(0, 2));
+            write(path.join(projects, projectKey("/r-old"), "u.jsonl"), [calling("toolu_3", { cwd: "/r-old" }), answering("toolu_3", RECEIPT, { cwd: "/r-old" })]);
+            const report = ledger({ projects, config: null, roots: ["/r"], branch: "b" });
+            assert.deepEqual(report.local, { receipts: 1, sessions: 1, in: 1840, out: 412, time: 5310, unreported: { in: 0, out: 0, time: 0 } });
+            assert.deepEqual([report.figures.total.uncached, report.figures.total.output], [2, 2], "the host's tokens are its two requests', with nothing of the receipt's");
+            assert.deepEqual(tallyLocal(report.collected.receipts, "other"), { receipts: 1, sessions: 1, in: 5, out: null, time: null, unreported: { in: 0, out: 1, time: 1 } });
+            assert.deepEqual(tallyLocal([], "b"), { receipts: 0, sessions: 0, in: null, out: null, time: null, unreported: { in: 0, out: 0, time: 0 } });
+        });
+    });
+
+    test("a receipt in a subagent's own transcript is the subagent's, counted under its session", () => {
+        withTemp((dir) => {
+            const projects = path.join(dir, "projects");
+            write(path.join(projects, projectKey("/r"), "s.jsonl"), [calling("toolu_a", { name: "Agent", w1h: 1000 }), answering("toolu_a", [{ type: "text", text: RECEIPT }])]);
+            write(path.join(projects, projectKey("/r"), "s", "subagents", "agent-lw.jsonl"), [calling("toolu_b", { sidechain: true, agentId: "lw" }), answering("toolu_b", RECEIPT, { sidechain: true, agentId: "lw" })]);
+            const report = ledger({ projects, config: null, roots: ["/r"], branch: "b" });
+            assert.deepEqual(report.collected.receipts.map((r) => [r.session, r.agent, r.key]), [["s", "lw", "toolu_b#0"]]);
+            assert.equal(report.local.receipts, 1);
+        });
+    });
+
+    test("receipts are never a figure of the threshold: whatever they carry, it is the host's alone, and finite", () => {
+        withTemp((dir) => {
+            const file = (name) => path.join(dir, `${name}.jsonl`);
+            const host = [calling("toolu_1", { w1h: 40000 }), calling("toolu_2", { uncached: 2, w1h: 500, read: 40000 })];
+            const odd = ["OK mode=chat model=m attempts=1 in=0t out=0t time=0ms rate=0tok/s spend=$0.00", formatPassReceipt({ mode: "chat", model: "m" }), RECEIPT.replace("in=1840t", `in=${Number.MAX_SAFE_INTEGER}t`)];
+            write(file("host"), host);
+            write(file("hybrid"), [host[0], answering("toolu_1", odd.join("\n")), host[1], answering("toolu_2", RECEIPT)]);
+            const hybrid = readTranscript(file("hybrid"));
+            assert.equal(hybrid.receipts.length, 4);
+            assert.deepEqual(hybrid.figures, readTranscript(file("host")).figures);
+            const figure = thresholdFor(hybrid);
+            assert.ok(Number.isFinite(figure.threshold) && figure.threshold > 0, String(figure.threshold));
+            assert.equal(figure.threshold, restartThreshold({ fresh: 40001, write: 2, read: GENERAL_READ }));
+            // The advisory folds line by line, and a result line leaves its figures as they were.
+            const before = JSON.stringify(hybrid.figures);
+            assert.equal(JSON.stringify(foldFigures(hybrid.figures, readLine(answering("toolu_1", RECEIPT)))), before);
+        });
+    });
+
+    test("a zero-price multiplier is refused wherever one could arrive, so $0.00 is never divided by", () => {
+        const write5 = { "5m": 1.25, "1h": 2 };
+        assert.throws(() => readSpend({ multipliers: { read: 0, write: write5 } }, "ws/workspace.json"), (error) => error instanceof LedgerError && /sets `read` to 0, which is not a number above 0 and at most 1/.test(error.message));
+        for (const zero of [{ read: 0 }, { write: 0 }, { fresh: 0 }, { horizon: 0 }, { read: Number.NaN }]) {
+            assert.throws(() => restartThreshold({ fresh: 1, read: 0.1, write: 2, horizon: 20, ...zero }), LedgerError, JSON.stringify(zero));
+        }
+        // A session whose only records are receipts has no fresh context, so no threshold, and says what one would take.
+        withTemp((dir) => {
+            const projects = path.join(dir, "projects");
+            write(path.join(projects, projectKey("/r"), "s.jsonl"), [calling("toolu_1", { branch: "other" }), answering("toolu_1", RECEIPT)]);
+            const report = ledger({ projects, config: null, roots: ["/r"], branch: "b" });
+            assert.equal(report.restart, null);
+            const lines = [];
+            print(report, (l) => lines.push(l));
+            assert.deepEqual(lines.slice(3, 5), [
+                "  no request on b is recorded here",
+                "  local worker: 1 line(s) in the runner's receipt format, from Bash results in 1 session(s), at $0.00, none of it in the host's tokens or the restart threshold: in 1,840 tokens, out 412 tokens, time 5,310 ms",
+            ]);
+            assert.match(lines[5], /^  restart: no session on this branch has a request with a time to judge; a threshold would take a horizon of 20 requests/);
         });
     });
 });
@@ -478,19 +622,50 @@ describe("the command", () => {
         return { lines, fn: (l) => lines.push(l) };
     };
 
-    test("the committed fixture reproduces its known totals", () => {
-        const out = say();
-        assert.equal(run(["--fixture", FIXTURE], out.fn), 0, out.lines.join("\n"));
-        assert.match(out.lines.at(-1), /ok fixture/);
+    test("the committed fixtures reproduce their known totals", () => {
+        for (const fixture of [FIXTURE, HYBRID]) {
+            const out = say();
+            assert.equal(run(["--fixture", fixture], out.fn), 0, out.lines.join("\n"));
+            assert.match(out.lines.at(-1), /ok fixture/);
+        }
     });
 
-    test("the fixture is what its generator writes, byte for byte, known totals included", () => {
+    test("each fixture is what its generator writes, byte for byte, known totals included", () => {
+        for (const [fixture, generator] of [[FIXTURE, "generate-ledger.mjs"], [HYBRID, "generate-ledger-hybrid.mjs"]]) {
+            withTemp((dir) => {
+                const result = spawnSync(process.execPath, [path.join(REPO, "cli", "fixtures", generator), dir], { encoding: "utf8" });
+                assert.equal(result.status, 0, result.stderr);
+                const files = (root) => fs.readdirSync(root, { recursive: true }).filter((f) => fs.statSync(path.join(root, f)).isFile()).sort();
+                assert.deepEqual(files(dir), files(fixture));
+                for (const f of files(fixture)) assert.ok(fs.readFileSync(path.join(dir, f)).equals(fs.readFileSync(path.join(fixture, f))), `${f} is not what ${generator} writes`);
+            });
+        }
+    });
+
+    test("the hybrid session's receipts are on their own line at $0.00, beside the host's tokens and its finite threshold", () => {
+        const out = say();
+        assert.equal(run(["--fixture", HYBRID], out.fn), 0, out.lines.join("\n"));
+        const at = out.lines.findIndex((l) => l.startsWith("  local worker: "));
+        assert.equal(out.lines[at - 1].trimStart().split(/\s+/)[0], "output", "it follows the host's token rows");
+        assert.equal(
+            out.lines[at],
+            "  local worker: 3 line(s) in the runner's receipt format, from Bash results in 1 session(s), at $0.00, none of it in the host's tokens or the restart threshold: in 5,010 tokens, out 600 tokens (1 receipt(s) did not report it), time 7,710 ms (1 receipt(s) did not report it)",
+        );
+        assert.ok(out.lines.some((l) => l.startsWith("  restart: session hybrid is at 43,601 tokens and is below its threshold of 76,006 = ")), out.lines.join("\n"));
+        const plain = say();
+        run(["--fixture", FIXTURE], plain.fn);
+        assert.ok(plain.lines.includes("  local worker: no line in the runner's receipt format on feature/x is recorded here"));
+    });
+
+    test("a hybrid fixture that counts a receipt it should not is red, and names the figure", () => {
         withTemp((dir) => {
-            const result = spawnSync(process.execPath, [path.join(REPO, "cli", "fixtures", "generate-ledger.mjs"), dir], { encoding: "utf8" });
-            assert.equal(result.status, 0, result.stderr);
-            const files = (root) => fs.readdirSync(root, { recursive: true }).filter((f) => fs.statSync(path.join(root, f)).isFile()).sort();
-            assert.deepEqual(files(dir), files(FIXTURE));
-            for (const f of files(FIXTURE)) assert.ok(fs.readFileSync(path.join(dir, f)).equals(fs.readFileSync(path.join(FIXTURE, f))), `${f} is not what the generator writes`);
+            fs.cpSync(HYBRID, dir, { recursive: true });
+            const spec = JSON.parse(fs.readFileSync(path.join(dir, "fixture.json"), "utf8"));
+            spec.expect.local.receipts += 1;
+            fs.writeFileSync(path.join(dir, "fixture.json"), JSON.stringify(spec));
+            const out = say();
+            assert.equal(run(["--fixture", dir], out.fn), 1);
+            assert.ok(out.lines.some((l) => l.startsWith('  ✗ fixture: local is {"receipts":3,')), out.lines.join("\n"));
         });
     });
 
@@ -720,7 +895,7 @@ describe("the command", () => {
     test("the recipe runs the fixture and nothing of the host's", () => {
         const recipe = fs.readFileSync(path.join(REPO, ".portulan", "verify", "ledger.sh"), "utf8");
         const calls = recipe.split("\n").filter((l) => /node cli\/ledger\.mjs/.test(l) && !l.trimStart().startsWith("#"));
-        assert.deepEqual(calls.map((l) => l.trim()), ['node cli/ledger.mjs --fixture "$FIXTURE"']);
+        assert.deepEqual(calls.map((l) => l.trim()), ['node cli/ledger.mjs --fixture "$FIXTURE"', 'node cli/ledger.mjs --fixture "$HYBRID" >"$tmp/hybrid"']);
         assert.match(recipe, /export HOME="\$tmp\/home" CLAUDE_CONFIG_DIR="\$tmp\/home\/\.claude" TMPDIR="\$tmp\/state"/);
     });
 });

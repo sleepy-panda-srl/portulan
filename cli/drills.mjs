@@ -200,6 +200,17 @@ export const DRILLS = [
         why: "The host writes one usage record per content block, so a reader that stops deduplicating by message id multiplies every figure by the blocks per request and still prints plausible numbers. The fixture's known totals are the only thing that tells those numbers from the true ones.",
     },
     {
+        rail: "ledger",
+        perturb: {
+            file: "cli/ledger.mjs",
+            find: "if (!calls.has(result.call)) continue;",
+            replace: "if (result.call === null) continue;",
+        },
+        exit: 1,
+        tell: "✗ fixture: local is",
+        why: "A local worker's subagent reports its receipt back to the session that delegated it, so a reader that takes a receipt from any tool result counts the same local work twice, once from the Bash call that ran it and once from the report quoting it, and the hybrid line still reads like a figure. Only the hybrid fixture's known receipt count tells the two apart.",
+    },
+    {
         rail: "control-chars",
         perturb: {
             file: "CONTRIBUTING.md",
