@@ -1,17 +1,18 @@
-# Task 0020 — sync a branch once it is ten commits behind
+# Task 0020 — allow ten commits behind main
 
-**Lane:** full · **Opened:** 2026-11-03 · **Status:** PLANNED
+**Lane:** full · **Opened:** 2026-11-03 · **Status:** PREPARED — activation pending
 
-The maintainer requested that the out-of-date merge rule apply only once a branch is ten commits
-behind its base. The boundary is 0–9 allowed, 10 or more requiring a sync. This amends proposal 0011;
+The maintainer requested that the out-of-date merge rule apply once a branch exceeds ten commits
+behind its base. His clarification allows 0–10 and requires a sync at 11 or more. This amends proposal 0011;
 no milestone status changes.
 
 **Acceptance criteria.**
 
-- When a PR is 0–9 commits behind its base, the freshness check shall pass; when it is ten or more,
+- When a PR is 0–10 commits behind its base, the freshness check shall pass; when it is 11 or more,
   the check shall fail and require a sync.
-- When comparison data is invalid or unavailable, the check shall remain nonpassing for that head
-  and the scan shall continue to the other PRs.
+- When comparison data is invalid or unavailable and check writes succeed, the head check shall
+  fail and the scan shall continue to other PRs; a transport failure shall fail the updater run
+  and report which PR could not be judged, with its stale-result limit documented.
 - When a PR or `main` changes, the workflow shall refresh all open PRs targeting `main` from current
   exact SHAs, retry movement boundedly, and execute trusted base code rather than a PR's code.
 - When an existing gate policy omits the new option, the compiler shall retain strict freshness;
@@ -20,6 +21,8 @@ no milestone status changes.
   shall demonstrate the Actions-pinned head checks before disabling native strict freshness.
 - When reporting completion, the record shall distinguish prepared code from live settings and
   state the asynchronous event, outage and final-read race limits.
+
+The maintainer clarified the boundary on 2026-11-03: “Up to 10 commits behind main. It should fails if it's behind 11 commits, not 10.” This replaces the initial 0–9 interpretation.
 
 ## Plan
 
@@ -51,3 +54,5 @@ bot route for the eventual protection PATCH is still needed. Do not bypass it wi
 
 Completion requires the replacement check active and the narrow settings change read back; a prepared
 PR alone does not demonstrate the live rule.
+
+The implementation pre-commit checkpoint and its final verification are recorded in the implementation commit.

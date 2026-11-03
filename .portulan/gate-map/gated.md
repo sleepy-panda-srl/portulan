@@ -120,17 +120,22 @@ into the very paragraph about clarifications that cannot be found. Caught by the
 
 ### The merge precondition
 
-The approval is the maintainer's decision that the
-change should land; being in sync is what makes the green check describe the tree it will land *as*,
-since CI tests `refs/pull/N/merge` against `main` as it stood when the run happened and nothing re-runs
-it when `main` moves. Reasoning and the local spelling:
-[`memory/a-branch-syncs-with-main-before-it-merges.md`](../memory/a-branch-syncs-with-main-before-it-merges.md).
-**And this one is a rail, since 2026-07-27** — `required_status_checks.strict` is `true` on `main` (see
-[the platform floor](../gate-map.md#the-platform-floor)), so a behind pull request reports `BEHIND` and the platform refuses the merge
-for the maintainer too. [`gates.json`](../gates.json)'s reason states the precondition as well, which is a
-courtesy and not a second layer: on a bare `gh pr merge` the permission rule matches and the host
-discards the hook's sentence, so that reason reaches an agent only on the wrapped spelling — the
-measurement is in [`cli/gate.mjs`](../../cli/gate.mjs)'s own header.
+[Proposal 0040](../proposals/0040-allow-ten-commits-behind-main.md) records the maintainer's 2026-11-03
+amendment: allow up to ten commits behind `main`; require a sync at eleven or more. Immediately before
+an approved merge, read its current base/head SHAs and compare those exact commits. `behind_by` must
+be an integer in 0–10; a failed read is not zero. Syncing and rerunning the checks is the remedy at 11.
+
+The prepared `branch-freshness` workflow runs trusted `main` code on PR events and base pushes, scans
+all open PRs and publishes a check on each head, retrying movement boundedly. It is asynchronous:
+event delays, workflow/API outages and movement after the final read can leave an earlier green
+applicable temporarily. It does not prove that CI tested the newest base. The immediate comparison
+above remains the agent's precondition, not a platform guarantee.
+
+**Live strict freshness remains enabled until activation is demonstrated.** The replacement requires
+the specifically approved merge, Actions-attributed head checks, and a narrow protection PATCH through
+a supported Panda administration route. See [the activation procedure](../tools/branch-freshness.md).
+The gate reason reaches a wrapped merge spelling; the native permission prompt can discard it, as
+[`cli/gate.mjs`](../../cli/gate.mjs) records.
 
 ## `change-repository-settings`
 
