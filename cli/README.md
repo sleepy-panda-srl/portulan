@@ -92,6 +92,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`ab-run.test.mjs`](ab-run.test.mjs) | Tests for `ab-run` — the A/B runner: isolation, the matrix, the journal, the register and the checks behind it. |
 | [`ab.test.mjs`](ab.test.mjs) | Tests for `ab` — the A/B arm builder: its disposition table, rule-2 matcher, nonces, isolation and stop probe. |
 | [`advisory.test.mjs`](advisory.test.mjs) | Tests for `advisory` — the restart advisory's one line with a tool result or at the prompt, and its figure in the status line. |
+| [`branch-freshness.test.mjs`](branch-freshness.test.mjs) | Tests for this repository's branch freshness check and trusted workflow. |
 | [`checkout-refs.live.test.mjs`](checkout-refs.live.test.mjs) | A workflow that checks out MORE THAN ONCE names the ref of every checkout after the first. |
 | [`cli-roster.live.test.mjs`](cli-roster.live.test.mjs) | `cli/README.md` is exactly what ./roster.mjs renders from this directory, and the render keeps its shape. |
 | [`collisions.test.mjs`](collisions.test.mjs) | The collision contract: `init`, `new` and `vendor` answer each contracted state alike, and no fourth `collisions` exists. |
