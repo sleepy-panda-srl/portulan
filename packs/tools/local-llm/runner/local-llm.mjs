@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Zero-dependency local LLM runner for Portulan: loopback guard, input-byte rail, verify-gated transform with rollback, role eval, embedding dedup, its A/B record, and offline self-test.
+// Local model runner: bounded calls, verified edits, role evals and dedup.
 //
 // Exit codes: 0 green · 1 red check or model/verify failure · 2 could not run.
 
@@ -11,6 +11,8 @@ import path from "node:path";
 import { performance } from "node:perf_hooks";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import http from "node:http";
+import https from "node:https";
 
 const RUNNER_FINGERPRINT = createHash("sha256").update(fs.readFileSync(new URL(import.meta.url))).digest("hex");
 
@@ -89,8 +91,14 @@ export function stripThinking(text) {
 
 export function extractFencedCode(text) {
     const cleaned = stripThinking(text);
-    const match = /```[a-zA-Z0-9_-]*\n([\s\S]*?)```/.exec(cleaned);
-    return match ? match[1] : cleaned;
+    const opening = /^[ \t]*(`{3,})([^\r\n]*)(?:\r?\n|$)/m.exec(cleaned);
+    if (!opening) return cleaned;
+    const rest = cleaned.slice(opening.index + opening[0].length);
+    const closing = new RegExp("^[ \\t]*`{" + opening[1].length + ",}[ \\t]*(?:\\r?\\n|$)", "m").exec(rest);
+    if (!closing || opening[2].includes("`")) {
+        throw new CouldNotRunError("Incomplete fenced local output; no replacement accepted");
+    }
+    return rest.slice(0, closing.index);
 }
 
 const figure = (value, unit) => (value === null || value === undefined ? "?" : `${value}${unit}`);
@@ -135,12 +143,79 @@ function stopVerify(child) {
     }
 }
 
+export const LOCAL_RESPONSE_DEADLINE_MS = 900_000;
+export const LOCAL_RESPONSE_MAX_BYTES = 262_144;
+
+export function localModelFetch(url, init = {}, { deadlineMs = LOCAL_RESPONSE_DEADLINE_MS, maxBytes = LOCAL_RESPONSE_MAX_BYTES } = {}) {
+  const target = new URL(url);
+  if (!['127.0.0.1', '[::1]', 'localhost'].includes(target.hostname) ||
+      !['http:', 'https:'].includes(target.protocol) || target.username || target.password) {
+    return Promise.reject(new Error('Local model transport requires literal loopback'));
+  }
+  if (target.hostname === 'localhost') target.hostname = '127.0.0.1';
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let timer;
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      init.signal?.removeEventListener('abort', abort);
+      if (error) reject(error); else resolve(value);
+    };
+    const req = (target.protocol === 'https:' ? https : http).request(target, {
+      method: init.method ?? 'GET', headers: init.headers, agent: false,
+    }, response => {
+      const chunks = [];
+      let size = 0;
+      const declared = Number(response.headers['content-length']);
+      if (Number.isFinite(declared) && declared > maxBytes) {
+        const error = Object.assign(new Error('Local model response exceeds size limit'), { code: 'LOCAL_RESPONSE_SIZE' });
+        finish(error);
+        req.destroy(error);
+        return;
+      }
+      response.on('data', chunk => {
+        size += chunk.length;
+        if (size > maxBytes) {
+          const error = Object.assign(new Error('Local model response exceeds size limit'), { code: 'LOCAL_RESPONSE_SIZE' });
+          finish(error);
+          req.destroy(error);
+        }
+        else chunks.push(chunk);
+      });
+      response.on('error', error => finish(error));
+      response.on('aborted', () => finish(new Error('Local model response was interrupted')));
+      response.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf8');
+        const status = response.statusCode ?? 0;
+        finish(null, {
+          ok: status >= 200 && status < 300, status,
+          json: async () => JSON.parse(body), text: async () => body,
+        });
+      });
+    });
+    const terminate = error => { finish(error); req.destroy(error); };
+    const abort = () => terminate(Object.assign(new Error('Local model request aborted'), { code: 'LOCAL_REQUEST_ABORTED' }));
+    req.on('error', error => finish(error));
+    timer = setTimeout(() => terminate(Object.assign(new Error('Local model response deadline exceeded; generation may still have been running'), { code: 'LOCAL_RESPONSE_TIMEOUT' })), deadlineMs);
+    if (init.signal?.aborted) abort();
+    else init.signal?.addEventListener('abort', abort, { once: true });
+    req.end(init.body);
+  });
+}
+
 async function localFetch(url, init, fetchImpl) {
     try {
-        return await fetchImpl(url, { ...init, redirect: "error" });
+        const target = new URL(url);
+        const localChat = ["127.0.0.1", "localhost", "[::1]"].includes(target.hostname) &&
+            target.pathname.endsWith("/chat/completions");
+        const transport = fetchImpl === globalThis.fetch && localChat ? localModelFetch : fetchImpl;
+        return await transport(url, { ...init, redirect: "error" });
     } catch (err) {
+        if (["LOCAL_GENERATION_INCOMPLETE", "LOCAL_RESPONSE_INVALID_JSON"].includes(err.code)) throw new CouldNotRunError(err.message);
         const cause = err.cause?.message ? ` (${err.cause.message})` : "";
-        throw new CouldNotRunError(`Local LLM server unreachable at ${url} — ${err.message}${cause}`);
+        throw new CouldNotRunError(`Local LLM transport failed at ${url} — ${err.message}${cause}`);
     }
 }
 
@@ -195,6 +270,9 @@ export async function callLocalChat({
         throw new CouldNotRunError(`Local LLM server returned a body that is not JSON — ${err.message}`);
     }
     const totalMs = Math.max(1, Math.round(performance.now() - t0));
+    if (data.choices?.[0]?.finish_reason === "length") {
+        throw new CouldNotRunError("Local generation incomplete: output budget exhausted; split the task and selected span before another request. No replacement accepted.");
+    }
     const rawContent = data.choices?.[0]?.message?.content ?? "";
     const promptTokens = data.usage?.prompt_tokens ?? null;
     const completionTokens = data.usage?.completion_tokens ?? null;

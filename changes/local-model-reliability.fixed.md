@@ -1,0 +1,1 @@
+- Allow default loopback chat generations up to a bounded 15-minute complete-response deadline, reject truncated output before applying edits, and correctly parse generated code fences containing whitespace or inline backticks. Model routing and operator-selected profiles remain unchanged.
