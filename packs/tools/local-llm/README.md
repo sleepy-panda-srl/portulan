@@ -24,13 +24,30 @@ Proposal [`0036`](../../../.portulan/proposals/0036-what-a-host-loads-into-every
 
 ## What the runner enforces in code
 
-[`runner/local-llm.mjs`](runner/local-llm.mjs) has **zero npm dependencies** (Node.js `>=20` built-in `fetch` and `node:child_process`) and enforces five rails:
+[`runner/local-llm.mjs`](runner/local-llm.mjs) has **zero npm dependencies** (Node.js `>=20` built-in HTTP, `fetch` and `node:child_process`) and enforces these rails:
 
 1. **Loopback-only by default.** Only `127.0.0.1`, `localhost`, and `[::1]` are permitted unless `--allow-remote` is explicitly passed, and a redirect is refused rather than followed off the machine. A proxy listening on loopback that forwards elsewhere is not visible to it, which is what the `local-llm-off-loopback` gate fragment records.
 2. **Zero-floor input budget (`--max-input-bytes`, default `32768`).** Refuses oversized prompts, and for `dedup` any file over the ceiling, before hitting the local server, directing the caller to scope with [`cli/symbols.mjs`](../../../cli/symbols.mjs) and `--lines` first. A value that is not a whole number is refused rather than read as no limit.
 3. **Explicit thinking cap (`--effort low`).** Passes `reasoning_effort: "low"` and `enable_thinking: false` by default so models whose chat templates default to `'xhigh'` thinking do not exhaust `max_tokens` inside `<think>` blocks.
 4. **Verify-gated transforms (`transform --file <path> --verify <cmd>`, `--verify` required).** Applies the local model's edit, runs the verify command, retries with the end of its output on exit `1`, and **restores the original file byte-for-byte** unless the command reaches exit `0`. Any exit other than `0` or `1` — `2`, a missing command, a signal — is no verdict: the file is restored at once and the runner exits `2`. SIGINT, SIGTERM and SIGHUP, whether they arrive during the model call or while the verify command runs, stop the verify, restore the file and exit `2`. **The limits:** this is a rollback, not an atomic write — any other signal that ends the runner (SIGKILL and SIGQUIT among them) or a power loss between the edit and its verdict leaves the edit in place, and since the verify runs in a process group of its own, such a signal leaves the verify running too, even one sent to the runner's whole group. Signal handling is POSIX's: on Windows no SIGTERM arrives, and stopping the verify stops only its shell.
 5. **Role screening (`eval`).** Grades an installed local model against Portulan's own [`cli/comments.mjs`](../../../cli/comments.mjs), [`cli/doctor.mjs`](../../../cli/doctor.mjs), and [`cli/skill-goldens.mjs`](../../../cli/skill-goldens.mjs) predicates across `code`, `codify`, and `handoff` tasks. It takes **one sample per task and has no baseline arm**, so it is a screen, not the A/B run `0038` requires before a role is routed: a model that fails it is not routed, and passing it earns nothing. It needs `cli/` beside `packs/`, as the repository and the npm package carry it, exiting `2` where only `packs/` was installed. The A/B run is [*The A/B record*](#the-ab-record) below.
+
+Default loopback `/chat/completions` calls use a finite 15-minute deadline over the
+connection, headers and complete response body, with a 256-KiB response limit.
+This avoids Node fetch's five-minute header wait for non-streaming thinking models.
+`localhost` is pinned to 127.0.0.1 without DNS; `[::1]` remains available. Redirects
+are refused. Explicit injected fetches, authorized remote calls and embeddings
+retain their existing transport behavior and response capacity. A caller injecting
+its own transport can explicitly use the exported `localModelFetch`; the default
+repair cannot change a transport hidden inside an injection.
+
+A response ending with `finish_reason: length` is incomplete and is rejected before
+a replacement or verifier can run. Workspaces may enforce stronger completion or
+slice limits without changing earned routing or model profiles. The code extractor
+accepts valid whitespace/language fences, preserves inline backticks, and rejects
+an unfinished fence. Provenance: owner Marius, November 5, 2026; local thinking
+generations were interrupted by a client deadline and valid generated fences were
+misparsed. These repairs change transport/completion handling, not model quality.
 
 A receipt prints a figure the server did not report as `?`, never as `0`, and `time=` is the model's request time, summed over a transform's attempts like `in=` and `out=`: the runner does not stream, so it cannot see a first token.
 
@@ -53,6 +70,10 @@ supported role by task shape, gate every edit with `--verify`, and read only the
 The acquired [record](../../../evals/ab/local-worker.md) supports `code` at low effort; shared `prose`
 is disabled because codify failed all five local turns. `summarize` defaults to that disabled role and
 refuses. An explicit `--model` without `--role` is an operator-selected candidate, not automatic routing.
+Delegate one complete function or a small test group per call, specify one observable change, prefer
+serial calls, and keep output to the selected replacement. On truncated output split work; on transport
+failure inspect the transport; on verifier failure inspect code. Do not lower an operator-pinned
+model/effort or bypass verification. This advice reduces failures, does not guarantee completion.
 
 ## The A/B record
 

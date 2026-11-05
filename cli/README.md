@@ -120,6 +120,8 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`ledger.test.mjs`](ledger.test.mjs) | Tests for `ledger` — what a change spends, from the host's own usage records. |
 | [`librarian.test.mjs`](librarian.test.mjs) | Tests for `librarian` — the scheduled pass over the curated layer. |
 | [`list-quoting.live.test.mjs`](list-quoting.live.test.mjs) | Every recipe that enumerates the tree reads the pathname git actually carries. |
+| [`local-completion.test.mjs`](local-completion.test.mjs) | Local completion and fenced-code regression tests. |
+| [`local-transport.test.mjs`](local-transport.test.mjs) | Local HTTP deadlines, response bounds and compatibility tests. |
 | [`mutants.test.mjs`](mutants.test.mjs) | Tests for `mutants`, the mutation-census rail: its operator table, its imports, its corpus and its refusals. |
 | [`new.test.mjs`](new.test.mjs) | Tests for `new`: scaffolds that validate, written into the user's own layer and never into `core/`. |
 | [`pack-identity.test.mjs`](pack-identity.test.mjs) | Tests for the byte-identity rail: green, both findings and could-not-run, each exercised. |
