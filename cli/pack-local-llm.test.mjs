@@ -371,7 +371,7 @@ test("a receipt marks what the server did not report as unmeasured, never as zer
     assert.equal(res.promptTokens, null);
     assert.equal(res.completionTokens, null);
     const receipt = formatPassReceipt({ mode: "chat", model: "m", ...res });
-    assert.match(receipt, / in=\? out=\? time=\d+ms rate=\? spend=\$0\.00$/);
+    assert.match(receipt, / in=\? out=\? time=\d+ms rate=\? reasoning=\? cached-in=\? spend=\$0\.00$/);
     assert.doesNotMatch(receipt, /ttft/);
     assert.equal(receipt.includes("\n"), false);
 });
@@ -1216,7 +1216,7 @@ describe("dedup", () => {
             const receipts = ran.err.map(receiptOf).filter((r) => r !== null);
             assert.equal(receipts.length, 1, "exactly one canonical receipt is printed");
             assert.deepEqual({ ...receipts[0], time: null }, { mode: "dedup", model: ROLE_MODELS.embed, attempts: 1, in: 7, out: null, time: null });
-            assert.match(ran.err[1], /^OK mode=dedup model=\S+ attempts=1 in=7t out=\? time=\d+ms rate=\? spend=\$0\.00$/);
+            assert.match(ran.err[1], /^OK mode=dedup model=\S+ attempts=1 in=7t out=\? time=\d+ms rate=\? reasoning=\? cached-in=\? spend=\$0\.00$/);
 
             const none = await captured(() => main(["dedup", "--dir", dir, "--base-url", baseUrl, "--threshold", "0.999", "--model", "other-embedder"]));
             assert.equal(none.code, 0);
