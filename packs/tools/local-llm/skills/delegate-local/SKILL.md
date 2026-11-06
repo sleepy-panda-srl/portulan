@@ -26,14 +26,38 @@ decision, proposed before it runs.
 
 ## When to use it
 
-- **A verify-gated file transform:** a mechanical refactor, a history-comment cleanup, or a unit test
-  added, where a verify command can prove the edit green or have it rolled back.
+- **A verify-gated file transform longer than one short parent Edit:** a mechanical refactor or a
+  history-comment cleanup across a file, or a unit test the parent would otherwise iterate red→green,
+  where a verify command can prove the edit green or have it rolled back.
 - **An explicitly selected candidate research digest:** reading a long file or log so only a short digest enters the parent context.
 - **An explicitly selected candidate librarian or handoff draft:** compressing a handoff under its byte cap, or drafting a `codify` or
   `consolidate` candidate for human review.
 
 Not for multi-file architectural planning, ambiguous requirements (`clarify`), or pre-merge verdicts
 (`reviewer`).
+
+## When it pays
+
+Each call is itself one parent request: the parent writes the instruction, waits and reads the receipt,
+and that request re-reads the whole context like any other. In 0038's `m_r × (F·T + g·T²/2)`, a call that
+replaces one parent Edit leaves `T` as it was and lowers `g` only by the output it saves, the difference
+between writing the instruction and writing the code. A miss, a call that keeps nothing or a kept edit the
+parent then touches up, adds a whole request. So:
+
+- **Keep an edit the parent can write in one short Edit in the parent.** Delegate only where one call
+  replaces more parent work than the request it costs.
+- **Whether a call pays turns on its miss rate and the context's size.** With `s` the output a kept call
+  saves, priced at 0038's five times input, and `c` a miss's re-read of the context `C` at the tenth of
+  input that `cli/ledger.mjs` takes for a cache read, a call pays only while its miss rate stays under
+  `s / (s + c)`, and under less once a miss's own output is counted. One run in
+  [#583](https://github.com/sleepy-panda-srl/portulan/issues/583) measured a 20% miss rate at a median `C`
+  of 236k. The output a kept call saved, derived from the parent's output on the edits it wrote itself, was
+  250–650 tokens and is overstated, since the parent kept its larger edits. That puts break-even at 5–12%,
+  a net loss, from one run, one local model and one parent model, and the verdict rests on the tenth: at
+  0038's fortieth, break-even is 17–35%.
+- **Where a call should pay is reasoning, not measurement:** a red→green loop the parent would otherwise
+  iterate, a batch of calls inside one tool request, and a long mechanical replacement the parent would
+  otherwise write out.
 
 ## The pass
 
