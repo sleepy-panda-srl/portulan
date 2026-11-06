@@ -16,6 +16,8 @@ import https from "node:https";
 
 const RUNNER_FINGERPRINT = createHash("sha256").update(fs.readFileSync(new URL(import.meta.url))).digest("hex");
 
+
+
 export const DEFAULT_BASE_URL = process.env.PORTULAN_LOCAL_LLM_URL ?? "http://127.0.0.1:1234/v1";
 export const DEFAULT_MAX_INPUT_BYTES = 32 * 1024;
 export const DEFAULT_RETRIES = 2;
@@ -101,18 +103,46 @@ export function extractFencedCode(text) {
     return rest.slice(0, closing.index);
 }
 
+export function readUsage(usage) {
+    const count = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
+    const promptTokens = count(usage?.prompt_tokens);
+    const completionTokens = count(usage?.completion_tokens);
+    const reasoning = count(usage?.completion_tokens_details?.reasoning_tokens);
+    const cached = count(usage?.prompt_tokens_details?.cached_tokens);
+    return {
+        promptTokens,
+        completionTokens,
+        reasoningTokens: reasoning !== null && completionTokens !== null && reasoning <= completionTokens ? reasoning : null,
+        cachedPromptTokens: cached !== null && promptTokens !== null && cached <= promptTokens ? cached : null,
+    };
+}
+
+export function incompleteGenerationMessage(usage) {
+    const measured = readUsage(usage);
+    const figure = value => value === null ? "?" : `${value}t`;
+    const reasoningOnly = measured.completionTokens > 0 && measured.reasoningTokens === measured.completionTokens;
+    const diagnosis = reasoningOnly ? "reasoning exhausted the combined output budget" : "combined output budget exhausted";
+    const counters = `in=${figure(measured.promptTokens)} out=${figure(measured.completionTokens)} reasoning=${figure(measured.reasoningTokens)}`;
+    const advice = reasoningOnly
+        ? "Inspect backend thinking controls and the task contract; smaller input alone does not bound reasoning."
+        : "Review the requested output and task contract before another request.";
+    return `Local generation incomplete: ${diagnosis} (${counters}). No replacement accepted. ${advice} Preserve the pinned profile.`;
+}
+
 const figure = (value, unit) => (value === null || value === undefined ? "?" : `${value}${unit}`);
 
-export function formatPassReceipt({ mode, model, attempts = 1, promptTokens = null, completionTokens = null, totalMs = null, tokPerSec = null, target = "" }) {
+export function formatPassReceipt({ mode, model, attempts = 1, promptTokens = null, completionTokens = null, reasoningTokens = null, cachedPromptTokens = null, totalMs = null, tokPerSec = null, target = "" }) {
+    const usage = readUsage({prompt_tokens:promptTokens,completion_tokens:completionTokens,
+        completion_tokens_details:{reasoning_tokens:reasoningTokens},prompt_tokens_details:{cached_tokens:cachedPromptTokens}});
     const where = target ? ` target=${target}` : "";
     return (
-        `OK mode=${mode} model=${model}${where} attempts=${attempts} in=${figure(promptTokens, "t")} out=${figure(completionTokens, "t")} ` +
-        `time=${figure(totalMs, "ms")} rate=${figure(tokPerSec, "tok/s")} spend=$0.00`
+        `OK mode=${mode} model=${model}${where} attempts=${attempts} in=${figure(usage.promptTokens, "t")} out=${figure(usage.completionTokens, "t")} ` +
+        `time=${figure(totalMs, "ms")} rate=${figure(tokPerSec, "tok/s")} reasoning=${figure(usage.reasoningTokens, "t")} cached-in=${figure(usage.cachedPromptTokens, "t")} spend=$0.00`
     );
 }
 
 const tail = (text, chars) => (text.length > chars ? `…${text.slice(-chars)}` : text);
-const sum = (a, b) => (a === null || b === null || b === undefined ? null : a + b);
+const sum = (a, b) => (Number.isSafeInteger(a) && a >= 0 && Number.isSafeInteger(b) && b >= 0 && Number.isSafeInteger(a + b) ? a + b : null);
 const rate = (tokens, ms) => (tokens === null || !ms ? null : Number((tokens / (ms / 1000)).toFixed(1)));
 
 export function runVerify(cmd, { onSpawn = () => {} } = {}) {
@@ -213,6 +243,7 @@ async function localFetch(url, init, fetchImpl) {
         const transport = fetchImpl === globalThis.fetch && localChat ? localModelFetch : fetchImpl;
         return await transport(url, { ...init, redirect: "error" });
     } catch (err) {
+        if (err instanceof RailError) throw err;
         if (["LOCAL_GENERATION_INCOMPLETE", "LOCAL_RESPONSE_INVALID_JSON"].includes(err.code)) throw new CouldNotRunError(err.message);
         const cause = err.cause?.message ? ` (${err.cause.message})` : "";
         throw new CouldNotRunError(`Local LLM transport failed at ${url} — ${err.message}${cause}`);
@@ -270,18 +301,17 @@ export async function callLocalChat({
         throw new CouldNotRunError(`Local LLM server returned a body that is not JSON — ${err.message}`);
     }
     const totalMs = Math.max(1, Math.round(performance.now() - t0));
+    const usage = readUsage(data.usage);
     if (data.choices?.[0]?.finish_reason === "length") {
-        throw new CouldNotRunError("Local generation incomplete: output budget exhausted; split the task and selected span before another request. No replacement accepted.");
+        throw new CouldNotRunError(incompleteGenerationMessage(data.usage));
     }
     const rawContent = data.choices?.[0]?.message?.content ?? "";
-    const promptTokens = data.usage?.prompt_tokens ?? null;
-    const completionTokens = data.usage?.completion_tokens ?? null;
+    const { completionTokens } = usage;
 
     return {
         content: stripThinking(rawContent),
         rawContent,
-        promptTokens,
-        completionTokens,
+        ...usage,
         totalMs,
         tokPerSec: rate(completionTokens, totalMs),
     };
@@ -499,6 +529,8 @@ export async function verifyGatedTransform({
     let lastError = "";
     let promptTokens = 0;
     let completionTokens = 0;
+    let reasoningTokens = 0;
+    let cachedPromptTokens = 0;
     let modelMs = 0;
     try {
         for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
@@ -528,6 +560,8 @@ export async function verifyGatedTransform({
             const reply = await chatFn({ baseUrl, allowRemote, model, messages, maxInputBytes, effort });
             promptTokens = sum(promptTokens, reply.promptTokens);
             completionTokens = sum(completionTokens, reply.completionTokens);
+            reasoningTokens = sum(reasoningTokens, reply.reasoningTokens);
+            cachedPromptTokens = sum(cachedPromptTokens, reply.cachedPromptTokens);
             modelMs = sum(modelMs, reply.totalMs);
 
             const replacement = extractFencedCode(reply.content).replace(/\n$/, "");
@@ -548,6 +582,8 @@ export async function verifyGatedTransform({
                         attempts: attempt,
                         promptTokens,
                         completionTokens,
+                        reasoningTokens,
+                        cachedPromptTokens,
                         totalMs: modelMs,
                         tokPerSec: rate(completionTokens, modelMs),
                         target: path.basename(filePath),

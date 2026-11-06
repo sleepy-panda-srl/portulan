@@ -28,7 +28,7 @@ Proposal [`0036`](../../../.portulan/proposals/0036-what-a-host-loads-into-every
 
 1. **Loopback-only by default.** Only `127.0.0.1`, `localhost`, and `[::1]` are permitted unless `--allow-remote` is explicitly passed, and a redirect is refused rather than followed off the machine. A proxy listening on loopback that forwards elsewhere is not visible to it, which is what the `local-llm-off-loopback` gate fragment records.
 2. **Zero-floor input budget (`--max-input-bytes`, default `32768`).** Refuses oversized prompts, and for `dedup` any file over the ceiling, before hitting the local server, directing the caller to scope with [`cli/symbols.mjs`](../../../cli/symbols.mjs) and `--lines` first. A value that is not a whole number is refused rather than read as no limit.
-3. **Explicit thinking cap (`--effort low`).** Passes `reasoning_effort: "low"` and `enable_thinking: false` by default so models whose chat templates default to `'xhigh'` thinking do not exhaust `max_tokens` inside `<think>` blocks.
+3. **Explicit thinking request (`--effort low`).** Passes `reasoning_effort: "low"` and `enable_thinking: false` by default. Backend/template support determines their effect; sending these fields is not a hard reasoning-token cap or a guarantee against output-budget exhaustion.
 4. **Verify-gated transforms (`transform --file <path> --verify <cmd>`, `--verify` required).** Applies the local model's edit, runs the verify command, retries with the end of its output on exit `1`, and **restores the original file byte-for-byte** unless the command reaches exit `0`. Any exit other than `0` or `1` — `2`, a missing command, a signal — is no verdict: the file is restored at once and the runner exits `2`. SIGINT, SIGTERM and SIGHUP, whether they arrive during the model call or while the verify command runs, stop the verify, restore the file and exit `2`. **The limits:** this is a rollback, not an atomic write — any other signal that ends the runner (SIGKILL and SIGQUIT among them) or a power loss between the edit and its verdict leaves the edit in place, and since the verify runs in a process group of its own, such a signal leaves the verify running too, even one sent to the runner's whole group. Signal handling is POSIX's: on Windows no SIGTERM arrives, and stopping the verify stops only its shell.
 5. **Role screening (`eval`).** Grades an installed local model against Portulan's own [`cli/comments.mjs`](../../../cli/comments.mjs), [`cli/doctor.mjs`](../../../cli/doctor.mjs), and [`cli/skill-goldens.mjs`](../../../cli/skill-goldens.mjs) predicates across `code`, `codify`, and `handoff` tasks. It takes **one sample per task and has no baseline arm**, so it is a screen, not the A/B run `0038` requires before a role is routed: a model that fails it is not routed, and passing it earns nothing. It needs `cli/` beside `packs/`, as the repository and the npm package carry it, exiting `2` where only `packs/` was installed. The A/B run is [*The A/B record*](#the-ab-record) below.
 
@@ -49,11 +49,28 @@ an unfinished fence. Provenance: owner Marius, November 5, 2026; local thinking
 generations were interrupted by a client deadline and valid generated fences were
 misparsed. These repairs change transport/completion handling, not model quality.
 
-A receipt prints a figure the server did not report as `?`, never as `0`, and `time=` is the model's request time, summed over a transform's attempts like `in=` and `out=`: the runner does not stream, so it cannot see a first token.
+A receipt prints `reasoning=` as a subset of `out=` and `cached-in=` as a subset
+of `in=`; neither is added to its parent. Counts must be safe nonnegative integers
+and subsets cannot exceed their reported parent. Missing, invalid or unverifiable
+counts print `?`; reported zero stays zero. Transform attempts sum each measurement
+once, with an unknown attempt making that sum unknown. `time=` is summed model
+request time: the runner does not stream, so it cannot see a first token. The ledger
+accepts both historical and extended receipts and continues counting parent totals.
+Update runner and ledger together: older strict receipt readers do not understand
+the added fields.
+
+On `length`, the diagnostic distinguishes a measured all-reasoning response from
+other combined-budget exhaustion. A short input does not cap thinking. Inspect the
+backend's actual thinking controls and the task contract before another request;
+do not silently lower a pinned profile, retry identical work, or accept truncated
+output. An advertised reasoning-budget parameter needs a binding runtime test,
+not just a short successful response. Provenance: the November 6 Q06 investigation
+on [#578](https://github.com/sleepy-panda-srl/portulan/issues/578#issuecomment-6695966000),
+with accounting on [#571](https://github.com/sleepy-panda-srl/portulan/issues/571).
 
 ## Screening a slot for duplicates
 
-`dedup --dir <slot-dir> [--threshold 0.80] [--model <id>] [--max-input-bytes <per file>]` embeds every file directly in the directory whose name ends in `.md`, in any letter case, sorted by name, in one `POST /v1/embeddings` request to the loopback endpoint, with `text-embedding-nomic-embed-text-v1.5` (`PORTULAN_LOCAL_EMBED_MODEL`) unless `--model` names another; `--role` picks a chat model and is refused here. It prints each pair whose cosine similarity is at or above the threshold, highest first and ties in file-name order, one line each, `0.829 0036-….md 0038-….md`, and two lines on stderr: `dedup files=8 pairs=1 threshold=0.8`, followed by the shared receipt `OK mode=dedup model=… attempts=1 in=…t out=? time=…ms rate=? spend=$0.00`. The ledger reads the receipt as embedding work at $0.00; output tokens and rate are unreported, never zero.
+`dedup --dir <slot-dir> [--threshold 0.80] [--model <id>] [--max-input-bytes <per file>]` embeds every file directly in the directory whose name ends in `.md`, in any letter case, sorted by name, in one `POST /v1/embeddings` request to the loopback endpoint, with `text-embedding-nomic-embed-text-v1.5` (`PORTULAN_LOCAL_EMBED_MODEL`) unless `--model` names another; `--role` picks a chat model and is refused here. It prints each pair whose cosine similarity is at or above the threshold, highest first and ties in file-name order, one line each, `0.829 0036-….md 0038-….md`, and two lines on stderr: `dedup files=8 pairs=1 threshold=0.8`, followed by the shared receipt `OK mode=dedup model=… attempts=1 in=…t out=? time=…ms rate=? reasoning=? cached-in=? spend=$0.00`. The ledger reads the receipt as embedding work at $0.00; output tokens and rate are unreported, never zero.
 
 - **A slot's `README.md` is left out**, in any letter case: it describes the slot rather than being one of its entries, and would rank against every entry it summarizes. Subdirectories, symbolic links and other files are left out too.
 - **The ceiling is per file**, since the model embeds each input on its own, and it measures the file's text: its size on disk before it is read, and its UTF-8 bytes after. A file over it refuses the run with exit `1`, naming every such file with its size, and nothing is truncated. The request as a whole is not capped: a slot of `n` files sends at most `n` times the ceiling of file text, which JSON escaping can enlarge in the request body, to about six times for control characters. Raise `--max-input-bytes` only as far as the embedding model's context holds.
@@ -71,8 +88,10 @@ The acquired [record](../../../evals/ab/local-worker.md) supports `code` at low 
 is disabled because codify failed all five local turns. `summarize` defaults to that disabled role and
 refuses. An explicit `--model` without `--role` is an operator-selected candidate, not automatic routing.
 Delegate one complete function or a small test group per call, specify one observable change, prefer
-serial calls, and keep output to the selected replacement. On truncated output split work; on transport
-failure inspect the transport; on verifier failure inspect code. Do not lower an operator-pinned
+serial calls, and keep output to the selected replacement. On truncated output inspect the diagnostic and task contract; on transport
+failure inspect the transport; on verifier failure inspect code. For reasoning-only
+exhaustion, investigate backend/profile/task behavior before selecting another span.
+Do not lower an operator-pinned
 model/effort or bypass verification. This advice reduces failures, does not guarantee completion.
 
 ## The A/B record
