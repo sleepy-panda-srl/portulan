@@ -235,15 +235,17 @@ marker left behind cost nothing. This repository's own card holds its boot under
 2026-09-23, railed at today's figure plus 2% by the same recipe. A pointer's repository is not measured,
 because a pointer declares no tree. **A persona can declare what its context costs**: `model`, `effort`,
 `omitClaudeMd` and `cacheLifetime`, refused when malformed and never defaulted, which `compile` writes into
-the hand-written binding of a persona a composed pack ships and byte-compares under `--check`, printing
+the hand-written binding of a persona a composed pack ships, and the core personas when compiling this
+engine's own declared tree, and byte-compares under `--check`, printing
 each field a host cannot express, with the persona and the host, as its degradation report for personas.
 Claude Code 2.1.317 takes all four on an agent, and loads `agents/` only from a plugin root (both read
 in its program text on 2026-11-03), so in a tree that is not a plugin the compiled block is loaded by
 nothing, and the degradation report says so; in one that is, only while the plugin is installed and
 enabled, which `compile` cannot see. That stops short of the row: `compile` writes no
 `.claude/agents/`, where a repository that is not a plugin loads its agents, and no binding where none
-exists; a core persona's binding in this plugin's `agents/` is not compiled; and no host has been shown
-honouring a compiled field. **Still to land**: the
+exists; and no host has been shown honouring a compiled field. The core declarations choose
+`model: inherit`, `omitClaudeMd: false` and `cacheLifetime: 5m`, subject to the host precedence described in
+[`../personas/README.md`](../personas/README.md). **Still to land**: the
 exact mode that calibrates a ratio, the degradation report's half that says which tiers a host can
 express, the Stop-gate's named demotion and the librarian pass, one change at a time, in `0036`'s order
 of work and under row 12 of

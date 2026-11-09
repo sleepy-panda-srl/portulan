@@ -2401,11 +2401,15 @@ const unquoted = (raw) => (raw.length >= 2 && `"'`.includes(raw[0]) && raw.at(-1
 export function personaDeclarations(text) {
     const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/);
     const close = lines[0]?.trim() === "---" ? lines.indexOf("---", 1) : -1;
+    if (close === -1) {
+        const why = lines[0]?.trim() === "---" ? "the block is never closed" : "the first line must be `---`";
+        return { name: null, declared: {}, problems: [`has no usable frontmatter — ${why}`] };
+    }
     const declared = {};
     const problems = [];
     const seen = new Set();
     let name = null;
-    for (const line of close === -1 ? [] : lines.slice(1, close)) {
+    for (const line of lines.slice(1, close)) {
         const match = /^([A-Za-z_][\w-]*)\s*:(.*)$/.exec(line);
         if (match?.[1] === "name") name = unquoted(match[2].trim()).trim() || null;
         if (!match || !Object.hasOwn(PERSONA_VALUES, match[1])) continue;
@@ -2516,7 +2520,7 @@ export function boundAgent(text, declared, source, where) {
 
 const listed = (names) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
 
-/** Each composed persona against its host binding: the bindings to rewrite, the lines to say, and what each host cannot carry. */
+/** Declared personas against existing bindings, including core sources when compiling this engine's own tree. */
 export function planPersonas(contributions, workspaceRoot, workspaceDir = ".portulan") {
     const base = path.join(workspaceRoot, workspaceDir);
     let tree = null;
@@ -2526,22 +2530,42 @@ export function planPersonas(contributions, workspaceRoot, workspaceDir = ".port
         // `run` refuses an unreadable manifest before this is reached; an absent one declares no tree.
     }
     const treeRoot = typeof tree === "string" && tree.trim() ? path.resolve(base, tree) : null;
+    let ownTree = false;
+    if (treeRoot) {
+        try {
+            ownTree = fs.realpathSync(treeRoot) === fs.realpathSync(ENGINE_ROOT);
+        } catch (cause) {
+            if (cause.code !== "ENOENT") throw new CompileError(`the declared tree could not be resolved — ${cause.code ?? cause.message}`);
+        }
+    }
+    const sources = [...contributions];
+    if (ownTree) {
+        let personas;
+        try {
+            personas = fs.readdirSync(path.join(ENGINE_ROOT, "core/personas"))
+                .filter((entry) => entry.endsWith(".md") && entry !== "README.md")
+                .sort().map((entry) => `core/personas/${entry}`);
+        } catch (cause) {
+            throw new CompileError(`core/personas/ could not be read — ${cause.code ?? cause.message}, so its declarations are unknown`);
+        }
+        sources.unshift({ core: true, dir: ENGINE_ROOT, personas });
+    }
     const files = [];
     const lines = [];
     const degraded = [];
     const owners = new Map();
     let compared = 0;
-    for (const contribution of contributions) {
+    for (const contribution of sources) {
         for (const rel of contribution.personas ?? []) {
-            const where = `\`${contribution.pack}\`'s persona \`${rel}\``;
+            const where = contribution.core ? `core persona \`${rel}\`` : `\`${contribution.pack}\`'s persona \`${rel}\``;
             const file = path.resolve(contribution.dir, rel);
             let text;
             try {
-                if (!isInside(fs.realpathSync(contribution.dir), fs.realpathSync(file))) throw new CompileError(`${where} resolves outside its pack`);
+                if (!isInside(fs.realpathSync(contribution.dir), fs.realpathSync(file))) throw new CompileError(`${where} resolves outside its ${contribution.core ? "engine" : "pack"}`);
                 text = fs.readFileSync(file, "utf8");
             } catch (cause) {
                 if (cause instanceof CompileError) throw cause;
-                throw new CompileError(`${where} could not be read — ${cause.code ?? cause.message}, so what it declares is unknown. Run \`doctor\` to validate the pack`);
+                throw new CompileError(`${where} could not be read — ${cause.code ?? cause.message}, so what it declares is unknown.${contribution.core ? " Restore the core source" : " Run `doctor` to validate the pack"}`);
             }
             const { name: declaredName, declared, problems } = personaDeclarations(text);
             if (problems.length) {
@@ -2549,10 +2573,13 @@ export function planPersonas(contributions, workspaceRoot, workspaceDir = ".port
             }
             const fields = PERSONA_FIELDS.filter((f) => declared[f] !== undefined);
             const name = declaredName ?? path.basename(rel, ".md");
+            if (contribution.core && name !== path.basename(rel, ".md")) {
+                throw new CompileError(`${where} declares name \`${name}\`, which differs from its filename and binding identity`);
+            }
             if (fields.length && !SLUG.test(name)) {
                 throw new CompileError(`${where} is named \`${name}\`, which is not a slug, so no binding file can be named for it`);
             }
-            const source = `${contribution.pack}'s ${rel}`;
+            const source = contribution.core ? rel : `${contribution.pack}'s ${rel}`;
             for (const field of fields) {
                 for (const [id, host] of Object.entries(PERSONA_HOSTS)) {
                     if (host[field] === null) degraded.push({ persona: name, field, host: id, line: `degraded ${name.padEnd(22)} ${field.padEnd(14)} ${id} (${host.label}): ${host.why}` });
