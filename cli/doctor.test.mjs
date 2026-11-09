@@ -3380,6 +3380,8 @@ describe("workspace usage report", () => {
             assert.match(result.stdout, /^  output +970 +210 +1,180$/m);
             assert.match(result.stdout, /local worker: 4 line\(s\).*in 5,017 tokens, out 600 tokens.*time 7,714 ms/);
             assert.match(result.stdout, /threshold of 76,006/);
+            assert.equal(result.stdout.match(/note  lever /g)?.length, 1);
+            assert.match(result.stdout, /lever .*recorded restart compared/);
         });
     }
     test("static output is identical with and without usage records", () => {
@@ -3391,6 +3393,7 @@ describe("workspace usage report", () => {
         assert.equal(populated.status, 0, populated.stderr);
         assert.equal(populated.stdout, empty.stdout);
         assert.doesNotMatch(populated.stdout, /ledger:|local worker:/);
+        assert.match(populated.stdout, /lever .*session-dependent levers not compared/);
     });
     test("static, help and quiet paths never consult usage files", async (t) => {
         const f = setup();
