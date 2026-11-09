@@ -49,7 +49,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`ab-grade.mjs`](ab-grade.mjs) | The A/B graders — what an arm's tree says it did, and the discrimination that proves a grader read it. Not shipped. |
 | [`ab-run.mjs`](ab-run.mjs) | The A/B runner: spawns the agent turns of both arms and records the baseline they measure. Not shipped. |
 | [`ab.mjs`](ab.mjs) | The A/B arm builder — what "Portulan on" is made of, built rather than described. Not shipped. |
-| [`cache-stability.mjs`](cache-stability.mjs) | Committed baseline for Portulan's loaded text and hook templates. Not shipped. |
+| [`cache-stability.mjs`](cache-stability.mjs) | Prefix baseline. Not shipped. |
 | [`comments.mjs`](comments.mjs) | `comments` — the comments in a tree that record a change's history instead of what the code cannot show. |
 | [`context.mjs`](context.mjs) | What a context loads, measured: what a boot reads in full, and what the host loads into every context. |
 | [`control-chars.mjs`](control-chars.mjs) | `control-chars` — the rail on bytes a reader cannot see. |

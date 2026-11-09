@@ -1,6 +1,6 @@
 # Task 0036 — Cache-prefix stability baseline
 
-**Lane:** full · **Opened:** 2026-11-09 · **Status:** approved for PR
+**Lane:** full · **Opened:** 2026-11-09 · **Status:** approved for merge
 
 **Criterion.** [#516](https://github.com/sleepy-panda-srl/portulan/issues/516),
 row 13: a recipe scans loaded text and hook text against a committed golden;
@@ -45,3 +45,12 @@ fired on synthesized `3f7ba41`; missing, duplicate, external and lexical-bypass
 controls held. Strict plugin validation and the staged seam scan passed, with
 seven planted refusal controls. The runtime limits above remain undemonstrated.
 Final record-fold review and the finishing command follow.
+
+**Merge integration.** After #602 merged, rebasing #604 onto `22c209fe` exposed
+the combined comment budget. The scanner header was shortened and its roster
+regenerated; the stale sentence calling the delivered scan future work was
+corrected. Independent `/root/checkpoint_516_precommit` approved staged tree
+`580d11c03c5701cf06fba198be5fbb9959b62d1d`: all 32 recipes and 3,540 tests passed,
+none skipped; comments measured 261,516 against 261,520. The real drill fired on
+`d36be2a`, strict plugin validation passed, and seven seam refusal controls held.
+The stated runtime limits remain. Final record-fold review and finish follow.
