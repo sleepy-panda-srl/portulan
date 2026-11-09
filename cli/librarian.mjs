@@ -91,22 +91,32 @@ export function retireWhen(source) {
         .trim();
 }
 
-/** Whether a proposal still waits on the human gate: anything short of a stated verdict does, as this feeds a nag, never a gate. */
+/** Explicit leading outcomes only; this classifies a report, never grants consent. */
 export function proposalPending(source) {
-    const lines = source.split("\n");
-    const parts = [];
-    for (let i = 0; i < lines.length; i += 1) {
-        if (!/^\s*\*\*(decision|status)\b/i.test(lines[i])) continue;
-        let end = i;
-        while (end + 1 < lines.length && lines[end + 1].trim() !== "") end += 1;
-        parts.push(lines.slice(i, end + 1).join(" "));
-        i = end;
+    const words = "accepted|rejected|revised|applied|withdrawn|superseded|ruled";
+    const outcome = new RegExp(`^(${words})\\b`, "i");
+    const outcomeWord = new RegExp(`\\b(${words}|pending)\\b`, "i");
+    let settled = false;
+    for (const line of source.split("\n")) {
+        const marker = line.match(/^\s*\*\*(decision|status)[.:]/i);
+        if (!marker) continue;
+        const declaration = line.replace(/[*_]/g, "").replace(/^\s*(decision|status)[.:]\s*/i, "").split(/\bbecause\b/i)[0].trim();
+        const ownerForm = marker[1].toLowerCase() === "decision" ? declaration.match(/^[^—{}|<>\n]{1,160}—\s*(.*)$/) : null;
+        const leading = outcome.test(declaration) ? declaration : ownerForm?.[1] ?? declaration;
+        const match = leading.match(outcome);
+        if (!match) {
+            if (outcomeWord.test(declaration) || /[{}|<>]/.test(declaration)) return true;
+            if (ownerForm && !/^\d{4}-\d{2}-\d{2}\b/.test(leading)) return true;
+            continue;
+        }
+        const header = leading.split(/—|\bbecause\b/i)[0];
+        if (/[{}|<>?]/.test(header)) return true;
+        const rest = header.slice(match[0].length);
+        const alternative = rest.match(/\/|\bor\b|\bversus\b|\bvs\b|\b(?:and|but)\s+not\b/i);
+        if (alternative && outcomeWord.test(rest.slice(alternative.index))) return true;
+        settled = true;
     }
-    if (!parts.length) return true;
-    const text = parts.join(" ").replace(/[*_`]/g, "");
-    if (/\bpending\b/i.test(text)) return true;
-    if (/[{}]|\|/.test(text)) return true; // an unfilled template line is not a decision
-    return !/\b(accepted|rejected|revised|applied|withdrawn|superseded)\b/i.test(text);
+    return !settled;
 }
 
 // ---------------------------------------------------------------- Reading history

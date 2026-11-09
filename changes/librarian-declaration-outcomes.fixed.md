@@ -1,0 +1,1 @@
+- The librarian reads explicit leading proposal outcomes, including recorded rulings, instead of treating a historical mention of “pending” in the rationale as a new decision; unresolved and ambiguous declarations remain pending.

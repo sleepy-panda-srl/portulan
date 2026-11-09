@@ -391,6 +391,51 @@ describe("retireWhen", () => {
 });
 
 describe("proposalPending", () => {
+    test("a declared outcome is not reopened by its rationale", () => {
+        for (const outcome of ["accepted", "rejected", "revised", "applied", "withdrawn", "superseded", "ruled"]) {
+            assert.equal(proposalPending(`**Decision.** M — ${outcome}, on 2026-11-09 — because it used to read pending.\n`), false, outcome);
+            assert.equal(proposalPending(`**Decision.** M — ${outcome} — the earlier pending wording is obsolete.\n`), false, outcome);
+            assert.equal(proposalPending(`**Decision.** M — ${outcome}, previously pending.\n`), false, outcome);
+            assert.equal(proposalPending(`**Status. ${outcome.toUpperCase()}.**\nIts earlier text was pending.\n`), false, outcome);
+        }
+    });
+
+    test("unresolved outcome declarations outrank a separate closed status in either order", () => {
+        for (const decision of ["M — not accepted", "M — has not accepted", "M — will be accepted", "M — to be accepted", 'M — "accepted"', '"accepted" — M', "not accepted — M", "will be accepted — M", "M — `accepted`", "M — ‘accepted’", "M — pending because someone recommended accepted", "{owner} — accepted", "<owner> — accepted", "M — accepted?", "accepted?", "M — accepted | rejected", "M — accepted / rejected", "M — accepted or not accepted", "M — accepted or pending", "M — accepted and not accepted", "M — accepted or rejected"]) {
+            for (const closed of ["ACCEPTED", "RULED"]) {
+                const a = `**Status. ${closed}.**\n\n`;
+                const b = `**Decision.** ${decision}.\n`;
+                assert.equal(proposalPending(a + b), true, decision);
+                assert.equal(proposalPending(b + "\n" + a), true, decision);
+            }
+        }
+        assert.equal(proposalPending("**Decision.** M — will be accepted.\n"), true);
+        assert.equal(proposalPending("**Decision.** An explanation mentions accepted elsewhere.\n"), true);
+        assert.equal(proposalPending("**Decision.** Will Smith — accepted, on 2026-11-09.\n"), false);
+    });
+
+    test("the audited 0001–0040 corpus settles exactly five misclassified recorded decisions", () => {
+        const proposals = path.join(HERE, "..", ".portulan", "proposals");
+        const old = source => {
+            const lines = source.split("\n"), parts = [];
+            for (let i = 0; i < lines.length; i++) {
+                if (!/^\s*\*\*(decision|status)\b/i.test(lines[i])) continue;
+                let end = i;
+                while (end + 1 < lines.length && lines[end + 1].trim() !== "") end++;
+                parts.push(lines.slice(i, end + 1).join(" ")); i = end;
+            }
+            const text = parts.join(" ").replace(/[*_`]/g, "");
+            return !parts.length || /\bpending\b|[{}]|\|/i.test(text) || !/\b(accepted|rejected|revised|applied|withdrawn|superseded)\b/i.test(text);
+        };
+        const changed = [];
+        for (const file of fs.readdirSync(proposals).filter(file => file.endsWith(".md") && Number(file.slice(0, 4)) <= 40).sort()) {
+            const source = fs.readFileSync(path.join(proposals, file), "utf8");
+            const before = old(source), after = proposalPending(source);
+            if (before !== after) { assert.equal(after, false, file); changed.push(file.slice(0, 4)); }
+        }
+        assert.deepEqual(changed, ["0003", "0023", "0036", "0037", "0038"]);
+    });
+
     test("a decision of `pending` is pending", () => {
         assert.equal(proposalPending("**Decision.** Marius Cetanas — pending.\n"), true);
     });
