@@ -49,6 +49,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`ab-grade.mjs`](ab-grade.mjs) | The A/B graders — what an arm's tree says it did, and the discrimination that proves a grader read it. Not shipped. |
 | [`ab-run.mjs`](ab-run.mjs) | The A/B runner: spawns the agent turns of both arms and records the baseline they measure. Not shipped. |
 | [`ab.mjs`](ab.mjs) | The A/B arm builder — what "Portulan on" is made of, built rather than described. Not shipped. |
+| [`cache-stability.mjs`](cache-stability.mjs) | Committed baseline for Portulan's loaded text and hook templates. Not shipped. |
 | [`comments.mjs`](comments.mjs) | `comments` — the comments in a tree that record a change's history instead of what the code cannot show. |
 | [`context.mjs`](context.mjs) | What a context loads, measured: what a boot reads in full, and what the host loads into every context. |
 | [`control-chars.mjs`](control-chars.mjs) | `control-chars` — the rail on bytes a reader cannot see. |
@@ -96,6 +97,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`ab.test.mjs`](ab.test.mjs) | Tests for `ab` — the A/B arm builder: its disposition table, rule-2 matcher, nonces, isolation and stop probe. |
 | [`advisory.test.mjs`](advisory.test.mjs) | Tests for `advisory` — the restart advisory's one line with a tool result or at the prompt, and its figure in the status line. |
 | [`branch-freshness.test.mjs`](branch-freshness.test.mjs) | Tests for this repository's branch freshness check and trusted workflow. |
+| [`cache-stability.test.mjs`](cache-stability.test.mjs) | Cache-prefix tests. |
 | [`checkout-refs.live.test.mjs`](checkout-refs.live.test.mjs) | A workflow that checks out MORE THAN ONCE names the ref of every checkout after the first. |
 | [`cli-roster.live.test.mjs`](cli-roster.live.test.mjs) | `cli/README.md` is exactly what ./roster.mjs renders from this directory, and the render keeps its shape. |
 | [`collisions.test.mjs`](collisions.test.mjs) | The collision contract: `init`, `new` and `vendor` answer each contracted state alike, and no fourth `collisions` exists. |

@@ -29,7 +29,8 @@
     "!cli/local-routing.mjs",
     "!cli/warm.mjs",
     "!cli/payload.mjs",
-    "!cli/roster.mjs"
+    "!cli/roster.mjs",
+    "!cli/cache-stability.mjs"
   ],
   "repository": {
     "type": "git",

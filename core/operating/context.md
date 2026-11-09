@@ -254,6 +254,16 @@ the host can defer them. Content that varies per session — a git snapshot, a d
 directory, a session ID — stays out of Portulan's own always tier and hook-injected text. It may leave
 one session's cache intact while forfeiting the prefix that sessions in one directory share.
 
+Portulan's repository makes changes to these static carriers reviewable through
+its `cache-stability` recipe: loaded files, hook sources and commands, and gate
+explanation inputs are compared with a committed full-content golden. Its lexical
+inventory identifies suspicious literal forms; unchanged digests establish only
+unchanged repository text. Runtime session values, arbitrary helper outputs and
+the host's prefix remain outside that capture. The repository's
+[recipe instructions](../../.portulan/verify/README.md#the-recipes) name the explicit
+refresh command and the forced-red drill. This is its own rail, not an adopter's
+automatically installed policy.
+
 A hosted session whose system prompt names the session itself starts cold whatever a workspace compiles;
 that is inferred from such a prompt, not documented. The [session-start rules](sessions.md#a-session-starts-warm-or-it-pays-the-prefix-again)
 describe the host's warm-start conditions; a workspace cannot repair the host's prefix by compiling one

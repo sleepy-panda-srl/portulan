@@ -25,6 +25,12 @@
     "default": "docs",
     "recipes": [
       {
+        "id": "cache-stability",
+        "run": "./.portulan/verify/cache-stability.sh",
+        "requires": ["bash", "node"],
+        "doc": "verify/README.md"
+      },
+      {
         "id": "docs",
         "run": "./.portulan/verify/docs.sh",
         "requires": [

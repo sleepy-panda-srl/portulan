@@ -7,6 +7,23 @@
 
 ## The recipes
 
+`cache-stability` compares the actual always-tier files (imports included), every
+`HOOK_RUNNERS` source, compiled hook commands, declared gate policy and composed
+gate-policy carriers with [`../../evals/cache-stability.golden.json`](../../evals/cache-stability.golden.json).
+Packs resolve only from this repository's `packs/`. Full byte digests catch all
+content drift; the lexical inventory identifies date, hash, UUID, common absolute
+path and labeled-count spellings. Existing literals stay visible in the baseline.
+Missing coverage or malformed/duplicate golden records exits 2; drift exits 1.
+An absent golden refuses checking; explicit refresh may create it. Refresh also
+refuses an existing malformed golden, which must be removed separately if intended.
+
+Refresh explicitly with `node cli/cache-stability.mjs --write-golden .`, then
+review the golden diff. The recipe never refreshes it. A drill inserts a date in
+the compiled boot card, requires red with the golden untouched, and restores it.
+This checks repository text changes, not runtime cache behavior: arbitrary helper
+outputs, changing session values and the host's own prefix are outside its capture.
+Hook sources include their templates, not a transcript of every rendered branch.
+
 The recipes in this directory are declared in [`../workspace.json`](../workspace.json), and since
 milestone 7's composition amendment the **runnable** set is larger than that: it is what
 [`../../cli/recipe-set.mjs`](../../cli/recipe-set.mjs) yields — these, plus the ones this workspace's
