@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "kind": "acquired-real-session",
+  "host": "Claude Code",
+  "hostVersion": "2.1.308 (Claude Code)",
+  "sourceRevision": "627f3527b1163cbed857863e2ed664dc953aec7d",
+  "acquiredAt": "2026-11-09T21:28:11.006Z",
+  "comparedAt": "2026-11-09T21:32:53.733Z",
+  "model": "claude-fable-5-2",
+  "sessionIdentitySha256": "803d77eb81b4b3f3191749ac9a6d2cc3532864aa3a60b56ab765d72798c693e6",
+  "lifecycle": [
+    "One non-editing --print request with normal persistence, hooks and permissions; --tools empty supplied, no tool call recorded.",
+    "The headless invocation saved a transcript but no matching project summary.",
+    "Ordinary --resume of the same full session followed by local /exit saved the matching summary; no additional usage record or model request."
+  ],
+  "pathAliases": {
+    "transcriptCwd": "/work/portulan-real-session",
+    "hostSummaryCwd": "/work/portulan-project"
+  },
+  "sourceHashes": {
+    "before-config.json": "c2f130d694910ac7780591c8525683ddb3b628e8de6d1c090888c927ebf57451",
+    "after-config-1.json": "8673b9253eddad91bcef93ca49df6636173d9ae2000cf9a989c7b2f7cc59409b",
+    "after-config-2.json": "8673b9253eddad91bcef93ca49df6636173d9ae2000cf9a989c7b2f7cc59409b",
+    "result.json": "5f650e010a0790b009138a93a195025dd2b24ad8576bf33e8ededd99f84118a6",
+    "transcript-0.jsonl": "421eec56a69666afb229c9d3f5cd367bc76a9ed1ddd75ee1926f27e97aebdcb2",
+    "before-resume-config.json": "837ca3d6683ec3f2fbc12e9bc395a335330b81f037acd291bbeed1175645bc59",
+    "after-resume-config-1.json": "2d6d64c24b12de42bc40d26e516bbfda5c443c36ec48b9337673191aad0ebc66",
+    "after-resume-config-2.json": "2d6d64c24b12de42bc40d26e516bbfda5c443c36ec48b9337673191aad0ebc66",
+    "after-resume-transcript-0.jsonl": "aa70b28c4501109ce5ef958b623f39dc073b25d7c12ed8c9e3c8d5c9a33fee55",
+    "invocation.json": "5c28cd4f8dcb9bce1054a3f6056c7c772b2907ed47a2906e0c36f2a71de1fe18",
+    "resume-invocation.json": "d73e5896823ccd69bee4b012a55c8ad99dedb64d23dc346871e4cffa9eeb1fee",
+    "terminal.log": "3b2c800dad4799b22039e407bf3e4ff5a7bd904ed15454488cd7bbc5503df846",
+    "final-live-ledger.txt": "80444f99e31367e267d114009df28275d5fd4bf24ace883cfde7511cbb94f511",
+    "normalize.mjs": "4cf0210806b551ce0a74ea6b9b502c7f69d75106b331755386e7f63165c69499"
+  },
+  "independent": {
+    "requests": 1,
+    "usageRecords": 1,
+    "duplicates": 0
+  },
+  "comparison": {
+    "host": {
+      "uncached": 2,
+      "written": 77208,
+      "read": 0,
+      "output": 26
+    },
+    "ledger": {
+      "uncached": 2,
+      "written": 77208,
+      "read": 0,
+      "output": 26
+    },
+    "difference": {
+      "uncached": 0,
+      "written": 0,
+      "read": 0,
+      "output": 0
+    }
+  },
+  "printedHostComparison": "  host totals, session real-ses (the last the host saved for /work/portulan-project, every branch): uncached 2 of 2 (0), written 77,208 of 77,208 (0), read 0 of 0 (0), output 26 of 26 (0)"
+}
