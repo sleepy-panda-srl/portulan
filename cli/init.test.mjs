@@ -963,6 +963,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
                 say: (line) => said.push(line),
                 async ask(question) {
                     asked.push(question);
+                    if (question.startsWith("Handoff budgets JSON")) return "none";
                     return answers.length ? answers.shift() : null;
                 },
             },
@@ -1094,13 +1095,13 @@ describe("the interview asks, and only where somebody is there to answer", () =>
         assert.equal(ok(dir).packs, undefined, "opting out at the prompt must be the same answer as --no-cycle");
     });
 
-    test("the lifetime is asked last, after the offer's reason and its trade-off, and a yes drafts it at 2.11", async () => {
+    test("the lifetime follows its reason and trade-off, and a yes drafts it at 2.11", async () => {
         const dir = scratch();
         const s = scripted(["in-repo", "", "", "none", "y", "y"]);
         const h = harness();
         assert.equal(await run([dir], { ...h.options, io: s.io }), 0, h.warned.join("\n"));
         const question = s.asked.indexOf("Five-minute cache writes? [y/N]: ");
-        assert.equal(question, s.asked.length - 2, "the question comes after every other one and before the confirmation");
+        assert.equal(question, s.asked.length - 3, "the handoff offer and confirmation follow the cache question");
         const said = s.said.join("\n");
         for (const text of [LIFETIME_OFFER.reason, LIFETIME_OFFER.tradeOff]) assert.ok(said.includes(text), "a yes is given knowing the reason and the trade-off");
         assert.match(said, /^ {2}cache {7}5m, as `sessions\.cache_lifetime` at Workspace Definition 2\.11$/m, "the confirmation echoes the answer");
@@ -1157,7 +1158,7 @@ describe("the drafted workspace carries the rail that holds its index current", 
     const railOf = (dir) => path.join(dir, ".portulan", "verify", "index.sh");
     const runRail = (dir, env = {}) => {
         try {
-            return { code: 0, out: execFileSync("bash", [railOf(dir)], { cwd: dir, encoding: "utf8", stdio: "pipe", env: { ...process.env, ...env } }) };
+            return { code: 0, out: execFileSync("bash", [railOf(dir)], { cwd: dir, encoding: "utf8", stdio: "pipe", env: { ...process.env, PORTULAN_CLI: path.join(REPO, "cli"), ...env } }) };
         } catch (error) {
             return { code: error.status, out: `${error.stdout ?? ""}${error.stderr ?? ""}` };
         }
@@ -1518,7 +1519,7 @@ describe("init offers the cache lifetime, and writes it only where it was chosen
         const observed = scan(scratch());
         const before = { residence: "in-repo", name: "consumer", cycle: true, checkpoints: "rituals/checkpoints", given: new Set(["residence"]), packRoots: [] };
         assert.equal(draft({ ...before, cacheLifetime: null }, observed).get(".portulan/workspace.json").contents, draft(before, observed).get(".portulan/workspace.json").contents);
-        const at = h.said.findIndex((l) => l.includes("A budget is yours to declare"));
+        const at = h.said.findIndex((l) => l === `init: ${offerLines()[0]}`) - 1;
         assert.ok(at >= 0);
         assert.deepEqual(h.said.slice(at + 1, at + 1 + offerLines().length), offerLines().map((l) => `init: ${l}`));
         assert.ok(!h.said.some((l) => l.includes("spend.multipliers")), h.said.join("\n"));

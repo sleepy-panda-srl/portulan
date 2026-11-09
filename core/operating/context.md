@@ -173,6 +173,28 @@ each section's anchor and size, the same way. It prints from the file as it is, 
 go stale. Nothing checks that a session outlined first; what the rule saves is measured by rerunning a
 task, never by a recipe, which may not read the host's usage records.
 
+## What a handoff hands on
+
+A handoff carries open state, decisions with their why, questions, the next action and what remains
+unsafe. It links a fact's owning record instead of repeating the diff, measured figures or doctrine.
+Its heading names the outcome; its filename already carries the date. Keep decisions and their why
+when compressing: moving them and linking preserves them, dropping them does not.
+
+A workspace may declare a per-handoff token cap and a cutoff at its explicit ratio. Only records dated
+after that cutoff are bound; merged history is not rewritten. Compression or moving a fact to its
+owning record repairs a breach, never splitting, retirement, a higher cap or a later cutoff in that
+change. A correction counts toward the cap; if it would breach a merged record, put it in the correcting
+session's handoff and name the corrected one. Review prevents backdating or moving a cutoff backward,
+and advances it only with a tighter cap or lower ratio to exempt already merged history. The cutoff
+day remains unbound because a date cannot separate morning merges from evening work.
+
+The generated index may have its own token budget: a complete header and omission notice plus the
+newest whole entry lines that fit. Omitted handoffs stay in the dated series, with no second index.
+Both are on-read; neither belongs in the boot or always tier. The session-end gate checks existence
+and a date, never length; the index recipe owns the upper cap. There is no aggregate series budget
+and no minimum length. These are accepted proposal 0037's rules, implemented in Workspace Definition
+2.14; the schema contract and history-dependent limits are in [`spec/slots.md`](../../spec/slots.md).
+
 ## What is machinery today, and what is not
 
 As of Workspace Definition 2.9 a workspace can declare the budget and the ratio, and both are checked

@@ -15,6 +15,8 @@ import { alwaysTier, ESTIMATED_BYTES_PER_TOKEN, OFFER_FLOOR_TOKENS, tokensOf } f
 import { cardIgnored, changesReadme, claudeRulesUnignore, commentsRecipe, commentsRecipeEntry, COMPILED_CARD, draftCard, handoffIndexIgnore, handoffsReadme, withIgnoreLines } from "./form.mjs";
 import { offerText, splitOffers } from "./instructions.mjs";
 import { offerLines } from "./sessions.mjs";
+import { HANDOFF_OFFER, handoffOffer, realHandoffDay } from "./handoff-policy.mjs";
+import { renderHandoffIndex } from "./index.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -48,7 +50,7 @@ const RESIDENCES = new Set(["in-repo", "pointer"]);
 
 const DEFAULT_CHECKPOINTS = "rituals/checkpoints";
 
-const ANSWER_KEYS = new Set(["residence", "name", "summary", "governed-by", "feed", "checkpoints", "cycle", "pack-root", "cache-lifetime"]);
+const ANSWER_KEYS = new Set(["residence", "name", "summary", "governed-by", "feed", "checkpoints", "cycle", "pack-root", "cache-lifetime", "handoff-budget"]);
 
 /** `text` as a slug, or null where nothing survives: `init` asks rather than name a workspace nobody chose. */
 export function slugify(text) {
@@ -66,7 +68,7 @@ export function parseArgs(argv) {
     const targets = [];
     let help = false;
 
-    const VALUED = new Set(["--residence", "--name", "--summary", "--governed-by", "--feed", "--checkpoints", "--answers", "--pack-root", "--cache-lifetime"]);
+    const VALUED = new Set(["--residence", "--name", "--summary", "--governed-by", "--feed", "--checkpoints", "--answers", "--pack-root", "--cache-lifetime", "--handoff-budget"]);
 
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
@@ -177,6 +179,7 @@ export function resolveAnswers(flags) {
         // An answers file may give a string, the repeatable flag an array.
         packRoots: [merged["pack-root"] ?? []].flat(),
         cacheLifetime: merged["cache-lifetime"] ?? null,
+        handoffBudget: merged["handoff-budget"] ?? null,
     };
 }
 
@@ -205,7 +208,7 @@ export function validateAnswers(answers) {
     }
     const misplaced = {
         "in-repo": ["feed", "governed-by"],
-        pointer: ["pack-root", "checkpoints", "cycle", "cache-lifetime"],
+        pointer: ["pack-root", "checkpoints", "cycle", "cache-lifetime", "handoff-budget"],
     }[answers.residence].filter((key) => answers.given.has(key));
     if (misplaced.length) {
         const spelling = (key) => (key === "cycle" ? "`--no-cycle`" : `\`--${key}\``);
@@ -223,6 +226,8 @@ export function validateAnswers(answers) {
         );
     }
     const lifetime = answers.cacheLifetime ?? null;
+    try { handoffOffer(answers.handoffBudget); }
+    catch (error) { throw new InitError(error.message); }
     if (lifetime !== null && !CACHE_LIFETIMES.includes(lifetime)) {
         throw new InitError(
             `\`${lifetime}\` is not a cache lifetime — Claude Code takes ${CACHE_LIFETIMES.map((v) => `\`${v}\``).join(" and ")}, ` +
@@ -398,9 +403,10 @@ function draftWorkspace(answers, observed) {
     const files = new Map();
     const name = answers.name ?? "workspace";
     const lifetime = answers.cacheLifetime ?? null;
+    const offeredHandoffs = handoffOffer(answers.handoffBudget, { newest: answers.handoffNewest });
 
     const manifest = {
-        portulan: { spec: lifetime === null ? WORKSPACE_SPEC : SESSIONS_SPEC },
+        portulan: { spec: offeredHandoffs ? "2.14" : lifetime === null ? WORKSPACE_SPEC : SESSIONS_SPEC },
         name,
         summary: answers.summary ?? `The ${name} workspace — drafted by \`init\`, and not yet curated.`,
         kind: "repository",
@@ -438,6 +444,10 @@ function draftWorkspace(answers, observed) {
     };
     if (answers.cycle) manifest.packs = [answers.checkpoints];
     if (lifetime !== null) manifest.sessions = { cache_lifetime: lifetime };
+    if (offeredHandoffs) {
+        Object.assign(manifest, offeredHandoffs);
+        renderHandoffIndex(manifest, { records: [], bytes: 0 });
+    }
     const commented = observed.commentHistory !== null;
 
     files.set(".portulan/workspace.json", { contents: json(manifest) });
@@ -754,7 +764,7 @@ is a command in a file.
 | Recipe | What it checks |
 |---|---|
 | \`workspace\` | **Nothing yet — it exits 2.** Replace it with the command that tells you this repository is healthy. This one is the **default**: it is what runs at a session end. |
-| \`index\` | The handoff series renders an index line for every handoff, and a copy of the index kept on disk matches it byte for byte; none is kept as drafted. Finished as drafted — it checks a real thing today. |${commented ? `
+| \`index\` | Handoff dates and declared caps are checked; the index renders its declared window, and a kept copy matches byte for byte; none is kept as drafted. Finished as drafted — it checks a real thing today. |${commented ? `
 | \`comments\` | No more comment lines record a change's history than its \`LIMIT\`, the count \`init\` found. Lower it as they leave. It needs git, and finds the CLI as \`index\` does, but takes a \`portulan\` on \`PATH\` only where it holds \`comments.mjs\`. |` : ""}
 
 ## The three exit codes, and why the middle one is not enough
@@ -776,7 +786,7 @@ where \`node\` itself is absent, the recipe exits **2** and names what it looked
 to expect on CI until the CLI is installed there; it is not a red, and it is not a pass either.
 
 **Repairing is yours, and the rail deliberately does not do it.** A check that repaired what it found
-would report green on a repository nobody had corrected. A handoff that yields no index line needs its
+would report green on a repository nobody had corrected. An invalid handoff date or required heading needs its
 title or date fixed; a kept copy that drifted needs the index tool run again, or the copy deleted.
 
 **One thing the three locations cannot establish, said rather than left implicit.** The second of them
@@ -818,12 +828,11 @@ function draftIndexRecipe() {
     return `#!/usr/bin/env bash
 # Records rail — the handoff series is rendered as its index, in memory.
 #
-# The index is not kept: \`index --handoffs\` prints it. This recipe renders it, so a handoff that yields
-# no index line is a RED, and a copy someone keeps on disk is compared byte for byte, so one edited by
-# hand or left behind when a handoff was added is a RED too. Nothing here writes.
+# The index is not kept: \`index --handoffs\` prints it. Dates, declared caps and the complete window
+# are checked. A kept copy is byte-compared. Omitted index entries keep their source handoffs.
 #
-#   exit 0   green: every handoff yields a line, and any kept copy matches
-#   exit 1   red: one does not — fix the handoff, or regenerate or delete the copy
+#   exit 0   green: dates, caps and window hold; any kept copy matches
+#   exit 1   red: repair the handoff, or regenerate or delete a stale copy
 #   exit 2   could not run: the Portulan CLI is not reachable from here. NEVER a pass.
 
 set -uo pipefail
@@ -913,6 +922,8 @@ function reportCard(target, say, warn) {
 }
 
 function reportLifetime(answers, say) {
+    if (answers.handoffBudget && answers.handoffBudget !== "none") say("init: handoff budgets and supplied ratio declared at 2.14; index checks the cap and complete window; ratio provenance is not proof of calibration");
+    else if (answers.handoffBudget !== "none") say(`init: ${HANDOFF_OFFER} Use --handoff-budget with JSON record_tokens and/or index_tokens plus ratio {bytes_per_token, calibrated_by}; the record cutoff is set when writing.`);
     const lifetime = answers.cacheLifetime ?? null;
     if (lifetime !== null) {
         say(
@@ -1155,6 +1166,14 @@ export async function interview(answers, { io, target, derivedName }) {
         }
     }
 
+    if (answers.residence === "in-repo" && !answers.given.has("handoff-budget")) {
+        io.say(HANDOFF_OFFER);
+        answers.handoffBudget = await ask("Handoff budgets JSON: record_tokens and/or index_tokens, plus ratio {bytes_per_token, calibrated_by}; `none` to decline", {
+            fallback: "none",
+            validate: value => { try { handoffOffer(value); return null; } catch (error) { return error.message; } },
+        });
+    }
+
     io.say("");
     io.say("init: about to draft");
     io.say(`  residence   ${answers.residence}`);
@@ -1165,6 +1184,8 @@ export async function interview(answers, { io, target, derivedName }) {
         io.say(`  feed        ${answers.feed ?? "(none)"}`);
     } else {
         io.say(`  cycle       ${answers.cycle ? answers.checkpoints : "(none — composing no packs)"}`);
+        const offered = handoffOffer(answers.handoffBudget);
+        io.say(`  handoffs    ${offered ? JSON.stringify(offered) : "(none — no budgets or ratio declared)"}`);
         io.say(
             `  cache       ${
                 answers.cacheLifetime ? `${answers.cacheLifetime}, as \`sessions.cache_lifetime\` at Workspace Definition ${SESSIONS_SPEC}` : "(none — the host's default lifetime)"
@@ -1203,6 +1224,7 @@ export function usage() {
         "                                 `compile` writes as Claude Code's `promptCacheTtl`. Unset,",
         "                                 the host's default stands and five minutes is offered.",
         "  --answers <file>               A JSON object of answers. Flags override its keys.",
+        "  --handoff-budget <JSON|none>   Optional record_tokens/index_tokens plus explicit ratio; cutoff set at write time.",
         "  --no-interview                 Never ask, even at a terminal: refuse instead, naming the flag.",
         "",
         "Exit codes: 0 it wrote · 2 it wrote nothing. There is no 1: init renders no verdict.",
@@ -1296,6 +1318,12 @@ export async function run(argv, options = {}) {
         }
 
         const observed = scan(target, { comments: answers.residence !== "pointer" });
+        if (answers.handoffBudget && answers.handoffBudget !== "none") {
+            try {
+                const dates = fs.readdirSync(path.join(target, ".portulan", "handoffs")).map(name => name.slice(0, 10)).filter(realHandoffDay).sort();
+                answers.handoffNewest = dates.at(-1);
+            } catch (error) { if (error.code !== "ENOENT") throw new InitError(`cannot read existing handoff dates: ${error.message}`); }
+        }
         const files = draft(answers, observed);
 
         if (files.has(".gitignore")) {

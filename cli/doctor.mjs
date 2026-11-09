@@ -25,7 +25,8 @@ import { isInside, recordType } from "./index.mjs";
 import { parseFrontmatter, AGENT_DIR } from "./plugin-lint.mjs";
 import { resolveGovernor, AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 import { composedId } from "./recipe-set.mjs";
-import { alwaysLine, alwaysTier, declaredContext, treeOf, ESTIMATED_BYTES_PER_TOKEN, countAlways, countLine, countRoot, ContextError } from "./context.mjs";
+import { alwaysLine, alwaysTier, declaredContext, treeOf, ESTIMATED_BYTES_PER_TOKEN, countAlways, countLine, countRoot, ContextError, handoffReport } from "./context.mjs";
+import { handoffPolicy } from "./handoff-policy.mjs";
 import { movableSections } from "./instructions.mjs";
 import { formLine } from "./form.mjs";
 import { sessionsLine } from "./sessions.mjs";
@@ -831,6 +832,8 @@ export async function inspect(workspaceDir, options = {}) {
             ["sessions", 11, workspace.sessions],
             ["spend", 12, workspace.spend],
             ["spend.restart", 13, workspace.spend?.restart],
+            ["handoffs.series", 14, workspace.handoffs?.series],
+            ["handoffs.index.budget", 14, workspace.handoffs?.index?.budget],
         ]) {
             if (major === 2 && minor < since && value !== undefined) {
                 fail(
@@ -1281,6 +1284,8 @@ export async function inspect(workspaceDir, options = {}) {
     }
 
     const alwaysTokens = workspace.context?.always?.budget?.tokens;
+    try { handoffPolicy(workspace); }
+    catch (error) { fail("schema", error.message); }
     if (alwaysTokens !== undefined && !positive(alwaysTokens)) {
         fail(
             "schema",
@@ -1875,6 +1880,10 @@ export async function inspect(workspaceDir, options = {}) {
 
     const always = alwaysLine(dir, workspace);
     (always.verdict === "over" || always.verdict === "unjudged" ? fail : report)("context", always.line);
+    try {
+        const handoffs = handoffReport(dir, workspace);
+        for (const line of handoffs.lines) (handoffs.over && line.startsWith("handoffs cap:") ? fail : report)("handoffs", line);
+    } catch (error) { fail("handoffs", `could not report: ${error.message}`); }
 
     // Never a verdict: failing it would turn red every workspace drafted before the new form.
     let form;
