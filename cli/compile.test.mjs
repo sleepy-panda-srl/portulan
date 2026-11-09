@@ -58,6 +58,8 @@ import {
     BOOT_CARD_UNIT,
     BOOT_CARD_LINE,
     IMPORT_DEPTH,
+    importSpans,
+    leadsOfText,
     PERSONA_FIELDS,
     PERSONA_HOSTS,
     BINDING_DIR,
@@ -3802,13 +3804,62 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         assert.equal(code, 2, out);
         assert.match(out, /context\/boot\.md: line 6 of rules\.md follows an item of its first list with no blank line and no indent, .+ indent it under the item, or end the list with a blank line/);
         assert.ok(!fs.existsSync(path.join(dir, ".claude")));
-        for (const opener of ["## Next", "> A quote.", "---", "* Another list.", "<!-- A note. -->", "```"]) {
+        for (const opener of ["## Next", "> A quote.", "---", "* Another list.", "<!-- A note. -->", "<![CDATA[", "```", "<div>", "<pre>", "<details>"]) {
             fs.writeFileSync(path.join(dir, "rules.md"), rules(opener));
             const opened = said(t, ["--workspace", dir]);
             assert.equal(opened.code, 0, `${opener}: ${opened.out}`);
             assert.match(rule(dir, "boot"), /^1\. \*\*Ship small\.\*\*\n2\. \*\*Say what is enforced\.\*\*$/m, opener);
             assert.doesNotMatch(rule(dir, "boot"), /Never read/, opener);
         }
+    });
+
+    test("HTML block types 1 and 6 end the first list at every tag and delimiter", () => {
+        const rawTags = ["pre", "script", "style", "textarea"];
+        const blockTags = [
+            "address", "article", "aside", "base", "basefont", "blockquote", "body", "caption", "center", "col", "colgroup",
+            "dd", "details", "dialog", "dir", "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer", "form", "frame", "frameset",
+            "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hr", "html", "iframe", "legend", "li", "link", "main", "menu", "menuitem",
+            "nav", "noframes", "ol", "optgroup", "option", "p", "param", "search", "section", "summary", "table", "tbody", "td", "tfoot",
+            "th", "thead", "title", "tr", "track", "ul",
+        ];
+        const list = "1. **Ship small.** Why.\n2. **Say so.** Why.";
+        const check = (opener) => assert.deepEqual(
+            leadsOfText(`${list}\n${opener}\n3. **Never read.** Past the list.`, "rules.md", "context/boot.md"),
+            ["1. **Ship small.**", "2. **Say so.**"],
+            opener,
+        );
+        for (const tag of rawTags) {
+            for (const name of [tag, tag.toUpperCase()]) {
+                for (const end of [">", " class=x>", "\tclass=x>", "", " />"]) check(`<${name}${end}`);
+            }
+        }
+        for (const tag of blockTags) {
+            for (const name of [tag, tag.toUpperCase()]) {
+                for (const start of ["<", "</"]) {
+                    for (const end of [">", " class=x>", "\tclass=x>", "", "/>"]) check(`${start}${name}${end}`);
+                }
+            }
+        }
+    });
+
+    test("HTML block lookalikes keep the lazy-line refusal and write nothing", (t) => {
+        const lookalikes = ["<span>", "</span>", "<custom-tag>", "<divided>", "</divided>", "<div/foo>", "<div:note>", "<div\u00a0>", "<pre/>", "</pre>", "<scripted>", "<script\u00a0>", "<![cdata["];
+        for (const opener of lookalikes) {
+            const dir = withFiles({ "rules.md": `1. **Ship small.** Why.\n${opener}\n`, "context/boot.md": card("<!-- leads: ../rules.md -->") });
+            const { code, out } = said(t, ["--workspace", dir]);
+            assert.equal(code, 2, `${opener}: ${out}`);
+            assert.match(out, /line 2 of rules\.md follows an item of its first list with no blank line and no indent/, opener);
+            assert.ok(!fs.existsSync(path.join(dir, ".claude")), opener);
+        }
+    });
+
+    test("a closed HTML block ends raw list text before a code-span paragraph is read for imports", () => {
+        for (const tag of ["pre", "script", "style", "textarea"]) {
+            const text = `- A list item.\n<${tag}></${tag}>\nRun \`cat @hidden.md now\`.\n`;
+            assert.deepEqual(importSpans(text), [], tag);
+        }
+        const inline = "- A list item.\n<span>\nRun `cat @kept.md now`.\n";
+        assert.deepEqual(importSpans(inline).map((span) => span.target), ["kept.md"]);
     });
 
     const refusedLeads = [
