@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import { HTML_ENTITIES } from "./html-entities.mjs";
 
 const USAGE = "usage: node cli/symbols.mjs <file>... | <file.md>#<heading>... | --find <name>...";
 
@@ -764,7 +765,14 @@ function order(entries) {
 // 5. Markdown: headings, and the section under each
 // ===========================================================================================
 
-// Headings as CommonMark reads them, outside fences, HTML comments and frontmatter; a setext heading in a list item is missed.
+// Top-level headings; list-container headings and full CommonMark block parsing are outside this reader.
+
+function characterReference(reference) {
+    if (!reference.startsWith("#")) return Object.hasOwn(HTML_ENTITIES, reference) ? HTML_ENTITIES[reference] : `&${reference};`;
+    const hex = /^#x/i.test(reference);
+    const point = Number.parseInt(reference.slice(hex ? 2 : 1), hex ? 16 : 10);
+    return String.fromCodePoint(point === 0 || point > 0x10ffff || (point >= 0xd800 && point <= 0xdfff) ? 0xfffd : point);
+}
 
 /** A heading's text as it reads rendered: a code span's content kept, links and images their text, and emphasis, tags and escapes gone. */
 function plainText(title) {
@@ -772,9 +780,8 @@ function plainText(title) {
         text
             .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
             .replace(/!?\[([^\]]*)\]\[[^\]]*\]/g, "$1")
-            .replace(/<[^>]*>/g, "")
-            .replace(/\\([!-/:-@[-`{-~])/g, "$1")
-            .replace(/(^|[^\p{L}\p{N}*_])[*_]+|[*_]+(?=[^\p{L}\p{N}*_]|$)/gu, "$1");
+            .replace(/\\([!-/:-@[-`{-~])|<([A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\x00-\x20]*|[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)>|<[^>]*>|&(#\d{1,7}|#[xX][\da-fA-F]{1,6}|[A-Za-z][A-Za-z0-9]*);|(^|[^\p{L}\p{N}*_])[*_]+|[*_]+(?=[^\p{L}\p{N}*_]|$)/gu,
+                (match, escaped, autolink, reference, lead) => escaped ?? autolink ?? (reference ? characterReference(reference) : lead ?? ""));
     let out = "";
     let at = 0;
     for (const span of title.matchAll(/(`+)(.+?)\1(?!`)/g)) {
@@ -794,6 +801,15 @@ const loose = (text) => plainText(text).replace(/\s+/g, " ").trim().toLowerCase(
 // A line that opens a block other than a paragraph, so no `=` or `-` line under it makes it a heading.
 const NOT_PARAGRAPH = /^(?: {4}|\t| {0,3}(?:>|[-*+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|<[A-Za-z/!?]|\|))/;
 const RULE = /^ {0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})$/;
+const HEADING_OR_FENCE = /^(?:#{1,6}(?:[ \t]|$)|`{3,}|~{3,})/;
+
+const startsListParagraph = (text) => text.trim() !== "" && !NOT_PARAGRAPH.test(text) && !RULE.test(text) && !HEADING_OR_FENCE.test(text);
+
+function columns(text, start = 0) {
+    let col = start;
+    for (const char of text) col += char === "\t" ? 4 - col % 4 : 1;
+    return col;
+}
 
 /** The outline of a Markdown file: `{lines, bytes, entries}`, an entry per heading, nested by level. */
 export function outlineMd(src) {
@@ -811,8 +827,10 @@ export function outlineMd(src) {
     }
     let fence = null;
     let comment = false;
-    let para = null; // the line a paragraph opened at, at the margin, while it is open
+    let para = null; // the line the current paragraph opened at
     let above = "start"; // what the line above was: start, blank, heading, rule, para or other
+    const listIndents = [];
+    let listParagraph = false;
     for (; i < lines; i++) {
         const line = at(i);
         if (fence) {
@@ -829,6 +847,36 @@ export function outlineMd(src) {
             }
             continue;
         }
+        const indent = columns(/^[ \t]*/.exec(line)[0]);
+        const marker = !RULE.test(line) && /^([ \t]*)([-*+]|\d{1,9}[.)])([ \t]+|$)/.exec(line);
+        if (marker && (indent <= 3 || (listIndents.length && indent < listIndents.at(-1) + 4))) {
+            const end = indent + marker[2].length;
+            const padding = columns(marker[3], end) - end;
+            while (listIndents.length && listIndents.at(-1) > indent) listIndents.pop();
+            listIndents.push(end + (padding >= 1 && padding <= 4 ? padding : 1));
+            listParagraph = padding <= 4 && startsListParagraph(line.slice(marker[0].length));
+            para = null;
+            above = "other";
+            continue;
+        }
+        if (listIndents.length) {
+            if (line.trim() === "") {
+                listParagraph = false;
+            } else if (indent >= listIndents[0] || (listParagraph && !RULE.test(line) && !/^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|`{3,}|~{3,}|<)/.test(line))) {
+                if (indent >= listIndents[0]) {
+                    while (listIndents.at(-1) > indent) listIndents.pop();
+                    listParagraph = (listParagraph || indent < listIndents.at(-1) + 4) && startsListParagraph(line.trimStart());
+                }
+                para = null;
+                above = "other";
+                continue;
+            } else {
+                listIndents.length = 0;
+                listParagraph = false;
+                para = null;
+                above = "blank";
+            }
+        }
         const open = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
         if (open && !(open[1][0] === "`" && open[2].includes("`"))) {
             fence = new RegExp(`^ {0,3}${open[1][0]}{${open[1].length},}[ \\t]*$`);
@@ -843,7 +891,7 @@ export function outlineMd(src) {
         }
         const atx = /^ {0,3}(#{1,6})(?:[ \t]+|$)(.*)$/.exec(line);
         if (atx) {
-            found.push({ start: i + 1, level: atx[1].length, title: atx[2].replace(/(?:^|[ \t]+)#+[ \t]*$/, "").trim() });
+            found.push({ start: i + 1, level: atx[1].length, title: atx[2].replace(/(?:^|[ \t]+)#+[ \t]*$/, "").replace(/^[ \t]+|[ \t]+$/g, "") });
             para = null;
             above = "heading";
             continue;
@@ -866,8 +914,7 @@ export function outlineMd(src) {
             para = null;
             above = "other";
         } else if (above !== "para" && above !== "other") {
-            // A paragraph a setext line may underline opens at the margin; one indented may sit in a list.
-            para = /^\S/.test(line) ? i + 1 : null;
+            para = i + 1;
             above = para === null ? "other" : "para";
         }
     }

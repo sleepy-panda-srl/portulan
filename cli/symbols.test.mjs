@@ -289,6 +289,76 @@ describe("a shell outline", () => {
 });
 
 describe("a Markdown outline", () => {
+    test("keeps URI and email autolink text while removing actual HTML tags", () => {
+        for (const [title, anchor] of [
+            ["See <https://example.com>", "see-httpsexamplecom"],
+            ["Mail <person@example.com>", "mail-personexamplecom"],
+            ["<b>bold</b> &lt;literal&gt;", "bold-literal"],
+            ["<https://example.com/a_b?x=1&amp;y=2>", "httpsexamplecoma_bx1ampy2"],
+        ]) {
+            const src = `## ${title}\nbody\n`;
+            assert.equal(anchorOf(title), anchor);
+            assert.equal(sectionOf(src, anchor).text, src.trimEnd());
+        }
+    });
+
+    test("decodes character references after syntax, preserving code and escaped references", () => {
+        for (const [title, anchor] of [
+            ["A &amp; B", "a--b"], ["&eacute; &NotEqualTilde;", "é-̸"],
+            ["&#65; &#x42; &#X43;", "a-b-c"], ["&#0; &#xD800; &#1114112;", "--"],
+            ["&MadeUpEntity; &amp", "madeupentity-amp"],
+            ["`&amp;` \\&amp;", "amp-amp"],
+            ["&lt;b&gt;word&lt;/b&gt; &ast;word&ast;", "bwordb-word"],
+            ["&amp;amp;", "amp"],
+        ]) {
+            assert.equal(anchorOf(title), anchor, title);
+            assert.equal(sectionOf(`## ${title}\nbody\n`, anchor).start, 1);
+        }
+    });
+
+    test("trims ATX separators without discarding content or escaped closing hashes", () => {
+        for (const [src, title] of [
+            ["# ###", ""], ["# ### #", "###"], ["## foo ### \t", "foo"],
+            ["## foo#", "foo#"], ["## foo \\###", "foo \\###"],
+            ["## foo #\\##", "foo #\\##"], ["## \u00a0foo\u00a0", "\u00a0foo\u00a0"],
+        ]) assert.equal(outlineMd(src).entries[0].title, title, src);
+    });
+
+    test("opens indented top-level setext paragraphs, with correct spans and bytes", () => {
+        for (const n of [1, 2, 3]) {
+            const src = `# Before\nbody\n\n${" ".repeat(n)}Héading\n${" ".repeat(n)}---\ntext\n`;
+            const entries = outlineMd(src).entries;
+            assert.equal(entries[0].end, 6, "the lower-level heading stays in its parent");
+            assert.deepEqual(entries[0].children.map(e => [e.start, e.end, e.title, e.anchor, e.bytes]),
+                [[4, 6, "Héading", "héading", Buffer.byteLength(src.split("\n").slice(3).join("\n"))]]);
+            assert.equal(sectionOf(src, "héading").text, src.trimEnd().split("\n").slice(3).join("\n"));
+        }
+        assert.equal(outlineMd("    code\n    ---\n").entries.length, 0);
+    });
+
+    test("does not promote list paragraphs or lazy continuations into top-level headings", () => {
+        for (const marker of ["-", "*", "+", "1.", "2)"]) {
+            const pad = " ".repeat(marker.length + 1);
+            for (const body of [`${pad}continuation\n${pad}===`, `\n${pad}second paragraph\n${pad}---`, "lazy\n===", `\n${pad}second paragraph\nlazy\n===`]) {
+                const src = `${marker} item\n${body}\n\n# Outside\n\n  Actual\n  ---\nbody\n`;
+                const entries = outlineMd(src).entries;
+                assert.equal(entries.length, 1, src);
+                assert.equal(entries[0].title, "Outside", src);
+                assert.deepEqual(entries[0].children.map(e => e.title), ["Actual"], src);
+            }
+        }
+        assert.equal(outlineMd("- item\n\n title\n ---\n").entries[0].title, "title", "a dedented paragraph leaves the list");
+    });
+
+    test("retains outer list containers, tab columns and non-paragraph item starts", () => {
+        assert.equal(outlineMd("- outer\n  - nested\n\n  outer paragraph\n  ---\n").entries.length, 0);
+        assert.equal(outlineMd("-\titem\n\n  top-level\n  ---\n").entries[0].title, "top-level");
+        assert.equal(outlineMd("- # heading\ntext\n===\n").entries[0].title, "text");
+        assert.equal(outlineMd("- outer\n\n  second paragraph\nlazy\n===\n").entries.length, 0);
+        assert.equal(outlineMd("- outer\n\n  # inner\ntext\n===\n").entries[0].title, "text");
+        assert.equal(outlineMd("- outer\n  - inner\n    - nested\n      paragraph\nlazy\n===\n").entries.length, 0);
+    });
+
     test("names every heading once, with its section's span, anchor and size, and nothing in fences, comments or frontmatter", () => {
         // A paragraph over `---` is a heading and a list item is not; a `#` in code, a comment or frontmatter is none.
         assert.deepEqual(render("guide.md", outlineMd(MD)), [
