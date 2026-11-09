@@ -289,6 +289,53 @@ describe("the packs it composes", () => {
         assert.equal(r.code, 0, r.out);
     });
 
+    test("an absent tree root executes exactly the recipes yielded through installed-pack discovery", () => {
+        const receipt = path.join(scratch(), "recipes");
+        const quoted = (value) => "'" + value.replaceAll("'", "'\\''") + "'";
+        const record = (id) => `printf '%s\\n' ${quoted(id)} >> ${quoted(receipt)}`;
+        const { work, origin } = clone({ manifest: { tree: "../", packs: ["tools/thing"] }, recipes: [{ id: "docs", run: record("docs") }] });
+        const host = hostWith();
+        const pack = path.join(host, "plugins/cache/feed/portulan/0.1.0/packs/tools/thing/pack.json");
+        const manifest = JSON.parse(fs.readFileSync(pack, "utf8"));
+        manifest.contributes.verify[0].run = record("tools/thing:check");
+        fs.writeFileSync(pack, JSON.stringify(manifest));
+        change(work);
+        assert.equal(fs.existsSync(path.join(work, "packs")), false);
+        const env = { ...ENV, CLAUDE_CONFIG_DIR: host };
+        const bare = spawnSync("node", [path.join(REPO, "cli/recipe-set.mjs"), "--workspace", ".portulan", "--repo-root", "."], { cwd: work, env, encoding: "utf8", timeout: 15000 });
+        assert.equal(bare.status, 0, bare.stderr);
+        const yielded = bare.stdout.trim().split("\n").map((line) => line.split("\t")[0]);
+        assert.deepEqual(yielded, ["docs", "tools/thing:check"]);
+        assert.equal(fs.existsSync(receipt), false, "emitting the recipe set must not execute it");
+        const result = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env, encoding: "utf8", timeout: 15000 });
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.deepEqual(fs.readFileSync(receipt, "utf8").trim().split("\n"), yielded);
+        assert.equal(onOrigin(origin, "feat"), git(work, ["rev-parse", "HEAD"]));
+    });
+
+    test("an absent tree root and unavailable host pack refuse before touching the index or committing", () => {
+        const { work, origin } = clone({ manifest: { tree: "../", packs: ["tools/thing"] } });
+        change(work);
+        const attempt = path.join(scratch(), "commit-attempt");
+        write(work, ".git/hooks/pre-commit", `#!/bin/sh\nprintf attempted > '${attempt}'\n`);
+        fs.chmodSync(path.join(work, ".git/hooks/pre-commit"), 0o755);
+        const before = {
+            head: git(work, ["rev-parse", "HEAD"]),
+            index: git(work, ["diff", "--cached", "--binary"]),
+            worktree: git(work, ["diff", "--binary"]),
+            status: git(work, ["status", "--porcelain=v1", "--untracked-files=all"]),
+        };
+        const result = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env: { ...ENV, CLAUDE_CONFIG_DIR: HERMETIC_HOST }, encoding: "utf8", timeout: 15000 });
+        assert.equal(result.status, 2, result.stdout + result.stderr);
+        assert.match(result.stdout, /could not run.*tools\/thing.*Nothing was committed or pushed/);
+        assert.equal(fs.existsSync(attempt), false, "resolution must precede the provisional commit");
+        assert.equal(git(work, ["rev-parse", "HEAD"]), before.head);
+        assert.equal(git(work, ["diff", "--cached", "--binary"]), before.index);
+        assert.equal(git(work, ["diff", "--binary"]), before.worktree);
+        assert.equal(git(work, ["status", "--porcelain=v1", "--untracked-files=all"]), before.status);
+        assert.equal(onOrigin(origin, "feat"), "");
+    });
+
     test("a packs/ directory that holds no pack hides none the plugin installs", async () => {
         const { work, origin } = clone({ manifest: { tree: "../", packs: ["rituals/checkpoints"] }, files: { "packs/web-app/package.json": "{}\n" } });
         change(work);
@@ -359,6 +406,30 @@ describe("a red stops it, and undoes its own commit", () => {
         assert.equal(r.code, 2);
         assert.match(r.out, /\ndocs — could not run \(exit 2\):\n {4}node not found/);
     });
+
+    for (const [name, recipe, diagnostic] of [
+        ["missing fi", "if true; then echo should-not-run", /bash: -c: line \d+: syntax error: unexpected end of file/],
+        ["leading token", ")", /syntax error near unexpected token.*\)/],
+    ]) {
+        test(`a ${name} parse error retains its diagnostic and rolls back without pushing`, () => {
+            const { work, origin } = clone({ recipes: [{ id: "parse", run: recipe }] });
+            change(work);
+            const before = git(work, ["rev-parse", "HEAD"]);
+            const attempt = path.join(scratch(), "commit-attempt");
+            write(work, ".git/hooks/pre-commit", `#!/bin/sh\nprintf attempted > '${attempt}'\n`);
+            fs.chmodSync(path.join(work, ".git/hooks/pre-commit"), 0o755);
+            const result = spawnSync("node", [TOOL, "-m", "One"], { cwd: work, env: { ...ENV, LC_ALL: "C" }, encoding: "utf8", timeout: 15000 });
+            assert.equal(result.status, 2, result.stdout + result.stderr);
+            assert.match(result.stdout, /parse — could not run \(exit 2\)/);
+            assert.match(result.stdout, diagnostic);
+            assert.match(result.stdout, /The commit is undone and its changes are staged. Nothing was pushed/);
+            assert.equal(fs.existsSync(attempt), true, "the fixture exercised a provisional commit");
+            assert.equal(git(work, ["rev-parse", "HEAD"]), before);
+            assert.match(git(work, ["diff", "--cached", "--name-only"]), /f\.txt/);
+            assert.equal(git(work, ["diff", "--binary"]), "");
+            assert.equal(onOrigin(origin, "feat"), "");
+        });
+    }
 
     test("whatever a runner throws or returns, the commit is undone rather than left standing", async () => {
         const threw = (value) => () => {

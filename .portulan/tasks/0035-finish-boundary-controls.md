@@ -1,0 +1,32 @@
+# Task — Investigate finish's historical review follow-up
+
+**Goal.** Resolve [#482](https://github.com/sleepy-panda-srl/portulan/issues/482) with regression evidence for concrete empty-root and shell parse-diagnostic cases. The historical review posted no findings; this is investigation and coverage of existing behavior, not two reproduced defects fixed.
+
+**Acceptance criteria.**
+- When a composed pack is absent from the tree but available in the fixture host, finish shall execute the exact recipe identities yielded by bare recipe-set and push the verified commit.
+- When neither the tree nor fixture host can resolve a composed pack, finish shall refuse before any provisional commit, preserve the index and worktree, and push nothing.
+- When Bash rejects an incomplete compound command or an invalid leading token in a recipe, finish shall preserve its parse diagnostic, report could-not-run, undo its provisional commit and push nothing.
+- When documentation describes empty roots and parse errors, it shall distinguish automatic resolution from an empty successful check and bound its conclusions to the demonstrated cases.
+
+**Plan and verify.** Add end-to-end controls with recipe identity markers and a pre-commit attempt marker; retain the existing matrix controls for no composed packs, empty/partial roots and explicit roots. Run these against the unchanged runtime, then force targeted regressions red in isolated copies. Document the bounded matrix and regenerate the CLI roster. Run every yielded recipe and strict plugin validation, obtain independent staged review and seam scan, finish, then open and merge the separate PR after review feedback and green CI.
+
+**Session-open.** Fresh-context Sleepy Panda Codex, 2026-11-09: APPROVE-WITH-ADJUSTMENTS. Folded: (1) compare yielded and executed identities, not counts; (2) prove unresolved-pack refusal precedes commit and preserves index/worktree; (3) tie mutation failures to intended assertions, including the separately captured stderr path; (4) describe bounded investigation without inventing the historical review's unspecified concern. The live App readback differs from the old permission-floor example; no permission claim or change is part of this item.
+
+**Baseline.** Direct runner probes already preserve the missing-fi and leading-token diagnostics. Existing tests cover other root cases. New controls are expected to pass the existing runtime; isolated regression mutations must fail them. No runtime change is planned.
+
+**Input boundary.** The first CLI probe of the historical two-line missing-fi example was refused by recipe-set before Bash: current manifest recipes reject newlines. The CLI parse controls use a single-line missing-fi input and a leading token instead. Direct runRecipe probes retain the historical two-line diagnostic, but this is not a claim that current CLI manifests accept it.
+
+
+**Mutation evidence.** Isolated controls rejected disabled installed-pack fallback, a provisional commit inserted before unresolved-pack refusal, and loss of the stdout diagnostic. Removing only stderr capture did not fail either parse fixture: both parse after the wrapper's redirection, so these controls do not demonstrate Bash startup-failure coverage. That measurement corrects the opening plan's assumption about the leading-token fixture; no runtime defect is claimed.
+
+**Evidence.** The four new end-to-end controls pass the unchanged runtime. The full yielded set passed all 31 recipes and strict plugin validation (3,482 tests, zero skips). A same-count mutation executing the declared recipe in place of the composed recipe fails the identity-marker assertion. The other rejected mutations disable fallback, commit before refusal, or discard the stdout diagnostic. The stderr-only mutation stays green and bounds the parse controls' coverage rather than being claimed as a detected regression.
+
+**Pre-commit — fresh-context Sleepy Panda Codex supervisor, 2026-11-09.** APPROVE-WITH-ADJUSTMENTS on fully staged tree `7a96ace272bd6dbdbbc931d7268fb09e998b638c`. Criterion read first from issue #482 and original review 5308865505; the review identifies no concrete findings. Independently ran all 31 yielded recipes and strict plugin validation: green, 3,482 tests, zero skips. Seven isolated mutations failed their intended assertions: disabled fallback, same-count identity substitution, early staging, early commit, lost stdout diagnostic, skipped rollback, and premature push. Stderr-only removal stayed green as documented. Seam scan passed staged files, diff, branch and proposed commit message, including its planted-term control. Live readback verified `sleepy-panda-codex` App 5507651 and installation 176200934 currently grant Administration write; the old permission-floor example is not evidence for this active App.
+
+1. Accept a numeric Bash line number while retaining the exact missing-fi parse diagnostic, and remove the fixed line-2 statement from the reference. The staged missing-fi test fails in a network-isolated Linux Node/Bash fixture: Bash 5.2.21 reports line 3, whereas local Bash 3.2 reports line 2. Re-run the changed controls on both and obtain an independent fold-delta grade before committing.
+
+**Undemonstrated.** The historical review's unspecified alternative cases and Bash startup-failure capture remain undemonstrated; these parse fixtures exercise diagnostics after the wrapper redirection. No runtime behavior was changed, no repository permission was changed, and this checkpoint performs no commit, push or GitHub write.
+
+**Review fold.** Independent review measured line 2 with local Bash 3.2 and line 3 with container Bash 5.2 for the same missing-fi recipe. The control now requires a numeric line and the exact parse message; the reference states that line numbers can differ between Bash versions. No runtime change was needed.
+
+**Fold-delta grade — fresh-context Sleepy Panda Codex supervisor, 2026-11-09.** APPROVE. Independently inspected the entire cached delta from graded tree `7a96ace272bd6dbdbbc931d7268fb09e998b638c` to `32daf775fff84eb2892c93073949762063919304`, including the checkpoint record. Adjustment 1 is folded without weakening the exact parse-message requirement. All four controls pass independently on macOS Bash 3.2 and a read-only staged export under Linux Bash 5.2 (4/4 each, zero skips); docs verification and the seam scan pass. No further adjustments. The undemonstrated cases above remain the boundary. Signed: Sleepy Panda Codex, independent pre-commit supervisor.
