@@ -182,9 +182,20 @@ enabled, which `compile` cannot see. That stops short of the row: `compile` writ
 `.claude/agents/`, where a repository that is not a plugin loads its agents, and no binding where none
 exists; and no host has been shown honouring a compiled field. The core declarations choose
 `model: inherit`, `omitClaudeMd: false` and `cacheLifetime: 5m`, subject to the host precedence described in
-[`../personas/README.md`](../personas/README.md). **Still to land**: the
+[`../personas/README.md`](../personas/README.md). **The librarian reports project always-tier headroom**
+against a declared budget and puts conditional demotion drafts in its standing report
+([#508](https://github.com/sleepy-panda-srl/portulan/issues/508)). It drafts only loaded,
+matching, compiler-owned pure always units from the workspace, excluding boot
+cards, at-sign text, imported sources, expansions, links and stale targets.
+Compiler ownership needing regeneration is repaired before drafts are offered.
+An ownership plan covering another tree or workspace directory is refused.
+The human decides whether guidance can wait,
+supplies its description, and recompiles and measures before/after when applying
+the demotion. The pass changes no guidance, and its measurement keeps the same
+Claude Code project domain and exclusions as `context`; other hosts and full-host
+context remain outside it. **Still to land**: the
 exact mode that calibrates a ratio, the degradation report's half that says which tiers a host can
-express, the Stop-gate's named demotion and the librarian pass, one change at a time, in `0036`'s order
+express and the Stop-gate's named demotion, one change at a time, in `0036`'s order
 of work and under row 12 of
 [`../../docs/plan.md`](../../docs/plan.md).
 Until each lands, the rule it would enforce is held by the human gate, and saying so is the point: a rule
