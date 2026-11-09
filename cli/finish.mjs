@@ -8,7 +8,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
@@ -16,18 +16,14 @@ import { packRoots, resolvePack } from "./compile.mjs";
 import { CHANGES_DIR, CHANGES_README } from "./form.mjs";
 import { CHANGE_NAME } from "./index.mjs";
 import { recipeSet, resolverFor } from "./recipe-set.mjs";
+import { INTERRUPTIONS, runRecipe, tailKeeper } from "./recipe-runner.mjs";
+export { runRecipe, tailKeeper };
 
 export const RECIPE_TIMEOUT_MS = 10 * 60 * 1000;
 
 export const TAIL_LINES = 25;
 
-const TAIL_BYTES = 64 * 1024;
-
-const DRAIN_MS = 1000;
-
 const GIT_TIMEOUT_MS = 2 * 60 * 1000;
-
-const CANNOT_RUN = new Set([2, 126, 127]);
 
 const USAGE = [
     "usage: node cli/finish.mjs -m <subject> [-m <paragraph>]... [options]",
@@ -124,6 +120,9 @@ const textOf = (thrown) => {
 };
 
 const resultOf = (id, r) => {
+    if (INTERRUPTIONS.includes(r?.interrupted)) {
+        return { id, outcome: "could not run", code: null, interrupted: r.interrupted, output: typeof r.output === "string" ? r.output : `interrupted by ${r.interrupted}` };
+    }
     if (r?.outcome === "green") return { id, outcome: "green" };
     if (r?.outcome === "red" || r?.outcome === "could not run") {
         return { id, outcome: r.outcome, code: Number.isInteger(r.code) ? r.code : null, output: typeof r.output === "string" ? r.output : "" };
@@ -204,65 +203,6 @@ export function recipesOf({ root, workspaceDir, named, forced }) {
     }
     const set = recipeSet(manifest, { resolve });
     return set.ok ? { recipes: set.recipes } : { why: set.reason };
-}
-
-/** A stream's last `limit` bytes, kept as it arrives: what is held never passes `limit` and one chunk. */
-export function tailKeeper(limit = TAIL_BYTES) {
-    const chunks = [];
-    let held = 0;
-    return {
-        add(chunk) {
-            chunks.push(chunk);
-            held += chunk.length;
-            while (held - chunks[0].length >= limit) held -= chunks.shift().length;
-        },
-        get held() {
-            return held;
-        },
-        text: () => Buffer.concat(chunks).subarray(-limit).toString("utf8"),
-    };
-}
-
-export function runRecipe(recipe, { root, env, timeout = RECIPE_TIMEOUT_MS }) {
-    return new Promise((resolve) => {
-        const kept = tailKeeper();
-        let failure = null;
-        let late = false;
-        let limit;
-        let drain;
-        const settle = (status) => {
-            clearTimeout(limit);
-            clearTimeout(drain);
-            const code = failure || late ? null : status;
-            if (code === 0) return resolve({ id: recipe.id, outcome: "green" });
-            const why = failure ? `\n${failure.message}` : late ? `\nkilled at its time limit of ${timeout / 1000} s` : "";
-            const cannot = code === null || CANNOT_RUN.has(code);
-            resolve({ id: recipe.id, outcome: cannot ? "could not run" : "red", code, output: `${kept.text()}${why}` });
-        };
-        // As CI and the Stop-gate run a recipe, its stderr joined to its stdout so its lines keep their order.
-        const child = spawn("bash", ["-c", `exec 2>&1\n${recipe.run}`], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
-        const stop = () => {
-            child.stdout.destroy();
-            child.stderr.destroy();
-        };
-        child.stdout.on("data", kept.add);
-        child.stderr.on("data", kept.add);
-        child.on("exit", () => {
-            clearTimeout(limit);
-            // A process the shell left running is not waited for: once the pipe closes, the child's next write kills it with SIGPIPE, or fails with EPIPE where it ignores that signal, and a child that never writes keeps running.
-            drain = setTimeout(stop, DRAIN_MS);
-        });
-        child.on("error", (error) => {
-            failure = error;
-            settle(null);
-        });
-        child.on("close", settle);
-        limit = setTimeout(() => {
-            late = true;
-            child.kill();
-            stop();
-        }, timeout);
-    });
 }
 
 /** Resolves to `{ code, lines }`: the exit code and what to print, the first line saying what happened. */
@@ -374,10 +314,11 @@ export async function finish(options, { cwd = process.cwd(), env = process.env, 
         } catch (error) {
             results.push({ id: recipe.id, outcome: "could not run", code: null, output: textOf(error) });
         }
+        if (results.at(-1).interrupted) break;
     }
     const failed = results.filter((r) => r.outcome !== "green");
     if (failed.length) {
-        const code = failed.some((r) => r.outcome === "red") ? 1 : 2;
+        const code = failed.some((r) => r.interrupted) ? 2 : failed.some((r) => r.outcome === "red") ? 1 : 2;
         const named = failed.map((r) => r.id).join(", ");
         return stop(
             code,

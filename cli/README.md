@@ -70,6 +70,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`pack-version.mjs`](pack-version.mjs) | A change to a pack's `contributes` must move that pack's `portulan.version`. |
 | [`payload.mjs`](payload.mjs) | Every `cli/*.mjs` the npm payload carries is classified, and nothing arrives in it unclassified. Not shipped. |
 | [`plugin-lint.mjs`](plugin-lint.mjs) | `plugin-lint` — the packaging validator. |
+| [`recipe-runner.mjs`](recipe-runner.mjs) | Shared asynchronous recipe execution, bounded output and process-tree cleanup. |
 | [`recipe-set.mjs`](recipe-set.mjs) | The recipe set: the verify recipes a workspace yields, its own plus each composed pack's, namespaced by pack. |
 | [`release-eval.mjs`](release-eval.mjs) | Portulan — the eval result a release carries. |
 | [`review-meter.mjs`](review-meter.mjs) | The review-loop meter: the historical figures of this repository's Copilot review loop, derived from its reviews. |
@@ -132,6 +133,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`pinned-roots.live.test.mjs`](pinned-roots.live.test.mjs) | Required checks name their resolution root, and every suite whose imports reach the host's plugin record empties it. |
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Tests for `plugin-lint` — the packaging validator. |
 | [`portulan.test.mjs`](portulan.test.mjs) | Tests for the `npx` entry point: dispatch through an injected loader, its refusals, and its version. |
+| [`recipe-runner.test.mjs`](recipe-runner.test.mjs) | Recipe cleanup controls use isolated, test-owned process groups and late filesystem writes. |
 | [`recipe-set.live.test.mjs`](recipe-set.live.test.mjs) | The composed recipe set, against THIS repository rather than against fixtures. |
 | [`recipe-set.test.mjs`](recipe-set.test.mjs) | The recipe set — one carrier, and every reader reaches it. |
 | [`release-eval.test.mjs`](release-eval.test.mjs) | The release-eval suite, on the record layer only: `--capture` spawns every other rail, the tests that run this suite included. |
@@ -162,4 +164,5 @@ What the tools and suites read.
 | File | What it is |
 |---|---|
 | [`eval-license.template.md`](eval-license.template.md) | Portulan Evaluation Issue (`EVAL-LICENSE.md`). Not shipped. |
+| [`recipe-runner.md`](recipe-runner.md) | Recipe execution and cleanup |
 | [`fixtures/`](fixtures/) | The fixtures the suites build on; each suite names the ones it reads. Not shipped. |
