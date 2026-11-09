@@ -71,6 +71,39 @@ Strict plugin validation passed with its existing missing-icon advisory; the pri
 clean. No adjustments remained; ordinary verdict bookkeeping was explicitly cleared. Native Windows,
 arbitrary-log understanding and the other M12 exit obligations remain undemonstrated.
 
+**CI compatibility.** The first PR run exposed the older spec reporter's `✖ … (duration) # TODO`
+form, rather than Node 26's `⚠` marker. The same test failed the forced-red sweep's green control.
+A red-first legacy-glyph check now distinguishes the trailing directive from `# TODO` in a genuine
+failure's name, including a name containing its own duration text. Scratch Node 22.23.4 reproduces the
+reporter shape without changing project dependencies. The repaired 20 diagnostic checks pass on the
+local Node 26.13.0 runtime; independent cross-version checkpoint pending.
+
+The compatibility review then found string-valued TODO reasons: both newer reporters replace TODO
+with the reason. A real 100-case pressure fixture now preserves the genuine assertion after those
+expected failures. The default and reasoned forms work in TAP everywhere tested and in annotated spec
+output. Scratch Node 20.0.0 emits no per-row TODO annotation in spec, making expected and genuine
+records indistinguishable there. Its nested expected child can also produce a genuine failed-parent
+record; the relay preserves that parent. The fresh supervisor independently reproduced this boundary
+and accepted capability-scoping only the TODO-specific spec assertions. A real annotation probe drives
+that condition; passing suites and genuine spec failures still run on Node 20, and TAP checks run on
+all three versions. The runtime floor stays at 20.0.0. Unannotated spec records remain ambiguous and
+may contribute diagnostic excerpts; no semantic classification is promised for information absent
+from the stream. The older spec failure glyph also leaves a string-valued TODO reason ending in a
+parenthesized duration indistinguishable from a genuine failure name with a literal annotation and
+its measured duration. The relay keeps that row to preserve genuine failures. Duration text earlier
+in the reason is distinguishable; the newer warning glyph identifies either form. The compatibility
+regressions were observed red first.
+
+**Compatibility pre-commit.** Fresh-context GPT-6 Astra Extra High: APPROVE-WITH-ADJUSTMENTS,
+2026-11-09 23:14:51 UTC. The sole independently verified patch was applied exactly; before verdict
+bookkeeping the adjusted staged SHA-256 was
+`d02263b3f6c2f65bc98df53b0ec642f48e7d31fe61441b6e009920a81a2d5a65`, matching the reviewer's clone.
+All 32 Node 22 recipes and 128 focused checks passed on the frozen candidate. The exact adjusted
+source passed all 22 diagnostics on Node 20.0.0, 22.23.4 and 26.13.0; expanded controls failed before
+adjustment and both targeted mutants failed then passed on restoration. Strict plugin and the seam
+passed. The reviewer cleared exact application and ordinary bookkeeping without another checkpoint;
+finish reruns the full recipes on the adjusted commit. Hosted CI and M12 closure remain separate.
+
 **Limits.** Marker recognition is a bounded heuristic, not arbitrary-log understanding. Each stream
 retains at most 1,024 raw bytes per line; larger lines are marked clipped. First recognized failures
 take precedence; excess diagnostic lines are counted as omitted. Separate bounded fallback cannot

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { runStopRecipe } from "./stop-gate.mjs";
 
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
@@ -11,6 +12,20 @@ process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
 const recipe = { id: "diagnostic", run: "false", timeout: 10 };
+let annotatedSpec;
+function specTodoAnnotations() {
+    if (annotatedSpec !== undefined) return annotatedSpec;
+    const file = path.join(HERMETIC_HOST, "spec-capability.test.mjs");
+    fs.writeFileSync(file, "import {it} from 'node:test'; import assert from 'node:assert/strict'; it('annotation probe',{todo:'portulan-expected-todo'},()=>assert.fail('expected probe'));\n");
+    const env = { ...process.env };
+    delete env.NODE_TEST_CONTEXT;
+    const result = spawnSync(process.execPath, ["--test", "--test-reporter=spec", file], { env, encoding: "utf8", timeout: 10000 });
+    assert.ok(result.status === 0 || result.status === 1, result.stderr);
+    assert.match(result.stdout, /^[^\n]*[✖⚠].*annotation probe/m);
+    assert.match(result.stdout, /expected probe/);
+    annotatedSpec = result.stdout.includes("# portulan-expected-todo");
+    return annotatedSpec;
+}
 async function relay(parts, result = {}, selected = recipe) {
     return runStopRecipe(selected, async (_recipe, options) => {
         for (const part of parts) {
@@ -139,11 +154,13 @@ test("real passing TAP and spec transcripts cannot fill the failure excerpt", as
         bounded(result);
     }
     fs.appendFileSync(file, "test('ACTUAL-FAILURE-CONTROL',()=>{throw new Error('SPECIFIC-ASSERTION')});\n");
-    const result = await runStopRecipe({ ...recipe, run: `unset NODE_TEST_CONTEXT; ${quote(process.execPath)} --test --test-reporter=tap ${quote(file)}` });
-    assert.match(result.text, /ACTUAL-FAILURE-CONTROL/);
-    assert.match(result.text, /SPECIFIC-ASSERTION/);
-    assert.doesNotMatch(result.text, /compiler error: PASS/);
-    bounded(result);
+    for (const reporter of ["tap", "spec"]) {
+        const result = await runStopRecipe({ ...recipe, run: `unset NODE_TEST_CONTEXT; ${quote(process.execPath)} --test --test-reporter=${reporter} ${quote(file)}` });
+        assert.match(result.text, /ACTUAL-FAILURE-CONTROL/);
+        assert.match(result.text, /SPECIFIC-ASSERTION/);
+        assert.doesNotMatch(result.text, /compiler error: PASS/);
+        bounded(result);
+    }
 });
 
 test("structured interruption survives three cleanup reasons", async () => {
@@ -198,22 +215,25 @@ describe('compiler error: suite name',()=>{
 it('ordinary case',()=>{});
 it.skip('compiler error: skip name',()=>{});
 it.todo('compiler error: TODO name');
-it.todo('compiler error: expected assertion',()=>assert.fail('EXPECTED-TODO-ASSERTION'));
 });
+it.todo('compiler error: expected assertion',()=>assert.fail('EXPECTED-TODO-ASSERTION'));
 if(process.env.TRUE_FAILURE)it('ACTUAL-FAILURE-CONTROL',()=>assert.fail('SPECIFIC-ASSERTION'));
 `);
     const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
     for (const reporter of ["tap", "spec"]) {
         const command = `${quote(process.execPath)} --test --test-reporter=${reporter} ${quote(file)}`;
         const passing = await runStopRecipe({ ...recipe, run: `unset NODE_TEST_CONTEXT TRUE_FAILURE; ${command}; exit 1` });
-        assert.match(passing.text, /no failure diagnostic identified/);
-        assert.doesNotMatch(passing.text, /compiler error|EXPECTED-TODO|unrecognized output/);
+        const annotated = reporter === "tap" || specTodoAnnotations();
+        if (annotated) {
+            assert.match(passing.text, /no failure diagnostic identified/);
+            assert.doesNotMatch(passing.text, /compiler error|EXPECTED-TODO|unrecognized output/);
+        } else assert.match(passing.text, /RED \(exit 1\)/);
         bounded(passing);
         const failing = await runStopRecipe({ ...recipe, run: `unset NODE_TEST_CONTEXT; TRUE_FAILURE=1 ${command}` });
         assert.match(failing.text, /ACTUAL-FAILURE-CONTROL/);
         assert.match(failing.text, /SPECIFIC-ASSERTION/);
         assert.match(failing.text, /reporter-mix\.test\.mjs/);
-        assert.doesNotMatch(failing.text, /compiler error|EXPECTED-TODO/);
+        if (annotated) assert.doesNotMatch(failing.text, /compiler error|EXPECTED-TODO/);
         bounded(failing);
     }
 });
@@ -237,4 +257,46 @@ test("expected TODO diagnostic blocks end before following indented real errors"
         assert.doesNotMatch(result.text, /expected assertion/);
         bounded(result);
     }
+});
+
+test("legacy spec TODO glyph uses its trailing directive rather than words in a genuine failure name", async () => {
+    const expected = await relay(["✖ expected assertion (0.25ms) # TODO\n  AssertionError: expected assertion {\n  }\n"]);
+    assert.match(expected.text, /no failure diagnostic identified/);
+    const modern = await relay(["⚠ expected assertion (0.25ms) # track threshold (4ms)\n  AssertionError: expected assertion {\n  }\n"]);
+    assert.match(modern.text, /no failure diagnostic identified/);
+    for (const name of ["actual # TODO in name", "actual (4ms) # TODO in name"]) {
+        const actual = await relay([`✖ ${name} (0.25ms)\n  AssertionError: genuine failure\n`]);
+        assert.ok(actual.text.includes(name));
+        assert.match(actual.text, /genuine failure/);
+        bounded(actual);
+    }
+});
+
+test("reasoned TODO pressure cannot hide a genuine failure on either reporter", async () => {
+    const file = path.join(HERMETIC_HOST, "reasoned-todo.test.mjs");
+    fs.writeFileSync(file, `import {it} from 'node:test'; import assert from 'node:assert/strict';
+for(let i=0;i<100;i++)it('expected '+i,{todo:i%2?'upstream fix':'track threshold (4ms) when scheduling'},()=>assert.fail('EXPECTED-ASSERTION'));
+if(process.env.TRUE_FAILURE)it('GENUINE (4ms) # upstream fix in name',()=>assert.fail('GENUINE_DIAGNOSTIC'));
+`);
+    const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
+    for (const reporter of specTodoAnnotations() ? ["tap", "spec"] : ["tap"]) {
+        const command = `${quote(process.execPath)} --test --test-reporter=${reporter} ${quote(file)}`;
+        const passing = await runStopRecipe({ ...recipe, run: `unset NODE_TEST_CONTEXT TRUE_FAILURE; ${command}; exit 1` });
+        assert.match(passing.text, /no failure diagnostic identified/);
+        assert.doesNotMatch(passing.text, /EXPECTED-ASSERTION|unrecognized output/);
+        bounded(passing);
+        const failing = await runStopRecipe({ ...recipe, run: `unset NODE_TEST_CONTEXT; TRUE_FAILURE=1 ${command}` });
+        assert.match(failing.text.replaceAll("\\#", "#"), /GENUINE \(4ms\) # upstream fix in name/);
+        assert.match(failing.text, /GENUINE_DIAGNOSTIC/);
+        assert.doesNotMatch(failing.text, /EXPECTED-ASSERTION/);
+        bounded(failing);
+    }
+});
+
+test("a genuine failed parent remains visible when its TODO child and zero-fail summary are neutral", async () => {
+    const result = await relay(["    not ok 1 - expected # TODO\n      ---\n      error: expected child\n      ...\nnot ok 1 - parent suite\n  ---\n  failureType: 'subtestsFailed'\n  error: '1 subtest failed'\n  ...\n# fail 0\n"]);
+    assert.match(result.text, /not ok 1 - parent suite/);
+    assert.match(result.text, /1 subtest failed/);
+    assert.doesNotMatch(result.text, /expected child|# fail 0/);
+    bounded(result);
 });
