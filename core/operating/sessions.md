@@ -5,9 +5,8 @@
 > On Claude Code that prefix comes before any workspace file, and cache writes were most of what a task
 > cost on this repository ([`../../evals/ab/warm.md`](../../evals/ab/warm.md) has the figures). So a task
 > runs in as few fresh contexts as it can, each starts warm where it can, the cache lifetime fits the gap
-> between uses, and a host switch that changes the prefix is earned by an A/B run.
-> [`context.md`](context.md) governs what the host loads; this page governs how sessions start and end
-> around it. _(Proposal [`0038`](../../.portulan/proposals/0038-what-a-change-spends-is-measured.md), rules
+> between uses. [The spend rules](context.md#what-a-change-spends) govern pricing, restart, prefix stability,
+> routing and output budgets; this page applies them to session startup, cache lifetimes and host switches. _(Proposal [`0038`](../../.portulan/proposals/0038-what-a-change-spends-is-measured.md), rules
 > 2 to 4, and row 12 of [`../../docs/plan.md`](../../docs/plan.md), whose compile targets carry the cache
 > lifetime.)_
 
@@ -20,18 +19,11 @@ prefix at the read price; a cold one writes it again. Sessions running side by s
 already share it. Sessions that follow one another share it only while nothing between them changed it,
 and on a local checkout the host's startup git snapshot changes with every commit.
 
-What moves the break earlier is anything per session in front of the task: a git snapshot, a date, a
-working directory made fresh for each run, a hook's per-session output, a session's own id. Rule 3 of
-`0038` keeps these out of Portulan's own always tier and hook text. A hosted session whose system prompt
-names the session itself starts cold whatever a workspace compiles; that is inferred from such a prompt,
-not documented.
+The [prefix-stability rule](context.md#keep-the-prefix-stable) governs what may appear ahead of the task.
 
 ## Fewer fresh contexts per task
 
-- **Continue until the restart threshold, then restart.** `0038`'s threshold is computed from the multipliers,
-  the fresh context and a horizon, which a workspace declares in `spend` (Workspace Definition 2.12) and which
-  are the general ones where it does not, and [`../../cli/advisory.mjs`](../../cli/advisory.mjs) says it once.
-  A restart that finds its prefix still cached costs less than the threshold assumes.
+- **Restart policy:** follow [the computed threshold and handoff rule](context.md#restart-at-a-computed-threshold).
 - **Resume a finished worker within its cache lifetime** rather than start a new one: its context is
   read again rather than written again.
 - **A subagent is a fresh context**, on a five-minute cache unless set. Fan out when the reads it keeps
@@ -57,9 +49,8 @@ Claude Code has three switches that change what a session writes: the git instru
 snapshot together with the commit and pull-request instructions), the cache lifetime, and, for a run
 started headless, moving the per-machine sections (working directory, platform, memory paths, the
 snapshot) out of the system prompt and into the first message, so runs in different directories or on
-different machines share the system prompt. **Each stays off until an A/B run shows it cuts spend with no
-loss**, which is `0038` rule 4's gate applied to sessions, and **a session that needs what a switch
-removes keeps it**:
+different machines share the system prompt. **Each follows the [declared-and-earned gate](context.md#routing-is-declared-and-earned)**,
+and **a session that needs what a switch removes keeps it**:
 
 - **The git instructions are dropped only for sessions that neither commit nor open a pull request**, or
   where the workspace's own guidance carries its commit and pull-request workflow. A session that needs
