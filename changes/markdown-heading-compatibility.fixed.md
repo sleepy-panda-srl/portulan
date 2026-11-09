@@ -1,0 +1,1 @@
+- Markdown section reads retain autolink text, decode HTML5 character references outside code and escapes, preserve ATX heading content, and recognize top-level setext headings indented up to three spaces without promoting list continuations.

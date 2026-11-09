@@ -59,6 +59,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`form.mjs`](form.mjs) | `form` — which form a consumer's records and boot are in, and the files that move them to the new one. |
 | [`fuzz-shell.mjs`](fuzz-shell.mjs) | Grammar-aware fuzzing over this repository's two shell segmenters. |
 | [`goldens.mjs`](goldens.mjs) | Grade this workspace's compiled gates against a corpus of adversarial fixtures. |
+| [`html-entities.mjs`](html-entities.mjs) | HTML5 named references (semicolon forms): https://html.spec.whatwg.org/entities.json Generated from Python 3 html.entities.html5. |
 | [`inside.mjs`](inside.mjs) | Is one path inside another? One predicate, one file, no dependencies. |
 | [`instructions.mjs`](instructions.mjs) | `instructions` — the sections a team marks in its own instruction file, moved to on-read units and proved. |
 | [`ledger.mjs`](ledger.mjs) | What a change spends, measured from the host's own usage records. |
