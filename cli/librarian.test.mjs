@@ -9,6 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { inspect as inspectIndex } from "./index.mjs";
+import { compileGuidance } from "./compile.mjs";
 
 // Hermetic host: the tools read its installed-plugin record unasked; a case that wants a host passes `env:`.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
@@ -109,6 +110,211 @@ const WITH_PROPOSALS = (extra = {}) => {
 };
 
 const STALENESS = { record_days: 90, sealed_days: 180, proposal_days: 30 };
+
+function contextRepo({ budget = 1000, treePath = "../", units = { details: "x".repeat(950) + "\n" } } = {}) {
+    const files = { ".portulan/memory/a-fact.md": [linked(), "2026-06-01"] };
+    for (const [name, body] of Object.entries(units)) files[`.portulan/context/${name}.md`] = [`---\ntier: always\n---\n\n${body}`, "2026-06-01"];
+    const manifest = MANIFEST({
+        portulan: { spec: "2.11" }, tree: treePath,
+        slots: { memory: "memory/", context: "context/" },
+        librarian: { staleness: STALENESS },
+        context: { ratio: { bytes_per_token: 1, calibrated_by: "fixture" }, ...(budget === null ? {} : { always: { budget: { tokens: budget } } }) },
+    });
+    if (treePath === null) delete manifest.tree;
+    const dir = repo(files, { workspace: manifest });
+    if (treePath !== null) compileGuidance(path.join(dir, ".portulan"));
+    return dir;
+}
+
+describe("the librarian's always-tier headroom and conditional drafts", () => {
+    test("a near-budget pass reports remaining tokens and a file-specific demotion without applying it", () => {
+        const dir = contextRepo();
+        const before = git(dir, "diff", "--binary");
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.equal(result.context.bytes, 951);
+        assert.equal(result.context.tokens, 951);
+        assert.equal(result.context.remaining, 49);
+        assert.equal(result.context.budget, 1000);
+        assert.deepEqual(result.context.drafts.map(d => [d.source, d.from, d.to, d.bytes]), [["context/details.md", "always", "on-read", 951]]);
+        const report = renderReport([result], { asOf: "2026-06-15" });
+        assert.match(report, /49 tokens headroom/);
+        assert.match(report, /context\/details\.md/);
+        assert.match(report, /always.*on-read/);
+        assert.match(report, /description/);
+        assert.equal(git(dir, "diff", "--binary"), before);
+        assert.match(fs.readFileSync(path.join(dir, ".portulan/context/details.md"), "utf8"), /tier: always/);
+    });
+
+    test("over-budget headroom stays negative, and no budget or tree is never presented as zero", () => {
+        const over = passWorkspace(path.join(contextRepo({ budget: 900 }), ".portulan"), { asOf: "2026-06-15" }).context;
+        assert.equal(over.remaining, -51);
+        assert.equal(over.drafts.length, 1);
+        const undeclared = passWorkspace(path.join(contextRepo({ budget: null }), ".portulan"), { asOf: "2026-06-15" }).context;
+        assert.equal(undeclared.budget, null);
+        assert.equal(undeclared.remaining, null);
+        assert.deepEqual(undeclared.drafts, []);
+        const unmeasured = passWorkspace(path.join(contextRepo({ treePath: null }), ".portulan"), { asOf: "2026-06-15" }).context;
+        assert.equal(unmeasured.state, "unmeasured");
+        assert.equal(unmeasured.tokens, null);
+        assert.deepEqual(unmeasured.drafts, []);
+    });
+
+    test("draft ordering is deterministic, bounded, and only includes loaded matching pure always units", () => {
+        const dir = contextRepo({ units: { z: "z\n", b: "same\n", a: "same\n", largest: "large body\n", stale: "old\n", mail: "Ask someone@example.com.\n" } });
+        tree(dir, { ".portulan/context/stale.md": "---\ntier: always\n---\n\nNew body.\n" });
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }).context;
+        assert.deepEqual(result.drafts.map(d => d.source), ["context/largest.md", "context/a.md", "context/b.md"]);
+        fs.rmSync(path.join(dir, ".claude/rules/portulan/largest.md"));
+        const missing = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }).context;
+        assert.ok(!missing.drafts.some(d => d.source === "context/largest.md"));
+    });
+
+    test("malformed context data is a typed could-not-run result", () => {
+        const dir = contextRepo();
+        const file = path.join(dir, ".portulan/workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(file));
+        manifest.context.always.budget.tokens = 0;
+        fs.writeFileSync(file, JSON.stringify(manifest));
+        assert.throws(() => passWorkspace(path.dirname(file), { asOf: "2026-06-15" }), LibrarianError);
+        assert.equal(run(["--as-of", "2026-06-15", path.dirname(file)], () => {}), 2);
+    });
+
+    test("boot cards, later tiers and expanded units are never proposed as pure demotions", () => {
+        const dir = contextRepo();
+        tree(dir, {
+            ".portulan/context/boot.md": "---\ntier: always\n---\n\n# Portulan boot card\n\nRead the guidance.\n",
+            ".portulan/context/later.md": "---\ntier: on-read\ndescription: Open for later work.\n---\n\nLater.\n",
+            ".portulan/context/expanded.md": "---\ntier: always\n---\n\n<!-- leads: ../principles.md -->\n",
+            ".portulan/principles.md": "# Principles\n\n- **Run tests.** It catches regressions.\n",
+        });
+        compileGuidance(path.join(dir, ".portulan"));
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }).context;
+        assert.deepEqual(result.drafts.map(d => d.source), ["context/details.md"]);
+    });
+
+    test("linked sources and targets are skipped, while malformed owned guidance fails closed", () => {
+        const dir = contextRepo();
+        const source = path.join(dir, ".portulan/context/details.md");
+        const moved = path.join(dir, ".portulan/context/details-copy.md");
+        fs.renameSync(source, moved);
+        fs.symlinkSync(moved, source);
+        assert.deepEqual(passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }).context.drafts, []);
+        fs.unlinkSync(source);
+        fs.renameSync(moved, source);
+        const target = path.join(dir, ".claude/rules/portulan/details.md");
+        const linked = path.join(dir, ".claude/rules/portulan/linked.md");
+        fs.renameSync(target, linked);
+        fs.symlinkSync(linked, target);
+        assert.deepEqual(passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }).context.drafts, []);
+        fs.writeFileSync(source, "---\ntier: invented\n---\n\nBad.\n");
+        assert.throws(() => passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }), LibrarianError);
+    });
+
+    test("a source imported into the always tier is not proposed as a tier-only demotion", () => {
+        const dir = contextRepo();
+        tree(dir, { "CLAUDE.md": "@.portulan/context/details.md\n" });
+        assert.deepEqual(passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }).context.drafts, []);
+    });
+
+    test("compiler ownership must be current before a demotion can be drafted", () => {
+        for (const state of ["absent", "omitted", "malformed"]) {
+            const dir = contextRepo();
+            const marker = path.join(dir, ".claude/rules/portulan/.compiled");
+            if (state === "absent") fs.unlinkSync(marker);
+            else if (state === "omitted") fs.writeFileSync(marker, fs.readFileSync(marker, "utf8").replace("details.md\n", ""));
+            else fs.writeFileSync(marker, "Not a compiler ownership marker.\n");
+            const pass = () => passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+            if (state === "malformed" || state === "absent") assert.throws(pass, LibrarianError);
+            else assert.deepEqual(pass().context.drafts, [], state);
+        }
+    });
+
+    test("a single stale target is withheld, independently of the candidate limit", () => {
+        const dir = contextRepo();
+        fs.writeFileSync(path.join(dir, ".portulan/context/details.md"), "---\ntier: always\n---\n\nA changed source.\n");
+        assert.deepEqual(passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }).context.drafts, []);
+    });
+
+    test("an ownership plan for another root cannot certify the measured tree through an alias", () => {
+        const dir = contextRepo();
+        fs.symlinkSync(dir, path.join(dir, "alias"), "dir");
+        const manifestFile = path.join(dir, ".portulan/workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(manifestFile));
+        manifest.tree = "../alias/";
+        fs.writeFileSync(manifestFile, JSON.stringify(manifest));
+        fs.unlinkSync(path.join(dir, ".claude/rules/portulan/.compiled"));
+        assert.throws(() => passWorkspace(path.dirname(manifestFile), { asOf: "2026-06-15" }), error =>
+            error instanceof LibrarianError && /ownership plan.*measured tree/.test(error.message));
+    });
+
+    test("a colocated tree must not trust an ownership plan for a different workspace directory", () => {
+        const dir = contextRepo();
+        const ws = path.join(dir, ".portulan");
+        fs.renameSync(path.join(dir, ".claude"), path.join(ws, ".claude"));
+        const manifestFile = path.join(ws, "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(manifestFile));
+        manifest.tree = "./";
+        fs.writeFileSync(manifestFile, JSON.stringify(manifest));
+        fs.unlinkSync(path.join(ws, ".claude/rules/portulan/.compiled"));
+        assert.throws(() => passWorkspace(ws, { asOf: "2026-06-15" }), LibrarianError);
+    });
+
+    test("human application of an owned candidate removes its always rule and preserves the guidance", () => {
+        const dir = contextRepo();
+        const ws = path.join(dir, ".portulan");
+        const before = passWorkspace(ws, { asOf: "2026-06-15" }).context;
+        assert.equal(before.drafts.length, 1);
+        const source = path.join(ws, before.drafts[0].source);
+        const original = fs.readFileSync(source, "utf8");
+        fs.writeFileSync(source, original.replace("tier: always", "tier: on-read\ndescription: Open when detailed guidance is needed."));
+        compileGuidance(ws);
+        const after = passWorkspace(ws, { asOf: "2026-06-15" }).context;
+        assert.ok(after.bytes < before.bytes);
+        assert.deepEqual(after.drafts, []);
+        assert.equal(fs.existsSync(path.join(dir, before.drafts[0].target)), false);
+        assert.ok(fs.readFileSync(source, "utf8").endsWith("x".repeat(950) + "\n"));
+        assert.match(fs.readFileSync(path.join(dir, ".claude/rules/portulan/on-read.md"), "utf8"), /details\.md/);
+    });
+
+    test("measurement exclusions remain visible rather than suggesting full-host coverage", () => {
+        const dir = contextRepo();
+        const outside = path.join(scratch(), "outside.md");
+        fs.writeFileSync(outside, "outside\n");
+        tree(dir, { "CLAUDE.md": "@missing.md\n@linked.md\n", ".claude/rules/scoped.md": "---\npaths: [api/**]\n---\n\nScoped.\n" });
+        fs.symlinkSync(outside, path.join(dir, "linked.md"));
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.equal(result.context.exclusions.missing.length, 1);
+        assert.equal(result.context.exclusions.outside.length, 1);
+        assert.equal(result.context.exclusions.scoped, 1);
+        const report = renderReport([result], { asOf: "2026-06-15" });
+        assert.match(report, /missing\.md/);
+        assert.match(report, /linked\.md/);
+        assert.match(report, /1 path-scoped rules/);
+        assert.match(report, /plugin descriptions are outside this project measurement/);
+        assert.doesNotMatch(report, /undefined/);
+    });
+
+    test("the real write/report command delivers repeatable drafts and changes no guidance, rules or configuration", () => {
+        const dir = contextRepo();
+        const ws = path.join(dir, ".portulan");
+        const report = path.join(scratch(), "report.md");
+        const before = git(dir, "status", "--porcelain", "--untracked-files=all");
+        const source = fs.readFileSync(path.join(ws, "context/details.md"));
+        const rule = fs.readFileSync(path.join(dir, ".claude/rules/portulan/details.md"));
+        const manifest = fs.readFileSync(path.join(ws, "workspace.json"));
+        const args = [path.join(HERE, "librarian.mjs"), "--as-of", "2026-06-15", "--write", "--report", report, ws];
+        const execute = () => execFileSync(process.execPath, args, { encoding: "utf8" });
+        execute();
+        const first = fs.readFileSync(report, "utf8");
+        assert.match(first, /Context demotion drafts/);
+        execute();
+        assert.equal(fs.readFileSync(report, "utf8"), first);
+        assert.deepEqual(fs.readFileSync(path.join(ws, "context/details.md")), source);
+        assert.deepEqual(fs.readFileSync(path.join(dir, ".claude/rules/portulan/details.md")), rule);
+        assert.deepEqual(fs.readFileSync(path.join(ws, "workspace.json")), manifest);
+        assert.equal(git(dir, "status", "--porcelain", "--untracked-files=all"), before);
+    });
+});
 
 const linked = (fact = "A rule.") =>
     `**type:** rule\n**scope:** workspace\n**provenance:** \`form=link\` \`href=../handoffs/x.md\`\n\n${fact}\n\n**Retire when:** the thing is deleted.\n`;

@@ -22,6 +22,8 @@ import { pathToFileURL } from "node:url";
 
 import { inspect as inspectIndex, IndexError, recordType, dateOf, isInside } from "./index.mjs";
 import { parseProvenance } from "./doctor.mjs";
+import { alwaysTier, declaredContext, ESTIMATED_BYTES_PER_TOKEN, tokensOf, TOP_CONTRIBUTORS, treeOf } from "./context.mjs";
+import { BOOT_CARD_UNIT, ENGINE_LINE, GATES_LINE, guidanceDeclaration, guidanceEdits, GUIDANCE_RULES_DIR, LEADS_LINE, parseUnit, resolveWorkspace, RULES_MARKER } from "./compile.mjs";
 
 /** Raised when the pass cannot run, or cannot report honestly. Always exit 2. */
 export class LibrarianError extends Error {
@@ -172,6 +174,58 @@ const listMarkdown = (dir) => {
     }
     return names.filter((n) => n.endsWith(".md") && !NOT_A_RECORD.has(n)).sort();
 };
+
+function contextHeadroom(dir, workspace) {
+    try {
+        const declared = declaredContext(workspace);
+        const tree = treeOf(dir, workspace);
+        const base = { budget: declared.budget, ratio: declared.ratio ?? ESTIMATED_BYTES_PER_TOKEN, calibratedBy: declared.calibratedBy, drafts: [] };
+        if (tree === null) return { ...base, state: "unmeasured", bytes: null, tokens: null, remaining: null, reason: "no tree is declared" };
+        const root = fs.realpathSync(tree);
+        const measured = alwaysTier(root);
+        const bytes = measured.entries.reduce((sum, entry) => sum + entry.bytes, 0);
+        const tokens = tokensOf(bytes, base.ratio);
+        const result = { ...base, state: "measured", bytes, tokens, remaining: base.budget === null ? null : base.budget - tokens,
+            exclusions: { missing: measured.missing, outside: measured.outside, tooDeep: measured.tooDeep, scoped: measured.scoped, unlisted: measured.unlisted } };
+        if (base.budget === null) return result;
+        const realDir = fs.realpathSync(dir);
+        const declaration = guidanceDeclaration(root, path.relative(root, realDir) || ".");
+        if (declaration === null) return result;
+        const realContext = fs.realpathSync(declaration.dir);
+        if (!isInside(realDir, realContext) || realContext === realDir) throw new LibrarianError("slots.context resolves outside its workspace");
+        const loaded = new Map(measured.entries.filter(entry => entry.label === "rule").map(entry => [path.resolve(entry.file), entry]));
+        for (const file of listMarkdown(declaration.dir)) {
+            const source = path.join(declaration.dir, file);
+            if (fs.realpathSync(source) !== path.resolve(source)) continue;
+            if (measured.entries.some(entry => fs.realpathSync(entry.file) === source)) continue;
+            const unit = parseUnit(path.basename(file, ".md"), fs.readFileSync(source, "utf8"), file);
+            if (unit.tier !== "always" || unit.name === BOOT_CARD_UNIT || unit.body.includes("@")) continue;
+            if (unit.body.split("\n").some(line => [ENGINE_LINE, GATES_LINE, LEADS_LINE].some(pattern => pattern.test(line)))) continue;
+            const target = path.join(root, GUIDANCE_RULES_DIR, file);
+            const entry = loaded.get(target);
+            if (!entry || fs.realpathSync(target) !== path.resolve(target)) continue;
+            result.drafts.push({ source: path.relative(realDir, source).split(path.sep).join("/"), target: path.relative(root, target).split(path.sep).join("/"),
+                from: "always", to: "on-read", bytes: entry.bytes, tokens: tokensOf(entry.bytes, base.ratio) });
+        }
+        if (result.drafts.length) {
+            const plan = guidanceEdits(realDir);
+            if (fs.realpathSync(plan.root) !== root) throw new LibrarianError("the compiler ownership plan does not cover the measured tree; no demotions can be drafted");
+            const resolved = resolveWorkspace(realDir);
+            if (fs.realpathSync(path.resolve(resolved.workspaceRoot, resolved.workspaceDir)) !== realDir) throw new LibrarianError("the compiler ownership plan does not cover the measured workspace; no demotions can be drafted");
+            const repairs = new Set([...plan.edits.map(edit => edit.file), ...plan.left]);
+            if (repairs.has(`${GUIDANCE_RULES_DIR}/${RULES_MARKER}`)) {
+                result.drafts = [];
+                result.draftNote = "Compiler ownership needs regeneration; recompile before drafting demotions.";
+            } else result.drafts = result.drafts.filter(draft => !repairs.has(draft.target));
+        }
+        result.drafts.sort((a, b) => b.bytes - a.bytes || (a.source < b.source ? -1 : a.source > b.source ? 1 : 0));
+        result.drafts = result.drafts.slice(0, TOP_CONTRIBUTORS);
+        return result;
+    } catch (cause) {
+        if (cause instanceof LibrarianError) throw cause;
+        throw new LibrarianError(`the always tier could not be measured or drafted — ${cause.message}`);
+    }
+}
 
 /** One workspace's pass, which never writes: `run` does, after it. */
 export function passWorkspace(dir, { asOf, reviews, since } = {}) {
@@ -385,6 +439,7 @@ export function passWorkspace(dir, { asOf, reviews, since } = {}) {
         handoffs: series,
         mining,
         consolidation,
+        context: contextHeadroom(dir, workspace),
     };
 }
 
@@ -509,8 +564,8 @@ export function renderReport(results, { asOf }) {
         "",
         `**Date:** ${asOf} · Filed by \`cli/librarian.mjs\` on a cron.`,
         "",
-        "**State.** Every figure below is **as of " + asOf + "**, read from git history rather than from the",
-        "filesystem, and nothing here is a decision. This pass drafts; the maintainer disposes.",
+        `**State.** Ages are read from git history as of ${asOf}; sizes and context headroom describe the tree on arrival, before any index regeneration.`,
+        "Nothing here is a decision. This pass drafts; the maintainer disposes.",
         "",
     ];
 
@@ -521,6 +576,25 @@ export function renderReport(results, { asOf }) {
         }
         const t = r.thresholds;
         out.push(`## ${r.name}`, "");
+        const context = r.context;
+        if (context) {
+            const cap = context.budget === null ? "budget undeclared; headroom unjudged" : `budget ${context.budget} tokens`;
+            if (context.state === "unmeasured") out.push(`**Always tier — Claude Code project.** Not measured: ${context.reason}; ${cap}.`, "");
+            else {
+                const headroom = context.remaining === null ? cap : `${cap}; ~${context.remaining} tokens headroom`;
+                out.push(`**Always tier — Claude Code project.** ${context.bytes} B, ~${context.tokens} tokens at ${context.ratio} bytes per token (${context.calibratedBy ?? "unconfigured estimate"}); ${headroom}.`, "");
+                const e = context.exclusions;
+                out.push(`**Measurement limits.** ${e.missing.length} missing imports; ${e.outside.length} outside imports or links; ${e.tooDeep.length} depth-limited imports; ${e.scoped} path-scoped rules; ${e.unlisted} descriptions unavailable. Personal/parent instructions, auto memory, system/tool prompts and plugin descriptions are outside this project measurement.`, "");
+                for (const [label, values] of [["Missing", e.missing], ["Outside", e.outside], ["Depth-limited", e.tooDeep]]) {
+                    if (values.length) out.push(`${label}: ${values.map(value => `\`${value}\``).join(", ")}.`, "");
+                }
+            }
+            out.push(`**Context demotion drafts.** ${context.drafts.length} conditional candidate(s); nothing applied. Pure, loaded, compiler-owned, matching always units only; boot cards, at-sign text, imported sources, expansions, links and stale targets are not drafted.`, "");
+            if (context.draftNote) out.push(context.draftNote, "");
+            for (const draft of context.drafts) {
+                out.push(`- **Draft: \`${draft.source}\`, \`${draft.from}\` → \`${draft.to}\`.** \`${draft.target}\` currently contributes ${draft.bytes} B (~${draft.tokens} tokens). If the maintainer decides this guidance can wait for an explicit read, change its tier, add a one-line \`description\`, preserve its body, recompile, and record before/after measurements. This is not a measured savings claim.`, "");
+            }
+        }
         out.push(
             `**Store.** ${plural(r.counts.records, "record")}, ${plural(r.counts.rules, "rule")}, ` +
                 `${(r.counts.bytes / 1024).toFixed(1)} KB` +
