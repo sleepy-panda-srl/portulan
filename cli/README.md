@@ -37,7 +37,7 @@ Run by the hooks `compile` writes into a host's settings, never by a person.
 | File | What it is |
 |---|---|
 | [`gate.mjs`](gate.mjs) | The PreToolUse gate runner — the *explanation* half of the enforcement compiler. |
-| [`stop-gate.mjs`](stop-gate.mjs) | The Stop-gate runner — "done" is not a thing an agent may simply declare. |
+| [`stop-gate.mjs`](stop-gate.mjs) | Stop-gate: bounded recipe and work checks. Hook failures need a verdict, since a crashed hook fails open. |
 | [`advisory.mjs`](advisory.mjs) | The restart advisory — one line, once, where the agent is, and the same figure for the human. |
 
 ### Tools and modules
@@ -84,6 +84,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`skill-goldens.mjs`](skill-goldens.mjs) | The core-skill golden corpus — every mandate a core skill states, bound to the live artifacts it governs, and graded. |
 | [`skills-set.mjs`](skills-set.mjs) | The registrable set: the `skills` paths a plugin manifest must declare so a composed pack's skills register. |
 | [`spend-offer.mjs`](spend-offer.mjs) | Local evidence for init's optional spend declaration. |
+| [`stop-policy.mjs`](stop-policy.mjs) | Stop recipe deadline policy. |
 | [`symbols.mjs`](symbols.mjs) | A code file's outline, one line per symbol, and a Markdown file's, one line per heading with its size. |
 | [`telemetry.mjs`](telemetry.mjs) | The OTel emitter: the review-loop figures as OTLP/HTTP JSON, sent only when a committed config opts in. |
 | [`version-carriers.mjs`](version-carriers.mjs) | Every prose statement of the current version agrees with `package.json`. |

@@ -23,7 +23,7 @@ function fixture({ cap = 60, window = 230, indexed = true, declared = true } = {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-handoff-budget-"));
     roots.push(dir);
     const manifest = {
-        portulan: { spec: "2.14" }, name: "fixture", kind: "demo",
+        portulan: { spec: "2.15" }, name: "fixture", kind: "demo",
         slots: { identity: "identity.md", principles: "principles.md", gates: "gate-map.md", handoffs: "handoffs/" },
         verify: { default: "docs", recipes: [{ id: "docs", run: "./verify.sh" }] },
     };
@@ -87,7 +87,7 @@ test("direct index calls refuse malformed declarations and absent ratios", () =>
         m => m.context.ratio.calibrated_by = "",
         m => m.handoffs.series.budget.record_token = 10,
         m => m.handoffs.index.budget = null,
-        m => m.portulan.spec = "2.13",
+        m => m.portulan.spec = "2.14",
     ]) {
         const f = fixture(); mutate(f.manifest); f.save();
         assert.throws(() => judge(f.dir), IndexError);
@@ -156,11 +156,18 @@ test("minimum overhead and first-entry boundary include long Unicode names and n
 
 test("doctor gates new keys and reports a handoff series without a tree", async () => {
     const f = fixture(); f.add("2026-11-08-a.md", "# A\n");
+    f.manifest.verify.stopTimeout = 45; f.save();
     const result = await doctor(f.dir);
     assert.deepEqual(result.findings.filter(f => f.severity === "fail"), []);
     assert.match(result.findings.map(f => f.message).join("\n"), /handoffs.*median|median.*handoff/i);
+    f.manifest.portulan.spec = "2.14"; f.save();
+    assert.match((await doctor(f.dir)).findings.filter(f => f.severity === "fail").map(f => f.message).join("\n"), /Workspace Definition 2\.15/);
+    delete f.manifest.handoffs.series;
+    delete f.manifest.handoffs.index.budget;
+    f.save();
+    assert.deepEqual((await doctor(f.dir)).findings.filter(f => f.severity === "fail"), [], "the Stop deadline remains valid at 2.14 without handoff budgets");
     f.manifest.portulan.spec = "2.13"; f.save();
-    assert.match((await doctor(f.dir)).findings.filter(f => f.severity === "fail").map(f => f.message).join("\n"), /2\.14/);
+    assert.match((await doctor(f.dir)).findings.filter(f => f.severity === "fail").map(f => f.message).join("\n"), /verify\.stopTimeout.*2\.14/);
 });
 
 test("context reports a series with no tree or index using the declared estimate", () => {
@@ -180,7 +187,7 @@ test("init accepts either offered budget independently with its supplied ratio",
         const code = await init(["--residence", "in-repo", "--no-cycle", "--no-interview", "--handoff-budget", JSON.stringify({ ...budget, ratio }), dir], { say: line => lines.push(line), warn: line => lines.push(line) });
         assert.equal(code, 0, lines.join("\n"));
         const manifest = JSON.parse(fs.readFileSync(path.join(dir, ".portulan/workspace.json")));
-        assert.equal(manifest.portulan.spec, "2.14");
+        assert.equal(manifest.portulan.spec, "2.15");
         assert.deepEqual(manifest.context.ratio, ratio);
         assert.equal(manifest.handoffs.series?.budget.record_tokens, budget.record_tokens);
         assert.equal(manifest.handoffs.index.budget?.tokens, budget.index_tokens);
@@ -225,7 +232,7 @@ test("init preserves handoff, spend and cache settings together at the newest re
     const code = await init(["--residence", "in-repo", "--no-cycle", "--no-interview", "--cache-lifetime", "5m", "--horizon", "3", "--multipliers", '{"read":0.04,"write":{"5m":1.3,"1h":2.1}}', "--handoff-budget", JSON.stringify({ record_tokens: 3000, index_tokens: 3000, ratio }), dir], { say: l => lines.push(l), warn: l => lines.push(l) });
     assert.equal(code, 0, lines.join("\n"));
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, ".portulan/workspace.json")));
-    assert.equal(manifest.portulan.spec, "2.14");
+    assert.equal(manifest.portulan.spec, "2.15");
     assert.equal(manifest.handoffs.series.budget.record_tokens, 3000);
     assert.equal(manifest.handoffs.index.budget.tokens, 3000);
     assert.deepEqual(manifest.context.ratio, ratio);

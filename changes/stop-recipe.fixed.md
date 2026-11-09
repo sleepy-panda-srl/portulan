@@ -1,0 +1,1 @@
+- The Stop-gate accepts a workspace-declared recipe timeout with a compiled outer margin, names actual timeouts, and skips recipe execution on cap-released Stops while retaining an explicit unverified result and preserving handoff recovery.

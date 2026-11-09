@@ -193,7 +193,7 @@ newest whole entry lines that fit. Omitted handoffs stay in the dated series, wi
 Both are on-read; neither belongs in the boot or always tier. The session-end gate checks existence
 and a date, never length; the index recipe owns the upper cap. There is no aggregate series budget
 and no minimum length. These are accepted proposal 0037's rules, implemented in Workspace Definition
-2.14; the schema contract and history-dependent limits are in [`spec/slots.md`](../../spec/slots.md).
+2.15; the schema contract and history-dependent limits are in [`spec/slots.md`](../../spec/slots.md).
 
 ## What is machinery today, and what is not
 

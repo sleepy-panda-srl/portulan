@@ -715,7 +715,7 @@ describe("where every session switch stands is one line, reported and never fail
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 14 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 15 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -1845,7 +1845,7 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
             return tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
         };
         assert.equal(await run([build("9.9")], { quiet: true }), 2, "a MAJOR ahead");
-        assert.equal(await run([build("2.15")], { quiet: true }), 2, "a MINOR ahead");
+        assert.equal(await run([build("2.16")], { quiet: true }), 2, "a MINOR ahead");
         assert.equal(await run([build("2.0")], { quiet: true }), 0, "the current version");
     });
 
@@ -2026,7 +2026,7 @@ describe("the packs a workspace declares", () => {
 
     test("the two version trains are read by different functions and do not collide", () => {
         assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 14 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 15 });
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });
 
@@ -3509,4 +3509,16 @@ for (const key of ["readFileSync","readdirSync","statSync","lstatSync"]) { const
         assert.match(r.stdout, /local worker: 4 line\(s\)/);
         assert.doesNotMatch(r.stdout + r.stderr, /PRIVATE_USAGE_SENTINEL/);
     });
+});
+
+test("doctor accepts a declared Stop deadline only at 2.14 and within its executable range", async () => {
+    for (const [spec, value, valid] of [["2.14", 360, true], ["2.13", 360, false], ["2.14", 0, false], ["2.14", 1.5, false], ["2.14", "360", false]]) {
+        const manifest = wellFormed();
+        manifest.portulan.spec = spec;
+        manifest.verify.stopTimeout = value;
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(manifest) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(findings, "fail");
+        assert.equal(failures.length === 0, valid, JSON.stringify({ spec, value, failures }));
+    }
 });

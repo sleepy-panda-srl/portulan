@@ -308,11 +308,20 @@ demonstration that a structured slot earns being structured. Recorded in custome
 ```json
 "verify": {
   "default": "{recipe-id}",
+  "stopTimeout": 360,
   "recipes": [
     { "id": "{recipe-id}", "run": "{command}", "requires": ["{tool}"], "doc": "{path}" }
   ]
 }
 ```
+
+`stopTimeout` is optional, added in 2.14: the Stop recipe deadline in seconds,
+undeclared at 90. A whole number from 1 through 2,147,423 keeps both Node timers
+in range. `doctor`, `compile` and the Stop runner refuse invalid values and
+declarations below 2.14. Recompile after changing it: the outer Stop hook gets
+sixty additional seconds. Both command and deadline come from the trusted
+hook-told workspace; a payload cannot select executable policy. See
+[execution and cap recovery](../cli/recipe-runner.md).
 
 `requires` exists because of an exit code. The recipes distinguish *red* (exit 1, the check ran and
 failed) from *could not run* (exit 2, a tool is missing), and that distinction is worthless if nothing
@@ -582,10 +591,10 @@ with none, `index --handoffs` prints it on demand. Without budgets the full seri
 
 | Field | What it is |
 |---|---|
-| `series.budget.record_tokens` | Optional positive integer cap, added in 2.14, counted at explicit `context.ratio`. |
+| `series.budget.record_tokens` | Optional positive integer cap, added in 2.15, counted at explicit `context.ratio`. |
 | `series.budget.cutoff` | Required real YYYY-MM-DD date beside the cap; only later handoffs are bound. |
 | `index.path` | Generated index path, outside `slots.handoffs`. |
-| `index.budget.tokens` | Optional positive integer budget on the complete rendered index, added in 2.14. |
+| `index.budget.tokens` | Optional positive integer budget on the complete rendered index, added in 2.15. |
 
 Accepted [proposal 0037](../.portulan/proposals/0037-a-handoff-is-budgeted-where-it-is-written.md)
 keeps the series unbudgeted: deleting history cannot repair a size rail. An individual new handoff can

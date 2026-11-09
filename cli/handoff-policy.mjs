@@ -39,7 +39,7 @@ export function handoffPolicy(workspace) {
         }
     }
     if (cap === null && window === null) return { cap, cutoff, window, ratio: null };
-    if (!/^2\.(?:14|1[5-9]|[2-9]\d|\d{3,})$/.test(workspace.portulan?.spec ?? "")) throw new HandoffError("handoff budgets require Workspace Definition 2.14 or later");
+    if (!/^2\.(?:15|1[6-9]|[2-9]\d|\d{3,})$/.test(workspace.portulan?.spec ?? "")) throw new HandoffError("handoff budgets require Workspace Definition 2.15 or later");
     if (!workspace.slots?.handoffs) throw new HandoffError("handoff budgets require slots.handoffs");
     let ratio;
     try { ratio = declaredContext(workspace).ratio; }
@@ -68,7 +68,7 @@ export function handoffOffer(raw, { today = new Date().toISOString().slice(0, 10
     catch { throw new HandoffError("handoff-budget must be JSON or `none`"); }
     object(value, "handoff-budget", ["record_tokens", "index_tokens", "ratio"]);
     if (value.record_tokens === undefined && value.index_tokens === undefined) throw new HandoffError("handoff-budget must accept record_tokens, index_tokens, or both");
-    const manifest = { portulan: { spec: "2.14" }, slots: { handoffs: "handoffs/" }, context: { ratio: value.ratio }, handoffs: { index: { path: "handoffs-index.md" } } };
+    const manifest = { portulan: { spec: "2.15" }, slots: { handoffs: "handoffs/" }, context: { ratio: value.ratio }, handoffs: { index: { path: "handoffs-index.md" } } };
     if (value.record_tokens !== undefined) manifest.handoffs.series = { budget: { record_tokens: value.record_tokens, cutoff: newest > today ? newest : today } };
     if (value.index_tokens !== undefined) manifest.handoffs.index.budget = { tokens: value.index_tokens };
     handoffPolicy(manifest);

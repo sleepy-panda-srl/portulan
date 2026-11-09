@@ -66,6 +66,7 @@ export function runRecipe(recipe, { root, env = process.env, timeout = 600_000, 
             resolve({ id: recipe.id, outcome: code === null || CANNOT_RUN.has(code) ? "could not run" : "red", code,
                 output: kept.text() + (why.length ? `\n${why.join("\n")}` : ""),
                 ...(onOutput ? { diagnostics: why } : {}),
+                ...(late ? { timedOut: true } : {}),
                 ...(interrupted ? { interrupted } : {}) });
         };
         const hardStop = () => {

@@ -1,1 +1,1 @@
-- Optional Workspace Definition 2.14 handoff token caps and bounded index windows, with forward-only cutoffs, tree-independent reports and opt-in init offers; full-series output remains available without a budget.
+- Optional Workspace Definition 2.15 handoff token caps and bounded index windows, with forward-only cutoffs, tree-independent reports and opt-in init offers; full-series output remains available without a budget.

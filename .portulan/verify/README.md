@@ -181,7 +181,7 @@ disagreeing heading by editing the record, an undated handoff by renaming it —
 reporting one verdict for all of them would send an author to regenerate a file that is already
 correct and still too big.
 
-**Handoff budgets arrived in Workspace Definition 2.14**, under accepted proposal 0037. The series has
+**Handoff budgets arrived in Workspace Definition 2.15**, under accepted proposal 0037. The series has
 no aggregate size cap: deleting history cannot repair one. New records may have a token cap with a
 forward cutoff, repaired by compression or moving facts to their owning record and linking. A separate
 token budget bounds the whole generated index with a contiguous newest-first window and an omission

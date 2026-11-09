@@ -426,7 +426,7 @@ function draftWorkspace(answers, observed) {
     const offeredHandoffs = handoffOffer(answers.handoffBudget, { newest: answers.handoffNewest });
 
     const manifest = {
-        portulan: { spec: offeredHandoffs ? "2.14" : answers.spend ? "2.12" : lifetime === null ? WORKSPACE_SPEC : SESSIONS_SPEC },
+        portulan: { spec: offeredHandoffs ? "2.15" : answers.spend ? "2.12" : lifetime === null ? WORKSPACE_SPEC : SESSIONS_SPEC },
         name,
         summary: answers.summary ?? `The ${name} workspace — drafted by \`init\`, and not yet curated.`,
         kind: "repository",
@@ -943,7 +943,7 @@ function reportCard(target, say, warn) {
 }
 
 function reportLifetime(answers, say) {
-    if (answers.handoffBudget && answers.handoffBudget !== "none") say("init: handoff budgets and supplied ratio declared at 2.14; index checks the cap and complete window; ratio provenance is not proof of calibration");
+    if (answers.handoffBudget && answers.handoffBudget !== "none") say("init: handoff budgets and supplied ratio declared at 2.15; index checks the cap and complete window; ratio provenance is not proof of calibration");
     else if (answers.handoffBudget !== "none") say(`init: ${HANDOFF_OFFER} Use --handoff-budget with JSON record_tokens and/or index_tokens plus ratio {bytes_per_token, calibrated_by}; the record cutoff is set when writing.`);
     const lifetime = answers.cacheLifetime ?? null;
     if (lifetime !== null) {

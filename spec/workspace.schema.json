@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://portulan.dev/spec/2.14/workspace.schema.json",
-  "title": "Portulan Workspace Definition v2.14",
+  "$id": "https://portulan.dev/spec/2.15/workspace.schema.json",
+  "title": "Portulan Workspace Definition v2.15",
   "description": "The manifest at the root of a workspace. It is an index, not a container: it names the slots the engine resolves against and points at the Markdown that holds each slot's content and rationale. Written in a deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset and for what validates it.",
   "type": "object",
   "additionalProperties": false,
@@ -145,6 +145,10 @@
           "description": "The `id` of the recipe the Stop-gate runs when nothing more specific applies. Constrained to the same shape as an id, so a value no recipe could ever carry is rejected by the schema rather than only by `doctor`.",
           "$ref": "#/$defs/slug"
         },
+        "stopTimeout": {
+          "description": "Optional, added in 2.14. Stop recipe deadline in seconds; undeclared, 90. A positive integer whose recipe and outer hook timers fit Node's timer range, checked by doctor and every reader. Compile gives the Stop hook sixty additional seconds for other checks and cleanup.",
+          "type": "number"
+        },
         "recipes": {
           "type": "array",
           "minItems": 1,
@@ -247,7 +251,7 @@
     },
 
     "handoffs": {
-      "description": "Optional. Configuration over slots.handoffs. Since 2.14 an individual new handoff may have a token cap and the generated index may carry a token-budgeted window. The append-only series has no aggregate budget. Proposal 0037 supplies the rule and repair boundary.",
+      "description": "Optional. Configuration over slots.handoffs. Since 2.15 an individual new handoff may have a token cap and the generated index may carry a token-budgeted window. The append-only series has no aggregate budget. Proposal 0037 supplies the rule and repair boundary.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -275,7 +279,7 @@
               "properties": {
                 "tokens": {
                   "type": "number",
-                  "description": "Added in 2.14. Positive integer, explicitly declared, measured at context.ratio. The entire index, header and omission notice included, must fit. Too small for overhead is refused with the minimum required budget."
+                  "description": "Added in 2.15. Positive integer, explicitly declared, measured at context.ratio. The entire index, header and omission notice included, must fit. Too small for overhead is refused with the minimum required budget."
                 }
               }
             }
@@ -298,7 +302,7 @@
               "properties": {
                 "record_tokens": {
                   "type": "number",
-                  "description": "Added in 2.14. Positive integer token cap on each handoff dated strictly after cutoff, at the explicit context.ratio. Compression or moving facts to their owning records repairs a breach; never splitting or deleting history."
+                  "description": "Added in 2.15. Positive integer token cap on each handoff dated strictly after cutoff, at the explicit context.ratio. Compression or moving facts to their owning records repairs a breach; never splitting or deleting history."
                 },
                 "cutoff": {
                   "type": "string",

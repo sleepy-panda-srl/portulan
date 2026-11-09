@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-// The Stop-gate runner — "done" is not a thing an agent may simply declare.
-//
-// A crashed hook fails open (Claude Code 2.1.220), so every failure path here returns a verdict instead of throwing.
+// Stop-gate: bounded recipe and work checks. Hook failures need a verdict, since a crashed hook fails open.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -12,6 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { isInside } from "./inside.mjs";
 import { recipeSet } from "./recipe-set.mjs";
 import { runRecipe } from "./recipe-runner.mjs";
+import { readStopPolicy } from "./stop-policy.mjs";
 
 const PROJECT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const WORKSPACE = path.resolve(PROJECT, process.env.PORTULAN_WORKSPACE || ".portulan");
@@ -87,9 +86,6 @@ export const MAX_TOTAL_BLOCKS = 9;
 // Counted per tree from `stop_hook_active`, since in an A/B arm Claude Code 2.1.251 gave each retry a new session id,
 // restarting both caps. Set above MAX_TOTAL_BLOCKS, so a session whose id holds meets the other bounds first.
 export const MAX_CHAIN_BLOCKS = 12;
-
-// Well inside the host's 600 s hook timeout, so a hung recipe meets a verdict here first.
-const RECIPE_TIMEOUT_MS = 90_000;
 
 function counterFile(sessionId, dir, root = REPO) {
     const digest = (v) => {
@@ -202,9 +198,9 @@ function defaultRecipe() {
         const set = recipeSet(manifest, { packs: [] });
         if (!set.ok) return null;
         const recipe = set.recipes.find((r) => r.id === set.default);
-        return recipe ? { id: recipe.id, run: recipe.run } : null;
-    } catch {
-        return null;
+        return recipe ? { id: recipe.id, run: recipe.run, timeout: readStopPolicy(manifest).seconds } : null;
+    } catch (error) {
+        return { error: error.message };
     }
 }
 
@@ -365,43 +361,14 @@ function handoffInHistory(stamp, tree, handoffsDir, held = []) {
     }
 }
 
-async function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "told", note: null }) {
+function workProblems(tree) {
     const problems = [];
-    let recipeGreen = false;
-
-    // Only the told workspace's recipe, run in the told root: one read from a tree the payload names would run what stdin chose.
-    const recipe = defaultRecipe();
-    if (!recipe) {
-        problems.push({
-            reason: "recipe",
-            text:
-                `could not read the workspace's default verify recipe from ${path.join(WORKSPACE, "workspace.json")}, so nothing ` +
-                "verified this work. That is 'could not run', which blocks exactly as red does.",
-        });
-    } else {
-        try {
-            const result = await runRecipe(recipe, { root: REPO, env: process.env, timeout: RECIPE_TIMEOUT_MS });
-            if (result.outcome !== "green") throw { status: result.code, stdout: result.output };
-            recipeGreen = true;
-        } catch (error) {
-            const code = error?.status;
-            const output = `${error?.stdout ?? ""}${error?.stderr ?? ""}${error?.message ?? ""}`.trim().split("\n").slice(-25).join("\n");
-            const CANNOT_RUN = new Set([2, 126, 127]);
-            const outcome = CANNOT_RUN.has(code) || code === undefined || code === null
-                ? `could not run (exit ${code ?? "no status"}) — the gate could not judge`
-                : `RED (exit ${code})`;
-            problems.push({
-                reason: "recipe",
-                text: `verify recipe \`${recipe.id}\` in ${REPO} — ${outcome}\n${output}`,
-            });
-        }
-    }
 
     const policy = handoffPolicy(tree);
     const handoffEnabled = policy.directory !== null;
     if (policy.error) {
         problems.push({ reason: "handoff", text: policy.error });
-        return { problems, recipeGreen, handoffEnabled, handoffCleared: false };
+        return { problems, handoffEnabled, handoffCleared: false };
     }
     if (!handoffEnabled) {
         const work = didWork(tree.root);
@@ -411,7 +378,7 @@ async function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin
                 text: `${treeIdentity(tree.root)} holds work that is not committed and pushed. Commit and push it, its why in the commit message.`,
             });
         }
-        return { problems, recipeGreen, handoffEnabled, handoffCleared: work === false };
+        return { problems, handoffEnabled, handoffCleared: work === false };
     }
 
     const stamp = today();
@@ -452,14 +419,44 @@ async function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin
         });
     }
 
-    return { problems, recipeGreen, handoffEnabled, handoffCleared: handoffPresent || work === false };
+    return { problems, handoffEnabled, handoffCleared: handoffPresent || work === false };
+}
+
+export async function runStopRecipe(recipe, execute = runRecipe) {
+    if (!recipe || recipe.error) return {
+        reason: "recipe",
+        text: `could not read the workspace's default verify recipe from ${path.join(WORKSPACE, "workspace.json")}: ${recipe?.error ?? "no runnable default"}. Nothing verified this work.`,
+    };
+    try {
+        const result = await execute(recipe, { root: REPO, env: process.env, timeout: recipe.timeout * 1000 });
+        if (result.outcome === "green") return null;
+        const outcome = result.timedOut
+            ? `could not run: timed out after ${recipe.timeout} s — the gate could not judge`
+            : result.outcome === "red" ? `RED (exit ${result.code})` : `could not run (exit ${result.code ?? "no status"}) — the gate could not judge`;
+        const output = (result.output ?? "").trim().split("\n").slice(-25).join("\n");
+        return { reason: "recipe", text: `verify recipe \`${recipe.id}\` in ${REPO} — ${outcome}\n${output}` };
+    } catch (error) {
+        return { reason: "recipe", text: `verify recipe \`${recipe.id}\` could not run — ${error.message}; the gate could not judge` };
+    }
+}
+
+async function collectProblems(tree, state, chain) {
+    const work = workProblems(tree);
+    const recipeCapped = (state.counts.recipe ?? 0) >= MAX_BLOCKS;
+    const handoffCapped = work.problems.some(p => p.reason === "handoff") && (state.counts.handoff ?? 0) >= MAX_BLOCKS;
+    const skip = recipeCapped || handoffCapped || state.total >= MAX_TOTAL_BLOCKS || chain > MAX_CHAIN_BLOCKS;
+    const recipeProblem = skip ? {
+        reason: "recipe", charge: false, capped: recipeCapped,
+        text: "verify recipe not rerun: this Stop is released at a refusal bound. No result was measured on this Stop; existing obligations remain unresolved. Run verification explicitly before claiming done.",
+    } : await runStopRecipe(defaultRecipe());
+    return { ...work, problems: [...(recipeProblem ? [recipeProblem] : []), ...work.problems], recipeGreen: !skip && recipeProblem === null };
 }
 
 export function verdict({ problems, counts = {}, total = 0, chain = 0, max = MAX_BLOCKS, maxTotal = MAX_TOTAL_BLOCKS, maxChain = MAX_CHAIN_BLOCKS, handoffEnabled = true }) {
     if (problems.length === 0) return { action: "allow" };
 
     const text = problems.map((p) => p.text).join("\n\n");
-    const spent = problems.map((p) => p.reason).filter((reason) => (counts[reason] ?? 0) > max);
+    const spent = problems.filter((p) => p.capped || (counts[p.reason] ?? 0) > max).map((p) => p.reason);
     const label = (reason) => !handoffEnabled && reason === "handoff" ? "work" : reason;
 
     if (spent.length || total > maxTotal || chain > maxChain) {
@@ -503,7 +500,9 @@ async function main() {
     const tree = resolveSessionTree(payload.cwd);
     if (tree.note) process.stderr.write(`portulan stop-gate: ${tree.note}; answering about ${REPO} instead.\n`);
 
-    const { problems, recipeGreen, handoffEnabled, handoffCleared } = await collectProblems(tree);
+    const prior = readCount(counterFile(sessionId, os.tmpdir()));
+    const chain = bumpChain(payload.stop_hook_active === true, os.tmpdir(), tree.root);
+    const { problems, recipeGreen, handoffEnabled, handoffCleared } = await collectProblems(tree, prior, chain);
 
     // The session's counts stay on the told root, so a `cwd` that moves mid-session cannot restart them.
     if (recipeGreen) clearReason(sessionId, "recipe");
@@ -511,8 +510,8 @@ async function main() {
 
     const state = problems.length === 0
         ? { counts: {}, total: 0 }
-        : bumpCount(sessionId, [...new Set(problems.map((p) => p.reason))]);
-    const chain = bumpChain(problems.length > 0 && payload.stop_hook_active === true, os.tmpdir(), tree.root);
+        : bumpCount(sessionId, [...new Set(problems.filter(p => p.charge !== false).map((p) => p.reason))]);
+    if (problems.length === 0) bumpChain(false, os.tmpdir(), tree.root);
     const result = verdict({ problems, counts: state.counts, total: state.total, chain, handoffEnabled });
 
     if (result.action === "allow") allow();

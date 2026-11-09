@@ -9,14 +9,14 @@
 - When the series grows, its complete generated index shall fit the declared token budget and retain
   a contiguous newest-first prefix, naming the omitted count and source directory.
 - When a series exists without an index, index shall validate its dates without requiring H1 headings.
-- When either budget is accepted in init, it shall require the supplied ratio, opt into spec 2.14 and
+- When either budget is accepted in init, it shall require the supplied ratio, opt into spec 2.15 and
   compute the cap cutoff at write time; declining shall introduce neither budgets nor ratio.
 
 **Criterion.** [#512](https://github.com/sleepy-panda-srl/portulan/issues/512), row 12 demonstration 4,
 and accepted [0037](../proposals/0037-a-handoff-is-budgeted-where-it-is-written.md): compression alone
 returns a bound handoff from red to green; the whole index holds its token budget as the series grows.
 
-**Plan.** Add optional 2.14 cap/cutoff and index-token keys, checked independently by direct index calls
+**Plan.** Add optional 2.15 cap/cutoff and index-token keys, checked independently by direct index calls
 and doctor. Read dates whenever a series is declared; require an H1 only to render an index. Generate
 a contiguous newest-first window, accounting for all output bytes. Report the series without a tree,
 and offer independently optional budgets in init with a supplied ratio and a write-time cutoff.
@@ -63,3 +63,19 @@ pointer handoff refusal now gives its policy rationale. Strict plugin validation
 missing-icon warning; all 125 packed files match staged blobs. The original calibration, host-loading,
 cutoff-day and history-rule limits above still bind. Row 12 stays open. Signed: independent fresh-context
 Sleepy Panda Codex checkpoint.
+
+**Stop-policy integration.** Main took spec 2.14 for `verify.stopTimeout` while this PR was open.
+Handoff budgets move to the next additive version, 2.15; the Stop setting keeps its 2.14 gate and
+behavior. Earlier checkpoint records above describe the trees they graded. The current joint init
+acceptance requires 2.15. Integration verification and its independent verdict follow below.
+
+**2.15 pre-commit.** Independent fresh-context Sleepy Panda Codex: APPROVE, 2026-11-09; no adjustments.
+All 32 yielded recipes passed independently. Stop implementation/tests remain identical to main;
+schema constraints add only the optional handoff fields. Twenty-four init combinations preserve
+handoff/spend/cache settings. Combined 2.15 is green, handoff budgets at 2.14 red, Stop-only 2.14 green,
+and Stop 2.13 red. Actual CLI cap red→compression green held the manifest unchanged through 120 growth
+steps, maximum 271/280 fixture tokens. Six focused version mutations failed and the restored 13-test
+snapshot passed; librarian's additional mutation refused the unsupported version. Strict plugin
+validation passed with the existing missing-icon warning, and private seam scans were clean. The
+calibration, adoption, host-loading and review-held history limits above remain. Row 12 stays open.
+Signed: independent fresh-context Sleepy Panda Codex checkpoint.

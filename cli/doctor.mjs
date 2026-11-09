@@ -5,6 +5,7 @@
 //
 // Exit 0 every workspace validates · 1 at least one does not · 2 could not run.
 
+import { readStopPolicy } from "./stop-policy.mjs";
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
@@ -832,8 +833,8 @@ export async function inspect(workspaceDir, options = {}) {
             ["sessions", 11, workspace.sessions],
             ["spend", 12, workspace.spend],
             ["spend.restart", 13, workspace.spend?.restart],
-            ["handoffs.series", 14, workspace.handoffs?.series],
-            ["handoffs.index.budget", 14, workspace.handoffs?.index?.budget],
+            ["handoffs.series", 15, workspace.handoffs?.series],
+            ["handoffs.index.budget", 15, workspace.handoffs?.index?.budget],
         ]) {
             if (major === 2 && minor < since && value !== undefined) {
                 fail(
@@ -979,6 +980,8 @@ export async function inspect(workspaceDir, options = {}) {
     });
 
     // ---------------------------------------------------------------- cross-field
+    try { readStopPolicy(workspace); } catch (error) { fail("cross", error.message); }
+
     // Own recipes only: a composed recipe may never be the workspace's `verify.default`.
     const ids = (workspace.verify?.recipes ?? []).map((r) => r.id);
     if (!ids.includes(workspace.verify?.default)) {
