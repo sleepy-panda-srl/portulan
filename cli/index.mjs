@@ -14,6 +14,7 @@ import { pathToFileURL } from "node:url";
 
 import { resolvePack, rootPlan, shadowedCopy } from "./compile.mjs";
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
+import { HandoffError, handoffPolicy, handoffOverages, handoffTokens } from "./handoff-policy.mjs";
 
 /** Raised when `index` cannot run, or cannot judge honestly. Always exit 2, never 1. */
 export class IndexError extends Error {
@@ -23,7 +24,7 @@ export class IndexError extends Error {
     }
 }
 
-const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9", "2.10", "2.11", "2.12", "2.13", "2.14"]);
+const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9", "2.10", "2.11", "2.12", "2.13", "2.14", "2.15"]);
 
 // `doctor` skips the same name, so the two count the same records.
 const NOT_A_RECORD = new Set(["README.md"]);
@@ -51,7 +52,7 @@ export function headingOf(source) {
     return first?.match(/^#[ \t]+(.+?)[ \t]*$/)?.[1] ?? null;
 }
 
-/** A handoff's date, the leading `YYYY-MM-DD` of its filename where that names a real day, else null. */
+/** Valid leading filename date, or null. */
 export function dateOf(filename) {
     const m = filename.match(/^(\d{4})-(\d{2})-(\d{2})-/);
     return m ? realDay(m[1], m[2], m[3]) : null;
@@ -156,8 +157,9 @@ export function readHandoffs(dir, workspace) {
             if (cause instanceof IndexError) throw cause;
             throw new IndexError(`cannot read the handoff ${path.join(slot, file)} — ${cause.code ?? cause.message}`);
         }
-        bytes += Buffer.byteLength(source);
-        records.push({ file, date: dateOf(file), heading: headingOf(source) });
+        const recordBytes = Buffer.byteLength(source);
+        bytes += recordBytes;
+        records.push({ file, date: dateOf(file), heading: headingOf(source), bytes: recordBytes });
     }
 
     return { records, bytes };
@@ -358,13 +360,17 @@ export function renderHandoffIndex(workspace, series) {
     const posix = (p) => p.split(path.sep).join(path.posix.sep);
     const from = path.posix.dirname(posix(indexPath));
 
+    let policy;
+    try { policy = handoffPolicy(workspace); }
+    catch (error) { throw new IndexError(error.message); }
     const header = [
         `# Handoff index — ${workspace.name}`,
         "",
         `> Generated from \`${slot}\` by \`node cli/index.mjs\`. Do not edit by hand: it is regenerated`,
         `> and byte-compared, so a hand-edit survives exactly until the next run.`,
-        `> ${series.records.length} handoff(s), newest first. No budget: the series is append-only, so`,
-        `> the only remedy a budget could ask for is one this project rules out.`,
+        ...(policy.window === null ? [
+            `> ${series.records.length} handoff(s), newest first. No index budget declared; the full series is listed.`,
+        ] : [`> ${series.records.length} handoff(s), newest first. Index budget: ${policy.window} tokens at ${policy.ratio} bytes per token.`]),
         "",
     ];
 
@@ -373,7 +379,17 @@ export function renderHandoffIndex(workspace, series) {
         return `- ${r.date} · [${r.heading}](${href})`;
     });
 
-    return [...header, ...entries].join("\n") + "\n";
+    if (policy.window === null) return [...header, ...entries].join("\n") + "\n";
+    const text = (count, budget = policy.window) => [...header.map(line => line.replace(`Index budget: ${policy.window} tokens`, `Index budget: ${budget} tokens`)), ...entries.slice(0, count), "", `> ${entries.length - count} handoff(s) omitted; all remain in \`${slot}\`, filenames ordered by date.`].join("\n") + "\n";
+    const overhead = text(0);
+    if (handoffTokens(Buffer.byteLength(overhead), policy.ratio) > policy.window) {
+        let minimum = 1;
+        while (handoffTokens(Buffer.byteLength(text(0, minimum)), policy.ratio) > minimum) minimum = handoffTokens(Buffer.byteLength(text(0, minimum)), policy.ratio);
+        throw new IndexError(`handoffs.index.budget.tokens is too small: at least ${minimum} tokens hold the complete header and omission notice`);
+    }
+    let count = 0;
+    while (count < entries.length && handoffTokens(Buffer.byteLength(text(count + 1)), policy.ratio) <= policy.window) count++;
+    return text(count);
 }
 
 export function renderScopeIndex(workspace, series) {
@@ -430,7 +446,7 @@ export function inspect(dir, { write = false, packRoots: extraRoots, discoverPac
     ].join("");
 
     const memory = judgeMemory(dir, workspace, { write, fail, note, today, remedyFlags });
-    const handoffs = judgeHandoffs(dir, workspace, { write, fail, remedyFlags });
+    const handoffs = judgeHandoffs(dir, workspace, { write, fail, note, today, remedyFlags });
     const scopes = judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots, discoverPacks, remedyFlags });
 
     return {
@@ -558,26 +574,32 @@ function judgeMemory(dir, workspace, { write, fail, note, today, remedyFlags = "
     return { declared: true, path: indexPath, expected, budgets };
 }
 
-function judgeHandoffs(dir, workspace, { write, fail, remedyFlags = "" }) {
+function judgeHandoffs(dir, workspace, { write, fail, note, today, remedyFlags = "" }) {
     const declaredPath = workspace.handoffs?.index?.path;
-    if (!declaredPath) return { declared: false, path: null, expected: null };
+    let policy;
+    try { policy = handoffPolicy(workspace); }
+    catch (error) {
+        if (!(error instanceof HandoffError)) throw error;
+        throw new IndexError(error.message);
+    }
+    if (!workspace.slots?.handoffs && !workspace.handoffs) return { declared: false, path: null, expected: null };
 
-    const indexPath = siteOutside(dir, declaredPath, workspace.slots?.handoffs, "series");
+    const indexPath = declaredPath ? siteOutside(dir, declaredPath, workspace.slots?.handoffs, "series") : null;
     const series = readHandoffs(dir, workspace);
 
     let broken = 0;
     for (const r of series.records) {
         const where = path.join(workspace.slots.handoffs, r.file);
-        if (r.date === null) {
+        if (r.date === null || r.date > nextDay(today)) {
             broken += 1;
             fail(
                 "handoffs",
                 "date",
-                `${where} does not lead with a valid YYYY-MM-DD date, so the index has no date to put on its line. ` +
+                `${where} must lead with a valid YYYY-MM-DD date no more than a day after ${today} (UTC). ` +
                     "core/operating/loop.md fixes the form as `YYYY-MM-DD-{slug}.md` — rename the file",
             );
         }
-        if (r.heading === null) {
+        if (declaredPath && r.heading === null) {
             broken += 1;
             fail(
                 "handoffs",
@@ -587,6 +609,12 @@ function judgeHandoffs(dir, workspace, { write, fail, remedyFlags = "" }) {
             );
         }
     }
+    const overages = handoffOverages(series, policy);
+    for (const record of overages.bound) fail("handoffs", "budget",
+        `${path.join(workspace.slots.handoffs, record.file)} is ${record.tokens} tokens at ${policy.ratio} bytes per token, against a cap of ${policy.cap} — over by ${record.tokens - policy.cap}. ` +
+        "Compress it or move facts to their owning records and link them; keep each decision and its why. Never split, retire, raise the cap or move the cutoff to repair this breach");
+    if (overages.historical.length) note("handoffs", `${overages.historical.length} handoff(s) on or before cutoff ${policy.cutoff} exceed ${policy.cap} tokens: reported, never railed`);
+    if (!declaredPath) return { declared: true, path: null, expected: null, count: series.records.length, kept: false };
     if (broken) return { declared: true, path: indexPath, expected: null, count: series.records.length };
 
     const expected = renderHandoffIndex(workspace, series);
@@ -1052,7 +1080,8 @@ export function run(argv, say = console.log) {
             for (const f of broken) say(`  ✗ ${dir}: ${f.message}`);
             if (broken.length && worst < 1) worst = 1;
             else if (!result.series.handoffs.declared) say(`  · ${dir}: declares no handoff index`);
-            else if (!broken.length) say(result.series.handoffs.expected.trimEnd());
+            else if (!broken.length && result.series.handoffs.expected !== null) say(result.series.handoffs.expected.trimEnd());
+            else say(`  · ${dir}: declares no handoff index`);
             continue;
         }
         if (!result.declared) {
@@ -1074,8 +1103,8 @@ export function run(argv, say = console.log) {
                 }
             }
             if (result.series.handoffs.declared) {
-                const { kept, count } = result.series.handoffs;
-                parts.push(kept ? `handoff index ${state}` : `handoff index renders, ${count} handoff(s), none kept on disk`);
+                const { kept, count, path: indexPath } = result.series.handoffs;
+                parts.push(indexPath === null ? `handoff dates checked, ${count} handoff(s); no index declared` : kept ? `handoff index ${state}` : `handoff index renders, ${count} handoff(s), none kept on disk`);
             }
             if (result.series.scopes.declared) parts.push(`scope index ${state}`);
             say(`  ok ${dir}: ${parts.join("; ")}`);

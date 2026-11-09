@@ -14,6 +14,8 @@ import { BOOT_CARD_LINE, CompileError, IMPORT_DEPTH, importPath, importSpans } f
 import { offerText, splitOffers } from "./instructions.mjs";
 import { AGENT_DIR, parseFrontmatter } from "./plugin-lint.mjs";
 import { HOST_SKILL_DEPTH, manifestPath } from "./skills-set.mjs";
+import { readHandoffs, renderHandoffIndex } from "./index.mjs";
+import { handoffPolicy, handoffOverages, handoffTokens } from "./handoff-policy.mjs";
 
 export { IMPORT_DEPTH };
 
@@ -70,6 +72,28 @@ export function railFor(bytes) {
 const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 export const tokensOf = (bytes, ratio) => Math.round(bytes / ratio);
+
+export function handoffReport(dir, manifest) {
+    const policy = handoffPolicy(manifest);
+    if (manifest.slots?.handoffs === undefined) return { lines: [], over: false };
+    const declared = declaredContext(manifest);
+    const ratio = declared.ratio ?? ESTIMATED_BYTES_PER_TOKEN;
+    const series = readHandoffs(dir, manifest);
+    const sizes = series.records.map(r => r.bytes).sort((a, b) => a - b);
+    const middle = Math.floor(sizes.length / 2);
+    const median = sizes.length ? sizes.length % 2 ? sizes[middle] : (sizes[middle - 1] + sizes[middle]) / 2 : 0;
+    const size = bytes => `${bytes} B (~${handoffTokens(bytes, ratio)} tokens)`;
+    const lines = [`handoffs: ${sizes.length} record(s), total ${size(series.bytes)}, median ${size(median)}; ${declared.ratio === null ? "estimate" : "declared ratio"} ${ratio} bytes per token; on-read, excluded from boot and always tier`];
+    for (const record of [...series.records].sort((a, b) => b.bytes - a.bytes || a.file.localeCompare(b.file)).slice(0, 3)) lines.push(`handoffs largest: ${record.file} — ${size(record.bytes)}`);
+    if (manifest.handoffs?.index?.path) {
+        if (series.records.some(r => r.date === null || r.heading === null)) throw new ContextError("handoff index cannot render: repair the filename dates and H1 headings with portulan index");
+        const text = renderHandoffIndex(manifest, series);
+        lines.push(`handoffs index: ${manifest.handoffs.index.path}, rendered ${size(Buffer.byteLength(text))}; ${policy.window === null ? "budget undeclared" : `budget ${policy.window} tokens`}`);
+    } else lines.push("handoffs index: undeclared — no index measured");
+    const overages = handoffOverages(series, policy);
+    lines.push(policy.cap === null ? "handoffs cap: undeclared — report only" : `handoffs cap: ${policy.cap} tokens, cutoff ${policy.cutoff}; ${overages.bound.length} bound over, ${overages.historical.length} on/before cutoff over (reported, never railed)`);
+    return { lines, over: overages.bound.length > 0 };
+}
 
 function sizeOf(file, what) {
     let stat;
@@ -959,6 +983,12 @@ export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { b
             say(`  note rail ${name}: its headroom is more than ${NOTE_PERCENT}% of it — lower it to ${grouped(railFor(figure))} B, today's figure plus ${HEADROOM_PERCENT}%`);
         }
     }
+
+    try {
+        const handoffs = handoffReport(path.resolve(cwd, options.workspace), readManifest(path.resolve(cwd, options.workspace)));
+        for (const text of handoffs.lines) say(`  ${text}`);
+        red ||= handoffs.over;
+    } catch (error) { couldNot.push(`handoffs: ${error.message}`); }
 
     if (couldNot.length) {
         for (const c of couldNot) say(`  ✗ ${c}`);

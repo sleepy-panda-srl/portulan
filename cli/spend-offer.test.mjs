@@ -94,7 +94,7 @@ test("interactive offer accepts each key independently and EOF writes nothing", 
         const f = fixture("claude-opus-5-5", { overrides: { "claude-opus-5-5": rates } });
         const remaining = [...replies];
         const io = { interactive: true, say: l => f.said.push(l), ask: async q => { f.asked.push(q); return remaining.shift() ?? null; } };
-        const code = await run(["--residence", "in-repo", "--name", "demo", "--summary", "Demo", "--no-cycle", "--cache-lifetime", "5m", f.target], { ...f.options, io });
+        const code = await run(["--residence", "in-repo", "--name", "demo", "--summary", "Demo", "--no-cycle", "--cache-lifetime", "5m", "--handoff-budget", "none", f.target], { ...f.options, io });
         if (replies.length === 1) {
             assert.equal(code, 2);
             assert.equal(fs.existsSync(path.join(f.target, ".portulan")), false);

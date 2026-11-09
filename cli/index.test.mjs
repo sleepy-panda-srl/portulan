@@ -1092,8 +1092,8 @@ describe("a handoff index nobody keeps is rendered and compared with nothing", (
     });
 });
 
-describe("the handoff series carries no budget", () => {
-    test("no budget is declarable, so no budget finding can be raised over the series", () => {
+describe("the handoff series carries no aggregate budget", () => {
+    test("without a declared record cap, a populated series raises no budget finding", () => {
         const dir = workspace(
             Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`handoffs/2026-07-${String(i + 1).padStart(2, "0")}-h.md`, handoff(`H${i}`)])),
             withSeries(),

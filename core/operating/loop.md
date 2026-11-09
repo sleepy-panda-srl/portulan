@@ -35,7 +35,8 @@ The loop runs inside a finite attention window, so context is managed, not hoard
   **Dated** means the filename leads with an ISO date, `YYYY-MM-DD-{slug}.md`, because a rule justified by
   being checkable has to say what the checker looks at, and the series then sorts chronologically for
   free. The session-end gate (milestone 4) checks that declared series: while the tree holds uncommitted
-  or unpushed work, a handoff dated today exists, never its length or its shape. With no series declared,
+  or unpushed work, a handoff dated today exists, never its length or its shape. A workspace may cap new handoffs in its verify recipe (see `context.md`); no minimum
+  length applies. With no series declared,
   it asks for the work to be committed and pushed, its why in the commit message, and never asks for a
   handoff. The workspace owns that record policy ([#505](https://github.com/sleepy-panda-srl/portulan/issues/505));
   the verify recipe and the gate's retry bounds still apply. The librarian (milestone 5)

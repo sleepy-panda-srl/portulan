@@ -87,7 +87,9 @@ export function handoffsReadme() {
 A handoff carries work still open, so the next session starts from where things stand. Write one only
 when a session ends with work not committed and pushed: committed work carries its why in its commit
 message, and needs none. Name it \`YYYY-MM-DD-<slug>.md\`, keep only the parts that have something to say,
-and five lines is a valid handoff. Drafted from the engine's \`core/templates/handoff.md\`.
+and five lines is a valid handoff. The H1 names the outcome; the filename already gives its date.
+Link measured figures and durable rules in their owning records. Keep decisions and their why when
+compressing to a declared token cap. Drafted from the engine's \`core/templates/handoff.md\`.
 
 **State.** Where things stand: what is committed, and what is in progress and uncommitted.
 

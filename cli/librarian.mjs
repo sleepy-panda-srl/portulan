@@ -33,7 +33,7 @@ export class LibrarianError extends Error {
     }
 }
 
-const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9", "2.10", "2.11", "2.12", "2.13", "2.14"]);
+const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9", "2.10", "2.11", "2.12", "2.13", "2.14", "2.15"]);
 
 const NOT_A_RECORD = new Set(["README.md"]);
 
@@ -617,7 +617,7 @@ export function renderReport(results, { asOf }) {
                     `${(r.handoffs.bytes / 1024).toFixed(1)} KB, oldest ${r.handoffs.oldest ? `\`${r.handoffs.oldest.file}\` at ${plural(r.handoffs.oldest.days, "day")}` : "none — the series is empty"}. ` +
                     "Index: " +
                     indexState(r.index.series.handoffs) +
-                    ". No threshold reaches this series and no demotion is drafted against it: it is " +
+                    ". No aggregate size or staleness threshold reaches this series and no staleness demotion is drafted against it: it is " +
                     "append-only, so the only repair a staleness draft could recommend is deleting the " +
                     "record the series exists to keep.",
                 "",

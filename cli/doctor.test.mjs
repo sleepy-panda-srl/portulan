@@ -715,7 +715,7 @@ describe("where every session switch stands is one line, reported and never fail
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 14 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 15 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -1845,7 +1845,7 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
             return tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
         };
         assert.equal(await run([build("9.9")], { quiet: true }), 2, "a MAJOR ahead");
-        assert.equal(await run([build("2.15")], { quiet: true }), 2, "a MINOR ahead");
+        assert.equal(await run([build("2.16")], { quiet: true }), 2, "a MINOR ahead");
         assert.equal(await run([build("2.0")], { quiet: true }), 0, "the current version");
     });
 
@@ -2026,7 +2026,7 @@ describe("the packs a workspace declares", () => {
 
     test("the two version trains are read by different functions and do not collide", () => {
         assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 14 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 15 });
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });
 

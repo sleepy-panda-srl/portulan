@@ -10,12 +10,16 @@
 > decisions and their rationale. When one is owed, and why the commit carries the rest:
 > `../operating/loop.md`.)_
 >
+> Link the records that own measured figures and durable rules. Keep each open decision and its why.
+> A declared token cap binds new handoffs; compress or move and link facts, never split or drop a why.
+> The heading names the outcome; the filename already carries the date. See `../operating/context.md`.
+>
 > **The commit a change lands in:** a subject that says what changed, in the present tense and under 72
 > characters; a blank line; a body of a few lines that says why, and what was rejected when that matters.
 
 ---
 
-# Handoff — {task / thread}
+# {outcome / open task}
 
 **State.** {where things stand: what is done and committed, what is in progress and uncommitted.}
 
@@ -30,7 +34,7 @@
 
 _A filled one, for a session that stopped mid-change:_
 
-# Handoff — retry the flaky upload test
+# Retry the flaky upload test
 
 **State.** The retry wrapper is written and its unit test passes; it is stashed, not committed, because
 the integration suite still fails once in about ten runs.
