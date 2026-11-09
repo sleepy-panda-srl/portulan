@@ -17,6 +17,8 @@ import { offerText, splitOffers } from "./instructions.mjs";
 import { offerLines } from "./sessions.mjs";
 import { HANDOFF_OFFER, handoffOffer, realHandoffDay } from "./handoff-policy.mjs";
 import { renderHandoffIndex } from "./index.mjs";
+import { readSpend } from "./ledger.mjs";
+import { spendOffer, spendOfferLines } from "./spend-offer.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -50,7 +52,7 @@ const RESIDENCES = new Set(["in-repo", "pointer"]);
 
 const DEFAULT_CHECKPOINTS = "rituals/checkpoints";
 
-const ANSWER_KEYS = new Set(["residence", "name", "summary", "governed-by", "feed", "checkpoints", "cycle", "pack-root", "cache-lifetime", "handoff-budget"]);
+const ANSWER_KEYS = new Set(["residence", "name", "summary", "governed-by", "feed", "checkpoints", "cycle", "pack-root", "cache-lifetime", "multipliers", "horizon", "handoff-budget"]);
 
 /** `text` as a slug, or null where nothing survives: `init` asks rather than name a workspace nobody chose. */
 export function slugify(text) {
@@ -68,7 +70,7 @@ export function parseArgs(argv) {
     const targets = [];
     let help = false;
 
-    const VALUED = new Set(["--residence", "--name", "--summary", "--governed-by", "--feed", "--checkpoints", "--answers", "--pack-root", "--cache-lifetime", "--handoff-budget"]);
+    const VALUED = new Set(["--residence", "--name", "--summary", "--governed-by", "--feed", "--checkpoints", "--answers", "--pack-root", "--cache-lifetime", "--multipliers", "--horizon", "--handoff-budget"]);
 
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
@@ -180,6 +182,8 @@ export function resolveAnswers(flags) {
         packRoots: [merged["pack-root"] ?? []].flat(),
         cacheLifetime: merged["cache-lifetime"] ?? null,
         handoffBudget: merged["handoff-budget"] ?? null,
+        multipliers: merged.multipliers ?? null,
+        horizon: merged.horizon ?? null,
     };
 }
 
@@ -208,15 +212,17 @@ export function validateAnswers(answers) {
     }
     const misplaced = {
         "in-repo": ["feed", "governed-by"],
-        pointer: ["pack-root", "checkpoints", "cycle", "cache-lifetime", "handoff-budget"],
+        pointer: ["pack-root", "checkpoints", "cycle", "cache-lifetime", "multipliers", "horizon", "handoff-budget"],
     }[answers.residence].filter((key) => answers.given.has(key));
     if (misplaced.length) {
         const spelling = (key) => (key === "cycle" ? "`--no-cycle`" : `\`--${key}\``);
         const why =
             answers.residence === "pointer"
                 ? [
-                      misplaced.some((key) => key !== "cache-lifetime") && "a pointer holds no policy of its own, so it composes no packs",
+                      misplaced.some((key) => ["pack-root", "checkpoints", "cycle"].includes(key)) && "a pointer holds no policy of its own, so it composes no packs",
                       misplaced.includes("cache-lifetime") && "a pointer drafts no repository whose settings `compile` writes, so a cache lifetime would reach no session",
+                      misplaced.includes("handoff-budget") && "a pointer holds no handoff policy of its own",
+                      misplaced.some((key) => ["multipliers", "horizon"].includes(key)) && "a pointer holds no spend policy of its own",
                   ].filter(Boolean)
                 : ["a workspace that lives here has no governor and no feed to be delivered from"];
         throw new InitError(
@@ -228,6 +234,7 @@ export function validateAnswers(answers) {
     const lifetime = answers.cacheLifetime ?? null;
     try { handoffOffer(answers.handoffBudget); }
     catch (error) { throw new InitError(error.message); }
+    answers.spend = spendAnswers(answers);
     if (lifetime !== null && !CACHE_LIFETIMES.includes(lifetime)) {
         throw new InitError(
             `\`${lifetime}\` is not a cache lifetime — Claude Code takes ${CACHE_LIFETIMES.map((v) => `\`${v}\``).join(" and ")}, ` +
@@ -261,6 +268,19 @@ export function validateAnswers(answers) {
             );
         }
     }
+}
+
+function spendAnswers(answers) {
+    const spend = {};
+    try {
+        if (answers.multipliers != null) spend.multipliers = JSON.parse(answers.multipliers);
+        if (answers.horizon != null) {
+            if (!/^[1-9]\d*$/.test(answers.horizon) || !Number.isSafeInteger(Number(answers.horizon))) throw new Error("--horizon needs a positive safe integer in decimal requests");
+            spend.horizon = { requests: Number(answers.horizon) };
+        }
+        readSpend(spend, "init answers");
+    } catch (error) { throw new InitError(`invalid spend declaration — ${error.message}`); }
+    return Object.keys(spend).length ? spend : null;
 }
 
 // ------------------------------------------------------------------------- the codebase scan
@@ -406,7 +426,7 @@ function draftWorkspace(answers, observed) {
     const offeredHandoffs = handoffOffer(answers.handoffBudget, { newest: answers.handoffNewest });
 
     const manifest = {
-        portulan: { spec: offeredHandoffs ? "2.14" : lifetime === null ? WORKSPACE_SPEC : SESSIONS_SPEC },
+        portulan: { spec: offeredHandoffs ? "2.14" : answers.spend ? "2.12" : lifetime === null ? WORKSPACE_SPEC : SESSIONS_SPEC },
         name,
         summary: answers.summary ?? `The ${name} workspace — drafted by \`init\`, and not yet curated.`,
         kind: "repository",
@@ -448,6 +468,7 @@ function draftWorkspace(answers, observed) {
         Object.assign(manifest, offeredHandoffs);
         renderHandoffIndex(manifest, { records: [], bytes: 0 });
     }
+    if (answers.spend) manifest.spend = answers.spend;
     const commented = observed.commentHistory !== null;
 
     files.set(".portulan/workspace.json", { contents: json(manifest) });
@@ -828,8 +849,8 @@ function draftIndexRecipe() {
     return `#!/usr/bin/env bash
 # Records rail — the handoff series is rendered as its index, in memory.
 #
-# The index is not kept: \`index --handoffs\` prints it. Dates, declared caps and the complete window
-# are checked. A kept copy is byte-compared. Omitted index entries keep their source handoffs.
+# \`index --handoffs\` prints on demand. Checks dates, caps and the full window.
+# Kept copies are byte-compared; omitted entries keep their source handoffs.
 #
 #   exit 0   green: dates, caps and window hold; any kept copy matches
 #   exit 1   red: repair the handoff, or regenerate or delete a stale copy
@@ -1082,7 +1103,7 @@ function terminal() {
 }
 
 /** Asks for what the flags and the answers file did not give, and fills `answers` in place. */
-export async function interview(answers, { io, target, derivedName }) {
+export async function interview(answers, { io, target, derivedName, offer }) {
     const ask = async (prompt, { fallback = null, validate = () => null } = {}) => {
         for (;;) {
             const raw = await io.ask(fallback === null ? `${prompt}: ` : `${prompt} [${fallback}]: `);
@@ -1174,6 +1195,21 @@ export async function interview(answers, { io, target, derivedName }) {
         });
     }
 
+    if (answers.residence === "in-repo") {
+        offer = typeof offer === "function" ? offer() : offer ?? spendOffer(target);
+        for (const line of spendOfferLines(offer)) io.say(line);
+        if (!answers.given.has("multipliers")) {
+            const raw = await io.ask("Declare the offered price multipliers? [y/N]: ");
+            if (raw === null) throw new InitError("no answer — the interview ended before it finished, and nothing was written");
+            if (/^y(es)?$/i.test(raw.trim())) answers.multipliers = JSON.stringify(offer.multipliers);
+        }
+        if (!answers.given.has("horizon")) {
+            const value = await ask("Requests still to go (`none` to leave undeclared)", { fallback: "none", validate: v => v === "none" || /^[1-9]\d*$/.test(v) && Number.isSafeInteger(Number(v)) ? null : "give a positive integer or `none`" });
+            if (value !== "none") answers.horizon = value;
+        }
+        answers.spend = spendAnswers(answers);
+    }
+
     io.say("");
     io.say("init: about to draft");
     io.say(`  residence   ${answers.residence}`);
@@ -1186,6 +1222,7 @@ export async function interview(answers, { io, target, derivedName }) {
         io.say(`  cycle       ${answers.cycle ? answers.checkpoints : "(none — composing no packs)"}`);
         const offered = handoffOffer(answers.handoffBudget);
         io.say(`  handoffs    ${offered ? JSON.stringify(offered) : "(none — no budgets or ratio declared)"}`);
+        io.say(`  spend       ${answers.spend ? JSON.stringify(answers.spend) : "(none — undeclared general figures)"}`);
         io.say(
             `  cache       ${
                 answers.cacheLifetime ? `${answers.cacheLifetime}, as \`sessions.cache_lifetime\` at Workspace Definition ${SESSIONS_SPEC}` : "(none — the host's default lifetime)"
@@ -1226,6 +1263,8 @@ export function usage() {
         "  --answers <file>               A JSON object of answers. Flags override its keys.",
         "  --handoff-budget <JSON|none>   Optional record_tokens/index_tokens plus explicit ratio; cutoff set at write time.",
         "  --no-interview                 Never ask, even at a terminal: refuse instead, naming the flag.",
+        "  --multipliers <JSON>           In-repo: declare spend.multipliers (read and both write lifetimes).",
+        "  --horizon <requests>           In-repo: declare spend.horizon.requests, a positive integer.",
         "",
         "Exit codes: 0 it wrote · 2 it wrote nothing. There is no 1: init renders no verdict.",
         "",
@@ -1274,10 +1313,11 @@ export async function run(argv, options = {}) {
 
         const io = options.io ?? terminal();
         const interviewing = io.interactive && !parsed.flags.noInterview;
+        let offer = null;
         if (interviewing) {
             // Asked before the questions too, so nobody answers them to be told the repository is already governed.
             refuseIfGoverned(residenceAt(target), parsed.target);
-            await interview(answers, { io, target, derivedName });
+            await interview(answers, { io, target, derivedName, offer: () => spendOffer(target, { env: options.env, ...options.spendHost }) });
         }
 
         if (answers.name === null) answers.name = derivedName;
@@ -1384,6 +1424,8 @@ export async function run(argv, options = {}) {
         if (answers.residence !== "pointer") {
             reportCard(target, say, warn);
             reportLifetime(answers, say);
+            if (!interviewing) for (const line of spendOfferLines(offer ?? spendOffer(target, { env: options.env, ...options.spendHost }))) say(`init: ${line}`);
+            if (answers.spend) say(`init: declared spend ${JSON.stringify(answers.spend)} (available since spec 2.12); run portulan compile to carry it into advisory commands`);
         }
         if (answers.residence === "pointer") {
             say(`init: this repository is recorded as governed by \`${answers.governedBy}\`. Nothing was fetched.`);

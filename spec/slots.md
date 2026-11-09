@@ -851,11 +851,14 @@ multipliers comes early for a model whose cache reads cost less than a tenth, wh
 short of its real line. Undeclared or `"advise"`, the settings compile byte for byte as before; where
 `"block"` writes the command, `compile` says so on every run.
 
-**What is not here.** Ruling 2 has `init` offer the declaration from the host's own pricing setting where the
-host exposes one, else from a dated per-host table in the engine. Both are keyed by the model a host records,
-so both wait for their own change: until then `init` offers no figures, and a workspace writes its own by
-hand. Nothing checks a declared figure against what the workspace is billed; keeping it true is the declaring
-workspace's work.
+**Offered by `init`, never written without acceptance.** For Claude Code's last recorded main-session
+model in this repository, `init` offers a representable file-based managed `modelPricing` override,
+else its dated vendor table, else the general multipliers. It offers the horizon independently as
+requests still to go. `--multipliers '<JSON>'` and `--horizon <requests>` (or the same string answers in
+`--answers`) declare either key without an interview; a pointer refuses both. Accepting either drafts
+spec 2.12. The [pricing offer](../cli/spend-offer.md) names the supported IDs, matching and file-source
+limits. No network request is made. Nothing checks a declaration against a bill or a future model;
+keeping it true is the declaring workspace's work.
 
 **Checked by the schema and by `doctor`, and refused by every reader.** The schema holds the shape: both
 halves of `multipliers`, both lifetimes of `write`, and no key it does not name. The subset types the four

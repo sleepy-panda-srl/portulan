@@ -190,6 +190,11 @@ test("init accepts either offered budget independently with its supplied ratio",
     assert.throws(() => handoffOffer({ record_tokens: 3000 }), /ratio/);
     assert.throws(() => handoffOffer({ record_tokens: 3000, ratio, typo: 1 }), /typo/);
     assert.equal(handoffOffer({ record_tokens: 3000, ratio }, { today, newest: "2026-11-10" }).handoffs.series.budget.cutoff, "2026-11-10");
+    const pointer = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-handoff-pointer-")); roots.push(pointer);
+    const refused = [];
+    assert.equal(await init(["--residence", "pointer", "--governed-by", "other", "--handoff-budget", "none", pointer], { say: l => refused.push(l), warn: l => refused.push(l) }), 2);
+    assert.match(refused.join("\n"), /pointer holds no handoff policy/);
+    assert.equal(fs.existsSync(path.join(pointer, ".portulan")), false);
 });
 
 test("actual index CLI demonstrates red, compression green and a growing bounded window", () => {
@@ -212,4 +217,19 @@ test("actual index CLI demonstrates red, compression green and a growing bounded
         assert.ok(Math.round(Buffer.byteLength(out.stdout) / ratio.bytes_per_token) <= 230);
     }
     assert.deepEqual(fs.readFileSync(path.join(f.dir, "workspace.json")), settings, "settings never raised or moved");
+});
+
+test("init preserves handoff, spend and cache settings together at the newest required spec", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-handoff-spend-")); roots.push(dir);
+    const lines = [];
+    const code = await init(["--residence", "in-repo", "--no-cycle", "--no-interview", "--cache-lifetime", "5m", "--horizon", "3", "--multipliers", '{"read":0.04,"write":{"5m":1.3,"1h":2.1}}', "--handoff-budget", JSON.stringify({ record_tokens: 3000, index_tokens: 3000, ratio }), dir], { say: l => lines.push(l), warn: l => lines.push(l) });
+    assert.equal(code, 0, lines.join("\n"));
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, ".portulan/workspace.json")));
+    assert.equal(manifest.portulan.spec, "2.14");
+    assert.equal(manifest.handoffs.series.budget.record_tokens, 3000);
+    assert.equal(manifest.handoffs.index.budget.tokens, 3000);
+    assert.deepEqual(manifest.context.ratio, ratio);
+    assert.equal(manifest.spend.horizon.requests, 3);
+    assert.equal(manifest.spend.multipliers.read, 0.04);
+    assert.equal(manifest.sessions.cache_lifetime, "5m");
 });

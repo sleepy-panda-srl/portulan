@@ -53,3 +53,13 @@ growth steps, with the whole index at most 242/250 fixture tokens. Fixture ratio
 Own-workspace calibrated 3000/3000 adoption and host-specific loading remain undemonstrated. The cutoff
 day stays exempt; cutoff advancement, no-raise/backdating and preserving each decision's why remain
 review duties. Row 12 remains open. Signed: independent fresh-context Sleepy Panda Codex checkpoint.
+
+**Main integration.** Fresh-context Sleepy Panda Codex: APPROVE, 2026-11-09. The concurrent init spend
+offer is preserved with handoff and cache settings; joint acceptance chooses spec 2.14. All 32 recipes
+were independently green across the full run and targeted repair rechecks; 3612/3612 full tests and
+165/165 affected tests passed without skips. Eighty independent flag/interview combinations and four
+disposable mutations exercised composition. Scoped comments were reduced to fit the unchanged rail;
+pointer handoff refusal now gives its policy rationale. Strict plugin validation retains the existing
+missing-icon warning; all 125 packed files match staged blobs. The original calibration, host-loading,
+cutoff-day and history-rule limits above still bind. Row 12 stays open. Signed: independent fresh-context
+Sleepy Panda Codex checkpoint.
