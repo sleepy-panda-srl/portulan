@@ -1,0 +1,72 @@
+{
+  "roots": [
+    "/work/portulan-real-session",
+    "/work/portulan-project"
+  ],
+  "branch": "codex/519-real-ledger",
+  "expect": {
+    "records": 1,
+    "duplicates": 0,
+    "synthetic": 0,
+    "malformed": 0,
+    "requests": [
+      1,
+      0
+    ],
+    "uncached": [
+      2,
+      0
+    ],
+    "written1h": [
+      77208,
+      0
+    ],
+    "written5m": [
+      0,
+      0
+    ],
+    "writtenUnknown": [
+      0,
+      0
+    ],
+    "read": [
+      0,
+      0
+    ],
+    "output": [
+      26,
+      0
+    ],
+    "sessions": 1,
+    "subagentContexts": 0,
+    "compactions": 0,
+    "largest": 77210,
+    "rebuilds": 0,
+    "rebuilt": 0,
+    "causes": {},
+    "host": [
+      {
+        "session": "real-session",
+        "difference": {
+          "uncached": 0,
+          "written": 0,
+          "read": 0,
+          "output": 0
+        }
+      }
+    ],
+    "local": {
+      "receipts": 0,
+      "sessions": 0,
+      "in": null,
+      "out": null,
+      "time": null,
+      "unreported": {
+        "in": 0,
+        "out": 0,
+        "time": 0
+      }
+    },
+    "threshold": 154420
+  }
+}

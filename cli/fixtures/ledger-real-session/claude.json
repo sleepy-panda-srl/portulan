@@ -1,0 +1,11 @@
+{
+  "projects": {
+    "/work/portulan-project": {
+      "lastSessionId": "real-session",
+      "lastTotalInputTokens": 2,
+      "lastTotalCacheCreationInputTokens": 77208,
+      "lastTotalCacheReadInputTokens": 0,
+      "lastTotalOutputTokens": 26
+    }
+  }
+}

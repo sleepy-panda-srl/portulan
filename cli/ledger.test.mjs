@@ -51,6 +51,21 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const TOOL = path.join(REPO, "cli", "ledger.mjs");
 const FIXTURE = path.join(REPO, "cli", "fixtures", "ledger");
 const HYBRID = path.join(REPO, "cli", "fixtures", "ledger-hybrid");
+const REAL = path.join(REPO, "cli", "fixtures", "ledger-real-session");
+
+test("the acquired real-session replay preserves both comparison vectors and the printed difference", () => {
+    const capture = JSON.parse(fs.readFileSync(path.join(REAL, "capture.json"), "utf8"));
+    const spec = JSON.parse(fs.readFileSync(path.join(REAL, "fixture.json"), "utf8"));
+    const report = ledger({ projects: path.join(REAL, "projects"), config: path.join(REAL, "claude.json"), roots: spec.roots, branch: spec.branch });
+    assert.equal(report.host.length, 1);
+    for (const field of ["ledger", "host", "difference"]) assert.deepEqual(report.host[0][field], capture.comparison[field]);
+    const lines = [];
+    print(report, line => lines.push(line));
+    assert.deepEqual(lines.filter(line => line.startsWith("  host totals, session")), [capture.printedHostComparison]);
+    assert.equal(report.figures.total.requests, capture.independent.requests);
+    assert.equal(report.collected.records, capture.independent.usageRecords);
+    assert.equal(report.collected.duplicates, capture.independent.duplicates);
+});
 
 function withTemp(fn) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-ledger-"));
@@ -633,7 +648,7 @@ describe("the command", () => {
     };
 
     test("the committed fixtures reproduce their known totals", () => {
-        for (const fixture of [FIXTURE, HYBRID]) {
+        for (const fixture of [FIXTURE, HYBRID, REAL]) {
             const out = say();
             assert.equal(run(["--fixture", fixture], out.fn), 0, out.lines.join("\n"));
             assert.match(out.lines.at(-1), /ok fixture/);
@@ -905,7 +920,7 @@ describe("the command", () => {
     test("the recipe runs the fixture and nothing of the host's", () => {
         const recipe = fs.readFileSync(path.join(REPO, ".portulan", "verify", "ledger.sh"), "utf8");
         const calls = recipe.split("\n").filter((l) => /node cli\/ledger\.mjs/.test(l) && !l.trimStart().startsWith("#"));
-        assert.deepEqual(calls.map((l) => l.trim()), ['node cli/ledger.mjs --fixture "$FIXTURE"', 'node cli/ledger.mjs --fixture "$HYBRID" >"$tmp/hybrid"']);
+        assert.deepEqual(calls.map((l) => l.trim()), ['node cli/ledger.mjs --fixture "$FIXTURE"', 'node cli/ledger.mjs --fixture "$REAL"', 'node cli/ledger.mjs --fixture "$HYBRID" >"$tmp/hybrid"']);
         assert.match(recipe, /export HOME="\$tmp\/home" CLAUDE_CONFIG_DIR="\$tmp\/home\/\.claude" TMPDIR="\$tmp\/state"/);
     });
 });

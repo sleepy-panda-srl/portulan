@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Portulan workspace — verify recipe: the spend ledger reproduces two fixtures' known totals, reports a
+# Portulan workspace — verify recipe: the spend ledger reproduces its fixtures' known totals, reports a
 # hybrid session's local receipts on their own line, and the restart advisory speaks once.
 #
 # Exit 0 green · 1 red · 2 could not run.
@@ -18,13 +18,14 @@ cd -- "$root" || exit 2
 
 FIXTURE=cli/fixtures/ledger
 HYBRID=cli/fixtures/ledger-hybrid
+REAL=cli/fixtures/ledger-real-session
 HYBRID_SESSION="$HYBRID/projects/-work-hybrid/hybrid.jsonl"
 HYBRID_SUBAGENT="$HYBRID/projects/-work-hybrid/hybrid/subagents/agent-local-worker.jsonl"
 PAST_THRESHOLD="$FIXTURE/projects/-work-demo--claude-worktrees-w1/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.jsonl"
 BELOW_THRESHOLD="$FIXTURE/projects/-work-demo/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.jsonl"
 
 # node exits 1 on a missing file, which would read as a red verdict.
-for file in cli/ledger.mjs cli/advisory.mjs "$FIXTURE/fixture.json" "$HYBRID/fixture.json" "$HYBRID/claude.json" "$HYBRID_SESSION" "$HYBRID_SUBAGENT" "$PAST_THRESHOLD" "$BELOW_THRESHOLD"; do
+for file in cli/ledger.mjs cli/advisory.mjs "$FIXTURE/fixture.json" "$REAL/fixture.json" "$REAL/claude.json" "$REAL/capture.json" "$REAL/projects/-work-portulan-real-session/real-session.jsonl" "$HYBRID/fixture.json" "$HYBRID/claude.json" "$HYBRID_SESSION" "$HYBRID_SUBAGENT" "$PAST_THRESHOLD" "$BELOW_THRESHOLD"; do
     [ -f "$file" ] || {
         printf 'verify: %s not found — this recipe cannot run\n' "$file" >&2
         exit 2
@@ -39,6 +40,10 @@ export HOME="$tmp/home" CLAUDE_CONFIG_DIR="$tmp/home/.claude" TMPDIR="$tmp/state
 
 node cli/ledger.mjs --fixture "$FIXTURE"
 fixture=$?
+printf '\n'
+
+node cli/ledger.mjs --fixture "$REAL"
+real=$?
 printf '\n'
 
 node cli/ledger.mjs --fixture "$HYBRID" >"$tmp/hybrid"
@@ -149,7 +154,7 @@ fi
 worst=$advisory
 [ "$local_line" -eq 1 ] && worst=1
 could_not_run=0
-for status in "$fixture" "$hybrid"; do
+for status in "$fixture" "$real" "$hybrid"; do
     case "$status" in
         0) ;;
         1) worst=1 ;;
