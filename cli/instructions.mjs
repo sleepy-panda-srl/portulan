@@ -773,7 +773,7 @@ export async function run(argv, say = (line) => process.stdout.write(`${line}\n`
             ];
         }
     } catch (error) {
-        if (!(error instanceof InstructionsError || error instanceof context.ContextError)) throw error;
+        if (!(error instanceof InstructionsError || error instanceof context.ContextError || error instanceof CompileError)) throw error;
         say(`instructions: ${error.message}`);
         return 2;
     }

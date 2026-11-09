@@ -361,6 +361,50 @@ describe("the engine half", () => {
 });
 
 describe("imports, as the host reads them", () => {
+    test("unsupported import regions produce a typed could-not-run result with the file and construct", () => {
+        const cases = [
+            ["comment-opening line", "<!-- note --> Run `cat @a.md now`."],
+            ["emphasis adjacency", "**x**@a.md"], ["escape adjacency", "\\!@a.md"],
+            ["tag adjacency", "<em>x</em>@a.md"], ["multiline code span", "`one\n @a.md two`"],
+            ["HTML block", "<div>\n@a.md\n</div>"], ["indented code", "    @a.md"],
+            ["indented fence", "    ```\n@a.md\n    ```"], ["blockquoted list", "> - Run @a.md"],
+            ["blockquoted list", "> > - @a.md"],
+            ["blockquoted list", "- > - @a.md"],
+            ["blockquoted list", "- - > - @a.md"],
+            ["list after nested list", "- outer\n  - inner\n\n  paragraph @a.md"],
+            ["list after tag", "- outer\n  <span>word</span>\n\n  paragraph @a.md"],
+            ["list after indented code", "- outer\n\n      code\n\n  paragraph @a.md"],
+            ["list after HTML block", "- outer\n  <div>\n  word\n  </div>\n\n  paragraph @a.md"],
+        ];
+        for (const [name, text] of cases) {
+            assert.throws(() => importsOf(text), error => error.name === "ContextError" && error.message.includes(name), name);
+            assert.deepEqual(importsOf(`${text.replaceAll("@a.md", "plain")}\n\n@outside.md\n`), ["outside.md"], name);
+            const root = repository({ files: { "CLAUDE.md": "@notes.md\n", "notes.md": text, "a.md": "target\n" } });
+            assert.throws(() => alwaysTier(root), error => error.name === "ContextError" && error.message.includes("notes.md") && error.message.includes(name), name);
+            const result = measured(root);
+            assert.equal(result.code, 2, `${name}: ${result.out}`);
+            assert.ok(result.out.includes(name), result.out);
+        }
+    });
+    test("supported multiline comments and nested item text keep their import boundaries", () => {
+        for (const hidden of ["**x**@a.md", "    @a.md", "`cat @a.md now`", "> > - @a.md"]) {
+            assert.deepEqual(importsOf(`<!--\n${hidden} -->\n\n@outside.md\n`), ["outside.md"]);
+        }
+        assert.deepEqual(importsOf("- outer\n  - @a.md\n"), ["a.md"]);
+        for (const boundary of [">", "> # heading", ">   # heading"]) {
+            assert.deepEqual(importsOf(`> - plain\n${boundary}\n@outside.md\n`), ["outside.md"]);
+        }
+        for (const suffix of ["<div>\nplain\n</div>", "    ```\nplain\n    ```", "<script></script>"]) {
+            assert.deepEqual(importsOf(`<!--\n@hidden.md --> ${suffix}\n\n@outside.md\n`), ["outside.md"]);
+        }
+        for (const depth of [1, 2]) {
+            const quote = "> ".repeat(depth);
+            for (const boundary of ["", "> ".repeat(depth - 1), "```\nplain\n```\n"]) {
+                const text = `${quote}- plain\n${boundary}\n${quote}  @outside.md\n`;
+                assert.deepEqual(importsOf(text), ["outside.md"], text);
+            }
+        }
+    });
     test("an import is `@` at a word's start, outside code", () => {
         const text = [
             "See @docs/a.md and @b.md.",
