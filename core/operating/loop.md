@@ -29,12 +29,16 @@ The loop runs inside a finite attention window, so context is managed, not hoard
 - **A change's why goes in its commit; a handoff carries only the work still open.** A commit's subject
   says what changed and its body says why, in a few lines: the reasoning the next agent cannot
   reconstruct from the diff, kept beside the diff. A session (one bounded working stretch, however the
-  host names it) that ends with work not committed and pushed ends with a dated handoff: where things
-  stand, the open questions and the single next action, and nothing the diff or a commit already says.
+  host names it) that leaves work not committed and pushed writes a dated handoff when its workspace
+  declares `slots.handoffs`: where things stand, the open questions and the single next action, and
+  nothing the diff or a commit already says.
   **Dated** means the filename leads with an ISO date, `YYYY-MM-DD-{slug}.md`, because a rule justified by
   being checkable has to say what the checker looks at, and the series then sorts chronologically for
-  free. The session-end gate (milestone 4) checks exactly that: while the tree holds uncommitted or
-  unpushed work, a handoff dated today exists, never its length or its shape. The librarian (milestone 5)
+  free. The session-end gate (milestone 4) checks that declared series: while the tree holds uncommitted
+  or unpushed work, a handoff dated today exists, never its length or its shape. With no series declared,
+  it asks for the work to be committed and pushed, its why in the commit message, and never asks for a
+  handoff. The workspace owns that record policy ([#505](https://github.com/sleepy-panda-srl/portulan/issues/505));
+  the verify recipe and the gate's retry bounds still apply. The librarian (milestone 5)
   reads the series: it indexes it, ages it from git, and mines it, since an incident nothing in the
   curated layer points back at is a candidate for the `codify` skill.
   _(Provenance: Cognition — handoffs record decisions and their rationale; Git's own SubmittingPatches —

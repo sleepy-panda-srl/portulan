@@ -50,7 +50,7 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `slots.memory` | path | no | constitution — thesis 1 *(memory)*; [`memory.md`](../core/operating/memory.md) |
 | `slots.repos` | path | no | constitution — thesis 1 *(repo cards)*; [`repo-card.md`](../core/templates/repo-card.md) |
 | `slots.tasks` | path | no | content — [`tasks/`](../.portulan/tasks/); constitution — BMAD, the story file as atomic context unit |
-| `slots.handoffs` | path | no | content — [`handoffs/`](../.portulan/handoffs/); [`loop.md`](../core/operating/loop.md) — a session ending with work not committed and pushed ends with one |
+| `slots.handoffs` | path | no | content — [`handoffs/`](../.portulan/handoffs/); [`loop.md`](../core/operating/loop.md) — when declared, the Stop-gate checks this series for open work; when absent, it asks to commit and push without a handoff |
 | `slots.proposals` | path | no | content — [`proposals/`](../.portulan/proposals/); [`evolution.md`](../core/operating/evolution.md) |
 | `slots.context` | path | no | criterion — milestone 12, *`compile` emits Claude Code's on-path and on-invoke targets*; [`context.md`](../core/operating/context.md) — the four load tiers |
 | `verify` | structured | **for a governing kind** | criterion — *verify recipes*; [`verification.md`](../core/operating/verification.md) — the workspace sets the default |

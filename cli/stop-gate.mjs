@@ -207,13 +207,32 @@ function defaultRecipe() {
     }
 }
 
+function handoffPolicy(tree) {
+    const file = path.join(tree.workspace, "workspace.json");
+    try {
+        const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+        if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) throw new Error("the manifest must be an object");
+        const slots = manifest.slots;
+        if (slots === undefined) return { directory: null };
+        if (!slots || typeof slots !== "object" || Array.isArray(slots)) throw new Error("slots must be an object");
+        if (!Object.hasOwn(slots, "handoffs")) return { directory: null };
+        if (typeof slots.handoffs !== "string" || !/^[^#?:/][^#?:]*\/$/.test(slots.handoffs)) {
+            throw new Error("slots.handoffs must be a directory path ending in /, without a fragment, query or colon");
+        }
+        return { directory: path.resolve(tree.workspace, slots.handoffs) };
+    } catch (error) {
+        const why = error instanceof SyntaxError ? "the manifest is not valid JSON" : error.code ?? error.message;
+        return { directory: null, error: `could not read the record policy from ${file}: ${why}. Fix the manifest before ending this work.` };
+    }
+}
+
 function didWork(root = REPO) {
     const git = (args) => execFileSync("git", args, { cwd: root, encoding: "utf8", timeout: 10_000, maxBuffer: 64 * 1024 * 1024 });
 
     try {
         if (git(["status", "--porcelain"]).trim() !== "") return true;
     } catch {
-        process.stderr.write("portulan stop-gate: cannot read git status — the handoff check is not running.\n");
+        process.stderr.write("portulan stop-gate: cannot read git status — the work check is not running.\n");
         return null;
     }
 
@@ -249,7 +268,7 @@ function didWork(root = REPO) {
         const degraded = (why, check) => {
             process.stderr.write(
                 `portulan stop-gate: could not compare by patch-id (${why}), so commits on no remote are ` +
-                    "being read as work. If this branch was rebase-merged the handoff demand may be spurious — " +
+                    "being read as work. If this branch was rebase-merged the work demand may be spurious — " +
                     `${check} and say so rather than working around the gate.\n`,
             );
             return true;
@@ -272,20 +291,20 @@ function didWork(root = REPO) {
         }
         return cherry.split("\n").some((line) => line.startsWith("+"));
     } catch {
-        process.stderr.write("portulan stop-gate: cannot determine whether this session did work — the handoff check is not running.\n");
+        process.stderr.write("portulan stop-gate: cannot determine whether this session did work — the work check is not running.\n");
         return null;
     }
 }
 
 /** Today's handoffs as `{ own, recorded }`, with remote content checked since two UTC days before their date. */
-function handoffToday(stamp, tree = { root: REPO, workspace: WORKSPACE }) {
+function handoffToday(stamp, tree, handoffsDir) {
     let dated;
     try {
-        dated = fs.readdirSync(path.join(tree.workspace, "handoffs")).filter((f) => f.startsWith(stamp) && f.endsWith(".md"));
-    } catch {
+        dated = fs.readdirSync(handoffsDir).filter((f) => f.startsWith(stamp) && f.endsWith(".md"));
+    } catch (error) {
+        if (error.code !== "ENOENT") process.stderr.write(`portulan stop-gate: could not read the declared handoff series (${error.code ?? "read failed"}); no handoff was found.\n`);
         return { own: [], recorded: [] };
     }
-    const handoffsDir = path.join(tree.workspace, "handoffs");
     const dir = path.relative(tree.root, handoffsDir).split(path.sep).join("/");
     if (dir === "" || !isInside(tree.root, handoffsDir)) return { own: dated, recorded: [] };
     const git = (args) => execFileSync("git", args, { cwd: tree.root, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
@@ -327,14 +346,14 @@ function treeIdentity(root = REPO) {
 }
 
 // Refs on disk only: a fetch would put a round trip, or an offline host's timeout, inside every Stop.
-function handoffInHistory(stamp, tree = { root: REPO, workspace: WORKSPACE }, held = []) {
+function handoffInHistory(stamp, tree, handoffsDir, held = []) {
     try {
-        const handoffsDir = path.join(tree.workspace, "handoffs");
         const dir = path.relative(tree.root, handoffsDir).split(path.sep).join("/");
         if (dir === "" || !isInside(tree.root, handoffsDir)) return null;
+        const prefix = dir.replace(/[\\*?[\]]/g, "\\$&");
         const git = (args) => execFileSync("git", args, { cwd: tree.root, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
         // `:(glob)`, since git reads a bare `*` literally under `GIT_NOGLOB_PATHSPECS=1` (git 2.50.1).
-        const commit = git(["log", "-1", "--format=%H", "--all", "--not", "HEAD", "--", `:(glob)${dir}/${stamp}*`,
+        const commit = git(["log", "-1", "--format=%H", "--all", "--not", "HEAD", "--", `:(glob)${prefix}/${stamp}*`,
             ...held.map((name) => `:(exclude,literal)${dir}/${name}`)]).trim();
         if (!commit) return null;
         const refs = git(["branch", "--all", "--contains", commit, "--format=%(refname:short)"])
@@ -355,7 +374,7 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
         problems.push({
             reason: "recipe",
             text:
-                "could not read the workspace's default verify recipe from .portulan/workspace.json, so nothing " +
+                `could not read the workspace's default verify recipe from ${path.join(WORKSPACE, "workspace.json")}, so nothing ` +
                 "verified this work. That is 'could not run', which blocks exactly as red does.",
         });
     } else {
@@ -381,8 +400,25 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
         }
     }
 
+    const policy = handoffPolicy(tree);
+    const handoffEnabled = policy.directory !== null;
+    if (policy.error) {
+        problems.push({ reason: "handoff", text: policy.error });
+        return { problems, recipeGreen, handoffEnabled, handoffCleared: false };
+    }
+    if (!handoffEnabled) {
+        const work = didWork(tree.root);
+        if (work === true) {
+            problems.push({
+                reason: "handoff",
+                text: `${treeIdentity(tree.root)} holds work that is not committed and pushed. Commit and push it, its why in the commit message.`,
+            });
+        }
+        return { problems, recipeGreen, handoffEnabled, handoffCleared: work === false };
+    }
+
     const stamp = today();
-    const handoffs = handoffToday(stamp, tree);
+    const handoffs = handoffToday(stamp, tree, policy.directory);
     const handoffPresent = handoffs.own.length > 0;
     // `handoffPresent` first: `didWork()` runs git several times and may warn about a handoff that is not owed.
     const work = handoffPresent ? null : didWork(tree.root);
@@ -398,7 +434,7 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
             ? ` — the tree this session worked in, not the one this hook was told (${REPO})`
             : "";
         const { recorded } = handoffs;
-        const elsewhere = handoffInHistory(stamp, tree, recorded);
+        const elsewhere = handoffInHistory(stamp, tree, policy.directory, recorded);
         const found = elsewhere
             ? ` One dated ${stamp} does exist elsewhere in this repository's refs, at ` +
               `${elsewhere.commit}${elsewhere.ref ? ` on \`${elsewhere.ref}\`` : ""} — so this working tree may not be ` +
@@ -411,7 +447,7 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
         problems.push({
             reason: "handoff",
             text:
-                `no handoff dated ${stamp}${recorded.length ? " of this tree's own" : ""} in ${path.join(tree.workspace, "handoffs")}, read from ` +
+                `no handoff dated ${stamp}${recorded.length ? " of this tree's own" : ""} in ${policy.directory}, read from ` +
                 `${treeIdentity(tree.root)}${answeredElsewhere}. ${notCounted}` +
                 "This tree holds work that is not committed and pushed. Commit and push it, its why in the commit " +
                 "message, or end with a dated handoff naming what is open: where things stand, the open questions " +
@@ -419,18 +455,19 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
         });
     }
 
-    return { problems, recipeGreen, handoffCleared: handoffPresent || work === false };
+    return { problems, recipeGreen, handoffEnabled, handoffCleared: handoffPresent || work === false };
 }
 
-export function verdict({ problems, counts = {}, total = 0, chain = 0, max = MAX_BLOCKS, maxTotal = MAX_TOTAL_BLOCKS, maxChain = MAX_CHAIN_BLOCKS }) {
+export function verdict({ problems, counts = {}, total = 0, chain = 0, max = MAX_BLOCKS, maxTotal = MAX_TOTAL_BLOCKS, maxChain = MAX_CHAIN_BLOCKS, handoffEnabled = true }) {
     if (problems.length === 0) return { action: "allow" };
 
     const text = problems.map((p) => p.text).join("\n\n");
     const spent = problems.map((p) => p.reason).filter((reason) => (counts[reason] ?? 0) > max);
+    const label = (reason) => !handoffEnabled && reason === "handoff" ? "work" : reason;
 
     if (spent.length || total > maxTotal || chain > maxChain) {
         const bound = spent.length
-            ? `the cap of ${max} consecutive refusals for \`${spent.join("`, `")}\` was reached`
+            ? `the cap of ${max} consecutive refusals for \`${spent.map(label).join("`, `")}\` was reached`
             : total > maxTotal
               ? `the absolute ceiling of ${maxTotal} refusals was reached (no single reason had reached its cap of ${max})`
               : `${chain} consecutive hook-provoked stops were seen in this tree, past the chain bound of ${maxChain} — ` +
@@ -440,13 +477,13 @@ export function verdict({ problems, counts = {}, total = 0, chain = 0, max = MAX
             action: "release",
             message:
                 `PORTULAN STOP-GATE — ${bound}. This session is ending **RED**, not done.\n` +
-                `Nothing below was fixed, and the session ending does not fix it. Say so in the handoff and in any\n` +
+                `Nothing below was fixed, and the session ending does not fix it. Say so in ${handoffEnabled ? "the handoff and in any" : "any"}\n` +
                 `report of this work; a task that ends at the cap is an unfinished task with a stop attached.\n\n` +
                 `${text}\n`,
         };
     }
 
-    const tally = problems.map((p) => `${p.reason} ${counts[p.reason] ?? 0}/${max}`).join(", ");
+    const tally = problems.map((p) => `${label(p.reason)} ${counts[p.reason] ?? 0}/${max}`).join(", ");
     return {
         action: "block",
         message:
@@ -469,7 +506,7 @@ function main() {
     const tree = resolveSessionTree(payload.cwd);
     if (tree.note) process.stderr.write(`portulan stop-gate: ${tree.note}; answering about ${REPO} instead.\n`);
 
-    const { problems, recipeGreen, handoffCleared } = collectProblems(tree);
+    const { problems, recipeGreen, handoffEnabled, handoffCleared } = collectProblems(tree);
 
     // The session's counts stay on the told root, so a `cwd` that moves mid-session cannot restart them.
     if (recipeGreen) clearReason(sessionId, "recipe");
@@ -479,7 +516,7 @@ function main() {
         ? { counts: {}, total: 0 }
         : bumpCount(sessionId, [...new Set(problems.map((p) => p.reason))]);
     const chain = bumpChain(problems.length > 0 && payload.stop_hook_active === true, os.tmpdir(), tree.root);
-    const result = verdict({ problems, counts: state.counts, total: state.total, chain });
+    const result = verdict({ problems, counts: state.counts, total: state.total, chain, handoffEnabled });
 
     if (result.action === "allow") allow();
     if (result.action === "release") {
