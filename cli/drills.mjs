@@ -16,7 +16,7 @@ const RAIL_TIMEOUT_MS = 10 * 60 * 1000;
 
 export const DRILL_SESSION_PREFIX = "portulan-drill";
 
-/** Hooks answer in their stdout JSON and exit 0 either way, so their drills judge by a tell read from stdout. */
+/** Hook drills judge stdout JSON: exit 0 carries either verdict. */
 export const NON_RECIPE_RAILS = [
     {
         id: "stop-gate",
@@ -63,7 +63,7 @@ export const NOT_DRILLED = [
     },
 ];
 
-/** A rail that reads only the index misses a created file unless the drill sets `stage`. */
+/** Index-only rails need `stage` for a created file. */
 export const DRILLS = [
     {
         rail: "cache-stability",
@@ -76,7 +76,7 @@ export const DRILLS = [
         tell: "differ from the committed golden",
         why: "A volatile prefix change must require review of the committed baseline (#516), even when two renders agree.",
     },
-    // ------------------------------------------------------------------------- the yielded recipes
+    // The yielded recipes
     {
         rail: "docs",
         perturb: {
@@ -503,7 +503,7 @@ export const DRILLS = [
         why: "Loopback is the rail that keeps a local worker's context on the machine, and the runner holds it in code rather than in any permission rule the compiler emits, so a guard that stopped refusing would leave every other rail green. The drill removes the refusal and requires the pack's own recipe to see it.",
     },
 
-    // ------------------------------------------------------- the coverage rail, which is itself a rail
+    // The coverage rail, which is itself a rail
     {
         rail: "drills",
         perturb: {
@@ -519,7 +519,7 @@ export const DRILLS = [
         why: "The allow-list is what stops a misspelled recipe id being silently reclassified as a rail of its own, leaving the real recipe undrilled while the coverage check reports green. A drill naming a rail nothing yields is the shortest path to that state.",
     },
 
-    // ------------------------------------------------------------------------- the two non-recipe rails
+    // The two non-recipe rails
     {
         rail: "stop-gate",
         perturb: {
