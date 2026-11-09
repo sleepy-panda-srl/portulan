@@ -216,7 +216,7 @@ function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = n
     // Claude Code 2.1.281: a subagent's tool call carries its own `agent_id` and the main session's transcript,
     // and a subagent told to end its session would end nothing.
     if (typeof payload?.agent_id === "string" && payload.agent_id !== "") return null;
-    // A host can give a block's retry a new session id, where the held-once record would hold it again.
+    // Without the host's retry marker, rotated session ids can repeat the hold.
     if (event === "Stop" && payload?.stop_hook_active === true) return null;
     const sessionId = sessionOf(payload);
     if (sessionId === null) {

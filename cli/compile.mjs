@@ -2015,12 +2015,21 @@ export function spendDeclaration(workspaceRoot, workspaceDir = ".portulan") {
         if (error instanceof LedgerError) throw new CompileError(error.message);
         throw error;
     }
-    const version = /^([0-9]+)\.([0-9]+)$/.exec(parsed.portulan?.spec ?? "");
-    if (spend.restart !== null && version && Number(version[1]) === 2 && Number(version[2]) < 13) {
-        throw new CompileError(
-            `\`spend.restart\` in ${where} is Workspace Definition 2.13's, and this manifest declares ${version[0]}, whose validator ` +
-                "refuses it as an unknown key. Declare 2.13, or remove the key",
-        );
+    if (spend.restart !== null) {
+        const spec = parsed.portulan?.spec;
+        const version = typeof spec === "string" ? /^([0-9]+)\.([0-9]+)$/.exec(spec) : null;
+        if (!version || Number(version[1]) !== 2) {
+            throw new CompileError(
+                `\`spend.restart\` in ${where} requires \`portulan.spec\` to be a string MAJOR.MINOR on supported major 2; ` +
+                    `got ${JSON.stringify(spec)}. Declare 2.13 or a later minor, or remove the key`,
+            );
+        }
+        if (Number(version[2]) < 13) {
+            throw new CompileError(
+                `\`spend.restart\` in ${where} is Workspace Definition 2.13's, and this manifest declares ${version[0]}, whose validator ` +
+                    "refuses it as an unknown key. Declare 2.13, or remove the key",
+            );
+        }
     }
     return spend;
 }

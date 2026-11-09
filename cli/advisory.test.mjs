@@ -193,6 +193,15 @@ describe("the block at a stop, where a workspace declares it", () => {
         });
     });
 
+    test("unmarked Stops with rotated session IDs can each be held (#494)", () => {
+        withTemp((dir) => {
+            const file = session(dir, [90000]);
+            for (const session_id of ["unmarked-first", "unmarked-rotated"]) {
+                assert.equal(JSON.parse(onStop({ session_id, transcript_path: file }, { dir })).decision, "block");
+            }
+        });
+    });
+
     test("a line already said spares no block, and a compaction owes both again", () => {
         withTemp((dir) => {
             const file = session(dir, [90000]);
