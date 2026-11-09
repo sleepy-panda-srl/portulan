@@ -1,0 +1,1 @@
+- Record reproducible demo boot read-set evidence across pinned bundle replacement, with unchanged workspace bytes and a separate migration no-op.

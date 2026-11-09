@@ -1,0 +1,244 @@
+{
+  "format": 1,
+  "interpretation": "2026-11-09 human ruling: bundle-upgrade evidence; workspace migration separate",
+  "measurement": "diagnostic boot read-set bytes; explicit Combcount card and declared memory index; no host timing or exact tokens",
+  "operation": "replace pinned boot inputs at the same bundle path; no host installer exercised",
+  "releases": {
+    "before": {
+      "tag": "v0.1.3",
+      "commit": "43038826f31e85ec02e36e5cdea20376ac1b58cf"
+    },
+    "after": {
+      "tag": "v0.2.0",
+      "commit": "78a30817a62d745307acedea6aae4fed6833d83c"
+    }
+  },
+  "workspace": {
+    "source": "examples/",
+    "kind": "demo",
+    "spec": "2.4",
+    "repo": "combcount",
+    "files": [
+      {
+        "path": "affordances.md",
+        "bytes": 2997,
+        "sha256": "54fcbbc8c18ec5e74152b263c838ade7cbd59790253daf11d6a9dca1643bb9f7"
+      },
+      {
+        "path": "dod.md",
+        "bytes": 2544,
+        "sha256": "fb4c5c3c1b593db803ae310c58120e14cee44e7432aa150278c8011aadb1ebbe"
+      },
+      {
+        "path": "gate-map.md",
+        "bytes": 4005,
+        "sha256": "00fd19a6c9ab1724743a95ad84868df2515c9de3c5ecde554fa60fdd023aa1b1"
+      },
+      {
+        "path": "identity.md",
+        "bytes": 3926,
+        "sha256": "66a49eb922c374d97062c5eadbfb4d403214d84d3ccae34750ee504737d67c0f"
+      },
+      {
+        "path": "memory-index.md",
+        "bytes": 595,
+        "sha256": "9ed49374dc22044e011c66a0058f5a8803b55dd21c617b7a1f9cc06f1e6c1977"
+      },
+      {
+        "path": "memory/fieldnotes-ships-on-merge.md",
+        "bytes": 1486,
+        "sha256": "48cacfc55ad64541c455add0a526bbd2712e26d8ceeee2d40c2299caeab693a1"
+      },
+      {
+        "path": "memory/staging-seeds-must-be-shaped-like-production.md",
+        "bytes": 2621,
+        "sha256": "8e684143889a6ba92cd367124c19238176898d0eb881e58dfa7d5a4a2516fb01"
+      },
+      {
+        "path": "memory/the-reminder-run-must-be-idempotent.md",
+        "bytes": 1865,
+        "sha256": "40ccbf993958479074aa788a2b775422f969270dbd218b42beb4b97412456d13"
+      },
+      {
+        "path": "memory/the-season-starts-in-march.md",
+        "bytes": 1855,
+        "sha256": "bb9fd7462bbe1d24d284ef68d833da4bda88843bf331790fb3c1c3bc1430d42f"
+      },
+      {
+        "path": "principles.md",
+        "bytes": 2571,
+        "sha256": "dbf16dbbdf389f8245b3a71bb387daa83dba42be4b15610fe4d3498e75a710ca"
+      },
+      {
+        "path": "products/combcount/affordances.md",
+        "bytes": 3384,
+        "sha256": "2c419c2d3113a9dd84d2c274507feed1913090c2d0a965efd45532188e423731"
+      },
+      {
+        "path": "products/combcount/product.md",
+        "bytes": 1706,
+        "sha256": "e69d1b6f61825e513868aefe6c833995e1b1c7b5d76ff27645979fa1ace0a139"
+      },
+      {
+        "path": "products/fieldnotes/product.md",
+        "bytes": 2076,
+        "sha256": "8636819d26ba7b1be798321883ca73cbb2cbf2e296cb58f57d1ee92404f81af7"
+      },
+      {
+        "path": "README.md",
+        "bytes": 6127,
+        "sha256": "13a8a6e5847f82117d3a1c76625ee8a5459a8701a2bc2c6891053268fee84675"
+      },
+      {
+        "path": "repos/combcount.md",
+        "bytes": 1844,
+        "sha256": "e94978701ed3f6f1b670dd721e4c656d8e6d3f834e20e19620843f4e5a137e34"
+      },
+      {
+        "path": "repos/fieldnotes.md",
+        "bytes": 1447,
+        "sha256": "c377e458dc6dc95fb92c45ec7a863ccd250cb3bcf1006342b0231887ab6c9501"
+      },
+      {
+        "path": "tasks/0007-backfill-season-on-legacy-inspections.md",
+        "bytes": 2528,
+        "sha256": "11078fd1e8de05f5329105b9bb5920d1cdeccd97f87f49103c36489f15798f60"
+      },
+      {
+        "path": "verify/README.md",
+        "bytes": 3737,
+        "sha256": "fed95c7a8587649b448c17aef5bbf6c84c6e20af7f11014c849806ac80a09860"
+      },
+      {
+        "path": "workspace.json",
+        "bytes": 1802,
+        "sha256": "c4caaf47b22a552b62b6fc39ed8da9b3abaae63442e5cc56cc489f79c4296915"
+      }
+    ]
+  },
+  "before": {
+    "bytes": 42958,
+    "entries": [
+      {
+        "path": "bundle/core/engine.md",
+        "bytes": 2897,
+        "sha256": "2d7c6c3c454738f43bfe428f05c3702c11d7d9d7c47d0a2336d4d8691b179ec7"
+      },
+      {
+        "path": "bundle/plugin/skills/portulan/SKILL.md",
+        "bytes": 22774,
+        "sha256": "486677e5ec940aaad2c0308b67782981fd5baa88f333229516b0b15b27f626ab"
+      },
+      {
+        "path": "workspace/dod.md",
+        "bytes": 2544,
+        "sha256": "fb4c5c3c1b593db803ae310c58120e14cee44e7432aa150278c8011aadb1ebbe"
+      },
+      {
+        "path": "workspace/gate-map.md",
+        "bytes": 4005,
+        "sha256": "00fd19a6c9ab1724743a95ad84868df2515c9de3c5ecde554fa60fdd023aa1b1"
+      },
+      {
+        "path": "workspace/identity.md",
+        "bytes": 3926,
+        "sha256": "66a49eb922c374d97062c5eadbfb4d403214d84d3ccae34750ee504737d67c0f"
+      },
+      {
+        "path": "workspace/memory-index.md",
+        "bytes": 595,
+        "sha256": "9ed49374dc22044e011c66a0058f5a8803b55dd21c617b7a1f9cc06f1e6c1977"
+      },
+      {
+        "path": "workspace/principles.md",
+        "bytes": 2571,
+        "sha256": "dbf16dbbdf389f8245b3a71bb387daa83dba42be4b15610fe4d3498e75a710ca"
+      },
+      {
+        "path": "workspace/repos/combcount.md",
+        "bytes": 1844,
+        "sha256": "e94978701ed3f6f1b670dd721e4c656d8e6d3f834e20e19620843f4e5a137e34"
+      },
+      {
+        "path": "workspace/workspace.json",
+        "bytes": 1802,
+        "sha256": "c4caaf47b22a552b62b6fc39ed8da9b3abaae63442e5cc56cc489f79c4296915"
+      }
+    ]
+  },
+  "after": {
+    "bytes": 36250,
+    "entries": [
+      {
+        "path": "bundle/core/engine.md",
+        "bytes": 2293,
+        "sha256": "a5be231ca970e2c0bfad3b4c045be699e07e9b9b9917d83c37fb84b712121369"
+      },
+      {
+        "path": "bundle/plugin/skills/portulan/packs.md",
+        "bytes": 6281,
+        "sha256": "5b410b2634c55c27a6672ea34d46df7baee8aeda3e4dda44ccba70b24ff9fe90"
+      },
+      {
+        "path": "bundle/plugin/skills/portulan/SKILL.md",
+        "bytes": 2107,
+        "sha256": "d28f55303c20ac0ff5eb31d54234de5fa8cac1fd17d77c14e86cb6569c4f6dcc"
+      },
+      {
+        "path": "bundle/plugin/skills/portulan/steps.md",
+        "bytes": 8282,
+        "sha256": "e24ff92c4a92e31df212f5795b067380c323eea032e39653067b7ab6b48eb1b4"
+      },
+      {
+        "path": "workspace/dod.md",
+        "bytes": 2544,
+        "sha256": "fb4c5c3c1b593db803ae310c58120e14cee44e7432aa150278c8011aadb1ebbe"
+      },
+      {
+        "path": "workspace/gate-map.md",
+        "bytes": 4005,
+        "sha256": "00fd19a6c9ab1724743a95ad84868df2515c9de3c5ecde554fa60fdd023aa1b1"
+      },
+      {
+        "path": "workspace/identity.md",
+        "bytes": 3926,
+        "sha256": "66a49eb922c374d97062c5eadbfb4d403214d84d3ccae34750ee504737d67c0f"
+      },
+      {
+        "path": "workspace/memory-index.md",
+        "bytes": 595,
+        "sha256": "9ed49374dc22044e011c66a0058f5a8803b55dd21c617b7a1f9cc06f1e6c1977"
+      },
+      {
+        "path": "workspace/principles.md",
+        "bytes": 2571,
+        "sha256": "dbf16dbbdf389f8245b3a71bb387daa83dba42be4b15610fe4d3498e75a710ca"
+      },
+      {
+        "path": "workspace/repos/combcount.md",
+        "bytes": 1844,
+        "sha256": "e94978701ed3f6f1b670dd721e4c656d8e6d3f834e20e19620843f4e5a137e34"
+      },
+      {
+        "path": "workspace/workspace.json",
+        "bytes": 1802,
+        "sha256": "c4caaf47b22a552b62b6fc39ed8da9b3abaae63442e5cc56cc489f79c4296915"
+      }
+    ]
+  },
+  "savedBytes": 6708,
+  "workspaceUnchanged": true,
+  "migration": {
+    "argv": [
+      "node",
+      "<repo>/cli/upgrade.mjs",
+      "--write",
+      "<project>/.portulan"
+    ],
+    "host": "empty CLAUDE_CONFIG_DIR; demo declares no tree",
+    "exit": 0,
+    "stdout": "upgrade: <project>/.portulan owes nothing — it is current at 2.4\n",
+    "stderr": "",
+    "effect": "no applicable workspace migration owed at 2.4; no measured boot reduction attributed to this command"
+  }
+}

@@ -85,3 +85,7 @@ policy … ENOENT"* — a could-not-run rather than a refusal, which is the dist
 everywhere else and should keep in its own demo. So composing a gates-contributing pack is not the
 same as being governed by one. That is a property of the cascade, and it is better shown than
 asserted.
+
+The demo's [bundle-upgrade evidence](../docs/milestones/m12.md#demonstration-3--the-demo-on-bundle-upgrade-2026-11-09)
+records the same workspace reading fewer boot bytes after pinned bundle replacement,
+with the workspace migration command measured separately.
