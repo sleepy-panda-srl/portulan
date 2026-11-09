@@ -441,6 +441,20 @@ async function cli(argv, options = {}) {
 const alwaysBytes = (repo) => alwaysTier(repo).entries.reduce((n, e) => n + e.bytes, 0);
 
 describe("the invented consumer of fixtures/consumer/, split and measured", () => {
+    test("an unsupported import region refuses planning and writing before instruction artifacts change", async () => {
+        const { repo, ws } = consumer();
+        const text = `## Example\n${ON_READ_MARK}\n\n**x**@a.md\n`;
+        fs.writeFileSync(path.join(repo, "CLAUDE.md"), text);
+        const before = git(repo, "status", "--porcelain", "--untracked-files=all");
+        for (const flags of [[], ["--write"]]) {
+            const result = await cli(["--workspace", ws, ...flags]);
+            assert.equal(result.code, 2, result.text);
+            assert.match(result.text, /unsupported import syntax: emphasis adjacency/);
+            assert.equal(fs.readFileSync(path.join(repo, "CLAUDE.md"), "utf8"), text);
+            assert.equal(git(repo, "status", "--porcelain", "--untracked-files=all"), before);
+            assert.deepEqual(fs.readdirSync(path.join(ws, "context")), ["boot.md"]);
+        }
+    });
     test("the fixture is its own: no heading of it is marked, it holds no import, and every mark this suite adds lands under a heading", () => {
         const text = fs.readFileSync(FIXTURE, "utf8");
         assert.deepEqual(marksOf(text), { marks: [], moved: [] });

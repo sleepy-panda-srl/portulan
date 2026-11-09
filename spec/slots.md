@@ -979,6 +979,15 @@ gates**, so a card carries a fact without holding a second copy of it:
   a path-scoped rule's included. The vendored `AGENTS.md` carries each import as a pointer line to the
   file in the vendored tree, and one for each file that file imports in turn, to the depth the host would
   load (2026-09-24), and `vendor` refuses an import leaving the workspace, which is all that tree holds.
+  **The shared reader refuses unsupported import-bearing regions by name**
+  ([#471](https://github.com/sleepy-panda-srl/portulan/issues/471)): inline emphasis,
+  escape or tag adjacency; code spans on comment-opening lines or across lines;
+  HTML blocks, indented code and indented fences; blockquoted lists; and list
+  continuations after nested lists, tags, indented code or HTML blocks. Refusal
+  replaces a guessed import set, including in nested files and instruction
+  rewriting. Syntax without an import and unrelated imports outside those regions
+  retain their supported behavior. This is bounded validation, not general
+  CommonMark or live-host lexer parity.
 - **A line `<!-- leads: <path> -->`, alone on its line, is replaced by the first sentence of each item in
   the first list of the file it names**, each item opening with a bold lead. The file stays the one
   source of those sentences, so a change there is drift until the unit is recompiled. `compile` refuses

@@ -1032,11 +1032,148 @@ const STRAY_IMPORT = {
     "on-read": "an on-read file is opened as it stands, so the import would load nothing",
 };
 
-/**
- * The `@` imports Claude Code 2.1.281 finds: none in a fence, nor in a code span or HTML comment outside a list
- * item's text, which it reads raw. Misread: a list in a block quote, and a line its lexer keeps out of an item.
- */
+function importCandidate(text) {
+    return [...text.matchAll(/@((?:[^\s\\]|\\ )+)/g)].some(match =>
+        !/[\p{L}\p{N}.+-]/u.test(text[match.index - 1] ?? " ") && importPath(match[1]) !== null);
+}
+
+function importSyntax(text) {
+    const rows = text.split("\n");
+    const starts = [];
+    let offset = 0;
+    for (const row of rows) { starts.push(offset); offset += row.length + 1; }
+    const width = (prefix) => [...prefix].reduce((col, char) => col + (char === "\t" ? 4 - col % 4 : 1), 0);
+    const refuse = (name, region, i) => {
+        if (importCandidate(region)) throw new CompileError(`unsupported import syntax: ${name} at line ${i + 1}; put the import alone in a supported paragraph`);
+    };
+    let fence = null;
+    let comment = false;
+    let quotedList = null;
+    let list = null;
+    let flowing = false;
+    for (let i = 0; i < rows.length; i++) {
+        let line = rows[i].replace(/\r$/, "");
+        let shift = 0;
+        if (fence) {
+            if (new RegExp(`^ {0,3}${fence[0]}{${fence.length},}[ \\t]*$`).test(line)) fence = null;
+            continue;
+        }
+        if (comment) {
+            const end = line.indexOf("-->");
+            if (end === -1) continue;
+            comment = false;
+            shift = end + 3;
+            line = line.slice(shift);
+        }
+        const trim = line.trimStart();
+        const indent = width(/^[ \t]*/.exec(line)[0]);
+        const regionThrough = (stop) => [line, ...rows.slice(i + 1, stop)].join("\n");
+        const opening = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+        if (opening && !(opening[1][0] === "`" && opening[2].includes("`"))) {
+            fence = opening[1];
+            quotedList = null;
+            flowing = false;
+            continue;
+        }
+        let quoted = line;
+        let outerItem;
+        while ((outerItem = /^ {0,3}(?:[-+*]|\d{1,9}[.)])(?:[ \t]+|$)/.exec(quoted))) quoted = quoted.slice(outerItem[0].length);
+        let depth = 0;
+        let prefix;
+        while ((prefix = /^ {0,3}>[ \t]?/.exec(quoted))) { depth++; quoted = quoted.slice(prefix[0].length); }
+        const quotedItem = /^ {0,3}(?:[-+*]|\d{1,9}[.)])(?:[ \t]+|$)/.exec(quoted);
+        if (depth && quotedItem) {
+            quotedList = { depth, indent: width(quotedItem[0]), flowing: !opensBlock(quoted.slice(quotedItem[0].length)) };
+            refuse("blockquoted list", quoted, i);
+        } else if (quotedList) {
+            const contained = depth > quotedList.depth || (depth === quotedList.depth && width(/^[ \t]*/.exec(quoted)[0]) >= quotedList.indent);
+            if (quoted.trim() === "") {
+                if (depth < quotedList.depth) quotedList = null;
+                else quotedList.flowing = false;
+            }
+            else if (contained || (quotedList.flowing && !opensBlock(quoted))) {
+                refuse("blockquoted list", quoted, i);
+                quotedList.flowing = !opensBlock(quoted.trimStart());
+            } else quotedList = null;
+        }
+        const item = /^([ \t]*)([-+*]|\d{1,9}[.)])([ \t]+|$)/.exec(line);
+        if (item && (list || indent <= 3)) {
+            if (list && indent >= list.indent) list.reason = "list after nested list";
+            else list = { indent: width(item[0]), reason: null };
+            flowing = true;
+        } else if (line.trim() === "") {
+            flowing = false;
+        } else if (list && (indent >= list.indent || (flowing && !opensBlock(line)))) {
+            flowing = true;
+        } else {
+            list = null;
+            flowing = false;
+        }
+        if (list && flowing) {
+            const content = item ? line.slice(item[0].length) : trim;
+            if (OPENS_HTML_BLOCK.test(content) || /^<(?:\?|!\[CDATA\[|![A-Z])/.test(content)) list.reason = "list after HTML block";
+            else if ((item || indent >= list.indent) && /^<\/?[A-Za-z]/.test(content)) list.reason = "list after tag";
+            else if (!item && indent >= list.indent + 4) list.reason = "list after indented code";
+            if (list.reason && !item) refuse(list.reason, line, i);
+            continue;
+        }
+        const deepFence = /^(?: {4,}|[ \t]*\t[ \t]*)(`{3,}|~{3,})/.exec(line);
+        if (deepFence) {
+            let end = i + 1;
+            while (end < rows.length && !new RegExp(`^[ \\t]*${deepFence[1][0]}{${deepFence[1].length},}[ \\t]*$`).test(rows[end])) end++;
+            refuse("indented fence", regionThrough(Math.min(end + 1, rows.length)), i);
+            i = Math.min(end, rows.length - 1);
+            continue;
+        }
+        if (indent >= 4) { refuse("indented code", line, i); continue; }
+        let htmlEnd = null;
+        const raw = /^<(pre|script|style|textarea)(?=[ \t>]|$)/i.exec(trim);
+        if (raw) htmlEnd = new RegExp(`</${raw[1]}[ \\t]*>`, "i");
+        else if (/^<\?/.test(trim)) htmlEnd = /\?>/;
+        else if (/^<!\[CDATA\[/.test(trim)) htmlEnd = /\]\]>/;
+        else if (/^<![A-Z]/.test(trim)) htmlEnd = />/;
+        const html = htmlEnd || OPENS_HTML_BLOCK.test(trim) ||
+            ((i === 0 || rows[i - 1].trim() === "") && /^<\/?[A-Za-z][^<>]*>[ \t]*$/.test(trim));
+        if (html) {
+            let end = i;
+            while (end < rows.length && (htmlEnd ? !htmlEnd.test(end === i ? line : rows[end]) : (end === i ? line : rows[end]).trim() !== "")) end++;
+            const stop = htmlEnd ? Math.min(end + 1, rows.length) : end;
+            refuse("HTML block", regionThrough(stop), i);
+            i = Math.max(i, stop - 1);
+            continue;
+        }
+        let masked = line;
+        const ticks = [...line.matchAll(/`+/g)];
+        for (let k = 0; k < ticks.length; k++) {
+            const tick = ticks[k];
+            const absolute = starts[i] + shift + tick.index;
+            const rest = text.slice(absolute + tick[0].length).split(/\n[ \t]*\n/, 1)[0];
+            const close = [...rest.matchAll(/`+/g)].find(next => next[0] === tick[0]);
+            if (!close) continue;
+            const region = rest.slice(0, close.index);
+            if (region.includes("\n")) refuse("multiline code span", region, i);
+            else {
+                if (line.includes("<!--")) refuse("comment-opening line", region, i);
+                const end = tick.index + tick[0].length * 2 + close.index;
+                masked = masked.slice(0, tick.index) + " ".repeat(end - tick.index) + masked.slice(end);
+                while (k + 1 < ticks.length && ticks[k + 1].index < end) k++;
+            }
+        }
+        masked = masked.replace(/<!--.*?(?:-->|$)/g, match => " ".repeat(match.length));
+        for (const [name, pattern] of [
+            ["emphasis adjacency", /[*_]@((?:[^\s\\]|\\ )+)/g],
+            ["escape adjacency", /\\[!-/:-@[-`{-~]@((?:[^\s\\]|\\ )+)/g],
+            ["tag adjacency", />@((?:[^\s\\]|\\ )+)/g],
+        ]) for (const match of masked.matchAll(pattern)) if (importPath(match[1]) !== null) {
+            throw new CompileError(`unsupported import syntax: ${name} at line ${i + 1}; put the import alone in a supported paragraph`);
+        }
+        if (line.includes("<!--") && !line.slice(line.indexOf("<!--") + 4).includes("-->")) comment = true;
+    }
+}
+
+/** Proven import forms; ambiguous Markdown regions fail closed before offsets are read. */
 export function importSpans(text) {
+    importSyntax(text);
     const found = [];
     let fence = null;
     let comment = false;

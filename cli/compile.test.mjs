@@ -3793,6 +3793,73 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         assert.match(rule(dir, "boot"), /^@\.\.\/\.\.\/\.\.\/identity\.md$/m);
     });
 
+    test("unsupported import regions are named before compiler outputs can change", (t) => {
+        const cases = [
+            ["comment-opening line", "<!-- note --> Run `cat @a.md now`."],
+            ["emphasis adjacency", "**x**@a.md"], ["escape adjacency", "\\!@a.md"],
+            ["tag adjacency", "<em>x</em>@a.md"], ["multiline code span", "`one\n @a.md two`"],
+            ["HTML block", "<div>\n@a.md\n</div>"], ["indented code", "    @a.md"],
+            ["indented fence", "    ```\n@a.md\n    ```"],
+            ["blockquoted list", "> - Run @a.md"],
+            ["blockquoted list", "> > - @a.md"],
+            ["blockquoted list", "- > - @a.md"],
+            ["blockquoted list", "- - > - @a.md"],
+            ["list after nested list", "- outer\n  - inner\n\n  paragraph @a.md"],
+            ["list after tag", "- outer\n  <span>word</span>\n\n  paragraph @a.md"],
+            ["list after indented code", "- outer\n\n      code\n\n  paragraph @a.md"],
+            ["list after HTML block", "- outer\n  <div>\n  word\n  </div>\n\n  paragraph @a.md"],
+        ];
+        for (const [name, text] of cases) {
+            assert.throws(() => importSpans(text), error => error instanceof CompileError && error.message.includes(name), name);
+            const clean = text.replaceAll("@a.md", "plain");
+            assert.deepEqual(importSpans(`${clean}\n\n@outside.md\n`).map(span => span.target), ["outside.md"], name);
+            const dir = withFiles({ "context/boot.md": card("@../notes.md"), "notes.md": text, "a.md": "# Target\n" });
+            for (const flags of [[], ["--check"], ["--matrix"]]) {
+                const result = said(t, ["--workspace", dir, ...flags]);
+                assert.equal(result.code, 2, `${name}: ${result.out}`);
+                assert.ok(result.out.includes(name), result.out);
+                assert.ok(!fs.existsSync(path.join(dir, ".claude")), name);
+            }
+        }
+    });
+
+    test("supported import spans retain their exact UTF-16 offsets and email/code controls", () => {
+        const text = "é 😀 someone@example.com\r\n\r\nRun `**x**@hidden.md`\r\n<!-- @hidden.md -->\r\n\r\n@a.md\r\n";
+        assert.deepEqual(importSpans(text).map(span => [span.target, span.index]), [["a.md", text.indexOf("@a.md") + 1]]);
+        for (const hidden of ["**x**@a.md", "    @a.md", "`cat @a.md now`", "> > - @a.md"]) {
+            assert.deepEqual(importSpans(`<!--\n${hidden} -->\n\n@outside.md\n`).map(span => span.target), ["outside.md"]);
+        }
+        assert.deepEqual(importSpans("- outer\n  - @a.md\n").map(span => span.target), ["a.md"]);
+        for (const boundary of [">", "> # heading", ">   # heading"]) {
+            assert.deepEqual(importSpans(`> - plain\n${boundary}\n@outside.md\n`).map(span => span.target), ["outside.md"]);
+        }
+        for (const suffix of ["<div>\nplain\n</div>", "    ```\nplain\n    ```", "<script></script>"]) {
+            assert.deepEqual(importSpans(`<!--\n@hidden.md --> ${suffix}\n\n@outside.md\n`).map(span => span.target), ["outside.md"]);
+        }
+        for (const depth of [1, 2]) {
+            const quote = "> ".repeat(depth);
+            for (const boundary of ["", "> ".repeat(depth - 1), "```\nplain\n```\n"]) {
+                const text = `${quote}- plain\n${boundary}\n${quote}  @outside.md\n`;
+                assert.deepEqual(importSpans(text).map(span => span.target), ["outside.md"], text);
+            }
+        }
+    });
+
+    test("a refusal preserves previously compiled artifacts in every compiler mode", (t) => {
+        const dir = withFiles({ "context/boot.md": card("@../notes.md"), "notes.md": "Supported prose.\n" });
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        const artifacts = path.join(dir, ".claude");
+        const snapshot = () => Object.fromEntries(fs.readdirSync(artifacts, { recursive: true })
+            .filter(file => fs.statSync(path.join(artifacts, file)).isFile())
+            .map(file => [file, fs.readFileSync(path.join(artifacts, file), "utf8")]));
+        const before = snapshot();
+        fs.writeFileSync(path.join(dir, "notes.md"), "**x**@a.md\n");
+        for (const flags of [[], ["--check"], ["--matrix"]]) {
+            assert.equal(said(t, ["--workspace", dir, ...flags]).code, 2);
+            assert.deepEqual(snapshot(), before);
+        }
+    });
+
     // Claude Code 2.1.281's lexer hands a list item's text over whole, so a code span there hides no import.
     test("in a list item a code span hides no import, tight or loose, and a refusal sends text that is not one elsewhere", (t) => {
         const advice = /text that is not an import (goes )?in a fenced block, or in a code span outside a list/;

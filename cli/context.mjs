@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { BOOT_CARD_LINE, IMPORT_DEPTH, importPath, importSpans } from "./compile.mjs";
+import { BOOT_CARD_LINE, CompileError, IMPORT_DEPTH, importPath, importSpans } from "./compile.mjs";
 import { offerText, splitOffers } from "./instructions.mjs";
 import { AGENT_DIR, parseFrontmatter } from "./plugin-lint.mjs";
 import { HOST_SKILL_DEPTH, manifestPath } from "./skills-set.mjs";
@@ -310,9 +310,17 @@ export function bootReadSet(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, 
 // ===========================================================================================
 
 export function importsOf(text) {
-    return importSpans(text)
+    return measuredImports(text, "import text")
         .map(({ target }) => importPath(target))
         .filter((bare) => bare !== null);
+}
+
+function measuredImports(text, file) {
+    try { return importSpans(text); }
+    catch (error) {
+        if (error instanceof CompileError) throw new ContextError(`${file}: ${error.message}`);
+        throw error;
+    }
 }
 
 const inside = (root, file) => {
@@ -392,7 +400,7 @@ export function alwaysTier(repoRoot) {
                 const imported = `import, depth ${depth}${scoped ? ", of a path-scoped rule" : ""}`;
                 entries.push({ label: depth === 0 ? label : imported, file, bytes: sizeOf(file, file) });
             }
-            for (const { target } of importSpans(readText(file, file))) {
+            for (const { target } of measuredImports(readText(file, file), file)) {
                 const bare = importPath(target);
                 if (bare === null) continue;
                 const spelled = `@${target} (in ${path.relative(repoRoot, file)})`;

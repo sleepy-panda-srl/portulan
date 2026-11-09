@@ -1,0 +1,1 @@
+- Compiler and context import reads now refuse named Markdown regions where the reader cannot determine host imports reliably, including nested imported files, instead of silently overcounting or missing imports.
