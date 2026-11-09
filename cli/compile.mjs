@@ -1063,7 +1063,7 @@ export function importSpans(text) {
             } else if (item && (listed || /^ {0,3}\S/.test(line))) {
                 listed = flowing = true;
                 raw = !opensInItem.test(line.slice(item[0].length));
-            } else if (listed && (/^\s/.test(line) || (flowing && !OPENS_BLOCK.test(line)))) {
+            } else if (listed && (/^\s/.test(line) || (flowing && !opensBlock(line)))) {
                 flowing = true;
                 raw = !opensInItem.test(line.trimStart());
             } else {
@@ -1161,8 +1161,13 @@ function checkedImports(text, dir, root, where) {
     return own;
 }
 
-/** An unindented line that ends a list, as CommonMark reads it; a block tag such as `<div>` is read as a lazy line. */
 const OPENS_BLOCK = /^(?:#{1,6}(?:[ \t]|$)|>|([-*_])(?:[ \t]*\1){2,}[ \t]*$|(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)|<(?:!--|\?|![A-Za-z]|!\[CDATA\[))/;
+const OPENS_HTML_BLOCK = /^<(?:(?:pre|script|style|textarea)(?=[ \t>]|$)|\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?=[ \t>]|\/>|$))/i;
+
+/** An unindented line that ends a list, as CommonMark reads it. */
+function opensBlock(line) {
+    return OPENS_BLOCK.test(line) || OPENS_HTML_BLOCK.test(line);
+}
 
 /** Each item's first sentence, byte for byte, from the first list in `file` or under its `#fragment` heading. */
 function leadsOf(file, where, fragment = null, name = path.basename(file)) {
@@ -1200,7 +1205,7 @@ export function leadsOfText(source, name, where) {
         } else if (kind !== null && /^\s+\S/.test(line)) {
             items.at(-1).text += ` ${line.trim()}`;
         } else if (kind !== null && line.trim() !== "") {
-            if (under && !OPENS_BLOCK.test(line)) {
+            if (under && !opensBlock(line)) {
                 throw new CompileError(
                     `${where}: line ${at + 1} of ${name} follows an item of its first list with no blank line and no indent, ` +
                         `where CommonMark reads a line of text as more of that item — indent it under the item, or end the list with a blank line`,
