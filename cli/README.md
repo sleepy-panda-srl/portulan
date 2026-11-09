@@ -82,6 +82,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`sessions.mjs`](sessions.mjs) | The session switches' texts: the cache-lifetime offer `init` and `upgrade` print, and the one line `doctor` reports on them. |
 | [`skill-goldens.mjs`](skill-goldens.mjs) | The core-skill golden corpus — every mandate a core skill states, bound to the live artifacts it governs, and graded. |
 | [`skills-set.mjs`](skills-set.mjs) | The registrable set: the `skills` paths a plugin manifest must declare so a composed pack's skills register. |
+| [`spend-offer.mjs`](spend-offer.mjs) | Local evidence for init's optional spend declaration. |
 | [`symbols.mjs`](symbols.mjs) | A code file's outline, one line per symbol, and a Markdown file's, one line per heading with its size. |
 | [`telemetry.mjs`](telemetry.mjs) | The OTel emitter: the review-loop figures as OTLP/HTTP JSON, sent only when a committed config opts in. |
 | [`version-carriers.mjs`](version-carriers.mjs) | Every prose statement of the current version agrees with `package.json`. |
@@ -153,6 +154,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`skill-goldens.test.mjs`](skill-goldens.test.mjs) | Tests for `skill-goldens`, the core-skill golden corpus: every refusal exercised on a fixture that trips it. |
 | [`skills-set.live.test.mjs`](skills-set.live.test.mjs) | The registrable set, against THIS repository rather than against fixtures. |
 | [`skills-set.test.mjs`](skills-set.test.mjs) | The registrable set — what a plugin manifest must declare so a composed pack's skills register. |
+| [`spend-offer.test.mjs`](spend-offer.test.mjs) | Init spend offers. |
 | [`stop-gate.test.mjs`](stop-gate.test.mjs) | Tests for the Stop-gate runner: its per-reason caps, the handoff date, its verdicts, the did-work signals and the tree it answers about. |
 | [`symbols.live.test.mjs`](symbols.live.test.mjs) | `symbols` against this repository: tracked code and Markdown files outline, each declaration compiles alone, and heading links land. |
 | [`symbols.test.mjs`](symbols.test.mjs) | The outline's contract, on fixtures: what each construct prints, and every refusal. |
@@ -174,4 +176,5 @@ What the tools and suites read.
 | [`eval-license.template.md`](eval-license.template.md) | Portulan Evaluation Issue (`EVAL-LICENSE.md`). Not shipped. |
 | [`finish.md`](finish.md) | Finish verification boundaries |
 | [`recipe-runner.md`](recipe-runner.md) | Recipe execution and cleanup |
+| [`spend-offer.md`](spend-offer.md) | Init's spend offer |
 | [`fixtures/`](fixtures/) | The fixtures the suites build on; each suite names the ones it reads. Not shipped. |

@@ -70,7 +70,7 @@ drafts=$(mktemp -d) || {
 trap 'rm -rf -- "$drafts"' EXIT
 # A fixed name, since `init` writes it into the identity whose bytes are railed.
 mkdir -- "$drafts/consumer" || exit 2
-if ! drafted=$(node cli/init.mjs --residence in-repo --no-interview --pack-root packs "$drafts/consumer" 2>&1); then
+if ! drafted=$(CLAUDE_CONFIG_DIR="$drafts/host" node cli/init.mjs --residence in-repo --no-interview --pack-root packs "$drafts/consumer" 2>&1); then
     printf 'verify: init could not draft the consumer this recipe measures:\n%s\n' "$drafted" >&2
     exit 2
 fi
