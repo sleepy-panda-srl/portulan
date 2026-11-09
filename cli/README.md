@@ -103,6 +103,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`compile.test.mjs`](compile.test.mjs) | Tests for `compile` — the enforcement compiler. |
 | [`context.test.mjs`](context.test.mjs) | Tests for `context` — what a boot reads and what the host loads into every context, measured. |
 | [`control-chars.test.mjs`](control-chars.test.mjs) | Tests for `control-chars` — the rail on bytes a reader cannot see. |
+| [`demo-upgrade.test.mjs`](demo-upgrade.test.mjs) | The demo's pinned bundle replacement reproduces its boot reduction without changing its workspace. |
 | [`discover.test.mjs`](discover.test.mjs) | Tests for host plugin-cache discovery. |
 | [`doctor.test.mjs`](doctor.test.mjs) | Tests for `doctor` — workspace validation, branch-owned hybrid usage and static-mode isolation. |
 | [`drills.test.mjs`](drills.test.mjs) | Tests for `drills` — the forced-red drill harness: its table, perturbation guards, pair oracle, hook rails and tree choice. |
