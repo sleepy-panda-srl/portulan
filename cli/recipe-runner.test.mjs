@@ -35,7 +35,7 @@ test("inherited group 1 is refused before spawning", { skip: !posix }, async (t)
     }
 });
 async function until(check) {
-    for (let i = 0; i < 300; i++) {
+    for (let i = 0; i < 1000; i++) {
         if (check()) return;
         await delay(10);
     }

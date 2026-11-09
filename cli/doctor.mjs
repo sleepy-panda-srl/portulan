@@ -2017,11 +2017,11 @@ function usage() {
 export async function run(argv, options = {}) {
     const agent = argv.includes("--agent") || (options.env ?? process.env).PORTULAN_AGENT === "1";
     const buffered = [];
-    const total = { workspaces: 0, notes: 0, claims: 0 };
+    const total = { workspaces: 0, notes: 0, claims: 0, providers: [] };
     const say = options.quiet ? () => {} : agent ? (line = "") => buffered.push(line) : (line = "") => process.stdout.write(`${line}\n`);
     const complete = (code, help = false) => {
         if (agent && !options.quiet) {
-            if (code === 0 && !help) process.stdout.write(`GREEN — doctor: ${total.workspaces} workspace(s), ${total.notes} note(s), ${total.claims} claim(s) checked\n`);
+            if (code === 0 && !help) process.stdout.write(`GREEN — doctor: ${total.workspaces} workspace(s), ${total.notes} note(s), ${total.claims} claim(s) checked${total.providers.length ? "; " + total.providers.join("; ") : ""}\n`);
             else if (buffered.length) process.stdout.write(buffered.join("\n") + "\n");
         }
         return code;
@@ -2086,7 +2086,7 @@ export async function run(argv, options = {}) {
         if (countModel !== null && staticMode) throw new DoctorError("--count-tokens is unavailable with --static; verify recipes stay offline");
         if (dirs.length === 0) {
             if (!options.quiet) {
-                process.stderr.write("usage: node cli/doctor.mjs [--agent] [--static] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");
+                process.stderr.write("usage: node cli/doctor.mjs [--agent] [--static | --count-tokens <model>] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");
             }
             return complete(2);
         }
@@ -2125,7 +2125,11 @@ export async function run(argv, options = {}) {
             );
             for (const line of usageLines) say(line);
             if (countModel !== null && !bad.length && workspace) {
-                try { say(countLine(await countAlways(path.resolve(dir), { ...options.countOptions, model: countModel }))); }
+                try {
+                    const provider = countLine(await countAlways(path.resolve(dir), { ...options.countOptions, model: countModel }));
+                    total.providers.push(provider);
+                    say(provider);
+                }
                 catch (error) { throw new DoctorError(error instanceof ContextError ? error.message : "provider token count could not run"); }
             }
             say();
