@@ -29,10 +29,13 @@ token; `effort`, one of `low`, `medium`, `high`, `xhigh` or `max`; `omitClaudeMd
 unquoted, whether the role runs without the project's instruction files; and `cacheLifetime`, `5m` or
 `1h`. The effort levels and the name `omitClaudeMd` are adopted from Claude Code's vocabulary, the first
 host to express them. `effort` sets the host subagent's reasoning effort, and is not the thinking cap the
-`tools/local-llm` runner's `--effort` sends with each request it makes. `doctor` fails a
-malformed value and `compile` refuses one, and neither supplies a value the persona did not write. For a
-persona a composed pack ships, `compile` writes the declared fields into the frontmatter of the role's
-hand-written host binding, `agents/<name>.md` in the workspace's tree, and leaves every other line of
+`tools/local-llm` runner's `--effort` sends with each request it makes. `doctor` fails malformed values
+in composed pack personas; `compile` validates every persona source it compiles. Neither supplies a value
+the persona did not write. `compile` writes declared fields from composed pack personas into the
+frontmatter of the role's hand-written host binding, `agents/<name>.md` in the workspace's tree. When
+the declared tree resolves to this compiler's own engine root, including a canonical alias, the same
+pipeline also reads `core/personas/*.md` except this README. A foreign tree's matching files do not
+participate. A core source's declared name must match its filename. The compiler leaves every other line of
 that file as its author wrote it; `--check` byte-compares the result, and a line inside the compiled
 block that `compile` did not write is refused rather than removed. One it cannot catch: a line added inside
 the block in exactly the spelling and order `compile` writes reads as compiled, and is dropped once the
@@ -49,7 +52,16 @@ is installed and enabled, and `compile` cannot see that. _(Provenance:
 proposal `0036`'s order of work, item 7, and proposal `0039`'s first two rules. The host's keys, values
 and agent locations were read in Claude Code 2.1.317's program text on 2026-11-03.)_
 
-A binding has one persona owner across composed packs, including an unbound persona or one declaring
+The three core sources explicitly declare `model: inherit`, `omitClaudeMd: false` and
+`cacheLifetime: 5m`, leaving effort undeclared. These are product-role policy choices: inherit the
+parent model, retain the instruction floor and request a five-minute cache lifetime. In Claude Code,
+explicit `inherit` outranks the ordinary `CLAUDE_CODE_SUBAGENT_MODEL` default; an invocation's model
+selection and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` can override it. Cache lifetime remains subject to
+the host's precedence rules. Compilation proves the committed bytes, with no claim about quality,
+savings or live loading. _(Host precedence checked against the
+[official subagent documentation](https://code.claude.com/docs/en/sub-agents) on 2026-11-09.)_
+
+A binding has one persona owner across core and composed pack sources, including an unbound persona or one declaring
 no fields; duplicate destinations are refused before any artifact is written. The binding must be a
 regular file whose real path stays in the real declared tree, including its parent directories.
 `omitClaudeMd` accepts only unquoted `true` or `false`, in both declarations and compiled blocks.

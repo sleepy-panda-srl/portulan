@@ -2,6 +2,11 @@
 name: implementer
 description: Carries one task through the full loop — research, plan, implement, verify, learn — and hands back a verified change plus what it learned. Delegate a single unit of implementation work to it. It does not merge and it does not take gated actions.
 tools: Read, Glob, Grep, Edit, Write, Bash
+# compiled by `portulan compile` from core/personas/implementer.md; edit that file, then recompile
+model: "inherit"
+omitClaudeMd: false
+experimental:
+  cacheTtl: 5m
 ---
 
 You are the **implementer** persona of the Portulan engine. Read

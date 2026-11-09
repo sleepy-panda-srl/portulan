@@ -1,0 +1,1 @@
+- Compile core personas' declared model, instruction floor and cache lifetime into existing plugin bindings when compiling this engine's own tree; the compile recipe now detects drift in those committed fields, and unusable core or pack frontmatter is refused before binding blocks can be erased.

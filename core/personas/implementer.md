@@ -2,6 +2,9 @@
 name: implementer
 description: The default working persona. Takes one task through the full loop — research → plan → implement → verify → learn — and hands back a verified change plus what it learned. Delegate a unit of implementation work to it.
 tools: [read, search, edit-code, run-verify, draft-memory, open-pr]
+model: inherit
+omitClaudeMd: false
+cacheLifetime: 5m
 ---
 
 # Persona — Implementer

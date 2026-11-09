@@ -4,7 +4,7 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -4339,6 +4339,22 @@ describe("personas: compile writes the declared fields into the binding, byte-co
         });
     }
 
+    for (const [why, before, after] of [["missing opener", "---\n", ""], ["unclosed block", "\n---\n", "\n"]]) {
+        test(`unusable pack frontmatter refuses before binding erasure: ${why}`, (t) => {
+            const { dir, workspace, root } = withPersona(["model: inherit"]);
+            assert.equal(said(t, ["--workspace", workspace, "--pack-root", root]).code, 0);
+            const file = path.join(root, "tools/my-pack/personas/my-role.md");
+            fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(before, after));
+            const artifacts = personaSnapshot(dir);
+            for (const flags of [[], ["--check"], ["--matrix"]]) {
+                const result = said(t, ["--workspace", workspace, "--pack-root", root, ...flags]);
+                assert.equal(result.code, 2, result.out);
+                assert.match(result.out, /persona `personas\/my-role\.md` has no usable frontmatter/);
+                assert.deepEqual(personaSnapshot(dir), artifacts);
+            }
+        });
+    }
+
     test("a binding that is a link is refused rather than written through", (t) => {
         const { dir, workspace, root, binding } = withPersona(["effort: low"]);
         const away = path.join(dir, "elsewhere.md");
@@ -4463,5 +4479,172 @@ describe("personas: compile writes the declared fields into the binding, byte-co
         const crlf = text.replaceAll("\n", "\r\n");
         assert.equal(boundAgent(crlf, { omitClaudeMd: true }, "a/b's p.md", "agents/my-role.md"), bound.replaceAll("\n", "\r\n"), "a binding keeps its own line ending");
         assert.throws(() => boundAgent(crlf.replace("color: blue\r\n", "color: blue\n"), { effort: "low" }, "a/b's p.md", "agents/my-role.md"), /mixes CRLF and LF line endings/);
+    });
+});
+
+function productCopy() {
+    const root = fs.realpathSync(scratch());
+    const files = execFileSync("git", ["ls-files", "-z"], { cwd: REPO, encoding: "utf8" }).split("\0").filter(Boolean);
+    for (const file of files) {
+        const target = path.join(root, file);
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.copyFileSync(path.join(REPO, file), target);
+    }
+    return root;
+}
+
+function productCompile(root, { check = false, matrix = false, workspace = root, module = path.join(root, "cli/compile.mjs") } = {}) {
+    const result = spawnSync(process.execPath, [module, "--workspace", workspace, "--pack-root", path.join(root, "packs"), ...(check ? ["--check"] : []), ...(matrix ? ["--matrix"] : [])], { cwd: root, encoding: "utf8" });
+    assert.equal(result.error, undefined);
+    return { code: result.status, out: result.stdout + result.stderr };
+}
+
+function productRecipe(root) {
+    const result = spawnSync("bash", [".portulan/verify/compile.sh"], { cwd: root, encoding: "utf8" });
+    assert.equal(result.error, undefined);
+    return { code: result.status, out: result.stdout + result.stderr };
+}
+
+const productArtifacts = (root) => ["agents", ".claude", ".portulan/compile"].map((rel) => [rel, personaSnapshot(path.join(root, rel))]);
+
+describe("core personas: declared frontmatter in the product's own tree", () => {
+    const roles = ["implementer", "reviewer", "librarian"];
+
+    test("each core source declares its inherited model, instruction floor and cache lifetime", () => {
+        for (const role of roles) {
+            const source = fs.readFileSync(path.join(REPO, "core/personas", `${role}.md`), "utf8");
+            assert.deepEqual(personaDeclarations(source), { name: role, declared: { model: "inherit", omitClaudeMd: false, cacheLifetime: "5m" }, problems: [] }, role);
+        }
+    });
+
+    test("all nine binding/field drifts turn the actual recipe red, and regeneration restores its committed bytes", () => {
+        const root = productCopy();
+        const fields = [['model: "inherit"', 'model: "haiku"'], ["omitClaudeMd: false", "omitClaudeMd: true"], ["  cacheTtl: 5m", "  cacheTtl: 1h"]];
+        for (const role of roles) {
+            const file = path.join(root, "agents", `${role}.md`);
+            const original = fs.readFileSync(file, "utf8");
+            assert.match(original, new RegExp(`# compiled by .* from core/personas/${role}\\.md;`));
+            for (const [before, after] of fields) {
+                const green = productRecipe(root);
+                assert.equal(green.code, 0, green.out);
+                const changed = original.replace(before, after);
+                assert.notEqual(changed, original, `${role}: ${before} must be present`);
+                fs.writeFileSync(file, changed);
+                const red = productRecipe(root);
+                assert.equal(red.code, 1, `${role}/${before}: ${red.out}`);
+                assert.match(red.out, /has drifted from core\/personas\//);
+                const restored = productCompile(root);
+                assert.equal(restored.code, 0, restored.out);
+                assert.equal(fs.readFileSync(file, "utf8"), original, role);
+                const checked = productRecipe(root);
+                assert.equal(checked.code, 0, checked.out);
+            }
+        }
+    });
+
+    test("source changes and field removal preserve unrelated binding bytes", () => {
+        const root = productCopy();
+        const source = path.join(root, "core/personas/implementer.md");
+        const binding = path.join(root, "agents/implementer.md");
+        const original = fs.readFileSync(binding, "utf8");
+        const changed = fs.readFileSync(source, "utf8").replace("cacheLifetime: 5m", "cacheLifetime: 1h");
+        fs.writeFileSync(source, changed);
+        assert.equal(productRecipe(root).code, 1);
+        const generated = productCompile(root);
+        assert.equal(generated.code, 0, generated.out);
+        assert.equal(fs.readFileSync(binding, "utf8"), original.replace("  cacheTtl: 5m", "  cacheTtl: 1h"));
+        fs.writeFileSync(source, changed.replace(/^omitClaudeMd: false\n/m, ""));
+        const removed = productCompile(root);
+        assert.equal(removed.code, 0, removed.out);
+        assert.equal(fs.readFileSync(binding, "utf8"), original.replace("  cacheTtl: 5m", "  cacheTtl: 1h").replace("omitClaudeMd: false\n", ""));
+        const checked = productRecipe(root);
+        assert.equal(checked.code, 0, checked.out);
+    });
+
+    test("matrix reports stale core fields without repairing them, and an own-tree alias still detects drift", () => {
+        const root = productCopy();
+        const file = path.join(root, "agents/reviewer.md");
+        fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace("  cacheTtl: 5m", "  cacheTtl: 1h"));
+        const before = productArtifacts(root);
+        const matrix = productCompile(root, { matrix: true });
+        assert.equal(matrix.code, 0, matrix.out);
+        for (const role of roles) assert.match(matrix.out, new RegExp(`persona  ${role} +model, omitClaudeMd and cacheLifetime`));
+        assert.deepEqual(productArtifacts(root), before);
+        const alias = `${root}-alias`;
+        fs.symlinkSync(root, alias, "dir");
+        SCRATCH.push(alias);
+        const checked = productCompile(root, { check: true, workspace: alias });
+        assert.equal(checked.code, 1, checked.out);
+        assert.match(checked.out, /agents\/reviewer\.md has drifted/);
+        assert.deepEqual(productArtifacts(root), before);
+    });
+
+    test("a foreign tree with matching core names keeps its hand-written bindings", (t) => {
+        const { dir, workspace, root } = withPersona([]);
+        const kept = new Map();
+        fs.mkdirSync(path.join(dir, "core/personas"), { recursive: true });
+        for (const role of roles) {
+            fs.copyFileSync(path.join(REPO, "core/personas", `${role}.md`), path.join(dir, "core/personas", `${role}.md`));
+            const text = bindingText(['model: "foreign-model"', "omitClaudeMd: true", "experimental:", "  cacheTtl: 1h"]).replace("name: my-role", `name: ${role}`);
+            fs.writeFileSync(path.join(dir, "agents", `${role}.md`), text);
+            kept.set(role, text);
+        }
+        const result = said(t, ["--workspace", workspace, "--pack-root", root]);
+        assert.equal(result.code, 0, result.out);
+        for (const [role, text] of kept) {
+            assert.equal(fs.readFileSync(path.join(dir, "agents", `${role}.md`), "utf8"), text);
+            assert.doesNotMatch(result.out, new RegExp(`persona  ${role} +`));
+        }
+    });
+
+    test("malformed core values or identity refuse before any artifact is repaired", () => {
+        for (const [before, after] of [["cacheLifetime: 5m", "cacheLifetime: 10m"], ["name: reviewer", "name: another-role"]]) {
+            const root = productCopy();
+            const stale = path.join(root, "agents/implementer.md");
+            fs.writeFileSync(stale, fs.readFileSync(stale, "utf8").replace('model: "inherit"', 'model: "haiku"'));
+            const source = path.join(root, "core/personas/reviewer.md");
+            fs.writeFileSync(source, fs.readFileSync(source, "utf8").replace(before, after));
+            const artifacts = productArtifacts(root);
+            const result = productCompile(root);
+            assert.equal(result.code, 2, result.out);
+            assert.match(result.out, /core\/personas\/reviewer\.md/);
+            assert.deepEqual(productArtifacts(root), artifacts);
+        }
+    });
+
+    for (const [why, before, after] of [["missing opener", "---\n", ""], ["unclosed block", "\n---\n", "\n"]]) {
+        test(`unusable core frontmatter refuses before binding erasure: ${why}`, () => {
+            const root = productCopy();
+            const source = path.join(root, "core/personas/reviewer.md");
+            fs.writeFileSync(source, fs.readFileSync(source, "utf8").replace(before, after));
+            const artifacts = productArtifacts(root);
+            for (const options of [{}, { check: true }, { matrix: true }]) {
+                const result = productCompile(root, options);
+                assert.equal(result.code, 2, result.out);
+                assert.match(result.out, /core persona `core\/personas\/reviewer\.md` has no usable frontmatter/);
+                assert.deepEqual(productArtifacts(root), artifacts);
+            }
+        });
+    }
+
+    test("core and pack duplicate ownership refuses before writes, including sources declaring no fields", () => {
+        for (const empty of ["core", "pack", null]) {
+            const root = productCopy();
+            const core = path.join(root, "core/personas/implementer.md");
+            if (empty === "core") fs.writeFileSync(core, fs.readFileSync(core, "utf8").replace(/^(?:model|omitClaudeMd|cacheLifetime):.*\n/gm, ""));
+            const dir = path.join(root, "packs/tools/duplicate");
+            fs.mkdirSync(path.join(dir, "personas"), { recursive: true });
+            fs.writeFileSync(path.join(dir, "pack.json"), JSON.stringify({ portulan: { pack: "1.0" }, name: "duplicate", category: "tools", contributes: { personas: ["personas/implementer.md"] } }));
+            fs.writeFileSync(path.join(dir, "personas/implementer.md"), personaText(empty === "pack" ? [] : ["omitClaudeMd: false"]).replace("name: my-role", "name: implementer"));
+            const manifestFile = path.join(root, ".portulan/workspace.json");
+            const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
+            manifest.packs.push("tools/duplicate");
+            fs.writeFileSync(manifestFile, JSON.stringify(manifest));
+            const before = productArtifacts(root);
+            const result = productCompile(root);
+            assert.equal(result.code, 2, result.out);
+            assert.match(result.out, /agents\/implementer\.md has multiple persona owners/);
+            assert.deepEqual(productArtifacts(root), before);
+        }
     });
 });
