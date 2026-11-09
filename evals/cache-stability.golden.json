@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "surfaces": [
+    {
+      "id": "always:.claude/rules/portulan/boot.md",
+      "sha256": "7bd269c402eafc76d4aed72338fe86a6cacff73b41ac0ff67f1c9be1139082b7",
+      "volatile": [
+        {
+          "kind": "date",
+          "value": "2026-09-23"
+        },
+        {
+          "kind": "count",
+          "value": "300 lines"
+        }
+      ]
+    },
+    {
+      "id": "always:.portulan/memory-index.md",
+      "sha256": "de65e5d20700b39fab04f866fe676d249025356b0ce8d16258dd8ef86a3d56ce",
+      "volatile": [
+        {
+          "kind": "count",
+          "value": "29 record"
+        },
+        {
+          "kind": "count",
+          "value": "40 lines"
+        }
+      ]
+    },
+    {
+      "id": "always:core/engine.md",
+      "sha256": "a5be231ca970e2c0bfad3b4c045be699e07e9b9b9917d83c37fb84b712121369",
+      "volatile": []
+    },
+    {
+      "id": "gate-input:.portulan/gates.json",
+      "sha256": "d6783712852a853d2291c4a601ac0e8b1def9a0f89d7edd0638952a454cdd2f2",
+      "volatile": [
+        {
+          "kind": "date",
+          "value": "2026-07-27"
+        },
+        {
+          "kind": "date",
+          "value": "2026-08-14"
+        },
+        {
+          "kind": "date",
+          "value": "2026-08-17"
+        },
+        {
+          "kind": "date",
+          "value": "2026-11-03"
+        },
+        {
+          "kind": "date",
+          "value": "2026-11-03"
+        },
+        {
+          "kind": "date",
+          "value": "2026-08-28"
+        },
+        {
+          "kind": "date",
+          "value": "2026-07-27"
+        },
+        {
+          "kind": "count",
+          "value": "0040 records"
+        }
+      ]
+    },
+    {
+      "id": "gate-input:packs/rituals/checkpoints/pack.json",
+      "sha256": "003cc7b6aa7924f4cc238da9bf10738898a9834fb807ff45e979f591a945fed4",
+      "volatile": []
+    },
+    {
+      "id": "gate-input:packs/tools/local-llm/pack.json",
+      "sha256": "5560f8d50c482f7499157fb4c534982b7bf98c1ec195bd44e1ba7a35b9b9a69e",
+      "volatile": []
+    },
+    {
+      "id": "gate-selection:.portulan/workspace.json",
+      "sha256": "c4596eaf2340c248b543f493a24c61f5619455f153306f4fe67652168b1f7627",
+      "volatile": []
+    },
+    {
+      "id": "hook-commands:.claude/settings.json",
+      "sha256": "9a163430d27f2821b93b949c0678e1a6cd5a39b2e743ebed881c30120820ff8a",
+      "volatile": []
+    },
+    {
+      "id": "hook:cli/advisory.mjs",
+      "sha256": "0ff181a199d169e474d3fe6159734fad52de11dc9b96999361a8c5b476ef7ea1",
+      "volatile": []
+    },
+    {
+      "id": "hook:cli/gate.mjs",
+      "sha256": "0f1046536e2d0b1b1fb34fc1d8db7e2bc15aff65ac91d14c54e03ea4893958e3",
+      "volatile": []
+    },
+    {
+      "id": "hook:cli/stop-gate.mjs",
+      "sha256": "5f19c595d6796e2ffdd094bd5aa5b47ec9e3aefe436ce5e239b3274615697bb8",
+      "volatile": [
+        {
+          "kind": "path",
+          "value": "e:\\n\\n${text"
+        }
+      ]
+    }
+  ]
+}

@@ -65,6 +65,17 @@ export const NOT_DRILLED = [
 
 /** A rail that reads only the index misses a created file unless the drill sets `stage`. */
 export const DRILLS = [
+    {
+        rail: "cache-stability",
+        perturb: {
+            file: ".claude/rules/portulan/boot.md",
+            find: "# Portulan boot card",
+            replace: "# Portulan boot card\n\nCurrent date: 2099-12-31",
+        },
+        exit: 1,
+        tell: "differ from the committed golden",
+        why: "A volatile prefix change must require review of the committed baseline (#516), even when two renders agree.",
+    },
     // ------------------------------------------------------------------------- the yielded recipes
     {
         rail: "docs",

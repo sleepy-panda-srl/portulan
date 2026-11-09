@@ -20,6 +20,7 @@ const git = (root, args) =>
 
 /** Tracked modules that do not ship, each with its reason: the package ships the product, not the workshop. */
 export const EXCLUDED = {
+    "cache-stability.mjs": "the repository's committed cache-prefix baseline rail; its policy and golden belong to this workspace",
     "eval-bundle.mjs":
         "issuer machinery — an evaluee receives the stamped licence, never the stamp press. Excluded at " +
         "the first publish (13e72db0), and `SELF_EXCLUDED` in that module names it too",

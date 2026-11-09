@@ -1,0 +1,1 @@
+- A `cache-stability` recipe checks Portulan's loaded files, hook templates, compiled hook commands and gate explanation inputs against a committed golden, with an inventory of suspicious dates, hashes, IDs, paths and counts; every content change requires explicit baseline review.
