@@ -1,0 +1,367 @@
+{
+  "format": 1,
+  "normalization": "fixture-paths-v1; selected SDK fields; replies trimmed",
+  "date": "2026-11-09T19:53:00.012Z",
+  "hostVersion": "2.1.308 (Claude Code)",
+  "model": "claude-fable-5-2",
+  "session": "827ed091-fb08-4376-ace2-1c074b749ae6",
+  "hostExit": 0,
+  "target": ".claude/rules/portulan/api.md",
+  "label": "ON_PATH_7afe54ae15b0498bbd5a7da7d31fc0f3",
+  "prompts": [
+    "Use Read once to read docs/control.txt. Do not read or search any other file. If an API observation label is already in your loaded instructions, reply with it; otherwise reply exactly NOT_LOADED. No explanation or formatting.",
+    "Use Read once to read api/orders.txt. Do not read or search any other file. Then reply with the API observation label from your now-loaded guidance. Reply only with the literal value, without formatting."
+  ],
+  "replies": [
+    "NOT_LOADED",
+    "ON_PATH_7afe54ae15b0498bbd5a7da7d31fc0f3"
+  ],
+  "reads": [
+    {
+      "id": "toolu_019cpFxehLN58XqwzKcj1Kti",
+      "name": "Read",
+      "file": "docs/control.txt",
+      "phase": 0,
+      "resultSeen": true,
+      "isError": false
+    },
+    {
+      "id": "toolu_01EMQCDjofpM62fQSk6ANZEa",
+      "name": "Read",
+      "file": "api/orders.txt",
+      "phase": 1,
+      "resultSeen": true,
+      "isError": false
+    }
+  ],
+  "events": [
+    {
+      "type": "event",
+      "id": 23616,
+      "event": "InstructionsLoaded",
+      "session": "827ed091-fb08-4376-ace2-1c074b749ae6",
+      "file": ".claude/rules/portulan/on-read.md",
+      "reason": "session_start",
+      "memoryType": "Project",
+      "globs": [],
+      "trigger": null,
+      "outside": false
+    },
+    {
+      "type": "event",
+      "id": 23615,
+      "event": "InstructionsLoaded",
+      "session": "827ed091-fb08-4376-ace2-1c074b749ae6",
+      "file": ".claude/rules/portulan/conventions.md",
+      "reason": "session_start",
+      "memoryType": "Project",
+      "globs": [],
+      "trigger": null,
+      "outside": false
+    },
+    {
+      "type": "event",
+      "id": 23667,
+      "event": "UserPromptSubmit",
+      "session": "827ed091-fb08-4376-ace2-1c074b749ae6",
+      "promptSha256": "e6ffb25b6150c5fd97cddc68bba8522aa9a31585cc2384f3999fa0b631793c55",
+      "outside": false
+    },
+    {
+      "type": "event",
+      "id": 23723,
+      "event": "PreToolUse",
+      "session": "827ed091-fb08-4376-ace2-1c074b749ae6",
+      "tool": "Read",
+      "file": "docs/control.txt",
+      "unexpected": false,
+      "outside": false
+    },
+    {
+      "type": "event",
+      "id": 23726,
+      "event": "PostToolUse",
+      "session": "827ed091-fb08-4376-ace2-1c074b749ae6",
+      "tool": "Read",
+      "file": "docs/control.txt",
+      "unexpected": false,
+      "outside": false
+    },
+    {
+      "type": "event",
+      "id": 23797,
+      "event": "UserPromptSubmit",
+      "session": "827ed091-fb08-4376-ace2-1c074b749ae6",
+      "promptSha256": "de8e0486bed95a6c99ba53d91bd83c3459ee7daca22b2fb7eace236e6c5e78a0",
+      "outside": false
+    },
+    {
+      "type": "event",
+      "id": 23865,
+      "event": "PreToolUse",
+      "session": "827ed091-fb08-4376-ace2-1c074b749ae6",
+      "tool": "Read",
+      "file": "api/orders.txt",
+      "unexpected": false,
+      "outside": false
+    },
+    {
+      "type": "event",
+      "id": 23866,
+      "event": "PostToolUse",
+      "session": "827ed091-fb08-4376-ace2-1c074b749ae6",
+      "tool": "Read",
+      "file": "api/orders.txt",
+      "unexpected": false,
+      "outside": false
+    },
+    {
+      "type": "event",
+      "id": 23867,
+      "event": "InstructionsLoaded",
+      "session": "827ed091-fb08-4376-ace2-1c074b749ae6",
+      "file": ".claude/rules/portulan/api.md",
+      "reason": "path_glob_match",
+      "memoryType": "Project",
+      "globs": [
+        "api"
+      ],
+      "trigger": "api/orders.txt",
+      "outside": false
+    },
+    {
+      "type": "event",
+      "id": 23947,
+      "event": "SessionEnd",
+      "session": "827ed091-fb08-4376-ace2-1c074b749ae6",
+      "outside": false
+    }
+  ],
+  "observers": {
+    "started": [
+      23616,
+      23615,
+      23667,
+      23723,
+      23726,
+      23797,
+      23865,
+      23866,
+      23867,
+      23947
+    ],
+    "completed": [
+      23616,
+      23615,
+      23667,
+      23723,
+      23726,
+      23797,
+      23865,
+      23866,
+      23867,
+      23947
+    ]
+  },
+  "outsideActivity": 0,
+  "inputs": {
+    "source": "---\ntier: on-path\npaths: [\"api/**\"]\ndescription: How a handler in `api/` is written.\n---\n\n# Handlers\n\nValidate the request at the boundary, and return the error the caller can act on.\n\nThe API observation label is ON_PATH_7afe54ae15b0498bbd5a7da7d31fc0f3. When asked for the label after reading an API file, reply with that value only.\n",
+    "target": "---\npaths:\n  - \"api/**\"\n---\n\n# Handlers\n\nValidate the request at the boundary, and return the error the caller can act on.\n\nThe API observation label is ON_PATH_7afe54ae15b0498bbd5a7da7d31fc0f3. When asked for the label after reading an API file, reply with that value only.\n",
+    "api": "An order handler would live here. The file exists so the on-path rule has a path to be loaded by.\n",
+    "control": "A nonmatching documentation probe.\n"
+  },
+  "inputDigests": {
+    "source": "faea8fd478c491f74276620abc122e3b30d527ab3735cdea12374d1a41878882",
+    "target": "0697b4fd97a2ec80db4dc6b359675a91d96d8262e41aebdeda9ee1ef18397668",
+    "api": "02df75c6e92f85f94b03e5090882cd455bcc64e6d7eae54a15f51884357ab090",
+    "control": "8ace5704eb63afadd57bdb0f8b1c679ae5fb657ed36c26f367b1d36cd862ee09"
+  },
+  "beforeFiles": [
+    {
+      "file": ".claude/rules/portulan/.compiled",
+      "sha256": "2d71d1d05bc11d0d5f25d55a8a150634b4855f07e472e8e38325ee23dca923a0"
+    },
+    {
+      "file": ".claude/rules/portulan/api.md",
+      "sha256": "0697b4fd97a2ec80db4dc6b359675a91d96d8262e41aebdeda9ee1ef18397668"
+    },
+    {
+      "file": ".claude/rules/portulan/conventions.md",
+      "sha256": "007bab79cccd04823b6675f74564f7c6459a6f4eb9babf8343ae4a9d0a3f380d"
+    },
+    {
+      "file": ".claude/rules/portulan/on-read.md",
+      "sha256": "44397ceda63e9d7e6af897ab1055f2cc90577320d913688659c2af41c88f420c"
+    },
+    {
+      "file": ".claude/skills/release/SKILL.md",
+      "sha256": "db822ae81affd6c7d390b84f3f03cb6a71debbe01a17e76d745923e79b775569"
+    },
+    {
+      "file": "api/orders.txt",
+      "sha256": "02df75c6e92f85f94b03e5090882cd455bcc64e6d7eae54a15f51884357ab090"
+    },
+    {
+      "file": "context/api.md",
+      "sha256": "faea8fd478c491f74276620abc122e3b30d527ab3735cdea12374d1a41878882"
+    },
+    {
+      "file": "context/conventions.md",
+      "sha256": "33b4925cd2a23e9248f697d3a7e115958cc5615aff4a5cc14856950aedbe0714"
+    },
+    {
+      "file": "context/history.md",
+      "sha256": "6350c8167f48ec923f716615351eb09eaa3d99310eeaee1f2b9f62f13764f6fe"
+    },
+    {
+      "file": "context/release.md",
+      "sha256": "7e85945160d5ee82e1a14e7d86b8d514ec13a59b6025992f73330b1c3bc6ea3d"
+    },
+    {
+      "file": "docs/control.txt",
+      "sha256": "8ace5704eb63afadd57bdb0f8b1c679ae5fb657ed36c26f367b1d36cd862ee09"
+    },
+    {
+      "file": "gate-map.md",
+      "sha256": "6695ebaee0b290d95c7ae9147ad160a2bbc22389ebd29134733ae1f22e994a57"
+    },
+    {
+      "file": "identity.md",
+      "sha256": "aca55687d6cd76fbb4b78af164cb436ad69facd135505d9bd8b2a4c0b8bb08de"
+    },
+    {
+      "file": "principles.md",
+      "sha256": "5ad1b217d2668e951262b17638e950ed60537d7878b442478fed382fa42cc1e8"
+    },
+    {
+      "file": "verify.sh",
+      "sha256": "fb99eae951f1adc14d1a4a9a186c21930db2786b3208c94c7d9af382bd1048e5"
+    },
+    {
+      "file": "workspace.json",
+      "sha256": "e72b838b894e43e701c5826d6d1dcc53724e1ba348bc52011354058a1ac9e93b"
+    }
+  ],
+  "afterFiles": [
+    {
+      "file": ".claude/rules/portulan/.compiled",
+      "sha256": "2d71d1d05bc11d0d5f25d55a8a150634b4855f07e472e8e38325ee23dca923a0"
+    },
+    {
+      "file": ".claude/rules/portulan/api.md",
+      "sha256": "0697b4fd97a2ec80db4dc6b359675a91d96d8262e41aebdeda9ee1ef18397668"
+    },
+    {
+      "file": ".claude/rules/portulan/conventions.md",
+      "sha256": "007bab79cccd04823b6675f74564f7c6459a6f4eb9babf8343ae4a9d0a3f380d"
+    },
+    {
+      "file": ".claude/rules/portulan/on-read.md",
+      "sha256": "44397ceda63e9d7e6af897ab1055f2cc90577320d913688659c2af41c88f420c"
+    },
+    {
+      "file": ".claude/skills/release/SKILL.md",
+      "sha256": "db822ae81affd6c7d390b84f3f03cb6a71debbe01a17e76d745923e79b775569"
+    },
+    {
+      "file": "api/orders.txt",
+      "sha256": "02df75c6e92f85f94b03e5090882cd455bcc64e6d7eae54a15f51884357ab090"
+    },
+    {
+      "file": "context/api.md",
+      "sha256": "faea8fd478c491f74276620abc122e3b30d527ab3735cdea12374d1a41878882"
+    },
+    {
+      "file": "context/conventions.md",
+      "sha256": "33b4925cd2a23e9248f697d3a7e115958cc5615aff4a5cc14856950aedbe0714"
+    },
+    {
+      "file": "context/history.md",
+      "sha256": "6350c8167f48ec923f716615351eb09eaa3d99310eeaee1f2b9f62f13764f6fe"
+    },
+    {
+      "file": "context/release.md",
+      "sha256": "7e85945160d5ee82e1a14e7d86b8d514ec13a59b6025992f73330b1c3bc6ea3d"
+    },
+    {
+      "file": "docs/control.txt",
+      "sha256": "8ace5704eb63afadd57bdb0f8b1c679ae5fb657ed36c26f367b1d36cd862ee09"
+    },
+    {
+      "file": "gate-map.md",
+      "sha256": "6695ebaee0b290d95c7ae9147ad160a2bbc22389ebd29134733ae1f22e994a57"
+    },
+    {
+      "file": "identity.md",
+      "sha256": "aca55687d6cd76fbb4b78af164cb436ad69facd135505d9bd8b2a4c0b8bb08de"
+    },
+    {
+      "file": "principles.md",
+      "sha256": "5ad1b217d2668e951262b17638e950ed60537d7878b442478fed382fa42cc1e8"
+    },
+    {
+      "file": "verify.sh",
+      "sha256": "fb99eae951f1adc14d1a4a9a186c21930db2786b3208c94c7d9af382bd1048e5"
+    },
+    {
+      "file": "workspace.json",
+      "sha256": "e72b838b894e43e701c5826d6d1dcc53724e1ba348bc52011354058a1ac9e93b"
+    }
+  ],
+  "controls": {
+    "settingsSources": "project",
+    "autoMemoryEnabled": false,
+    "skillsDisabled": true,
+    "strictEmptyMcp": true,
+    "instructionExclusionPatterns": 21,
+    "unexpectedReadGuard": true,
+    "fullHostContextMeasured": false
+  },
+  "commands": {
+    "compile": [
+      "node",
+      "<repo>/cli/compile.mjs",
+      "--workspace",
+      "<project>",
+      "--pack-root",
+      "<repo>/packs"
+    ],
+    "host": [
+      "claude",
+      "--print",
+      "--input-format",
+      "stream-json",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--replay-user-messages",
+      "--no-session-persistence",
+      "--tools",
+      "Read",
+      "--allowedTools",
+      "Read",
+      "--permission-mode",
+      "dontAsk",
+      "--setting-sources",
+      "project",
+      "--settings",
+      "<capture>/settings.json",
+      "--disable-slash-commands",
+      "--strict-mcp-config",
+      "--mcp-config",
+      "{\"mcpServers\":{}}",
+      "--max-turns",
+      "6"
+    ]
+  },
+  "provenance": {
+    "baseCommit": "90a3e540bef39497b95159174403fc6f11e6a79f",
+    "rawStream": "51c575574026194f650c79b60ed0bc3f88ec64d788b63990be294c933c292ac8",
+    "rawObserver": "5020d5e6bd2fbec332cb6466427210a0a8cf9c72671f2304d70c602bd2379f9a",
+    "rawStderr": "23a5fbd0010bef7317f724b0515a608484ff37939929d8e7b3a8e344e821f014",
+    "rawSettings": "2fdad3e46275c67e58516f9d76064b8d15bde760fcbcd4db894eac136fa37a77",
+    "captureScript": "35b07b7af95a56f31fe8d324b4604ee69285e4b88158b40d2b2cfd8593ed6615",
+    "observerScript": "5cfba34937dd62f99cc6d34a762d845e135589c8eb78e767b06909bbe4d867c5",
+    "compiler": "28ba61c352ff162daa2972c4ec46271086e8897bc110256ec92dfcb5aa1c4c3f"
+  }
+}
