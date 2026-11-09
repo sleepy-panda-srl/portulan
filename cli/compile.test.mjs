@@ -9,11 +9,55 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { readStopPolicy } from "./stop-policy.mjs";
 
 // This suite imports `./compile.mjs`, which can read the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
+
+test("direct backend deadline options share the CLI range check", () => {
+    for (const stopPolicy of [{ seconds: -61 }, { seconds: "360" }, {}, { seconds: 2147424 }, { seconds: NaN }, { seconds: Infinity }, [], false, "360"]) {
+        assert.throws(() => claudeCode(parse(policy()), { stopPolicy }), /stopTimeout/);
+    }
+    const rendered = claudeCode(parse(policy()), { stopPolicy: { seconds: 360, manifest: ".portulan/workspace.json" } });
+    assert.equal(rendered.artifact.value.hooks.Stop[0].hooks[0].timeout, 420);
+});
+
+test("a declared Stop deadline compiles an outer timeout and changing it is drift", () => {
+    const dir = workspace();
+    const file = path.join(dir, ".portulan/workspace.json");
+    const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+    manifest.portulan.spec = "2.14";
+    manifest.verify = { default: "test", recipes: [{ id: "test", run: "true" }], stopTimeout: 360 };
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+    const output = path.join(dir, ".claude/settings.json");
+    const settings = JSON.parse(fs.readFileSync(output, "utf8"));
+    assert.equal(settings.hooks.Stop[0].hooks[0].timeout, 420);
+    assert.equal(settings.$portulan.verify, ".portulan/workspace.json");
+    assert.equal(readStopPolicy(manifest).seconds, 360);
+    assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 0);
+    manifest.verify.stopTimeout = 400;
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1);
+});
+
+test("invalid Stop deadlines refuse every compile mode without creating or replacing artifacts", () => {
+    for (const exists of [false, true]) for (const mode of [[], ["--check"], ["--matrix"]]) for (const [spec, value] of [["2.14", 0], ["2.14", "360"], ["2.13", 360]]) {
+        const dir = workspace();
+        const output = path.join(dir, ".claude/settings.json");
+        if (exists) { fs.mkdirSync(path.dirname(output), { recursive: true }); fs.writeFileSync(output, "preserve\n"); }
+        const file = path.join(dir, ".portulan/workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+        manifest.portulan.spec = spec;
+        manifest.verify = { default: "test", recipes: [{ id: "test", run: "true" }], stopTimeout: value };
+        fs.writeFileSync(file, JSON.stringify(manifest));
+        assert.equal(run(["--workspace", dir, ...mode], { quiet: true }), 2, JSON.stringify({ exists, mode, spec, value }));
+        assert.equal(fs.existsSync(output), exists);
+        if (exists) assert.equal(fs.readFileSync(output, "utf8"), "preserve\n");
+    }
+});
 
 import {
     CompileError,
@@ -4040,7 +4084,7 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         const engine = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-engine-"));
         SCRATCH.push(engine);
         fs.mkdirSync(path.join(engine, "cli"));
-        for (const file of ["compile.mjs", "discover.mjs", "inside.mjs", "symbols.mjs", "html-entities.mjs", "ledger.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
+        for (const file of ["compile.mjs", "discover.mjs", "inside.mjs", "symbols.mjs", "html-entities.mjs", "ledger.mjs", "stop-policy.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
         fs.mkdirSync(path.join(engine, "core"));
         const leads = "# Leads\n\n- **A lead.**\n";
         fs.writeFileSync(path.join(engine, "core", "inside.md"), leads);

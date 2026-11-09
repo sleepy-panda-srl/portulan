@@ -18,7 +18,9 @@ A change is done when **all** of the following hold.
    the declared list would let one go red with this condition satisfied._ _Why: since milestone 4 the
    Stop-gate runs the **default** recipe automatically and blocks "done" on a red or an exit 2 — but it
    runs one recipe, not all of them, and it releases the session after three consecutive refusals **for any one
-   reason** (each reason's count clearing only when that reason clears) or nine in total. So it makes a red
+   reason** or nine in total. At a recipe cap, later Stops skip execution and retain an unverified
+   release; repairing files then requires explicit verification or a new session. Before that cap, a
+   measured green clears the recipe streak. So it makes a red
    unmissable rather than impossible, and this condition is still yours. CI runs all of them on the pull
    request, which catches it later and more expensively._
 2. **You could walk a reviewer through every line.** Core's bar, restated because it is the one most

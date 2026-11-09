@@ -8,7 +8,8 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { bumpChain, bumpCount, clearReason, today, verdict, REASONS, MAX_BLOCKS, MAX_CHAIN_BLOCKS, MAX_TOTAL_BLOCKS } from "./stop-gate.mjs";
+import { bumpChain, bumpCount, clearReason, today, verdict, runStopRecipe, REASONS, MAX_BLOCKS, MAX_CHAIN_BLOCKS, MAX_TOTAL_BLOCKS } from "./stop-gate.mjs";
+import { readStopPolicy, DEFAULT_STOP_TIMEOUT, MAX_STOP_TIMEOUT } from "./stop-policy.mjs";
 
 // `./stop-gate.mjs` imports `./recipe-set.mjs`, which can read the host's installed-plugin record: point it at none.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
@@ -24,6 +25,145 @@ function scratch() {
     SCRATCH.push(dir);
     return dir;
 }
+
+test("a recipe cap releases repeated Stops without another execution", () => {
+    const repo = rebaseMerged();
+    fs.writeFileSync(path.join(repo, ".portulan/handoffs", `${today()}-open.md`), "Open work\n");
+    const marker = path.join(scratch(), "runs");
+    const file = path.join(repo, ".portulan/workspace.json");
+    const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+    manifest.verify.recipes[0].run = `echo run >> '${marker}'; exit 1`;
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    for (let i = 0; i < MAX_BLOCKS; i++) assert.equal(gate(repo, "bounded-recipe").decision, "block");
+    const releases = [];
+    for (let i = 0; i < 3; i++) {
+        const released = gate(repo, "bounded-recipe");
+        assert.equal(released.decision, "allow");
+        releases.push(released);
+    }
+    assert.equal(fs.readFileSync(marker, "utf8").trim().split("\n").length, MAX_BLOCKS);
+    for (const released of releases) assert.match(released.stderr, /not rerun|skipped/);
+});
+
+test("a skipped handoff-cap Stop never manufactures a recipe streak, and clearing work runs it again", () => {
+    const repo = rebaseMerged();
+    const marker = path.join(scratch(), "runs");
+    const file = path.join(repo, ".portulan/workspace.json");
+    const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+    manifest.verify.recipes[0].run = `echo run >> '${marker}'`;
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    for (let i = 0; i < MAX_BLOCKS; i++) assert.equal(gate(repo, "handoff-recovery").decision, "block");
+    for (let i = 0; i < 3; i++) {
+        const result = gate(repo, "handoff-recovery");
+        assert.equal(result.decision, "allow");
+        assert.match(result.stderr, /not rerun/);
+    }
+    assert.equal(fs.readFileSync(marker, "utf8").trim().split("\n").length, MAX_BLOCKS);
+    fs.writeFileSync(path.join(repo, ".portulan/handoffs", `${today()}-open.md`), "Open work\n");
+    assert.equal(gate(repo, "handoff-recovery").decision, "allow");
+    assert.equal(fs.readFileSync(marker, "utf8").trim().split("\n").length, MAX_BLOCKS + 1);
+});
+
+test("the total bound and rotating-session chain suppress execution at the existing boundaries", () => {
+    for (const bound of ["total", "chain"]) {
+        const repo = rebaseMerged();
+        const marker = path.join(scratch(), "runs");
+        const file = path.join(repo, ".portulan/workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+        manifest.verify.recipes[0].run = `echo run >> '${marker}'; exit 1`;
+        fs.writeFileSync(file, JSON.stringify(manifest));
+        const session = `bound-${bound}`;
+        const root = fs.realpathSync(repo);
+        if (bound === "total") for (let i = 0; i < MAX_TOTAL_BLOCKS - 1; i++) bumpCount(session, [], os.tmpdir(), repo);
+        else for (let i = 0; i < MAX_CHAIN_BLOCKS - 1; i++) bumpChain(true, os.tmpdir(), root);
+        const payload = { cwd: repo, stop_hook_active: bound === "chain" };
+        assert.equal(gate(repo, session, {}, payload).decision, "block");
+        assert.equal(fs.existsSync(marker), true);
+        fs.unlinkSync(marker);
+        const result = gate(repo, bound === "chain" ? session + "-rotated" : session, {}, payload);
+        assert.equal(result.decision, "allow");
+        assert.match(result.stderr, /not rerun/);
+        assert.equal(fs.existsSync(marker), false);
+        if (bound === "chain") {
+            assert.equal(gate(repo, "ordinary-reset", {}, { cwd: repo, stop_hook_active: false }).decision, "block");
+            assert.equal(fs.existsSync(marker), true);
+        }
+    }
+});
+
+test("Stop deadlines validate the spec, range and default, and the injected executor receives the declared long deadline", async () => {
+    assert.equal(readStopPolicy({}).seconds, DEFAULT_STOP_TIMEOUT);
+    const declared = seconds => ({ portulan: { spec: "2.14" }, verify: { stopTimeout: seconds } });
+    for (const seconds of [null, "360", 0, -1, 0.5, Infinity, MAX_STOP_TIMEOUT + 1]) assert.throws(() => readStopPolicy(declared(seconds)), /stopTimeout/);
+    for (const spec of [undefined, "2.13", "3.0", 2.14, "2.14.1"]) assert.throws(() => readStopPolicy({ ...declared(360), portulan: { spec } }), /2.14/);
+    assert.equal(readStopPolicy(declared(MAX_STOP_TIMEOUT)).seconds, MAX_STOP_TIMEOUT);
+    let selected;
+    const policy = readStopPolicy(declared(360));
+    assert.equal(await runStopRecipe({ id: "long", run: "true", timeout: policy.seconds }, async (_recipe, options) => { selected = options.timeout; return { outcome: "green" }; }), null);
+    assert.equal(selected, 360000);
+});
+
+test("a short declared live timeout is distinct from a recipe exit and cleans up its owned child", async () => {
+    const repo = rebaseMerged();
+    const folder = scratch();
+    const late = path.join(folder, "late");
+    const child = path.join(folder, "child.cjs");
+    fs.writeFileSync(child, `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(late)}, 'late'), 2000);`);
+    const file = path.join(repo, ".portulan/workspace.json");
+    const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+    manifest.portulan = { spec: "2.14" };
+    manifest.verify.stopTimeout = 1;
+    manifest.verify.recipes[0].run = `node '${child}' & wait`;
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    const result = gate(repo, "live-deadline");
+    assert.equal(result.decision, "block");
+    assert.match(result.reason, /timed out after 1 s/);
+    assert.doesNotMatch(result.reason, /exit no status/);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    assert.equal(fs.existsSync(late), false);
+    manifest.verify.stopTimeout = 0;
+    manifest.verify.recipes[0].run = `touch '${late}'`;
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    const refused = gate(repo, "invalid-deadline");
+    assert.match(refused.reason, /stopTimeout/);
+    assert.equal(fs.existsSync(late), false);
+});
+
+test("the told workspace controls both command and deadline despite a sibling payload", () => {
+    const { told, session } = twoTrees({ toldCarriesHandoff: false });
+    const marker = path.join(scratch(), "untrusted");
+    const edit = (root, seconds, run) => {
+        const file = path.join(root, ".portulan/workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+        manifest.portulan = { spec: "2.14" };
+        manifest.verify.stopTimeout = seconds;
+        manifest.verify.recipes[0].run = run;
+        fs.writeFileSync(file, JSON.stringify(manifest));
+    };
+    edit(told, 1, 'node -e "setTimeout(() => {}, 10000)"');
+    edit(session, 20, `touch '${marker}'`);
+    const result = gate(told, "trusted-timeout", {}, { cwd: session });
+    assert.equal(result.decision, "block");
+    assert.match(result.reason, /timed out after 1 s/);
+    assert.equal(fs.existsSync(marker), false);
+    edit(told, 0, `touch '${marker}'`);
+    assert.match(gate(told, "invalid-trusted-timeout", {}, { cwd: session }).reason, /stopTimeout/);
+    assert.equal(fs.existsSync(marker), false);
+});
+
+test("a measured green before the recipe cap clears its streak", () => {
+    const repo = rebaseMerged();
+    const file = path.join(repo, ".portulan/workspace.json");
+    const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+    fs.writeFileSync(path.join(repo, ".portulan/handoffs", `${today()}-open.md`), "Open work\n");
+    const set = run => { manifest.verify.recipes[0].run = run; fs.writeFileSync(file, JSON.stringify(manifest)); };
+    set("exit 1");
+    for (let i = 0; i < MAX_BLOCKS - 1; i++) assert.equal(gate(repo, "green-resets").decision, "block");
+    set("true");
+    assert.equal(gate(repo, "green-resets").decision, "allow");
+    set("exit 1");
+    assert.match(gate(repo, "green-resets").reason, /recipe 1\/3/);
+});
 
 describe("the block counter — one count PER REASON, since task 0007", () => {
     test("counts up from one, per session, per reason", () => {

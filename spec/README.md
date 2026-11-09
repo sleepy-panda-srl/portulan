@@ -228,14 +228,23 @@ number governing both would make a bump in either mean a change in the other:
 
 | Schema | Manifest key | Current | What it governs |
 |---|---|---|---|
-| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.13** | the Workspace Definition — the manifest at a workspace root |
+| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.14** | the Workspace Definition — the manifest at a workspace root |
 | [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.0** | the Pack Definition — the manifest at a pack root. |
 
 The rules below apply to each train independently. `portulan.spec` is `MAJOR.MINOR`, and the current
-Workspace Definition version is **2.13**. It did **not** move when the Pack Definition arrived, because
+Workspace Definition version is **2.14**. It did **not** move when the Pack Definition arrived, because
 `workspace.schema.json` was byte-identical across that change: `packs` already existed as an array of
 strings and was deliberately left that way, since tightening its items to the canonical `category/name`
 form would be a constraint an existing manifest could newly fail, which is a MAJOR.
+
+**2.14 adds optional `verify.stopTimeout`.** The workspace may declare the Stop
+recipe's deadline in whole seconds; absent, it remains ninety seconds. `doctor`,
+`compile` and the runner share its range and version check, and compile gives
+that hook sixty additional seconds. No existing declaration is tightened or
+rewritten. `KNOWN_SPECS` in index and librarian gains `2.14` by addition; writers
+retain the oldest version their actual fields require. The schema subset types
+this field as `number`; the shared reader checks the integer/range constraint.
+This adds one hand-check to 2.12's fifteen, without expanding the schema subset.
 
 **2.13 is a MINOR on 2.8's terms: optional keys only.** `spend.restart` is the last piece of item 5 of
 proposal `0038`'s order of work, the declared block its ruling 3 allows: `"advise"` is the restart advisory as

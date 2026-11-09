@@ -13,6 +13,7 @@ import { AUTO, discoverPackRoots, namedWithAuto, resolutionRoots } from "./disco
 import { isInside } from "./inside.mjs";
 import { CannotOutline, sectionOf } from "./symbols.mjs";
 import { HORIZON, LedgerError, readSpend } from "./ledger.mjs";
+import { readStopPolicy, STOP_HOOK_MARGIN } from "./stop-policy.mjs";
 
 /** Raised when `compile` cannot run, or cannot compile honestly. Always exit 2, never 1. */
 export class CompileError extends Error {
@@ -631,16 +632,25 @@ export function claudeCode(parsed, options = {}) {
     const spendFlags = figures.map((f) => ` ${f}`).join("");
     const restartBlock = spend?.restart === "block";
     const spendFrom = figures.length || restartBlock ? spend.manifest : null;
-    const declaredIn =
+    const figuresIn =
         sessionsFrom && sessionsFrom === spendFrom
             ? `\`sessions\` and \`spend\` in ${sessionsFrom}`
             : [sessionsFrom && `\`sessions\` in ${sessionsFrom}`, spendFrom && `\`spend\` in ${spendFrom}`].filter(Boolean).join(", or ");
+    const stopPolicy = options.stopPolicy ?? null;
+    if (stopPolicy !== null) {
+        try {
+            const seconds = typeof stopPolicy === "object" && !Array.isArray(stopPolicy) ? stopPolicy.seconds : null;
+            readStopPolicy({ portulan: { spec: "2.14" }, verify: { stopTimeout: seconds ?? null } });
+        } catch (error) { throw new CompileError(error.message); }
+    }
+    const declaredIn = [figuresIn, stopPolicy && `\`verify.stopTimeout\` in ${stopPolicy.manifest}`].filter(Boolean).join(", or ");
     const value = {
         $portulan: {
             generated: "cli/compile.mjs",
             source,
             ...(sessionsFrom ? { sessions: sessionsFrom } : {}),
             ...(spendFrom ? { spend: spendFrom } : {}),
+            ...(stopPolicy ? { verify: stopPolicy.manifest } : {}),
             ...(packs.length ? { packs } : {}),
             warning: declaredIn
                 ? `Generated file. Edit ${source}, or ${declaredIn}, and recompile; \`verify/compile.sh\` fails on drift.`
@@ -656,7 +666,7 @@ export function claudeCode(parsed, options = {}) {
             Stop: [
                 {
                     hooks: [
-                        { type: "command", command: `node ${stopRunner}` },
+                        { type: "command", command: `node ${stopRunner}`, ...(stopPolicy ? { timeout: stopPolicy.seconds + STOP_HOOK_MARGIN } : {}) },
                         ...(restartBlock ? [{ type: "command", command: `node ${advisoryRunner} stop${spendFlags}` }] : []),
                     ],
                 },
@@ -2171,6 +2181,16 @@ export function spendDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     return spend;
 }
 
+function stopDeclaration(workspaceRoot, workspaceDir) {
+    const file = path.join(workspaceRoot, workspaceDir, "workspace.json");
+    let manifest;
+    try { manifest = JSON.parse(fs.readFileSync(file, "utf8")); } catch { return null; }
+    try {
+        const policy = readStopPolicy(manifest);
+        return policy.declared ? { ...policy, manifest: path.relative(workspaceRoot, file).split(path.sep).join("/") } : null;
+    } catch (error) { throw new CompileError(error.message); }
+}
+
 /** `guidanceOnly` is true where guidance still compiles, and `"leftover"` where only an earlier run's is removed. */
 function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, reason = "no-key", guidanceOnly = false) {
     const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
@@ -2989,6 +3009,7 @@ export function run(argv, options = {}) {
         const guidancePlan = showMatrix ? null : planGuidance(guidance, workspaceRoot);
         const sessions = sessionsDeclaration(workspaceRoot, workspaceDir);
         const spend = spendDeclaration(workspaceRoot, workspaceDir);
+        const stopPolicy = stopDeclaration(workspaceRoot, workspaceDir);
         const { file: policyFile, declared: policyDeclared, reason: policyReason } = policyDeclaration(workspaceRoot, workspaceDir);
         const packOptions = { named: namedRoots, discovery: () => discoverPackRoots(), forced };
         if (policyReason === "refused") {
@@ -3013,6 +3034,7 @@ export function run(argv, options = {}) {
                         `in the settings a gate policy compiles to, and this workspace has none`,
                 );
             }
+            if (stopPolicy !== null) say("note    verify.stopTimeout compiled no outer hook timeout: this workspace has no gate policy");
             say();
             const packs = packContributions(workspaceRoot, workspaceDir, packOptions);
             for (const u of packs.unresolved) say(unresolvedLine(u));
@@ -3049,6 +3071,7 @@ export function run(argv, options = {}) {
             packProvenance: contributions,
             sessions,
             spend,
+            stopPolicy,
         });
 
         for (const a of composed.added) say(`pack    ${a.pack.padEnd(30)} adds \`${a.id}\` (${a.tier})`);

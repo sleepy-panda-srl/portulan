@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://portulan.dev/spec/2.13/workspace.schema.json",
-  "title": "Portulan Workspace Definition v2.13",
+  "$id": "https://portulan.dev/spec/2.14/workspace.schema.json",
+  "title": "Portulan Workspace Definition v2.14",
   "description": "The manifest at the root of a workspace. It is an index, not a container: it names the slots the engine resolves against and points at the Markdown that holds each slot's content and rationale. Written in a deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset and for what validates it.",
   "type": "object",
   "additionalProperties": false,
@@ -144,6 +144,10 @@
         "default": {
           "description": "The `id` of the recipe the Stop-gate runs when nothing more specific applies. Constrained to the same shape as an id, so a value no recipe could ever carry is rejected by the schema rather than only by `doctor`.",
           "$ref": "#/$defs/slug"
+        },
+        "stopTimeout": {
+          "description": "Optional, added in 2.14. Stop recipe deadline in seconds; undeclared, 90. A positive integer whose recipe and outer hook timers fit Node's timer range, checked by doctor and every reader. Compile gives the Stop hook sixty additional seconds for other checks and cleanup.",
+          "type": "number"
         },
         "recipes": {
           "type": "array",
