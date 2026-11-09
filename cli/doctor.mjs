@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // `doctor` — the Workspace Definition validator.
 //
-//   node cli/doctor.mjs [--static | --count-tokens <model>] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir>...
+//   node cli/doctor.mjs [--agent] [--static | --count-tokens <model>] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir>...
 //
 // Exit 0 every workspace validates · 1 at least one does not · 2 could not run.
 
@@ -1994,11 +1994,12 @@ function usage() {
     return [
         "portulan doctor — validate a workspace against the Workspace Definition",
         "",
-        "  portulan doctor [--static] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]",
+        "  portulan doctor [--agent] [--static | --count-tokens <model>] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]",
         "",
         "  --static      skip local usage records; validation and plugin discovery remain unchanged.",
         "  --count-tokens <model>  send the measured project always corpus to Anthropic for a provider estimate.",
         "                Requires ANTHROPIC_API_KEY; unavailable with --static or in CI. No manifest is changed.",
+        "  --agent       one counted line on green; complete reports on failure (also PORTULAN_AGENT=1).",
         "  --pack-root   where declared packs are resolved from; `auto` discovers the host's plugin cache.",
         "                A named root REPLACES every other source. A directory actually named `auto` is `./auto`",
         "  --repo-root   where the repositories this workspace's cards NAME are checked out, so their",
@@ -2014,11 +2015,21 @@ function usage() {
 
 /** Runs against each workspace directory and returns the exit code; never throws. */
 export async function run(argv, options = {}) {
-    const say = options.quiet ? () => {} : (line = "") => process.stdout.write(`${line}\n`);
+    const agent = argv.includes("--agent") || (options.env ?? process.env).PORTULAN_AGENT === "1";
+    const buffered = [];
+    const total = { workspaces: 0, notes: 0, claims: 0 };
+    const say = options.quiet ? () => {} : agent ? (line = "") => buffered.push(line) : (line = "") => process.stdout.write(`${line}\n`);
+    const complete = (code, help = false) => {
+        if (agent && !options.quiet) {
+            if (code === 0 && !help) process.stdout.write(`GREEN — doctor: ${total.workspaces} workspace(s), ${total.notes} note(s), ${total.claims} claim(s) checked\n`);
+            else if (buffered.length) process.stdout.write(buffered.join("\n") + "\n");
+        }
+        return code;
+    };
     // Before any other argument is judged, so help is never outranked by a complaint about the rest.
     if (argv.includes("--help") || argv.includes("-h")) {
         say(usage());
-        return 0;
+        return complete(0, true);
     }
     try {
         let staticMode = false;
@@ -2049,7 +2060,9 @@ export async function run(argv, options = {}) {
         };
         const REPO_ROOT = { unresolvable: "a repository ungoverned", holds: "repositories" };
         for (let i = 0; i < argv.length; i += 1) {
-            if (argv[i] === "--static") {
+            if (argv[i] === "--agent") {
+                continue;
+            } else if (argv[i] === "--static") {
                 staticMode = true;
             } else if (argv[i] === "--count-tokens") {
                 if (countModel !== null || !argv[i + 1] || argv[i + 1].startsWith("-")) throw new DoctorError("--count-tokens needs one explicit provider model ID");
@@ -2073,9 +2086,9 @@ export async function run(argv, options = {}) {
         if (countModel !== null && staticMode) throw new DoctorError("--count-tokens is unavailable with --static; verify recipes stay offline");
         if (dirs.length === 0) {
             if (!options.quiet) {
-                process.stderr.write("usage: node cli/doctor.mjs [--static] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");
+                process.stderr.write("usage: node cli/doctor.mjs [--agent] [--static] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");
             }
-            return 2;
+            return complete(2);
         }
 
         let failed = 0;
@@ -2094,6 +2107,9 @@ export async function run(argv, options = {}) {
             let evidence = null;
             const usageLines = !staticMode && !options.quiet && !bad.length && workspace
                 ? await workspaceUsageReport(path.resolve(dir), workspace, { ...options, onLedger: (report) => { evidence = report; } }) : [];
+            total.workspaces += 1;
+            total.notes += findings.length - bad.length;
+            total.claims += stats.claims;
             say(display(dir));
             if (countModel !== null && bad.length) {
                 say(`  RED — ${bad.length} validation failure(s); provider count skipped. Run doctor --static separately for validation details.`);
@@ -2115,8 +2131,9 @@ export async function run(argv, options = {}) {
             say();
             if (bad.length) failed += 1;
         }
-        return failed ? 1 : 0;
+        return complete(failed ? 1 : 0);
     } catch (error) {
+        complete(2);
         // Anything reaching here could not be judged, a defect in doctor included: 2, never a verdict.
         if (!options.quiet) {
             process.stderr.write(`doctor: ${error instanceof DoctorError ? error.message : `unanticipated failure — ${error.stack ?? error}`}\n`);

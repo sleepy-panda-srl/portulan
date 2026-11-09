@@ -3201,7 +3201,7 @@ describe("--help is a request that succeeded", () => {
             const w = process.stderr.write.bind(process.stderr);
             process.stderr.write = (chunk) => (err.push(String(chunk)), true);
             try {
-                await run(flag === "--static" ? [flag, "/nonexistent-workspace"] : [flag, "--", "/nonexistent-workspace"]);
+                await run(["--static", "--agent"].includes(flag) ? [flag, "/nonexistent-workspace"] : [flag, "--", "/nonexistent-workspace"]);
             } finally {
                 process.stderr.write = w;
             }
@@ -3395,6 +3395,54 @@ describe("workspace usage report", () => {
         assert.doesNotMatch(populated.stdout, /ledger:|local worker:/);
         assert.match(populated.stdout, /lever .*session-dependent levers not compared/);
     });
+    test("agent mode aggregates green directories as one count line", () => {
+        const first = setup(), second = setup();
+        hostFixture(first);
+        const result = invoke(second, ["--agent", first.workspace]);
+        assert.equal(result.status, 0, result.stderr);
+        assert.match(result.stdout, /^GREEN — doctor: 2 workspace\(s\), \d+ note\(s\), \d+ claim\(s\) checked\n$/);
+        assert.equal(result.stderr, "");
+        const environment = spawnSync(process.execPath, [path.join(REPO, "cli/doctor.mjs"), "--static", first.workspace], { encoding: "utf8", env: { ...process.env, CLAUDE_CONFIG_DIR: first.home, PORTULAN_AGENT: "1" } });
+        assert.equal(environment.status, 0, environment.stderr);
+        assert.match(environment.stdout, /^GREEN — doctor: 1 workspace\(s\), \d+ note\(s\), \d+ claim\(s\) checked\n$/);
+    });
+    test("quiet agent API produces no output", async () => {
+        const f = setup(), out = [], err = [];
+        const originalOut = process.stdout.write, originalErr = process.stderr.write;
+        try {
+            process.stdout.write = (chunk) => (out.push(String(chunk)), true);
+            process.stderr.write = (chunk) => (err.push(String(chunk)), true);
+            assert.equal(await run(["--agent", "--static", f.workspace], { quiet: true, env: { CLAUDE_CONFIG_DIR: f.home } }), 0);
+        } finally {
+            process.stdout.write = originalOut;
+            process.stderr.write = originalErr;
+        }
+        assert.deepEqual(out, []);
+        assert.deepEqual(err, []);
+    });
+    test("agent mode retains earlier green reports when a later workspace is red", () => {
+        const first = setup(), second = setup();
+        const file = path.join(second.workspace, "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(file));
+        fs.writeFileSync(file, JSON.stringify({ ...manifest, name: "NOT A SLUG" }));
+        const human = invoke(second, ["--static", first.workspace]);
+        const agent = invoke(second, ["--agent", "--static", first.workspace]);
+        assert.equal(agent.status, 1);
+        assert.equal(agent.stdout, human.stdout);
+        assert.equal(agent.stderr, human.stderr);
+        assert.ok(agent.stdout.indexOf("GREEN") < agent.stdout.indexOf("FAIL"));
+    });
+    test("agent mode retains earlier reports when a later directory cannot run", () => {
+        const first = setup();
+        const absent = path.join(first.away, "absent");
+        const child = (flags) => spawnSync(process.execPath, [path.join(REPO, "cli/doctor.mjs"), ...flags, "--static", first.workspace, absent], { encoding: "utf8", env: { ...process.env, CLAUDE_CONFIG_DIR: first.home } });
+        const human = child([]), agent = child(["--agent"]);
+        assert.equal(agent.status, human.status);
+        assert.notEqual(agent.status, 0);
+        assert.equal(agent.stdout, human.stdout);
+        assert.match(agent.stdout, /GREEN/);
+        assert.ok(agent.stderr || /FAIL/.test(agent.stdout));
+    });
     test("static, help and quiet paths never consult usage files", async (t) => {
         const f = setup();
         hostFixture(f);
@@ -3407,7 +3455,7 @@ const config=${JSON.stringify(path.join(f.home, ".claude.json"))};
 const write=fs.writeFileSync;
 for (const key of ["readFileSync","readdirSync","statSync","lstatSync"]) { const original=fs[key]; fs[key]=function(file,...args){const value=String(file);if(value===config||value.startsWith(project)){write(marker,"read");throw new Error("PRIVATE_USAGE_SENTINEL");}return original.call(this,file,...args);};}
 `);
-        for (const flags of [["--static"], ["--help"]]) {
+        for (const flags of [["--static"], ["--static", "--agent"], ["--help"], ["--agent", "--help"]]) {
             const r = invoke(f, flags, ["--import", preload]);
             assert.equal(r.status, 0, r.stderr || r.stdout);
             assert.equal(fs.existsSync(marker), false);
@@ -3425,6 +3473,7 @@ for (const key of ["readFileSync","readdirSync","statSync","lstatSync"]) { const
             });
         }
         assert.equal(await run([f.workspace], { quiet: true, env: { CLAUDE_CONFIG_DIR: f.home } }), 0);
+        assert.equal(await run(["--agent", f.workspace], { quiet: true, env: { CLAUDE_CONFIG_DIR: f.home } }), 0);
         assert.equal(consulted, 0, "quiet mode never discovers or reads usage, even when errors would be caught");
         const failed = invoke(f, [], ["--import", preload]);
         assert.equal(failed.status, 0, failed.stderr);

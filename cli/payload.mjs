@@ -47,6 +47,7 @@ export const EXCLUDED = {
 
 /** Shipped modules nothing the package exposes reaches, ruled to ship anyway, each with its ground. */
 export const PRODUCT = {
+    "recipe-output.mjs": "the agent executor reached by commands rendered from recipe-set --agent; the subprocess edge is outside the static import graph",
     "release-eval.mjs":
         "the eval result a release carries, written at publish by `--tagged`. Ruled product by the " +
         "maintainer on 2026-09-01, on two grounds that are NOT one. (1) `./eval-bundle.mjs`'s 2026-08-24 " +

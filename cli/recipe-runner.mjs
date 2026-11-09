@@ -40,7 +40,7 @@ export function terminateTree(pid, signal, { platform = process.platform, kill =
     }
 }
 
-export function runRecipe(recipe, { root, env = process.env, timeout = 600_000 }) {
+export function runRecipe(recipe, { root, env = process.env, timeout = 600_000, onOutput = null, mergeOutput = true, inheritGroup = false, groupId = null }) {
     return new Promise((resolve) => {
         const kept = tailKeeper();
         const failures = [];
@@ -49,6 +49,7 @@ export function runRecipe(recipe, { root, env = process.env, timeout = 600_000 }
         let status = null, interrupted = null;
         const handlers = new Map();
         const record = (error) => failures.push(String(error?.message ?? error));
+        const terminate = (signal) => terminateTree(inheritGroup && process.platform !== "win32" ? groupId : child.pid, signal, { taskkill });
         const pipes = () => { child?.stdout?.destroy(); child?.stderr?.destroy(); };
         const settle = () => {
             if (settled) return;
@@ -64,10 +65,11 @@ export function runRecipe(recipe, { root, env = process.env, timeout = 600_000 }
             ];
             resolve({ id: recipe.id, outcome: code === null || CANNOT_RUN.has(code) ? "could not run" : "red", code,
                 output: kept.text() + (why.length ? `\n${why.join("\n")}` : ""),
+                ...(onOutput ? { diagnostics: why } : {}),
                 ...(interrupted ? { interrupted } : {}) });
         };
         const hardStop = () => {
-            try { terminateTree(child.pid, "SIGKILL", { taskkill }); }
+            try { terminate("SIGKILL"); }
             catch (error) {
                 record(error);
                 try { child.kill("SIGKILL"); } catch (error) { record(error); }
@@ -89,7 +91,7 @@ export function runRecipe(recipe, { root, env = process.env, timeout = 600_000 }
             clearTimeout(limit);
             clearTimeout(drain);
             if (process.platform === "win32") return hardStop();
-            try { terminateTree(child.pid, signal || "SIGTERM"); } catch (error) { record(error); }
+            try { terminate(signal || "SIGTERM"); } catch (error) { record(error); }
             // The group may outlive its leader and pipes: neither event cancels escalation.
             grace = setTimeout(hardStop, 250);
         };
@@ -100,12 +102,16 @@ export function runRecipe(recipe, { root, env = process.env, timeout = 600_000 }
                 process.on(signal, handler);
             }
             if (process.platform === "win32") taskkill = windowsTaskkill(env);
-            child = spawn("bash", ["-c", `exec 2>&1\n${recipe.run}`], {
-                cwd: root, env, detached: process.platform !== "win32", windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
+            if (inheritGroup && process.platform !== "win32" && (!Number.isInteger(groupId) || groupId <= 1)) throw new Error("inherited recipe group is invalid");
+            child = spawn("bash", ["-c", `${mergeOutput ? "exec 2>&1\n" : ""}${inheritGroup ? "" : "export PORTULAN_RECIPE_GROUP=$$\n"}${recipe.run}`], {
+                cwd: root, env: { ...env, PORTULAN_RECIPE_MANAGED: "1" }, detached: process.platform !== "win32" && !inheritGroup, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
             });
         } catch (error) { record(error); settle(); return; }
-        for (const stream of [child.stdout, child.stderr]) {
-            stream.on("data", kept.add);
+        for (const [name, stream] of [["stdout", child.stdout], ["stderr", child.stderr]]) {
+            stream.on("data", (chunk) => {
+                kept.add(chunk);
+                try { onOutput?.(name, chunk); } catch (error) { record(error); stop(); }
+            });
             stream.on("error", (error) => { record(error); stop(); });
         }
         child.on("error", (error) => { record(error); if (!child.pid) settle(); else stop(); });
@@ -119,6 +125,6 @@ export function runRecipe(recipe, { root, env = process.env, timeout = 600_000 }
             closed = true;
             if (!stopping || escalated) settle();
         });
-        limit = setTimeout(() => { late = true; stop(); }, timeout);
+        if (!inheritGroup) limit = setTimeout(() => { late = true; stop(); }, timeout);
     });
 }

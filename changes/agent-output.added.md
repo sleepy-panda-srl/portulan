@@ -1,0 +1,1 @@
+- `recipe-set --agent` offers one counted green line and complete failure streams for every yielded recipe through a shared executor; `doctor --agent` aggregates green validations into one count line while retaining full failure reports. Existing CI uses the recipe interface.

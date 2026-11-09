@@ -25,5 +25,22 @@ runner SIGKILL and failures outside active recipe execution cannot promise clean
 or commit rollback. This runner does not impose a deadline on finish's other Git
 operations.
 
+`recipe-set --agent` wraps each command in `recipe-output.mjs`. That executor
+spools stdout and stderr separately to private descriptors, unlinks their names
+before starting the child, and replays all bytes on failure. Green is one counted
+line. The runner's ordinary tail remains bounded; the executor's failure stream
+is complete at its own boundary. Output capture, replay or setup failures return
+could-not-run, never green.
+
+The runner marks the environment of its owned child. A nested executor shares
+that process group and delegates its deadline to the outer runner. On POSIX it
+checks its actual group with `ps` before inheriting ownership, so the outer
+timeout or interruption reaches every descendant even if the executor is killed.
+An inner capture failure also terminates that owned group. Anonymous descriptors
+leave no named temporary logs behind on a hard kill. Standalone executors own
+their own recipe group and a ten-minute deadline. Native Windows execution of
+this output mode remains untested, as does its forced-termination filesystem
+behavior; inability to create anonymous spools refuses execution.
+
 The platform mechanisms follow [Node's detached-process documentation](https://nodejs.org/api/child_process.html#optionsdetached)
 and [Microsoft's taskkill reference](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/taskkill).
