@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { isInside } from "./inside.mjs";
 import { recipeSet } from "./recipe-set.mjs";
+import { runRecipe } from "./recipe-runner.mjs";
 
 const PROJECT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const WORKSPACE = path.resolve(PROJECT, process.env.PORTULAN_WORKSPACE || ".portulan");
@@ -364,7 +365,7 @@ function handoffInHistory(stamp, tree, handoffsDir, held = []) {
     }
 }
 
-function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "told", note: null }) {
+async function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "told", note: null }) {
     const problems = [];
     let recipeGreen = false;
 
@@ -379,16 +380,12 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
         });
     } else {
         try {
-            execFileSync("bash", ["-c", recipe.run], {
-                cwd: REPO,
-                encoding: "utf8",
-                timeout: RECIPE_TIMEOUT_MS,
-                stdio: ["ignore", "pipe", "pipe"],
-            });
+            const result = await runRecipe(recipe, { root: REPO, env: process.env, timeout: RECIPE_TIMEOUT_MS });
+            if (result.outcome !== "green") throw { status: result.code, stdout: result.output };
             recipeGreen = true;
         } catch (error) {
-            const code = error.status;
-            const output = `${error.stdout ?? ""}${error.stderr ?? ""}`.trim().split("\n").slice(-25).join("\n");
+            const code = error?.status;
+            const output = `${error?.stdout ?? ""}${error?.stderr ?? ""}${error?.message ?? ""}`.trim().split("\n").slice(-25).join("\n");
             const CANNOT_RUN = new Set([2, 126, 127]);
             const outcome = CANNOT_RUN.has(code) || code === undefined || code === null
                 ? `could not run (exit ${code ?? "no status"}) — the gate could not judge`
@@ -493,7 +490,7 @@ export function verdict({ problems, counts = {}, total = 0, chain = 0, max = MAX
     };
 }
 
-function main() {
+async function main() {
     let payload = {};
     try {
         payload = JSON.parse(fs.readFileSync(0, "utf8"));
@@ -506,7 +503,7 @@ function main() {
     const tree = resolveSessionTree(payload.cwd);
     if (tree.note) process.stderr.write(`portulan stop-gate: ${tree.note}; answering about ${REPO} instead.\n`);
 
-    const { problems, recipeGreen, handoffEnabled, handoffCleared } = collectProblems(tree);
+    const { problems, recipeGreen, handoffEnabled, handoffCleared } = await collectProblems(tree);
 
     // The session's counts stay on the told root, so a `cwd` that moves mid-session cannot restart them.
     if (recipeGreen) clearReason(sessionId, "recipe");
@@ -527,5 +524,5 @@ function main() {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-    main();
+    await main();
 }

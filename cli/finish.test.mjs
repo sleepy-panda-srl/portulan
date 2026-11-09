@@ -450,6 +450,39 @@ describe("a red stops it, and undoes its own commit", () => {
         assert.match(r.out, /\ndocs — RED \(exit 1\):\n {4}first\n {4}second\n {4}third\n/);
     });
 
+    test("an observed signal stops the recipe loop and rolls back before push", async () => {
+        const { work, origin } = clone({ recipes: [{ id: "first", run: "sleep 5" }, { id: "later", run: "true" }] });
+        const parent = git(work, ["rev-parse", "HEAD"]);
+        change(work);
+        const seen = [];
+        const runOne = async (recipe, options) => {
+            seen.push(recipe.id);
+            const pending = runRecipe(recipe, options);
+            setTimeout(() => process.emit("SIGTERM"), 100);
+            return pending;
+        };
+        const result = await finish(parseArgs(["-m", "One"], work), { cwd: work, env: ENV, runOne });
+        assert.equal(result.code, 2);
+        assert.deepEqual(seen, ["first"]);
+        assert.match(result.lines.join("\n"), /interrupted by SIGTERM/);
+        assert.equal(git(work, ["rev-parse", "HEAD"]), parent);
+        assert.notEqual(git(work, ["diff", "--cached", "--name-only"]), "");
+        assert.equal(onOrigin(origin, "feat"), "");
+    });
+
+    test("normalization cannot discard an interruption attached to a green result", async () => {
+        const { work, origin } = clone({ recipes: [{ id: "first", run: "true" }, { id: "later", run: "true" }] });
+        const parent = git(work, ["rev-parse", "HEAD"]);
+        change(work);
+        const seen = [];
+        const runOne = (recipe) => { seen.push(recipe.id); return { outcome: "green", interrupted: "SIGINT" }; };
+        const result = await finish(parseArgs(["-m", "One"], work), { cwd: work, env: ENV, runOne });
+        assert.equal(result.code, 2);
+        assert.deepEqual(seen, ["first"]);
+        assert.equal(git(work, ["rev-parse", "HEAD"]), parent);
+        assert.equal(onOrigin(origin, "feat"), "");
+    });
+
     test("every recipe runs, so one call reports every red", async () => {
         const { work } = clone({ recipes: [{ id: "docs", run: "exit 1" }, { id: "json", run: "true" }, { id: "tests", run: "exit 1" }] });
         change(work);

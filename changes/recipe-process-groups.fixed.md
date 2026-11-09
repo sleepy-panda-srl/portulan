@@ -1,0 +1,1 @@
+- **Bound recipe cleanup.** Finish and the Stop-gate share process-group timeout and interruption cleanup, with KILL escalation after 250 ms. Finish retains handled interruptions through output draining and stops before later recipes or a push. Windows uses bounded, preflighted taskkill tree termination; native Windows execution remains unverified.
