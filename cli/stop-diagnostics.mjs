@@ -47,7 +47,10 @@ export function stopDiagnostics() {
             state.todoIndent = null;
         }
         const tapExpected = /^(?:ok|not ok)\s+\d+\b.*(?<!\\)#\s*(?:TODO|SKIP)\b/i.test(trimmed);
-        if (tapExpected || /^⚠.*#\s*TODO\b/i.test(trimmed)) {
+        const specAnnotated = /^[⚠✖✗].*\(\d+(?:\.\d+)?ms\)\s+#\s*\S/.test(trimmed);
+        const specExpected = /^⚠.*#\s*TODO\b/i.test(trimmed)
+            || (specAnnotated && (trimmed.startsWith("⚠") || !/\(\d+(?:\.\d+)?ms\)$/.test(trimmed)));
+        if (tapExpected || specExpected) {
             state.todoIndent = indent; state.todoEnd = tapExpected ? "..." : "}"; state.context = 0; state.location = null;
             return;
         }
