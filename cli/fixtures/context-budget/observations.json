@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "fixture": "invented-catalog-project",
+  "commandWorkingDirectory": "<scratch-project>",
+  "ratio": {
+    "bytesPerToken": 3,
+    "declaredBy": "fixture-estimate-not-calibrated",
+    "evidence": "synthetic estimate; no host calibration or exact token count"
+  },
+  "commands": {
+    "compile": [
+      "node",
+      "<repo>/cli/compile.mjs",
+      "--workspace",
+      ".",
+      "--pack-root",
+      "<repo>/packs"
+    ],
+    "context": [
+      "node",
+      "<repo>/cli/context.mjs",
+      "--workspace",
+      ".portulan",
+      "--brief"
+    ],
+    "doctor": [
+      "node",
+      "<repo>/cli/doctor.mjs",
+      "--static",
+      "--pack-root",
+      "<repo>/packs",
+      ".portulan"
+    ]
+  },
+  "manifestSha256": "4578334d17721b931e2710f4795efda9b9397b6d109f4d95474aaeaf65cfe3c3",
+  "guidanceBodySha256": "79a3573a70830e69db6b7b8cd7cb72e14acf1192529f3fda4c8005337f102e49",
+  "manifestUnchanged": true,
+  "guidanceBodyUnchanged": true,
+  "before": {
+    "tier": "always",
+    "budgetTokens": 200,
+    "alwaysBytes": 1595,
+    "estimatedTokens": 532,
+    "alwaysFiles": [
+      ".claude/rules/portulan/incidents.md"
+    ],
+    "compileExit": 0,
+    "contextExit": 1,
+    "doctorExit": 1,
+    "doctorFailureChecks": [
+      "context"
+    ]
+  },
+  "after": {
+    "tier": "on-read",
+    "budgetTokens": 200,
+    "alwaysBytes": 101,
+    "estimatedTokens": 34,
+    "alwaysFiles": [
+      ".claude/rules/portulan/on-read.md"
+    ],
+    "compileExit": 0,
+    "contextExit": 0,
+    "doctorExit": 0,
+    "doctorFailureChecks": []
+  }
+}

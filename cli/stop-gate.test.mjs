@@ -781,6 +781,88 @@ function mergedHandoff(workspace = ".portulan") {
     return { work, stamp };
 }
 
+function gitProbe({ fail = "", log = "" } = {}) {
+    const bin = scratch();
+    const real = execFileSync("bash", ["-c", "command -v git"], { encoding: "utf8" }).trim();
+    fs.writeFileSync(path.join(bin, "git"), `#!${process.execPath}
+const fs = require("node:fs");
+const { spawnSync } = require("node:child_process");
+const args = process.argv.slice(2);
+if (process.env.GIT_PROBE_LOG) fs.appendFileSync(process.env.GIT_PROBE_LOG, JSON.stringify(args) + "\\n");
+if (args[0] === "status" && args.length === 2) {
+    if (process.env.GIT_PROBE_FAIL === "status") process.exit(1);
+    if (process.env.GIT_PROBE_FAIL === "rev-list") process.exit(0);
+}
+if (args[0] === "rev-list" && process.env.GIT_PROBE_FAIL === "rev-list") process.exit(1);
+process.exit(spawnSync(${JSON.stringify(real)}, args, { stdio: "inherit" }).status ?? 1);
+`, { mode: 0o755 });
+    return { PATH: `${bin}${path.delimiter}${process.env.PATH}`, GIT_PROBE_FAIL: fail, GIT_PROBE_LOG: log };
+}
+
+describe("bounded handoff evidence (#491)", () => {
+    test("the remote content walk starts two UTC days before the handoff date", () => {
+        const { work, stamp } = mergedHandoff();
+        const log = path.join(scratch(), "git.jsonl");
+        assert.equal(gate(work, "bounded-content-walk", gitProbe({ log })).decision, "block");
+        const calls = fs.readFileSync(log, "utf8").trim().split("\n").map((line) => JSON.parse(line));
+        const lookup = calls.find((args) => args.some((arg) => arg.startsWith("--find-object=")));
+        assert.ok(lookup, "the committed handoff must be compared by content");
+        const cutoff = new Date(`${stamp}T00:00:00Z`);
+        cutoff.setUTCDate(cutoff.getUTCDate() - 2);
+        assert.ok(lookup.includes(`--since=${cutoff.toISOString()}`), JSON.stringify(lookup));
+        assert.ok(lookup.includes("--root"));
+        assert.ok(lookup.includes(`:(literal).portulan/handoffs/${stamp}-another-session.md`));
+    });
+
+    test("a handoff pushed only in an older-dated commit counts as this tree's own", () => {
+        const { work } = mergedHandoff();
+        const old = new Date();
+        old.setUTCDate(old.getUTCDate() - 4);
+        execFileSync("git", ["-c", "user.name=portulan-test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", "commit", "--amend", "--only", "--no-edit"], {
+            cwd: work, env: { ...process.env, GIT_COMMITTER_DATE: old.toISOString() }, stdio: "pipe",
+        });
+        git(work, ["push", "-q", "--force-with-lease"]);
+        assert.match(git(work, ["status", "--porcelain"]), /f\.txt/);
+        assert.equal(gate(work, "old-remote-handoff").decision, "allow");
+    });
+
+    for (const [fail, series] of ["status", "rev-list"].flatMap((fail) => [true, false].map((series) => [fail, series]))) {
+        test(`an unknown ${fail} result preserves refusals with handoff series ${series}`, () => {
+            const { work } = mergedHandoff();
+            if (!series) {
+                const file = path.join(work, ".portulan", "workspace.json");
+                const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+                delete manifest.slots.handoffs;
+                fs.writeFileSync(file, JSON.stringify(manifest));
+            }
+            git(work, ["branch", "--unset-upstream"]);
+            const id = `unknown-${fail}-${series}`;
+            const label = series ? "handoff" : "work";
+            assert.ok(gate(work, id).reason.includes(`${label} 1/3`));
+            assert.ok(gate(work, id).reason.includes(`${label} 2/3`));
+            const unknown = gate(work, id, gitProbe({ fail }));
+            assert.equal(unknown.decision, "allow");
+            assert.match(unknown.stderr, /work check is not running/);
+            assert.ok(gate(work, id).reason.includes(`${label} 3/3`));
+            const released = gate(work, id);
+            assert.equal(released.decision, "allow");
+            assert.ok(released.stderr.includes(label));
+            if (!series) assert.doesNotMatch(unknown.stderr + released.stderr, /handoff/i);
+        });
+    }
+
+    test("an own handoff clears refusals even when Git cannot report status", () => {
+        const { work, stamp } = mergedHandoff();
+        const id = "own-handoff-clears-unknown";
+        assert.match(gate(work, id).reason, /handoff 1\/3/);
+        const handoff = path.join(work, ".portulan", "handoffs", `${stamp}-own.md`);
+        fs.writeFileSync(handoff, "open work\n");
+        assert.equal(gate(work, id, gitProbe({ fail: "status" })).decision, "allow");
+        fs.unlinkSync(handoff);
+        assert.match(gate(work, id).reason, /handoff 1\/3/);
+    });
+});
+
 /** A clone whose handoff commit was rebase-merged and its branch deleted, with the next work staged in the tree. */
 function rebaseMergedHandoff() {
     const stamp = today();

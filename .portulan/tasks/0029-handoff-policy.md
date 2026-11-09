@@ -48,3 +48,12 @@ rechecking the revised diff on 2026-11-09: 31/31 yielded recipes exited zero,
 3,443 tests passed, and additional path/counter/trust probes passed. Removing the
 prefix escaping in scratch made the shipped regression fail. Final seam scan,
 the finishing command and GitHub checks follow this approval.
+
+**Integration approval.** After #591, #593 and #592 merged, the same independent
+reviewer returned APPROVE on the resolved integration on 2026-11-09. All 31 recipes
+exited zero and 3,455 tests passed. Eleven combined adversarial checks proved
+unknown-state count preservation in absent/custom-series modes, literal custom
+paths, bounded remote lookup, older-date leniency and malformed-policy bounds.
+Removing the date bound or clearing unknown-state counts each caused two failures
+in isolated controls. Product bytes and staged blobs remained unchanged during
+review. The user authorized merging reviewed PRs after feedback is applied.

@@ -750,9 +750,11 @@ a `tree`, through [`../cli/context.mjs`](../cli/context.mjs), and fails it over 
 where a declared budget cannot be judged; with none declared it reports the figure. _(This paragraph read
 *"What nothing checks yet: the budget itself"* until that report landed, and it was true then:
 [`a-mandate-nothing-checks-is-already-broken.md`](../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md)
-is why no workspace here declared the key before something checked it.)_ No workspace in this tree
-declares it now either: Portulan's own contribution is railed by this repository's recipes, not by a
-budget in its manifest. And, as with memory, no checker establishes that a budget was not raised in the
+is why no workspace here declared the key before something checked it.)_ Neither this repository's
+workspace nor the demo workspace declares it: Portulan's own contribution is railed by this repository's
+recipes, not by a budget in its manifest. The synthetic
+[budget demonstration fixture](../cli/fixtures/context-budget/) does declare one. And, as with memory,
+no general checker establishes that a budget was not raised in the
 change that breached it.
 
 ## `sessions` — the host switches that change what a fresh session writes
@@ -850,7 +852,9 @@ first stop whose last recorded request is at or past the threshold and that no b
 own `stop` command, which `compile` writes as a second `Stop` command beside the Stop-gate's, holds the turn's
 end with the line as its reason, once in a session and again after each compaction, and the turn goes on. A
 stop that a block provoked is never held, since a host that gives that retry a new session id would find no
-record of the hold and hold it again. It is the advisory's command rather than a reason inside the Stop-gate,
+record of the hold and hold it again. This relies on the `stop_hook_active` marker supplied by Claude Code,
+the host `compile` targets: a harness that omits it and rotates session IDs can receive a hold at every stop.
+It is the advisory's command rather than a reason inside the Stop-gate,
 so the gate's counters and caps stay about the recipe and the handoff; and nothing ends the session, which
 stays the agent's or the human's act. `0038`'s *Enforcement* says the block comes *instead* of the line, and
 it is read here as *added*, because the line is what reaches an agent mid-stretch and a headless run's only
@@ -881,6 +885,10 @@ context still carries past the largest number is none: the ledger stops with exi
 is not known. `doctor` refuses the key in a manifest declaring a version before 2.12, gated from birth as
 `sessions` was, and `restart` in one before 2.13. `compile` refuses `restart` there too, with exit 2 and
 nothing written, so that no block is compiled from a declaration its own version's validator refuses.
+For declared `restart`, the compiler requires a string `MAJOR.MINOR` on major 2, minor at least 13;
+missing or malformed versions and other majors stop with exit 2 before artifacts change. The compiler
+still accepts future minors on major 2 for this key; this is not a general manifest-version check or
+a claim that `doctor` accepts those versions.
 `restart` is one of two strings, which the subset types in full, and the ledger and `compile` refuse any other
 with exit 2.
 

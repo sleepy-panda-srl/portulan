@@ -233,7 +233,7 @@ function didWork(root = REPO) {
         if (git(["status", "--porcelain"]).trim() !== "") return true;
     } catch {
         process.stderr.write("portulan stop-gate: cannot read git status — the work check is not running.\n");
-        return false;
+        return null;
     }
 
     try {
@@ -292,11 +292,11 @@ function didWork(root = REPO) {
         return cherry.split("\n").some((line) => line.startsWith("+"));
     } catch {
         process.stderr.write("portulan stop-gate: cannot determine whether this session did work — the work check is not running.\n");
-        return false;
+        return null;
     }
 }
 
-/** Today's handoffs as `{ own, recorded }`, `recorded` being clean and held by a remote at that path. */
+/** Today's handoffs as `{ own, recorded }`, with remote content checked since two UTC days before their date. */
 function handoffToday(stamp, tree, handoffsDir) {
     let dated;
     try {
@@ -310,6 +310,8 @@ function handoffToday(stamp, tree, handoffsDir) {
     const git = (args) => execFileSync("git", args, { cwd: tree.root, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
     const own = [];
     const recorded = [];
+    const cutoff = new Date(`${stamp}T00:00:00Z`);
+    cutoff.setUTCDate(cutoff.getUTCDate() - 2);
     for (const name of dated) {
         const file = `:(literal)${dir}/${name}`;
         let unrecorded;
@@ -319,7 +321,7 @@ function handoffToday(stamp, tree, handoffsDir) {
                 // By content, not commit: a rebase or squash merge pushes a handoff in a commit of its own.
                 // `--root`, or `log.showRoot=false` skips a root commit.
                 const blob = git(["rev-parse", `HEAD:./${dir}/${name}`]).trim();
-                unrecorded = git(["log", "-1", "--root", "--format=%h", "--remotes", `--find-object=${blob}`, "--", file]).trim() === "";
+                unrecorded = git(["log", "-1", "--root", "--format=%h", "--remotes", `--since=${cutoff.toISOString()}`, `--find-object=${blob}`, "--", file]).trim() === "";
             }
         } catch {
             process.stderr.write(`portulan stop-gate: could not tell whether ${name} is committed and pushed, so it counts as this tree's own.\n`);
@@ -402,23 +404,25 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
     const handoffEnabled = policy.directory !== null;
     if (policy.error) {
         problems.push({ reason: "handoff", text: policy.error });
-        return { problems, recipeGreen, handoffEnabled };
+        return { problems, recipeGreen, handoffEnabled, handoffCleared: false };
     }
     if (!handoffEnabled) {
-        if (didWork(tree.root)) {
+        const work = didWork(tree.root);
+        if (work === true) {
             problems.push({
                 reason: "handoff",
                 text: `${treeIdentity(tree.root)} holds work that is not committed and pushed. Commit and push it, its why in the commit message.`,
             });
         }
-        return { problems, recipeGreen, handoffEnabled };
+        return { problems, recipeGreen, handoffEnabled, handoffCleared: work === false };
     }
 
     const stamp = today();
     const handoffs = handoffToday(stamp, tree, policy.directory);
     const handoffPresent = handoffs.own.length > 0;
     // `handoffPresent` first: `didWork()` runs git several times and may warn about a handoff that is not owed.
-    if (!handoffPresent && didWork(tree.root)) {
+    const work = handoffPresent ? null : didWork(tree.root);
+    if (work === true) {
         const real = (dir) => {
             try {
                 return fs.realpathSync(dir);
@@ -451,7 +455,7 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
         });
     }
 
-    return { problems, recipeGreen, handoffEnabled };
+    return { problems, recipeGreen, handoffEnabled, handoffCleared: handoffPresent || work === false };
 }
 
 export function verdict({ problems, counts = {}, total = 0, chain = 0, max = MAX_BLOCKS, maxTotal = MAX_TOTAL_BLOCKS, maxChain = MAX_CHAIN_BLOCKS, handoffEnabled = true }) {
@@ -502,11 +506,11 @@ function main() {
     const tree = resolveSessionTree(payload.cwd);
     if (tree.note) process.stderr.write(`portulan stop-gate: ${tree.note}; answering about ${REPO} instead.\n`);
 
-    const { problems, recipeGreen, handoffEnabled } = collectProblems(tree);
+    const { problems, recipeGreen, handoffEnabled, handoffCleared } = collectProblems(tree);
 
     // The session's counts stay on the told root, so a `cwd` that moves mid-session cannot restart them.
     if (recipeGreen) clearReason(sessionId, "recipe");
-    if (!problems.some((p) => p.reason === "handoff")) clearReason(sessionId, "handoff");
+    if (handoffCleared) clearReason(sessionId, "handoff");
 
     const state = problems.length === 0
         ? { counts: {}, total: 0 }
