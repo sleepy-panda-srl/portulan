@@ -314,9 +314,11 @@ and nothing echoed on every turn.** This is [the loop's compact-error rule](loop
 applied to every output the model reads, with failure evidence retained so the saving cannot lower
 quality. The reading rules above govern how a session asks for bounded output.
 
-The uniform agent mode for recipes and `doctor`, and the volatile-content scan against a committed
-golden, remain separate work in [row 13](../../docs/plan.md#milestones). This doctrine does not supply
-those rails; until they land the human gate holds their rules.
+The uniform agent mode for recipes and `doctor` remains separate work in
+[row 13](../../docs/plan.md#milestones). The repository's `cache-stability` recipe
+checks static text against its reviewed golden, with the runtime limits stated
+above. This doctrine supplies no enforcement by itself: each installation's
+configured recipes determine what is checked.
 
 ### A local model runs without the host floor
 

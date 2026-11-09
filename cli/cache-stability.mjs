@@ -1,4 +1,4 @@
-// Committed baseline for Portulan's loaded text and hook templates.
+// Prefix baseline.
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
