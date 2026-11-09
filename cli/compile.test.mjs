@@ -805,6 +805,47 @@ describe("the declared figures", () => {
         assert.equal(spendDeclaration(workspaceWithSpend({ horizon: { requests: 30 } }, policy(), "2.12")).restart, null, "the rest of `spend` is 2.12's");
     });
 
+    test("restart refuses an absent, malformed or unsupported spec before changing artifacts (#494)", () => {
+        for (const restart of ["block", "advise"]) {
+            for (const spec of [undefined, null, "", "2.12.1", 2.13, ["2.13"], {}, "1.99", "3.0"]) {
+                const dir = workspaceWithSpend({ restart });
+                const file = path.join(dir, ".portulan", "workspace.json");
+                const m = JSON.parse(fs.readFileSync(file, "utf8"));
+                if (spec === undefined) delete m.portulan;
+                else m.portulan.spec = spec;
+                fs.writeFileSync(file, JSON.stringify(m));
+                assert.throws(() => spendDeclaration(dir), CompileError, JSON.stringify({ restart, spec }));
+                const target = path.join(dir, ".claude", "settings.json");
+                for (const mode of [[], ["--check"], ["--matrix"]]) {
+                    assert.equal(run(["--workspace", dir, ...mode], { quiet: true }), 2);
+                    assert.equal(fs.existsSync(target), false);
+                }
+            }
+        }
+        const dir = workspaceWithSpend({ restart: "block" });
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+        const target = path.join(dir, ".claude", "settings.json");
+        const before = fs.readFileSync(target);
+        const file = path.join(dir, ".portulan", "workspace.json");
+        const m = JSON.parse(fs.readFileSync(file, "utf8"));
+        m.portulan.spec = "3.0";
+        fs.writeFileSync(file, JSON.stringify(m));
+        for (const mode of [[], ["--check"], ["--matrix"]]) {
+            assert.equal(run(["--workspace", dir, ...mode], { quiet: true }), 2);
+            assert.deepEqual(fs.readFileSync(target), before);
+        }
+        for (const restart of ["block", "advise"]) {
+            const future = workspaceWithSpend({ restart }, policy(), "2.99");
+            assert.equal(spendDeclaration(future).restart, restart);
+            for (const mode of [[], ["--check"], ["--matrix"]]) {
+                assert.equal(run(["--workspace", future, ...mode], { quiet: true }), 0);
+            }
+        }
+        const withoutRestart = workspaceWithSpend({ horizon: { requests: 30 } }, policy(), "3.0");
+        assert.equal(spendDeclaration(withoutRestart).restart, null);
+        assert.equal(run(["--workspace", withoutRestart], { quiet: true }), 0);
+    });
+
     test("compiled end to end, the commands carry the figures and --check holds them to the manifest", () => {
         const dir = workspaceWithSpend({ multipliers: { read: 0.05, write: { "5m": 1.5, "1h": 2.5 } }, horizon: { requests: 30 } });
         assert.equal(run(["--workspace", dir], { quiet: true }), 0);

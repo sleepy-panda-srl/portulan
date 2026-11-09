@@ -59,16 +59,16 @@ fi
 
 # Built by node, so a JSON encoder escapes any quote or backslash in a path.
 hook_payload() {
-    node -e 'const [session_id, transcript_path, hook_event_name, agent_id] = process.argv.slice(1);
-        process.stdout.write(JSON.stringify({ session_id, transcript_path, hook_event_name, ...(agent_id ? { agent_id } : {}) }))' \
-        "$1" "$root/$2" "$3" "${4:-}"
+    node -e 'const [session_id, transcript_path, hook_event_name, agent_id, active] = process.argv.slice(1);
+        process.stdout.write(JSON.stringify({ session_id, transcript_path, hook_event_name, ...(agent_id ? { agent_id } : {}), ...(active ? { stop_hook_active: active === "true" } : {}) }))' \
+        "$1" "$root/$2" "$3" "${4:-}" "${5:-}"
 }
 
 advisory=0
 # Output goes to a file, never a command substitution, whose subshell would lose advisory=1.
 call_hook() {
-    local mode=$1 event=$2 session=$3 transcript=$4 out=$5 agent=${6:-}
-    hook_payload "$session" "$transcript" "$event" "$agent" | node cli/advisory.mjs "$mode" >"$tmp/$out"
+    local mode=$1 event=$2 session=$3 transcript=$4 out=$5 agent=${6:-} active=${7:-}
+    hook_payload "$session" "$transcript" "$event" "$agent" "$active" | node cli/advisory.mjs "$mode" >"$tmp/$out"
     local status=$?
     if [ "$status" -ne 0 ]; then
         printf '  ✗ advisory: exited %s on %s — a hook must exit 0 on every path, or a UserPromptSubmit blocks the prompt\n' "$status" "$transcript"
@@ -113,6 +113,12 @@ if [ -s "$tmp/after" ]; then
 fi
 if [ -s "$tmp/tool-below" ]; then
     printf '  ✗ advisory: a session below its threshold was told with a tool result: %s\n' "$(cat -- "$tmp/tool-below")"
+    advisory=1
+fi
+stop stop-provoked "$PAST_THRESHOLD" stop-provoked "" true
+stop stop-provoked "$PAST_THRESHOLD" stop-unprovoked "" false
+if [ -s "$tmp/stop-provoked" ] || ! grep -q '^{"decision":"block"' "$tmp/stop-unprovoked"; then
+    printf '  ✗ advisory: a provoked stop was held (%s) or consumed the next ordinary stop (%s)\n' "$(cat -- "$tmp/stop-provoked")" "$(cat -- "$tmp/stop-unprovoked")"
     advisory=1
 fi
 stop stop-past "$PAST_THRESHOLD" stop-first
