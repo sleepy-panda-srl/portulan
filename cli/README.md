@@ -103,6 +103,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`context.test.mjs`](context.test.mjs) | Tests for `context` — what a boot reads and what the host loads into every context, measured. |
 | [`control-chars.test.mjs`](control-chars.test.mjs) | Tests for `control-chars` — the rail on bytes a reader cannot see. |
 | [`discover.test.mjs`](discover.test.mjs) | Tests for host plugin-cache discovery. |
+| [`doctor-lever.test.mjs`](doctor-lever.test.mjs) | Tests for doctor's savings lever. |
 | [`doctor.test.mjs`](doctor.test.mjs) | Tests for `doctor` — workspace validation, branch-owned hybrid usage and static-mode isolation. |
 | [`drills.test.mjs`](drills.test.mjs) | Tests for `drills` — the forced-red drill harness: its table, perturbation guards, pair oracle, hook rails and tree choice. |
 | [`eval-bundle.test.mjs`](eval-bundle.test.mjs) | The evaluation-bundle cutter, driven on this repository AND on real fixture repositories. |

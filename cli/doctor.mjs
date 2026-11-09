@@ -25,10 +25,11 @@ import { isInside, recordType } from "./index.mjs";
 import { parseFrontmatter, AGENT_DIR } from "./plugin-lint.mjs";
 import { resolveGovernor, AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 import { composedId } from "./recipe-set.mjs";
-import { alwaysLine } from "./context.mjs";
+import { alwaysLine, alwaysTier, declaredContext, treeOf, ESTIMATED_BYTES_PER_TOKEN } from "./context.mjs";
+import { movableSections } from "./instructions.mjs";
 import { formLine } from "./form.mjs";
 import { sessionsLine } from "./sessions.mjs";
-import { hostPaths, ledger, print, readSpend, worktrees, linesChanged } from "./ledger.mjs";
+import { hostPaths, ledger, print, readSpend, worktrees, linesChanged, GENERAL_READ, HORIZON } from "./ledger.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -1891,8 +1892,65 @@ export async function inspect(workspaceDir, options = {}) {
         sessions = `not read — ${error.message}`;
     }
     report("sessions", sessions);
+    report("lever", biggestLeverLine(dir, workspace));
 
     return { dir, workspace, findings, stats };
+}
+
+export function demotionCandidates(workspaceDir, workspace) {
+    const root = treeOf(workspaceDir, workspace);
+    if (root === null) return [];
+    const always = alwaysTier(root);
+    if (always.missing.length || always.outside.length || always.tooDeep.length) {
+        throw new DoctorError("the always-tier measurement is incomplete");
+    }
+    const candidates = [];
+    const add = (label, bytes) => {
+        const routing = Buffer.byteLength(`Read ${JSON.stringify(label)} on demand.\n`, "utf8");
+        if (bytes > routing) candidates.push({ label, bytes: bytes - routing, routing });
+    };
+    for (const entry of always.entries) {
+        const rel = path.relative(root, entry.file).split(path.sep).join("/");
+        if (entry.label === "instructions") {
+            for (const section of movableSections(fs.readFileSync(entry.file, "utf8"), entry.file)) {
+                add(`${rel}: ${section.title}`, section.bytes);
+            }
+        } else if (!entry.label.endsWith("description") && entry.file !== always.card && rel !== "core/engine.md") {
+            add(rel, entry.bytes);
+        }
+    }
+    return candidates.sort((a, b) => b.bytes - a.bytes || (a.label < b.label ? -1 : a.label > b.label ? 1 : 0));
+}
+
+export function biggestLeverLine(workspaceDir, workspace, evidence = null) {
+    const limits = "model and cache-lifetime changes unpriced";
+    try {
+        if (workspace.kind === "pointer" || treeOf(workspaceDir, workspace) === null) return `unmeasured — no repository tree; ${limits}`;
+        const ratio = declaredContext(workspace).ratio ?? ESTIMATED_BYTES_PER_TOKEN;
+        const spend = readSpend(workspace.spend, "this workspace");
+        const session = evidence?.restart;
+        const measured = session && [session.fresh, session.context, session.horizon, session.multipliers?.read, session.multipliers?.write].every((v) => Number.isFinite(v) && v > 0);
+        const horizon = measured ? session.horizon : spend.horizon ?? HORIZON;
+        const read = measured ? session.multipliers.read : spend.multipliers?.read ?? GENERAL_READ;
+        const candidates = demotionCandidates(workspaceDir, workspace).map((c) => ({
+            action: `review demoting ${JSON.stringify(c.label)} on demand`,
+            saving: c.bytes / ratio * horizon * read,
+            basis: `${c.bytes} B after ${c.routing} B routing allowance / ${ratio} B per token; assumes unused throughout the horizon`,
+        }));
+        if (measured) candidates.push({
+            action: "review restarting the recorded session",
+            saving: horizon * read * (session.context - session.fresh) - session.multipliers.write * session.fresh,
+            basis: `${horizon} × ${read} × (${session.context} − ${session.fresh}) − ${session.multipliers.write} × ${session.fresh}; resume cost unmeasured`,
+        });
+        const winner = candidates.filter((c) => Number.isFinite(c.saving) && c.saving > 0).sort((a, b) => b.saving - a.saving || (a.action < b.action ? -1 : 1))[0];
+        const assumptions = `${horizon} requests at ${read}× read (${spend.multipliers === null ? "general, undeclared" : "declared"}); ` +
+            `${measured ? "recorded restart compared" : "session-dependent levers not compared"}${evidence?.malformed ? "; partial usage data" : ""}; ${limits}`;
+        return winner
+            ? `biggest lever: ${winner.action} — up to ~${Math.round(winner.saving).toLocaleString("en-US")} estimated input-equivalent tokens; ${winner.basis}; ${assumptions}; review candidates only, not guaranteed session savings`
+            : `no positive measured lever; ${assumptions}`;
+    } catch {
+        return `unmeasured — context or spend inputs are invalid, unreadable or incomplete; session-dependent levers not compared; ${limits}`;
+    }
 }
 
 /** Optional usage accounting: a data failure never changes the workspace-validation verdict. */
@@ -1908,6 +1966,7 @@ export async function workspaceUsageReport(workspaceDir, workspace, options = {}
         const host = hostPaths(options.env ?? process.env, options.home);
         if (host.why !== undefined) return unmeasured("the configured usage-record location is ambiguous");
         const report = ledger({ ...host, roots, branch, lines: linesChanged(repo, branch), spend: readSpend(workspace.spend, "this workspace") });
+        options.onLedger?.({ restart: report.restart, malformed: report.collected.malformed });
         const lines = [];
         if (report.collected.malformed) lines.push(`  note spend      partial data — ${report.collected.malformed} malformed usage line(s) were ignored`);
         if (report.figures.main.requests + report.figures.subagents.requests === 0 && report.local.receipts === 0) {
@@ -2021,16 +2080,17 @@ export async function run(argv, options = {}) {
             };
             const { findings, stats, workspace } = await inspect(dir, { ...options, ...roots });
             const bad = findings.filter((f) => f.severity === "fail");
+            let evidence = null;
+            const usageLines = !staticMode && !options.quiet && !bad.length && workspace
+                ? await workspaceUsageReport(path.resolve(dir), workspace, { ...options, onLedger: (report) => { evidence = report; } }) : [];
             say(display(dir));
-            for (const f of findings) say(`  ${ICON[f.severity]} ${f.check.padEnd(10)} ${f.message}`);
+            for (const f of findings) say(`  ${ICON[f.severity]} ${f.check.padEnd(10)} ${f.check === "lever" && evidence !== null ? biggestLeverLine(path.resolve(dir), workspace, evidence) : f.message}`);
             say(
                 `  ${bad.length ? "RED" : "GREEN"} — ${bad.length} failure(s), ` +
                     `${findings.length - bad.length} note(s), ${stats.claims} claim(s) checked` +
                     (stats.unverifiable ? `, ${stats.unverifiable} unverifiable` : ""),
             );
-            if (!staticMode && !options.quiet && !bad.length && workspace) {
-                for (const line of await workspaceUsageReport(path.resolve(dir), workspace, options)) say(line);
-            }
+            for (const line of usageLines) say(line);
             say();
             if (bad.length) failed += 1;
         }
