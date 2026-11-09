@@ -104,7 +104,7 @@
     },
     {
       "id": "hook:cli/stop-gate.mjs",
-      "sha256": "5abe51decab75ee25cdd79c5ca3aa9d70125dc48f4cb6b07f23f1d45c7d64619",
+      "sha256": "4b4bdd915ab18c09e5d7ce14a63acaabbf669c17fbe9ca3988f57926bf5cbf59",
       "volatile": [
         {
           "kind": "path",

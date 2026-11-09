@@ -257,12 +257,18 @@ The human decides whether guidance can wait,
 supplies its description, and recompiles and measures before/after when applying
 the demotion. The pass changes no guidance, and its measurement keeps the same
 Claude Code project domain and exclusions as `context`; other hosts and full-host
-context remain outside it. **Still to land**: the
-degradation report's half that says which tiers a host can express and the Stop-gate's named demotion, one change at a time, in `0036`'s order
-of work and under row 12 of
-[`../../docs/plan.md`](../../docs/plan.md).
-Until each lands, the rule it would enforce is held by the human gate, and saying so is the point: a rule
-nothing checks, presented as one that something does, is the failure this page exists to prevent.
+context remain outside it. **The tier matrix reports which tiers each host expresses.** The Stop-gate
+now captures recipe failures while the command runs, so later success noise cannot displace an earlier
+failure from the runner's tail. It keeps stdout/stderr line state separate, omits recognized passing,
+skipped and expected-TODO reporter records, and relays recognized failures with
+up to eight following indented detail lines per marker. An unrecognized diagnostic is explicitly
+labeled as fallback; a nonzero exit with only passing lines says no failure diagnostic was identified.
+The excerpt, executor diagnostics and clipping notices fit 4,096 bytes; the whole recipe problem fits
+6,144 bytes, including bounded identity and error text. Full output requires an explicit verification
+run. These are diagnostic excerpts, not a proof that arbitrary output was classified correctly.
+The measured relay reduction does not complete the footprint rails promised by row 12 of
+[`../../docs/plan.md`](../../docs/plan.md), which remains in progress. Unimplemented obligations remain
+held by the human gate rather than described as enforcement.
 
 _(Provenance: proposal `0036`'s sealed incident, in which an adopting repository's always-loaded
 instruction files measured 130k tokens per fresh context, cache writes were most of the spend, and every
