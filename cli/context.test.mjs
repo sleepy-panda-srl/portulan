@@ -648,6 +648,47 @@ describe("a budget is a rail only where it is declared", () => {
     });
 });
 
+test("the recorded budget demonstration reproduces actual red and green CLI verdicts", () => {
+    const script = path.join(HERE, "fixtures/generate-context-budget.mjs");
+    const result = spawnSync(process.execPath, [script], { encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    const recorded = fs.readFileSync(path.join(HERE, "fixtures/context-budget/observations.json"), "utf8");
+    assert.equal(result.stdout, recorded, "the recorded run must agree byte for byte with a fresh execution");
+});
+
+test("the budget demonstration rejects a raise, a missing demotion and a lost guidance body", async () => {
+    const { demonstrateBudget } = await import("./fixtures/generate-context-budget.mjs");
+    assert.throws(() => demonstrateBudget({ repair: ({ manifestFile }) => {
+        const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
+        manifest.context.always.budget.tokens += 1;
+        fs.writeFileSync(manifestFile, JSON.stringify(manifest));
+    } }), /manifest changed/);
+    assert.throws(() => demonstrateBudget({ repair: () => {} }), /must demote the unit to on-read/);
+    assert.throws(() => demonstrateBudget({ repair: ({ unitFile }) => {
+        fs.writeFileSync(unitFile, "---\ntier: on-read\ndescription: An invalid shortened repair.\n---\n\n# Lost guidance\n");
+    } }), /guidance body changed/);
+    assert.throws(() => demonstrateBudget({ repair: ({ unitFile }) => {
+        const text = fs.readFileSync(unitFile, "utf8").replace(/^tier: always$/m, "tier: on-read\ndescription: Changed line endings.");
+        fs.writeFileSync(unitFile, text.replaceAll("\n", "\r\n"));
+    } }), /guidance body changed/);
+});
+
+test("the budget demonstration distinguishes non-budget failures and could-not-run from its expected red", async () => {
+    const { demonstrateBudget } = await import("./fixtures/generate-context-budget.mjs");
+    for (const cause of ["missing-identity", "missing-policy"]) {
+        const copy = tree({});
+        fs.cpSync(path.join(HERE, "fixtures/context-budget/project"), copy, { recursive: true });
+        const file = path.join(copy, ".portulan/workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+        if (cause === "missing-identity") manifest.slots.identity = "missing.md";
+        else manifest.gates = "missing.json";
+        fs.writeFileSync(file, JSON.stringify(manifest));
+        assert.throws(() => demonstrateBudget({ fixtureDir: copy }), cause === "missing-identity"
+            ? /only the declared budget may cause the red/
+            : (error) => error.exitCode === 2, cause);
+    }
+});
+
 describe("a large instruction file is offered the split, in one clause of the line", () => {
     const lineOf = (root) => {
         const ws = path.join(root, ".portulan");
