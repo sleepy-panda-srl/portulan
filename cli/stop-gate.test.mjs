@@ -617,7 +617,7 @@ describe("bounded handoff evidence (#491)", () => {
         const { work } = mergedHandoff();
         const old = new Date();
         old.setUTCDate(old.getUTCDate() - 4);
-        execFileSync("git", ["-c", "commit.gpgsign=false", "commit", "--amend", "--only", "--no-edit"], {
+        execFileSync("git", ["-c", "user.name=portulan-test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", "commit", "--amend", "--only", "--no-edit"], {
             cwd: work, env: { ...process.env, GIT_COMMITTER_DATE: old.toISOString() }, stdio: "pipe",
         });
         git(work, ["push", "-q", "--force-with-lease"]);
