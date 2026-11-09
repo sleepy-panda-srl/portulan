@@ -303,6 +303,12 @@ describe("the join puts each moved section back where its marker is", () => {
         const held = Buffer.byteLength(last.text.slice(last.text.indexOf("---\r\n\r\n", 3) + 7));
         assert.match(joinLine(unended.joined.units.find((u) => u.source === last.source), "CLAUDE.md"), new RegExp(`^\\S+: ${held} B go back`), "whose bytes the join counts as they are");
         assert.equal(unended.joined.files[0].after, crlf.replace(`${ON_READ_MARK}\r\n\r\n`, "").replace(`${ON_READ_MARK}\r\n`, ""));
+        const lfUnended = FILE.replace(/\n$/, "");
+        const noLf = joinAfter(undefined, lfUnended);
+        const lastLf = noLf.planned.units.find((u) => u.text.endsWith(`\n${unendedLine}`));
+        assert.ok(lastLf, "the LF unit ends with the file's last line and no line end");
+        assert.match(joinLine(noLf.joined.units.find((u) => u.source === lastLf.source), "CLAUDE.md"), new RegExp(`^\\S+: ${section(lastLf.text)} B go back`), "the join counts the LF section's bytes as they are");
+        assert.equal(noLf.joined.files[0].after, lfUnended.replace(`${ON_READ_MARK}\n\n`, "").replace(`${ON_READ_MARK}\n`, ""));
         // A CRLF file whose Build section alone is LF: that section goes back LF, as the move took it.
         const lines = FILE.split("\n");
         const [build, style] = [lines.indexOf("## Build"), lines.indexOf("## Style")];
