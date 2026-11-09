@@ -48,3 +48,19 @@ The reviewer verified all 19 demo files and six boot inputs against the pinned
 release commits and remeasured both rosters. Strict plugin validation and the
 private seam scan passed. Host installation, host loading timing, exact tokens
 and milestone closure remain undemonstrated. Final finish and CI follow.
+
+**CI repair.** Linux CI exposed a display-path difference: the child process's
+canonical working directory differed from macOS's aliased temporary path. A new
+real-versus-aliased-root regression failed before canonicalizing the scratch root.
+Both root spellings now reproduce the same migration stdout on macOS. Repaired
+Linux CI and Windows execution remain unobserved. Only the recorded display path changes; every measured byte and
+digest is unchanged. A whole-diff independent re-review follows before pushing
+this repair to the existing PR.
+
+**Repair review.** Independent `/root/checkpoint_511_precommit` returned
+APPROVE-WITH-ADJUSTMENTS over `34ecf5cc80dc7131ffd748b9a286872b0187b399`:
+all 31 recipes and 3,513 tests passed. The only adjustment bounds the platform
+observation above. The reviewer saw the new regression fail old source and pass
+repaired source, reverified the pinned inputs and twelve attacks, and checked
+the whole PR and repair message against the private seam. Final finish and Linux
+CI follow this record-only fold's independent grade.

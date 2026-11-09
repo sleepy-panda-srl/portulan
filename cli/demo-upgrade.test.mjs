@@ -2,10 +2,33 @@
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { demonstrateUpgrade, INPUTS, replaceBundle } from "./fixtures/generate-demo-upgrade.mjs";
 
 const recorded = new URL("./fixtures/demo-upgrade/observations.json", import.meta.url);
+
+test("migration evidence is identical through real and aliased temporary roots", () => {
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-demo-roots-"));
+    const alias = `${root}-alias`;
+    try {
+        fs.symlinkSync(root, alias, "junction");
+        const observe = (tempRoot) => {
+            const result = spawnSync(process.execPath, [fileURLToPath(new URL("./fixtures/generate-demo-upgrade.mjs", import.meta.url))], {
+                env: { ...process.env, TMPDIR: tempRoot, TMP: tempRoot, TEMP: tempRoot }, encoding: "utf8",
+            });
+            assert.equal(result.status, 0, result.stderr);
+            return result.stdout;
+        };
+        assert.equal(observe(root), observe(alias));
+    } finally {
+        fs.rmSync(alias, { force: true });
+        fs.rmSync(root, { recursive: true, force: true });
+    }
+});
 
 test("pinned demo bundle upgrade reproduces both rosters and a separate migration no-op", () => {
     const result = demonstrateUpgrade();
