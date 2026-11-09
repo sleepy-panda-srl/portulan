@@ -22,6 +22,8 @@ import { isInside } from "./inside.mjs";
 
 /** Every network mode in cli/ or a pack (named from `<category>/<name>/`); a new one is unrailed until it has a row here. */
 export const NETWORK_MODES = Object.freeze([
+    { module: "cli/context.mjs", flag: "--count-tokens", what: "sends measured project source to Anthropic's token counter" },
+    { module: "cli/doctor.mjs", flag: "--count-tokens", aliases: [{ module: "cli/portulan.mjs", subcommand: "doctor" }, { module: "portulan", subcommand: "doctor" }, { module: "@sleepy_panda_srl/portulan", subcommand: "doctor" }], what: "requests a provider token estimate" },
     { module: "cli/review-meter.mjs", flag: "--fetch", what: "fetches review data from GitHub" },
     { module: "cli/telemetry.mjs", flag: "--export", what: "posts an OTLP payload to a collector" },
     { module: "cli/feedback.mjs", flag: "--approve", what: "files a GitHub issue with `gh issue create`" },
@@ -40,7 +42,7 @@ export const LOCAL_RECORD_MODES = Object.freeze([
     { module: "portulan", subcommand: "doctor", requiresStatic: "--static", what: "dispatches to the local usage-record reader" },
 ]);
 
-export const modeSpelling = (m) => m.requiresStatic ? `${m.module}${m.subcommand ? ` ${m.subcommand}` : ""} without an immediate ${m.requiresStatic}` : (m.flag ? `${m.module} ${m.flag}` : `${m.module} with anything but ${m.unless} alone${m.alsoUnless ? ` or ${m.alsoUnless.join(" ")} alone` : ""}`);
+export const modeSpelling = (m) => m.requiresStatic ? `${m.module}${m.subcommand ? ` ${m.subcommand}` : ""} without an immediate ${m.requiresStatic}` : (m.flag ? [m, ...(m.aliases ?? [])].map((s) => `${s.module}${s.subcommand ? ` ${s.subcommand}` : ""} ${m.flag}`).join(", ") : `${m.module} with anything but ${m.unless} alone${m.alsoUnless ? ` or ${m.alsoUnless.join(" ")} alone` : ""}`);
 
 /** Whole-line comments only: a trailing `#` may sit inside a quote. */
 export const stripShellComments = (source) =>
@@ -51,14 +53,14 @@ export const stripShellComments = (source) =>
 
 const shellTokens = (body) => body.split(/\s+/).map((t) => t.replace(/^[("'`]+/, "").replace(/[)"'`;]+$/, "")).filter(Boolean);
 
-const tokenNamesModule = (token, module) => token === module || token.endsWith(`/${module}`);
+const tokenNamesModule = (token, module) => token === module || token.endsWith(`/${module}`) || (module.startsWith("@") && token.startsWith(`${module}@`));
 
 const tokenIsFlag = (token, flag) => token === flag || token.startsWith(`${flag}=`);
+const shellSource = (source) => stripShellComments(source).replace(/\\\r?\n/g, "");
 
 /** An `unless` row passes only where every invocation is the module and its one safe flag, alone on its command. */
 const onlySafeInvocations = (source, m) =>
-    stripShellComments(source)
-        .replace(/\\\n/g, " ")
+    shellSource(source)
         .split(/\n|;|&&?|\|\|?|\$\(|<\(|>\(|`/)
         .every((segment) => {
             const tokens = shellTokens(segment);
@@ -66,8 +68,7 @@ const onlySafeInvocations = (source, m) =>
             return tokens.every((t, i) => !tokenNamesModule(t, m.module) || ((tokens.length === i + 2 && tokens[i + 1] === m.unless) || (m.alsoUnless && JSON.stringify(tokens.slice(i + 1)) === JSON.stringify(m.alsoUnless))));
         });
 
-const onlyStaticInvocations = (source, mode) => stripShellComments(source)
-    .replace(/\\\n/g, " ")
+const onlyStaticInvocations = (source, mode) => shellSource(source)
     .split(/\n|;|&&?|\|\|?|\$\(|<\(|>\(|`/)
     .every((segment) => {
         const words = shellTokens(segment);
@@ -78,9 +79,9 @@ const onlyStaticInvocations = (source, mode) => stripShellComments(source)
     });
 
 export function auditRecipeSource(source) {
-    const tokens = shellTokens(stripShellComments(source));
+    const tokens = shellTokens(shellSource(source));
     const network = NETWORK_MODES.filter((m) =>
-        m.flag ? tokens.some((t) => tokenNamesModule(t, m.module)) && tokens.some((t) => tokenIsFlag(t, m.flag)) : !onlySafeInvocations(source, m),
+        m.flag ? [m, ...(m.aliases ?? [])].some((s) => tokens.some((t, i) => tokenNamesModule(t, s.module) && (!s.subcommand || tokens[i + 1] === s.subcommand))) && tokens.some((t) => tokenIsFlag(t, m.flag)) : !onlySafeInvocations(source, m),
     );
     const local = LOCAL_RECORD_MODES.filter((m) => !onlyStaticInvocations(source, m));
     return [...network, ...local];
@@ -114,9 +115,10 @@ export function auditRecipes({ workspaceDir, repoRoot, packRoots = [] }) {
     const read = [];
     for (const r of recipes) {
         const words = String(r.run ?? "").split(/\s+/).filter(Boolean);
-        // A run line that is itself a `node` invocation is the whole shell text the recipe runs, so it is graded as read.
-        const direct = words[0] === "node" && !words.some((t) => t.endsWith(".sh"));
-        const script = direct ? words.find((t) => /\.[cm]?js$/.test(t)) : words.find((t) => t.endsWith(".sh"));
+        // Direct CLI commands are graded as shell text; referenced shell scripts are read too.
+        const bare = words[0] === "portulan";
+        const direct = bare || (words[0] === "node" && !words.some((t) => t.endsWith(".sh")));
+        const script = bare ? "cli/portulan.mjs" : direct ? words.find((t) => /\.[cm]?js$/.test(t)) : words.find((t) => t.endsWith(".sh"));
         if (!script) {
             return { ok: false, why: `recipe ${JSON.stringify(r.id)} has no readable script in its run line (${JSON.stringify(r.run ?? null)}); this audit cannot grade what it cannot read` };
         }
@@ -131,7 +133,10 @@ export function auditRecipes({ workspaceDir, repoRoot, packRoots = [] }) {
             return { ok: false, why: `recipe ${JSON.stringify(r.id)} names ${script}, which could not be read — ${cause.message}` };
         }
         read.push(r.id);
-        for (const hit of auditRecipeSource(direct ? r.run : source)) findings.push({ recipe: r.id, script, ...hit });
+        const hits = [...auditRecipeSource(r.run), ...(direct ? [] : auditRecipeSource(source))];
+        for (const [i, hit] of hits.entries()) {
+            if (!hits.slice(0, i).some((previous) => previous.module === hit.module && previous.flag === hit.flag && previous.requiresStatic === hit.requiresStatic)) findings.push({ recipe: r.id, script, ...hit });
+        }
     }
     return { ok: true, examined: read, findings };
 }

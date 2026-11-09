@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// What a context loads, measured: what a boot reads in full, and what the host loads into every context.
+// Measure boot reads and the project's always tier.
 //
 //   node cli/context.mjs --workspace <dir> [--repo <card>] [--rail <name>=<bytes>]...
-//   node cli/context.mjs --workspace <dir> --brief
+//   node cli/context.mjs --workspace <dir> --brief | --count-tokens <model>
 //
 // Exit 0 within every rail and declared budget · 1 a rail or budget exceeded · 2 could not run or judge a declared budget.
 
@@ -142,7 +142,7 @@ export function declaredContext(manifest) {
         throw new ContextError(`context.ratio.bytes_per_token is ${shown(bytesPerToken)}, not a finite number of at least 1`);
     }
     if (typeof ratio.calibrated_by !== "string" || ratio.calibrated_by === "") {
-        throw new ContextError(`context.ratio.calibrated_by is ${shown(ratio.calibrated_by)}, not the id of the host whose exact count calibrated the ratio`);
+        throw new ContextError(`context.ratio.calibrated_by is ${shown(ratio.calibrated_by)}, not a non-empty compile-host calibration ID`);
     }
     let budget = null;
     if (context.always !== undefined) {
@@ -372,12 +372,26 @@ function walkMarkdown(dir, kept) {
     return out;
 }
 
-export function alwaysTier(repoRoot) {
+export function alwaysTier(repoRoot, { includeText = false } = {}) {
     const entries = [];
     const missing = [];
     const outside = [];
     const tooDeep = [];
     const seen = new Set();
+    const captured = new Map();
+    const source = (file) => {
+        if (!includeText) return { text: readText(file, file), bytes: sizeOf(file, file) };
+        const real = realOf(file);
+        if (!captured.has(real)) {
+            let raw;
+            try { raw = fs.readFileSync(file); }
+            catch { throw new ContextError("an always-tier source could not be read"); }
+            const text = raw.toString("utf8");
+            if (!Buffer.from(text, "utf8").equals(raw)) throw new ContextError("an always-tier source is not valid UTF-8");
+            captured.set(real, { text, bytes: raw.length });
+        }
+        return captured.get(real);
+    };
 
     // Judged on real paths: a link out of the repository is named, never opened, since it is not this repository's to measure.
     const realRoot = realOf(repoRoot);
@@ -394,13 +408,14 @@ export function alwaysTier(repoRoot) {
         while (queue.length) {
             const { file, label, depth, scoped } = queue.shift();
             const real = realOf(file);
+            const { text, bytes } = source(file);
             if (!(scoped && depth === 0)) {
                 if (seen.has(real)) continue;
                 seen.add(real);
                 const imported = `import, depth ${depth}${scoped ? ", of a path-scoped rule" : ""}`;
-                entries.push({ label: depth === 0 ? label : imported, file, bytes: sizeOf(file, file) });
+                entries.push({ label: depth === 0 ? label : imported, file, bytes, ...(includeText ? { text } : {}) });
             }
-            for (const { target } of measuredImports(readText(file, file), file)) {
+            for (const { target } of measuredImports(text, file)) {
                 const bare = importPath(target);
                 if (bare === null) continue;
                 const spelled = `@${target} (in ${path.relative(repoRoot, file)})`;
@@ -438,7 +453,7 @@ export function alwaysTier(repoRoot) {
     const unscoped = [];
     const pathScoped = [];
     for (const file of walkMarkdown(path.join(repoRoot, ".claude", "rules"), kept)) {
-        const text = readText(file, file);
+        const { text } = source(file);
         const { fields } = parseFrontmatter(text);
         if (fields && Object.hasOwn(fields, "paths")) {
             scoped += 1;
@@ -453,12 +468,12 @@ export function alwaysTier(repoRoot) {
     // The host lists a skill's, command's or agent's description in every context, and loads the body when it is invoked.
     let unlisted = 0;
     const describe = (file, label) => {
-        const description = descriptionOf(readText(file, file));
+        const description = descriptionOf(source(file).text);
         if (description === null) {
             unlisted += 1;
             return;
         }
-        entries.push({ label, file, bytes: Buffer.byteLength(description, "utf8") });
+        entries.push({ label, file, bytes: Buffer.byteLength(description, "utf8"), ...(includeText ? { text: description } : {}) });
     };
     const skills = path.join(repoRoot, ".claude", "skills");
     if (isDir(skills) && kept(skills)) {
@@ -477,6 +492,72 @@ export function alwaysTier(repoRoot) {
     }
 
     return { entries, scoped, unlisted, missing, outside, tooDeep, card };
+}
+
+export function countRoot(workspaceDir) {
+    let manifest;
+    try { manifest = readManifest(workspaceDir); }
+    catch { throw new ContextError("provider counting needs a readable, valid JSON workspace manifest"); }
+    if (!WORKSPACE_KINDS.includes(manifest.kind)) throw new ContextError("provider counting needs a supported governing workspace kind");
+    try { declaredContext(manifest); }
+    catch { throw new ContextError("provider counting needs a valid workspace context declaration"); }
+    let root;
+    try { root = treeOf(workspaceDir, manifest); }
+    catch { throw new ContextError("provider counting needs a readable repository tree"); }
+    if (root === null) throw new ContextError("provider counting needs a measurable repository tree");
+    return root;
+}
+
+export async function countAlways(workspaceDir, { model, env = process.env, fetch = globalThis.fetch, timeoutMs = 30_000 } = {}) {
+    if (typeof model !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/.test(model)) throw new ContextError("--count-tokens needs an explicit provider model ID");
+    if (env.CI) throw new ContextError("provider token counting is unavailable in CI; verify recipes stay offline");
+    const root = countRoot(workspaceDir);
+    let always;
+    try { always = alwaysTier(root, { includeText: true }); }
+    catch (error) { throw new ContextError(error instanceof ContextError && error.message.includes("UTF-8") ? "an always-tier source is not valid UTF-8" : "always-tier sources or imports could not be measured"); }
+    if (always.missing.length || always.outside.length || always.tooDeep.length) throw new ContextError("always-tier imports are missing, outside the measured tree or too deep; no provider request made");
+    const bytes = always.entries.reduce((sum, entry) => sum + entry.bytes, 0);
+    const result = { provider: "Anthropic", model, bytes, tokens: null, ratio: null, files: always.entries.map((entry) => path.relative(root, entry.file)) };
+    if (!bytes) return result;
+    const key = env.ANTHROPIC_API_KEY;
+    if (typeof key !== "string" || !key || /\s/.test(key)) throw new ContextError("ANTHROPIC_API_KEY is required for provider counting");
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) throw new ContextError("provider timeout must be a positive whole number of milliseconds");
+    const controller = new AbortController();
+    let timer;
+    const expired = new Promise((_, reject) => {
+        timer = setTimeout(() => { controller.abort(); reject(new ContextError("provider token count timed out")); }, timeoutMs);
+    });
+    try {
+        const load = async () => {
+            let response;
+            try {
+                response = await fetch("https://api.anthropic.com/v1/messages/count_tokens", {
+                    method: "POST", redirect: "error", signal: controller.signal,
+                    headers: { "Content-Type": "application/json", "anthropic-version": "2026-10-21", Authorization: `Bearer ${key}` },
+                    body: JSON.stringify({ model, messages: [{ role: "user", content: always.entries.filter((entry) => entry.bytes).map((entry) => ({ type: "text", text: entry.text })) }] }),
+                });
+            } catch { throw new ContextError("provider token count request failed"); }
+            if (response.redirected) throw new ContextError("provider token count redirect refused");
+            if (!response.ok) throw new ContextError(`provider token count failed (HTTP ${Number.isInteger(response.status) ? response.status : "unavailable"})`);
+            let body;
+            try { body = await response.json(); }
+            catch { throw new ContextError("provider returned an invalid token count response"); }
+            if (!Number.isSafeInteger(body?.input_tokens) || body.input_tokens <= 0) throw new ContextError("provider input_tokens is not a positive safe integer token count");
+            return body.input_tokens;
+        };
+        const tokens = await Promise.race([load(), expired]);
+        return { ...result, tokens, ratio: bytes / tokens };
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+export function countLine(result) {
+    if (!result.bytes) return "project always corpus: empty (0 B); no request made and no ratio available";
+    return `${result.provider} provider estimate (${result.model}): ${result.tokens} input tokens for ${result.bytes} B of measured project source; ` +
+        `effective ratio ${result.ratio.toFixed(6)} B/token${result.ratio < 1 ? " (below the manifest's minimum; not declarable)" : " (approximate; assess manually before declaring a host ratio)"}. ` +
+        "API framing/system-added tokens may be included; actual host usage may differ. No manifest written. " +
+        "Excludes personal/global instructions, auto-memory, system/tools/MCP, plugin descriptions, scoped-rule bodies and on-invoke bodies.";
 }
 
 export function pluginDescriptions(bundleRoot = BUNDLE_ROOT) {
@@ -722,17 +803,20 @@ function printable(text) {
 // ===========================================================================================
 
 function parseArgs(argv) {
-    const options = { workspace: null, repo: null, rails: new Map(), brief: false };
+    const options = { workspace: null, repo: null, rails: new Map(), brief: false, countModel: null };
     for (let i = 0; i < argv.length; i += 1) {
         const flag = argv[i];
         if (flag === "--brief") {
             if (options.brief) throw new ContextError("--brief is given twice");
             options.brief = true;
-        } else if (flag === "--workspace" || flag === "--repo" || flag === "--rail") {
+        } else if (flag === "--workspace" || flag === "--repo" || flag === "--rail" || flag === "--count-tokens") {
             const value = argv[i + 1];
             i += 1;
             if (value === undefined) throw new ContextError(`${flag} needs a value`);
-            if (flag === "--workspace") options.workspace = value;
+            if (flag === "--count-tokens") {
+                if (options.countModel !== null) throw new ContextError("--count-tokens is given twice");
+                options.countModel = value;
+            } else if (flag === "--workspace") options.workspace = value;
             else if (flag === "--repo") options.repo = value;
             else {
                 const match = /^([a-z]+)=([1-9]\d*)$/.exec(value);
@@ -747,17 +831,23 @@ function parseArgs(argv) {
         }
     }
     if (options.workspace === null) throw new ContextError("--workspace <dir> is required: the directory holding workspace.json");
+    if (options.countModel !== null && (options.brief || options.repo !== null || options.rails.size)) throw new ContextError("--count-tokens is a separate provider report; omit --brief, --repo and --rail");
     if (options.brief && (options.repo !== null || options.rails.size)) {
         throw new ContextError("--brief prints the always tier's line, which judges no rail and reads no card — run without it to use --repo or --rail");
     }
     return options;
 }
 
-export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { bundleRoot = BUNDLE_ROOT, cwd = process.cwd() } = {}) {
+export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { bundleRoot = BUNDLE_ROOT, cwd = process.cwd(), countOptions = {} } = {}) {
     let options;
     let result;
     try {
         options = parseArgs(argv);
+        if (options.countModel !== null) {
+            return countAlways(path.resolve(cwd, options.workspace), { ...countOptions, model: options.countModel })
+                .then((result) => { say(countLine(result)); return 0; })
+                .catch((error) => { say(`  ✗ ${error instanceof ContextError ? error.message : "provider token count could not run"}`); return 2; });
+        }
         if (options.brief) {
             const workspaceDir = path.resolve(cwd, options.workspace);
             const { verdict, line } = alwaysLine(workspaceDir, readManifest(workspaceDir), { bundleRoot });
@@ -880,7 +970,7 @@ export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { b
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     // `process.exitCode` rather than `process.exit`, so a pipe that has not drained is not cut short.
     try {
-        process.exitCode = run(process.argv.slice(2));
+        process.exitCode = await run(process.argv.slice(2));
     } catch (cause) {
         process.stderr.write(
             `context: could not run — ${cause?.stack ?? cause}\n` +

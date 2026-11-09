@@ -341,17 +341,17 @@
           }
         },
         "ratio": {
-          "description": "How bytes become tokens. Declared, and measured exactly on demand rather than on every run: the exact count asks the host, which is a network call no verify recipe may make, and a ratio that moved between runs would make one tree red on one run and green on the next.",
+          "description": "How bytes become tokens. Manually declared for a compile host rather than recalibrated on every run. The on-demand provider counter returns an estimate of the measured project corpus, including API framing, not actual host usage; the maintainer accepted this limit for #506 on 2026-11-09. No verify recipe may invoke the network mode.",
           "type": "object",
           "additionalProperties": false,
           "required": ["bytes_per_token", "calibrated_by"],
           "properties": {
             "bytes_per_token": {
-              "description": "Bytes per token, as the host's exact count measured them. At least 1: a token covers at least one byte, so a smaller figure is tokens per byte entered inverted, and `doctor` refuses it, since the subset has no `minimum`.",
+              "description": "Manually assessed bytes per token for the host's measured domain. At least 1, guarding against inverted units; doctor refuses a smaller declaration because the subset has no minimum. A tiny corpus counted with API framing can yield an effective ratio below this floor, which the provider report labels not declarable.",
               "type": "number"
             },
             "calibrated_by": {
-              "description": "The host whose exact count calibrated the ratio, by the id `compile` gives that host. No date is recorded here: the commit that changes the ratio dates it.",
+              "description": "The compile host whose measurement domain the manually declared ratio describes, by its compile ID. Provider/model attribution stays in the count report; it is not a new compile host. Doctor checks a non-empty string, not the calibration's provenance. The commit that changes the ratio dates it.",
               "$ref": "#/$defs/slug"
             }
           }

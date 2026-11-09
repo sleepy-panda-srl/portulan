@@ -173,3 +173,8 @@ channels in the order to try them, what is in scope, and what response you can a
 ## License
 
 [Apache-2.0](LICENSE) © 2026 Sleepy Panda SRL. See [`NOTICE`](NOTICE).
+
+`portulan doctor --count-tokens MODEL_ID .portulan` optionally sends the measured project always corpus
+to Anthropic for a provider token estimate, using `ANTHROPIC_API_KEY` from the environment. The
+[counting boundary](core/operating/context.md#the-always-tier-is-budgeted-in-tokens) explains exclusions,
+manual ratio assessment and why the estimate is not actual complete host usage. Verification remains offline.

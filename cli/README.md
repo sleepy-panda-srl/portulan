@@ -50,7 +50,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`ab-run.mjs`](ab-run.mjs) | The A/B runner: spawns the agent turns of both arms and records the baseline they measure. Not shipped. |
 | [`ab.mjs`](ab.mjs) | The A/B arm builder — what "Portulan on" is made of, built rather than described. Not shipped. |
 | [`comments.mjs`](comments.mjs) | `comments` — the comments in a tree that record a change's history instead of what the code cannot show. |
-| [`context.mjs`](context.mjs) | What a context loads, measured: what a boot reads in full, and what the host loads into every context. |
+| [`context.mjs`](context.mjs) | Measure boot reads and the project's always tier. |
 | [`control-chars.mjs`](control-chars.mjs) | `control-chars` — the rail on bytes a reader cannot see. |
 | [`discover.mjs`](discover.mjs) | Host plugin-cache discovery: reads a host's installed-plugin record to resolve a pointer and find pack roots. |
 | [`drills.mjs`](drills.mjs) | The forced-red drill harness — every rail broken on purpose, and required to fire. |
@@ -101,6 +101,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`collisions.test.mjs`](collisions.test.mjs) | The collision contract: `init`, `new` and `vendor` answer each contracted state alike, and no fourth `collisions` exists. |
 | [`comments.test.mjs`](comments.test.mjs) | Tests for `comments`: each language's comments found exactly, and the four kinds of history told from the rest. |
 | [`compile.test.mjs`](compile.test.mjs) | Tests for `compile` — the enforcement compiler. |
+| [`context-count.test.mjs`](context-count.test.mjs) | On-demand provider counts preserve the measured corpus and remain outside offline verification. |
 | [`context.test.mjs`](context.test.mjs) | Tests for `context` — what a boot reads and what the host loads into every context, measured. |
 | [`control-chars.test.mjs`](control-chars.test.mjs) | Tests for `control-chars` — the rail on bytes a reader cannot see. |
 | [`demo-upgrade.test.mjs`](demo-upgrade.test.mjs) | The demo's pinned bundle replacement reproduces its boot reduction without changing its workspace. |

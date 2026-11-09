@@ -713,8 +713,8 @@ one source for what each load tier holds; this object is its machine half, as `m
 | Field | What it is |
 |---|---|
 | `always.budget.tokens` | The most tokens the always tier may load, counted at the ratio below. |
-| `ratio.bytes_per_token` | Bytes per token, as a host's exact count measured them. At least 1. |
-| `ratio.calibrated_by` | The host whose exact count calibrated the ratio, by the id `compile` gives it: `claude-code`. |
+| `ratio.bytes_per_token` | Manually declared bytes per token for the host's measured domain. At least 1; provider estimates are qualified below. |
+| `ratio.calibrated_by` | The compile host whose measurement domain the ratio describes, by its ID: `claude-code`. Provider/model provenance belongs in the count report. |
 
 ```json
 "context": {
@@ -729,18 +729,26 @@ it. Those are dependencies the subset can state, so they are the schema's and jo
 conditionals. A ratio alone is a legitimate shape: it is what a report in tokens needs, and the default
 is the report.
 
-**Declared, not measured per run.** The exact count asks the host, which is a network call no verify
-recipe may make, and a ratio that moved between runs would make one tree red on one run and green on the
-next. So the ratio is measured exactly on demand and declared, with the host that measured it. There is no
-date field, because the commit that changes the ratio dates it, and one ratio rather than one per host,
-because nothing yet reads a second.
+**Declared, not measured per run.** On-demand counting is a network call no verify recipe may make,
+and a ratio that moved between runs would make one tree red on one run and green on the next. There is
+no date field, because the commit that changes the ratio dates it, and one ratio rather than one per
+host, because nothing yet reads a second.
+
+For [#506](https://github.com/sleepy-panda-srl/portulan/issues/506), Marius accepted “Provider count with
+stated limit” on 2026-11-09. `doctor --count-tokens MODEL_ID` and the direct context diagnostic submit
+the measured project corpus to Anthropic, which returns an estimate that may differ from actual host
+usage and includes API framing. The effective ratio is approximate and manual; neither command writes
+this object or invents a `calibrated_by` provider ID. An empty corpus produces no request or ratio.
+The original exact-host wording is historical acceptance, not a claim of current host integration.
+See [the counting boundary](../core/operating/context.md#the-always-tier-is-budgeted-in-tokens).
 
 **Named for its tier.** Only the always tier is budgeted, and the budget sits under `always` so a budget
 on a later tier would sit beside it rather than force a rename, which would be a MAJOR.
 
 **Nothing is defaulted**, on memory's rule: an undeclared budget is not checked. `doctor` refuses a
 declared token budget that is not a positive integer, as it refuses the memory budgets, and a ratio under
-1, because a token covers at least one byte and a smaller figure is tokens per byte entered inverted.
+1, guarding against inverted units. Provider framing can put a tiny corpus below that floor; such a
+ratio is reported but cannot be declared.
 Both are `doctor`'s because the subset has no `minimum` and cannot say `integer`. `doctor` also refuses
 `context` in a manifest declaring a version before 2.9, whose own validator refuses it as unknown: the
 key is gated from birth, when no manifest can newly fail the check.
