@@ -4,8 +4,9 @@
 > loads into every context is paid for again by every fresh context: each session, subagent, checkpoint
 > and persona. So guidance sits in load tiers, the always tier is budgeted like memory, and a demotion
 > is measured before and after. `loop.md` manages the window while a task runs; this page governs what
-> the host loads into it, and when. _(Proposal
-> [`0036`](../../.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md).)_
+> the host loads into it, and when, then [what a change spends](#what-a-change-spends). _(Proposals
+> [`0036`](../../.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md) and
+> [`0038`](../../.portulan/proposals/0038-what-a-change-spends-is-measured.md).)_
 
 ## Four load tiers
 
@@ -84,7 +85,7 @@ Prefer moving content to a later tier over deleting it, keep one source per fact
 after. **A demotion states both figures.**
 
 **What this does not ask for**: a defaulted workspace rail, lossy compression, a codebase vector index,
-switching model or effort mid-session, output-shortening tricks, or any change to a host. Portulan
+output-shortening tricks, or any change to a host. Portulan
 compiles to what hosts load and does not change how they load it.
 
 ## Every request pays for what the session has read
@@ -148,70 +149,6 @@ each section's anchor and size, the same way. It prints from the file as it is, 
 go stale. Nothing checks that a session outlined first; what the rule saves is measured by rerunning a
 task, never by a recipe, which may not read the host's usage records.
 
-## A local model runs without the host floor
-
-A model served on the machine itself costs nothing per token, so `0038`'s dollar arithmetic gives it no
-restart threshold. What it does cost is time to prefill, memory for each context it holds, and recall that
-still sags in a long context. And every turn it takes is a turn the parent session does not send again on
-each request after. So a local model is called as a context firewall, and four rules hold it:
-
-1. **A local worker runs without the host floor (`omitClaudeMd`) and under a hard input-byte ceiling.** It
-   is given one bounded input: a symbol span from [`cli/symbols.mjs`](../../cli/symbols.mjs), a file under
-   300 lines, a diff, or a log to compress, and never the parent session's instruction files. A prompt over
-   the ceiling is refused before a socket opens. _Why: a host floor of 44k to 85k tokens is prefilled into
-   a local model's cache on every cold context, where `0039` measured prompts of about 400 to 470 tokens
-   prefilling in 0.85 to 1.88 seconds._
-2. **Thinking effort is set explicitly at invocation**: low or off for a mechanical transform, bounded for
-   prose or review, never left to the chat template's default. _Why: one template `0039` read sets
-   reasoning effort to `xhigh` unless thinking is switched off, and under a 1,500-token cap that model
-   returned no answer on any of three tasks, every token spent thinking; at low effort it passed both
-   tasks it was rerun on._
-3. **A local edit is kept only on its verify command's exit `0`.** The runner applies the edit and runs the
-   command. On exit `0` one receipt line is all that enters the parent context (`0038` rule 5). On exit `1`
-   after its retries, or at once on any other exit, which is no verdict, it restores the file's original
-   bytes, and it does the same on SIGINT, SIGTERM and SIGHUP. **This is a rollback, not an atomic write**:
-   the verify needs the edited file in place, so any other signal that ends the runner, SIGKILL and SIGQUIT
-   among them, or a power loss between the edit and its verdict leaves the edit, and a transform with no
-   receipt is unverified. _Why not atomic: a scratch worktree would judge the last commit plus the edit
-   rather than the working copy plus the edit, would lack the untracked files a verify reads, and moving
-   the edit back after exit `0` would not be atomic either (`0039` ruling 4)._
-4. **Loopback is a rail, and routing is earned.** A local runner refuses an endpoint outside loopback
-   (`127.0.0.1`, `localhost`, `[::1]`) unless leaving it is proposed and approved. A screen grades an
-   installed model once per task against Portulan's own predicates, from
-   [`cli/comments.mjs`](../../cli/comments.mjs), [`cli/doctor.mjs`](../../cli/doctor.mjs) and
-   [`cli/skill-goldens.mjs`](../../cli/skill-goldens.mjs), and a model that fails it is not routed. Passing
-   it earns nothing. A role is routed to a local model by an A/B record under `0038` rule 4: the local model
-   as routed against the host's model on the same tasks, `k` runs per cell, captured once and railed to its
-   register in `evals/ab/`. _Why: an endpoint off the machine sends workspace context away under a local
-   tool's name, and the screen takes one sample per task with no baseline arm, while a cheaper model for a
-   role is earned by an A/B run, never assumed (`0039` ruling 5)._
-
-**What the runner holds today.** The [`tools/local-llm`](../../packs/tools/local-llm/README.md) pack's
-runner holds rules 1 to 3 and rule 4's loopback rail for the calls it makes. It sends the model its own
-short instructions and the input it was given, with the end of a red verify's output on a retry, and
-nothing else. It refuses a prompt over its ceiling before a socket opens, names the effort on every chat
-request, low unless set, requires a verify command for an edit and rolls back as rule 3 says, and refuses
-a host off loopback and a redirect away from it. Which inputs it is given is the caller's: only their
-bytes are checked. `--allow-remote` lifts the loopback rail on the caller's word, and the pack's
-`local-llm-off-loopback` gate has no matcher, so approval to leave loopback is the human's. Its `eval`
-subcommand is the screen. Its `runner-rails` recipe holds the loopback and ceiling refusals and the
-rollback on a red or no-verdict verify offline, with no network call; the rollback on a signal is held by
-the runner's tests. This repository composes the pack and registers its skill; the ledger reports local
-receipts beside the host's tokens. `doctor` includes that branch-owned usage report by default,
-with unavailable data reported as unmeasured; `--static` omits usage-record discovery for verification.
-The [captured A/B](../../evals/ab/local-worker.md) supports code
-at low effort (L5/H5), while shared prose is disabled because codify scored L0/H3, despite handoff's
-L5/H5. Operational defaults and explicit roles require the measured model at low effort; explicit
-model-only calls remain candidates. The record and register are regraded and byte-compared in CI,
-with shipped routing rederived from their turns. The `local-worker` persona declares
-`omitClaudeMd: true` and `effort: low`, and `compile` writes both into a workspace's binding against a
-committed golden.
-
-_(Provenance: proposal
-[`0039`](../../.portulan/proposals/0039-a-local-model-runs-without-the-host-floor-and-under-a-thinking-cap.md)'s
-measurement of two local models against three of this repository's tasks on 2026-10-27, and its rulings 4
-and 5 of 2026-10-30.)_
-
 ## What is machinery today, and what is not
 
 As of Workspace Definition 2.9 a workspace can declare the budget and the ratio, and both are checked
@@ -256,3 +193,147 @@ instruction files measured 130k tokens per fresh context, cache writes were most
 subagent and checkpoint paid it again, because nothing measured, budgeted or demoted what the host
 loads. Host facts from the Claude Code documentation on costs, prompt caching and memory, checked
 2026-09-21.)_
+
+## What a change spends
+
+This is proposal [`0038`](../../.portulan/proposals/0038-what-a-change-spends-is-measured.md)'s second
+part: the cost of re-reading and rebuilding what the first part loads. The rules below govern spend;
+[`sessions.md`](sessions.md) applies them to session startup, cache lifetimes and host switches.
+
+### Price a change from usage records
+
+**A change is priced from the host's own usage records, numbers only**, attributed to its branch and
+then its pull request: requests, tokens by class (uncached, written by lifetime, read and output), fresh
+contexts opened, largest context, hit rate, cache rebuilds and their causes, and tokens per changed line.
+Per-block duplicates count once. Where the host keeps totals of its own, the measurement states its
+difference from them; unavailable records are not evidence of zero spend.
+
+Token accounting uses usage fields, and local-worker accounting uses recognized receipt lines in
+recorded Bash results; conversation text is not a pricing signal. The receipt-format limit and the
+separate local figures belong to [the local-model rules](#a-local-model-runs-without-the-host-floor).
+[`cli/ledger.mjs`](../../cli/ledger.mjs) reads locally, without a network call. A verify recipe never
+opens host usage records: `doctor --static` validates without them, and ledger fixtures supply synthetic
+records for verification.
+
+### Restart at a computed threshold
+
+**At the computed restart threshold, a session is told to finish its current step, write its handoff
+and end.** The advisory speaks once in the session; after each compaction it can speak again when the
+new threshold is crossed. The comparison is `C* ≈ F × (1 + m_w / (n × m_r))`: the fresh context `F`, the write and
+read price multipliers `m_w` and `m_r`, and a horizon of `n` more requests. The threshold is computed from
+those inputs, never written down as a token limit. A workspace declares the multipliers and horizon in
+`spend`; undeclared, the general multipliers and horizon apply and the advisory says so.
+
+The horizon is an assumption, and the fresh context must be sufficient to resume the work: the handoff
+carries what the restart needs. The current advisory uses the first recorded context after startup or
+compaction as `F`; later re-orientation reads are not added to that figure. A restart whose prefix is
+still cached can cost less than the comparison assumes.
+
+[`cli/advisory.mjs`](../../cli/advisory.mjs) reports where the agent is, with a tool result or at a
+prompt, and gives the human the same figure in the status line. A block at a turn's end is added only
+where the workspace declares it. The [slot reference](../../spec/slots.md#spend--the-figures-the-restart-threshold-is-computed-at)
+gives that declaration's contract; it is separate from the Stop-gate's recipe and record checks.
+
+### Keep the prefix stable
+
+**Model and effort are chosen when a context is created**, and tool definitions are deferred wherever
+the host can defer them. Content that varies per session — a git snapshot, a date, a fresh working
+directory, a session ID — stays out of Portulan's own always tier and hook-injected text. It may leave
+one session's cache intact while forfeiting the prefix that sessions in one directory share.
+
+A hosted session whose system prompt names the session itself starts cold whatever a workspace compiles;
+that is inferred from such a prompt, not documented. The [session-start rules](sessions.md#a-session-starts-warm-or-it-pays-the-prefix-again)
+describe the host's warm-start conditions; a workspace cannot repair the host's prefix by compiling one
+of its own.
+
+### Routing is declared and earned
+
+**The spawner states effort and how many contexts it may open, alongside what it loads**, extending
+[the fresh-context declaration](#a-fresh-context-is-priced-where-it-is-created). Context count is a
+declaration obligation; no context-count field is compiled today.
+
+**A cheaper model or a lower effort for a role is earned by an A/B run before it is shipped.** A host
+switch that changes the prefix meets the same evidence gate. The comparison must show reduced spend
+without lost quality, and the shipped routing must be the routing its record supports. A cheaper
+context that cannot do its role costs rework; a reviewer keeps the conventions it grades against.
+Session switches retain their [specific guards](sessions.md#a-switch-that-changes-the-prefix-is-earned),
+and local routing retains its screen-versus-comparison distinction below.
+The A/B demonstrations for all three fresh-context personas remain row 13's work, separate from the
+existing warm-start and local-worker records.
+
+### Budget what returns to the model
+
+**What a tool, recipe or hook hands back to the model is budgeted: failures in full, passes as a count,
+and nothing echoed on every turn.** This is [the loop's compact-error rule](loop.md#context-is-the-budget)
+applied to every output the model reads, with failure evidence retained so the saving cannot lower
+quality. The reading rules above govern how a session asks for bounded output.
+
+The uniform agent mode for recipes and `doctor`, and the volatile-content scan against a committed
+golden, remain separate work in [row 13](../../docs/plan.md#milestones). This doctrine does not supply
+those rails; until they land the human gate holds their rules.
+
+### A local model runs without the host floor
+
+A model served on the machine itself costs nothing per token, so `0038`'s dollar arithmetic gives it no
+restart threshold. What it does cost is time to prefill, memory for each context it holds, and recall that
+still sags in a long context. And every turn it takes is a turn the parent session does not send again on
+each request after. So a local model is called as a context firewall, and four rules hold it:
+
+1. **A local worker runs without the host floor (`omitClaudeMd`) and under a hard input-byte ceiling.** It
+   is given one bounded input: a symbol span from [`cli/symbols.mjs`](../../cli/symbols.mjs), a file under
+   300 lines, a diff, or a log to compress, and never the parent session's instruction files. A prompt over
+   the ceiling is refused before a socket opens. _Why: a host floor of 44k to 85k tokens is prefilled into
+   a local model's cache on every cold context, where `0039` measured prompts of about 400 to 470 tokens
+   prefilling in 0.85 to 1.88 seconds._
+2. **Thinking effort is set explicitly at invocation**: low or off for a mechanical transform, bounded for
+   prose or review, never left to the chat template's default. _Why: one template `0039` read sets
+   reasoning effort to `xhigh` unless thinking is switched off, and under a 1,500-token cap that model
+   returned no answer on any of three tasks, every token spent thinking; at low effort it passed both
+   tasks it was rerun on._
+3. **A local edit is kept only on its verify command's exit `0`.** The runner applies the edit and runs the
+   command. On exit `0` one receipt line is all that enters the parent context (`0038` rule 5). On exit `1`
+   after its retries, or at once on any other exit, which is no verdict, it restores the file's original
+   bytes, and it does the same on SIGINT, SIGTERM and SIGHUP. **This is a rollback, not an atomic write**:
+   the verify needs the edited file in place, so any other signal that ends the runner, SIGKILL and SIGQUIT
+   among them, or a power loss between the edit and its verdict leaves the edit, and a transform with no
+   receipt is unverified. _Why not atomic: a scratch worktree would judge the last commit plus the edit
+   rather than the working copy plus the edit, would lack the untracked files a verify reads, and moving
+   the edit back after exit `0` would not be atomic either (`0039` ruling 4)._
+4. **Loopback is a rail, and routing follows the [declared-and-earned gate](#routing-is-declared-and-earned).**
+   A local runner refuses an endpoint outside loopback
+   (`127.0.0.1`, `localhost`, `[::1]`) unless leaving it is proposed and approved. A screen grades an
+   installed model once per task against Portulan's own predicates, from
+   [`cli/comments.mjs`](../../cli/comments.mjs), [`cli/doctor.mjs`](../../cli/doctor.mjs) and
+   [`cli/skill-goldens.mjs`](../../cli/skill-goldens.mjs), and a model that fails it is not routed. Passing
+   it earns nothing. For the local comparison, use the local model as routed against the host's model on the
+   same tasks, `k` runs per cell, captured once and railed to its register in `evals/ab/`. _Why: an endpoint off the machine sends workspace context away under a local
+   tool's name, and the screen takes one sample per task with no baseline arm, so a screen is not routing
+   evidence (`0039` ruling 5)._
+
+**What the runner holds today.** The [`tools/local-llm`](../../packs/tools/local-llm/README.md) pack's
+runner holds rules 1 to 3 and rule 4's loopback rail for the calls it makes. It sends the model its own
+short instructions and the input it was given, with the end of a red verify's output on a retry, and
+nothing else. It refuses a prompt over its ceiling before a socket opens, names the effort on every chat
+request, low unless set, requires a verify command for an edit and rolls back as rule 3 says, and refuses
+a host off loopback and a redirect away from it. Which inputs it is given is the caller's: only their
+bytes are checked. `--allow-remote` lifts the loopback rail on the caller's word, and the pack's
+`local-llm-off-loopback` gate has no matcher, so approval to leave loopback is the human's. Its `eval`
+subcommand is the screen. Its `runner-rails` recipe holds the loopback and ceiling refusals and the
+rollback on a red or no-verdict verify offline, with no network call; the rollback on a signal is held by
+the runner's tests. This repository composes the pack and registers its skill; the ledger reports local
+receipts beside the host's tokens. `doctor` includes that branch-owned usage report by default,
+with unavailable data reported as unmeasured; `--static` omits usage-record discovery for verification.
+Receipts are recognized by their whole-line format in recorded Bash results: a matching echo can be
+counted, and output omitted from the transcript is missed.
+The [captured A/B](../../evals/ab/local-worker.md) supports code
+at low effort (L5/H5), while shared prose is disabled because codify scored L0/H3, despite handoff's
+L5/H5. Operational defaults and explicit roles require the measured model at low effort; explicit
+model-only calls remain candidates. The record and register are regraded and byte-compared in CI,
+with shipped routing rederived from their turns. The `local-worker` persona declares
+`omitClaudeMd: true` and `effort: low`, and `compile` writes both into a workspace's binding against a
+committed golden.
+
+_(Provenance: proposal
+[`0039`](../../.portulan/proposals/0039-a-local-model-runs-without-the-host-floor-and-under-a-thinking-cap.md)'s
+measurement of two local models against three of this repository's tasks on 2026-10-27, and its rulings 4
+and 5 of 2026-10-30.)_
