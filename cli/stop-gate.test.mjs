@@ -355,6 +355,7 @@ function gate(project, sessionId, env = {}, payload = {}) {
 const MANIFEST = JSON.stringify({
     spec: "2.1",
     name: "fixture",
+    slots: { handoffs: "handoffs/" },
     // A green recipe, so `handoff` is the only reason a case can be refused for.
     verify: { default: "always-green", recipes: [{ id: "always-green", run: "true" }] },
 });
@@ -486,6 +487,206 @@ describe("did-work, in a repository that rebase-merges (#220)", () => {
         assert.equal(decision, "block", "with nowhere to have pushed, every commit is unrecorded work");
         assert.doesNotMatch(stderr, /patch/i, "this is the documented reading, not a degradation — it must not report one");
     });
+});
+
+describe("the manifest chooses whether and where this tree records handoffs", () => {
+    const configure = (repo, edit) => {
+        const file = path.join(repo, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+        edit(manifest);
+        fs.writeFileSync(file, JSON.stringify(manifest));
+    };
+    const retire = (repo) => configure(repo, (manifest) => { delete manifest.slots.handoffs; });
+
+    test("no declared series still blocks open work, and an undeclared handoff cannot release it", () => {
+        const repo = rebaseMerged({ genuinelyUnmerged: true });
+        retire(repo);
+        fs.writeFileSync(path.join(repo, ".portulan", "handoffs", `${today()}-undeclared.md`), "not the declared record\n");
+        const { decision, reason, stderr } = gate(repo, "no-series-open-work");
+        assert.equal(decision, "block");
+        assert.match(reason, /Commit and push it, its why in the commit message/);
+        assert.match(reason, /work 1\/3/);
+        assert.doesNotMatch(reason + stderr, /handoff/i);
+    });
+
+    test("pushing clears the no-series refusal, and new work gets the whole cap", () => {
+        const { work } = mergedHandoff();
+        retire(work);
+        assert.equal(gate(work, "no-series-clearing").decision, "block");
+        git(work, ["add", "-A"]);
+        git(work, ["commit", "-m", "record the work"]);
+        assert.equal(gate(work, "no-series-clearing").decision, "block", "an unpushed commit remains work");
+        git(work, ["push", "-q", "origin", "HEAD"]);
+        assert.equal(gate(work, "no-series-clearing").decision, "allow");
+        fs.appendFileSync(path.join(work, "f.txt"), "next work\n");
+        assert.match(gate(work, "no-series-clearing").reason, /work 1\/3/);
+    });
+
+    test("an absent slots object also declares no series, and degraded work-check notes ask for no handoff", () => {
+        const root = scratch();
+        const repo = path.join(root, "repo");
+        fs.mkdirSync(path.join(repo, ".portulan"), { recursive: true });
+        fs.writeFileSync(path.join(repo, ".portulan", "workspace.json"), MANIFEST);
+        configure(repo, (manifest) => { delete manifest.slots; });
+        git(repo, ["init", "-q"]);
+        git(repo, ["add", "-A"]);
+        git(repo, ["commit", "-m", "local work"]);
+        git(repo, ["remote", "add", "origin", path.join(root, "unfetched.git")]);
+        const { decision, reason, stderr } = gate(repo, "no-series-degraded");
+        assert.equal(decision, "block");
+        assert.match(stderr, /patch-id/);
+        assert.doesNotMatch(reason + stderr, /handoff/i);
+    });
+
+    test("red and could-not-run recipes keep blocking without a series, including cap release", () => {
+        for (const code of [1, 2, 126, 127]) {
+            const { work } = mergedHandoff();
+            retire(work);
+            configure(work, (manifest) => { manifest.verify.recipes[0].run = `exit ${code}`; });
+            for (let attempt = 1; attempt <= MAX_BLOCKS; attempt += 1) {
+                const result = gate(work, `no-series-recipe-${code}`);
+                assert.equal(result.decision, "block");
+                assert.match(result.reason, code === 1 ? /RED \(exit 1\)/ : /could not run/);
+                assert.doesNotMatch(result.reason + result.stderr, /handoff/i);
+            }
+            const released = gate(work, `no-series-recipe-${code}`);
+            assert.equal(released.decision, "allow");
+            assert.match(released.stderr, /ending \*\*RED\*\*/);
+            assert.doesNotMatch(released.stderr, /handoff/i);
+        }
+    });
+
+    test("a custom series and a valid series outside the workspace both discharge the declared obligation", () => {
+        for (const slot of ["records/", "../shared-records/"]) {
+            const repo = rebaseMerged({ genuinelyUnmerged: true });
+            configure(repo, (manifest) => { manifest.slots.handoffs = slot; });
+            const directory = path.resolve(repo, ".portulan", slot);
+            fs.mkdirSync(directory, { recursive: true });
+            fs.writeFileSync(path.join(directory, `${today()}-own.md`), "open work\n");
+            assert.equal(gate(repo, `declared-series-${slot}`).decision, "allow", slot);
+        }
+    });
+
+    test("malformed record policy is an explicit refusal, rather than an opt-out or a crash", () => {
+        for (const slots of [null, [], "wrong", { handoffs: null }, { handoffs: false }, { handoffs: "" }, { handoffs: "records" }]) {
+            const { work } = mergedHandoff();
+            configure(work, (manifest) => { manifest.slots = slots; });
+            const { decision, reason } = gate(work, "malformed-record-policy");
+            assert.equal(decision, "block", JSON.stringify(slots));
+            assert.match(reason, /record policy/);
+        }
+    });
+
+    test("the session's record policy applies while only the hook-told recipe executes", () => {
+        const { told, session } = twoTrees({ toldCarriesHandoff: false });
+        retire(session);
+        const sentinel = path.join(session, "recipe-ran.txt");
+        configure(session, (manifest) => { manifest.verify.recipes[0].run = 'touch "$PORTULAN_TEST_SENTINEL"'; });
+        const result = gate(told, "session-record-policy", { PORTULAN_TEST_SENTINEL: sentinel }, { cwd: session });
+        assert.equal(result.decision, "block");
+        assert.match(result.reason, /Commit and push it/);
+        assert.doesNotMatch(result.reason + result.stderr, /handoff/i);
+        assert.equal(fs.existsSync(sentinel), false, "the payload's workspace must not choose a recipe to execute");
+    });
+
+    test("unreadable or malformed session manifests still run the trusted recipe and return a bounded refusal", () => {
+        for (const broken of ["missing", "malformed"]) {
+            const { told, session } = twoTrees({ toldCarriesHandoff: false });
+            const sentinel = path.join(told, "trusted-recipe-ran.txt");
+            configure(told, (manifest) => { manifest.verify.recipes[0].run = 'touch "$PORTULAN_TEST_SENTINEL"'; });
+            const file = path.join(session, ".portulan", "workspace.json");
+            if (broken === "missing") fs.unlinkSync(file);
+            else fs.writeFileSync(file, "{");
+            const result = gate(told, `broken-session-policy-${broken}`, { PORTULAN_TEST_SENTINEL: sentinel }, { cwd: session });
+            assert.equal(result.decision, "block");
+            assert.match(result.reason, /record policy/);
+            assert.equal(fs.existsSync(sentinel), true, "record policy failure cannot skip the trusted recipe");
+        }
+    });
+
+    test("a recipe-only release in a pushed no-series tree asks for a report, never a handoff", () => {
+        const { work } = mergedHandoff();
+        retire(work);
+        configure(work, (manifest) => { manifest.verify.recipes[0].run = "exit 1"; });
+        git(work, ["add", "-A"]);
+        git(work, ["commit", "-m", "record the workspace policy"]);
+        git(work, ["push", "-q", "origin", "HEAD"]);
+        for (let i = 0; i < MAX_BLOCKS; i += 1) assert.equal(gate(work, "no-series-recipe-only").decision, "block");
+        const result = gate(work, "no-series-recipe-only");
+        assert.equal(result.decision, "allow");
+        assert.match(result.stderr, /ending \*\*RED\*\*/);
+        assert.match(result.stderr, /recipe/);
+        assert.doesNotMatch(result.stderr, /handoff/i);
+    });
+
+    test("a custom-series handoff already pushed cannot discharge the next work", () => {
+        const { work } = mergedHandoff();
+        git(work, ["mv", ".portulan/handoffs", ".portulan/records"]);
+        configure(work, (manifest) => { manifest.slots.handoffs = "records/"; });
+        git(work, ["add", "-A"]);
+        git(work, ["commit", "-m", "record a custom series"]);
+        git(work, ["push", "-q", "origin", "HEAD"]);
+        fs.appendFileSync(path.join(work, "f.txt"), "next work\n");
+        const result = gate(work, "custom-series-recorded");
+        assert.equal(result.decision, "block");
+        assert.match(result.reason, /committed and pushed already/);
+        assert.match(result.reason, /records/);
+    });
+
+    test("a custom-series handoff in another ref is reported at the declared path", () => {
+        const repo = rebaseMerged();
+        configure(repo, (manifest) => { manifest.slots.handoffs = "records/"; });
+        git(repo, ["add", "-A"]);
+        git(repo, ["commit", "-m", "declare the record series"]);
+        git(repo, ["checkout", "-q", "-b", "record-elsewhere"]);
+        fs.mkdirSync(path.join(repo, ".portulan", "records"));
+        fs.writeFileSync(path.join(repo, ".portulan", "records", `${today()}-elsewhere.md`), "open work\n");
+        git(repo, ["add", "-A"]);
+        git(repo, ["commit", "-m", "record elsewhere"]);
+        git(repo, ["checkout", "-q", "feat"]);
+        const result = gate(repo, "custom-series-elsewhere");
+        assert.equal(result.decision, "block");
+        assert.match(result.reason, /does exist elsewhere/);
+        assert.match(result.reason, /record-elsewhere/);
+    });
+
+    test("glob characters in a declared series stay literal in history searches", () => {
+        for (const [slot, decoy] of [["records*/", "records-other"], ["records [daily]/", "records d"]]) {
+            const repo = rebaseMerged();
+            configure(repo, (manifest) => { manifest.slots.handoffs = slot; });
+            git(repo, ["add", "-A"]);
+            git(repo, ["commit", "-m", "declare the literal series"]);
+            const recordElsewhere = (branch, directory) => {
+                git(repo, ["checkout", "-q", "-b", branch]);
+                fs.mkdirSync(path.join(repo, ".portulan", directory), { recursive: true });
+                fs.writeFileSync(path.join(repo, ".portulan", directory, `${today()}-elsewhere.md`), "open work\n");
+                git(repo, ["add", "-A"]);
+                git(repo, ["commit", "-m", "record on another ref"]);
+                git(repo, ["checkout", "-q", "feat"]);
+            };
+            recordElsewhere("unrelated-series", decoy);
+            const unrelated = gate(repo, "literal-series-decoy");
+            assert.equal(unrelated.decision, "block");
+            assert.doesNotMatch(unrelated.reason, /does exist elsewhere/, slot);
+            recordElsewhere("declared-series", slot);
+            const declared = gate(repo, "literal-series-positive");
+            assert.equal(declared.decision, "block");
+            assert.match(declared.reason, /does exist elsewhere/, slot);
+            assert.match(declared.reason, /on `declared-series`/, slot);
+        }
+    });
+});
+
+test("no-series releases name work and reports at every bound, including a recipe-only release", () => {
+    for (const problems of [[{ reason: "handoff", text: "Commit and push it." }], [{ reason: "recipe", text: "recipe red" }]]) {
+        for (const bound of [{ counts: { [problems[0].reason]: MAX_BLOCKS + 1 } }, { total: MAX_TOTAL_BLOCKS + 1 }, { chain: MAX_CHAIN_BLOCKS + 1 }]) {
+            const result = verdict({ problems, ...bound, handoffEnabled: false });
+            assert.equal(result.action, "release");
+            assert.match(result.message, /ending \*\*RED\*\*/);
+            assert.match(result.message, /report of this work/);
+            assert.doesNotMatch(result.message, /handoff/i);
+        }
+    }
 });
 
 describe("the handoff question names the tree it answered about (#220, second half)", () => {

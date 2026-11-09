@@ -1,0 +1,1 @@
+- The Stop-gate follows `slots.handoffs`: it checks the declared directory, and a workspace with no series is asked to commit and push open work without writing a handoff. Recipe checks and retry bounds remain in force; malformed record policy is refused explicitly.
