@@ -1,6 +1,6 @@
 # Task 0037 — Counted agent output
 
-**Lane:** full · **Opened:** 2026-11-09 · **Status:** approved for PR
+**Lane:** full · **Opened:** 2026-11-09 · **Status:** approved for merge
 
 **Criterion.** [#517](https://github.com/sleepy-panda-srl/portulan/issues/517),
 row 13: every recipe and doctor offer agent mode with one green line, full failure
@@ -47,3 +47,23 @@ payload, staged package identity, strict plugin validation and the seam scan
 passed, with seven planted seam controls. The complete agent pass preceded the
 guard repairs; affected controls and packaging were rerun afterward. The limits
 above remain undemonstrated. Final record-fold review and finish follow.
+
+**Merge integration plan.** Rebase on the main containing #602, #604 and provider
+token counting. Preserve ledger evidence and aggregate counters together, retain
+both recipe interfaces in the docs, and keep explicitly requested provider
+figures on the one green line. A failing regression demonstrated that the new
+counting result would otherwise be hidden. Increase only the cleanup fixture's
+startup wait to ten seconds after a three-second readiness failure under load;
+its execution deadlines and cleanup assertions remain unchanged. Regrade the
+integrated tree and execute all 32 emitted agent recipes before merge.
+
+**Merge integration review.** Independent `/root/checkpoint_517_precommit`
+returned APPROVE against main `2fcd065c`, for branch `639d1e7b` plus the staged
+five-file integration delta. All 32 actual emitted agent commands passed with
+exactly one green line and no stderr. Injected-transport probes preserved multiple
+provider estimates, earlier reports after a later failure, static refusal, help
+and quiet behavior; removing estimate accumulation forced the regression red.
+The readiness change preserves execution deadlines and assertions. Strict
+plugin validation and the full 16-file seam scan passed, with seven refusal
+controls. No real provider request was made; the documented Windows/runtime
+limits remain. Final record-fold review, finish and refreshed CI precede merge.

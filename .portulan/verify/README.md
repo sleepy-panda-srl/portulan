@@ -36,7 +36,8 @@ missing final newlines. Direct script execution retains human output.
 `node cli/doctor.mjs --agent --static --pack-root packs .portulan` gives one
 aggregate count line across all green workspaces. Doctor also accepts
 `PORTULAN_AGENT=1`; red/could-not-run retains its full reports, including earlier
-green directories. Help remains help, and the quiet API remains silent.
+green directories. Explicit `--count-tokens` results stay on that single summary
+line. Help remains help, and the quiet API remains silent.
 
 The required tests pin the one-line green and complete failures; the existing CI
 job runs the actual yielded agent commands. The executor uses anonymous temporary

@@ -85,6 +85,21 @@ test("default and static doctor never count, while explicit doctor and context m
     assert.equal(calls, 2);
 });
 
+test("agent doctor keeps an explicitly requested provider estimate on its one green line", async (t) => {
+    const { workspace } = project(), out = [];
+    let calls = 0;
+    t.mock.method(process.stdout, "write", (chunk) => (out.push(String(chunk)), true));
+    const result = await doctor(["--agent", "--count-tokens", model, workspace], { countOptions: { env, fetch: async () => { calls++; return response(); } } });
+    t.mock.restoreAll();
+    assert.equal(result, 0);
+    assert.equal(calls, 1);
+    const text = out.join("");
+    assert.equal(text.split("\n").filter(Boolean).length, 1);
+    assert.match(text, /^GREEN — doctor:/);
+    assert.match(text, /20 input tokens/);
+    assert.doesNotMatch(text, /fixture-secret/);
+});
+
 test("no-call failures cover model, key, CI, unmeasured roots, invalid UTF-8 and unresolved imports", async () => {
     const { workspace, root } = project();
     let calls = 0;
