@@ -22,6 +22,7 @@ import { isInside } from "./inside.mjs";
 
 /** Every network mode in cli/ or a pack (named from `<category>/<name>/`); a new one is unrailed until it has a row here. */
 export const NETWORK_MODES = Object.freeze([
+    { module: "cli/fixtures/on-path-host/capture.mjs", flag: "--run-host", what: "runs the manual real-host on-path demonstration" },
     { module: "cli/context.mjs", flag: "--count-tokens", what: "sends measured project source to Anthropic's token counter" },
     { module: "cli/doctor.mjs", flag: "--count-tokens", aliases: [{ module: "cli/portulan.mjs", subcommand: "doctor" }, { module: "portulan", subcommand: "doctor" }, { module: "@sleepy_panda_srl/portulan", subcommand: "doctor" }], what: "requests a provider token estimate" },
     { module: "cli/review-meter.mjs", flag: "--fetch", what: "fetches review data from GitHub" },
