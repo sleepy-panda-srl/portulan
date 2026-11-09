@@ -2,7 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { resolvePack, rootPlan, shadowedCopy } from "./compile.mjs";
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
@@ -23,6 +23,8 @@ const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 /** The token a composed `run` uses to name its own pack's files. */
 const PACK_ROOT_TOKEN = "${PACK_ROOT}";
+const quote = (word) => `'${word.replaceAll("'", "'\\''")}'`;
+export const agentCommand = (command) => `${quote(process.execPath)} ${quote(path.join(path.dirname(fileURLToPath(import.meta.url)), "recipe-output.mjs"))} -- ${quote(command)}`;
 
 /** Its `:` is outside `$defs/slug`, so a composed id never equals a workspace id or `verify.default`. */
 export function composedId(packRef, id) {
@@ -115,6 +117,13 @@ export function recipeSet(manifest, options = {}) {
     if (recipes.length === 0) return refuse("the manifest yields no verify recipes — refusing to report green");
 
     const declaredDefault = manifest?.verify?.default;
+    if (options.agent) {
+        for (const recipe of recipes) {
+            recipe.run = agentCommand(recipe.run);
+            const bad = invalidRunnable(recipe.id, recipe.run, "agent executor", { requireSlug: false });
+            if (bad) return refuse(bad);
+        }
+    }
     return { ok: true, recipes, default: declaredDefault == null ? declaredDefault : String(declaredDefault) };
 }
 
@@ -228,7 +237,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         stderr.write(`${err.message}\n`);
         return 2;
     }
-    const set = recipeSet(manifest, { resolve });
+    const set = recipeSet(manifest, { resolve, agent: argv.includes("--agent") });
     if (!set.ok) {
         stderr.write(`${set.reason}\n`);
         return set.exitCode;
@@ -238,5 +247,5 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-    process.exit(run(process.argv.slice(2)));
+    process.exitCode = run(process.argv.slice(2));
 }

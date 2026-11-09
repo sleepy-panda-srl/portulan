@@ -6,12 +6,34 @@ import os from "node:os";
 import path from "node:path";
 import { spawn, execFileSync } from "node:child_process";
 import { pathToFileURL, fileURLToPath } from "node:url";
-import { windowsTaskkill, terminateTree } from "./recipe-runner.mjs";
+import { windowsTaskkill, terminateTree, runRecipe } from "./recipe-runner.mjs";
+import childProcess from "node:child_process";
+import { syncBuiltinESMExports } from "node:module";
 import { setTimeout as delay } from "node:timers/promises";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const posix = process.platform !== "win32";
 const quote = (s) => `'${s.replaceAll("'", "'\\''")}'`;
+for (const timeout of [0, -1]) {
+    test(`direct timeout ${timeout} remains a bounded immediate deadline`, async () => {
+        const result = await runRecipe({ id: "deadline", run: "sleep 0.15; printf escaped-deadline" }, { root: os.tmpdir(), timeout });
+        assert.equal(result.outcome, "could not run");
+        assert.match(result.output, /time limit/);
+    });
+}
+test("inherited group 1 is refused before spawning", { skip: !posix }, async (t) => {
+    let spawned = false;
+    t.mock.method(childProcess, "spawn", () => { spawned = true; throw new Error("spawn-control"); });
+    syncBuiltinESMExports();
+    try {
+        const result = await runRecipe({ id: "ownership", run: "true" }, { root: os.tmpdir(), inheritGroup: true, groupId: 1 });
+        assert.equal(result.outcome, "could not run");
+        assert.equal(spawned, false);
+    } finally {
+        t.mock.restoreAll();
+        syncBuiltinESMExports();
+    }
+});
 async function until(check) {
     for (let i = 0; i < 300; i++) {
         if (check()) return;

@@ -24,6 +24,26 @@ This checks repository text changes, not runtime cache behavior: arbitrary helpe
 outputs, changing session values and the host's own prefix are outside its capture.
 Hook sources include their templates, not a transcript of every rendered branch.
 
+For an agent, enumerate with
+`node cli/recipe-set.mjs --agent --workspace .portulan --repo-root . --pack-root packs`.
+Every yielded command, including composed and future opaque recipes, invokes the
+shared `recipe-output.mjs` executor. Run a standalone recipe the same way with
+`node cli/recipe-output.mjs -- './.portulan/verify/docs.sh'`. A green returns one
+count line and no stderr. Red and could-not-run preserve complete stdout and
+stderr bytes at this executor boundary, including output beyond 64 KiB and
+missing final newlines. Direct script execution retains human output.
+
+`node cli/doctor.mjs --agent --static --pack-root packs .portulan` gives one
+aggregate count line across all green workspaces. Doctor also accepts
+`PORTULAN_AGENT=1`; red/could-not-run retains its full reports, including earlier
+green directories. Help remains help, and the quiet API remains silent.
+
+The required tests pin the one-line green and complete failures; the existing CI
+job runs the actual yielded agent commands. The executor uses anonymous temporary
+file descriptors for full output and the runner's process cleanup. Finish and the
+Stop-gate retain their existing bounded failure summaries; those outer summaries
+are not the complete executor stream. See [execution and cleanup](../../cli/recipe-runner.md).
+
 The recipes in this directory are declared in [`../workspace.json`](../workspace.json), and since
 milestone 7's composition amendment the **runnable** set is larger than that: it is what
 [`../../cli/recipe-set.mjs`](../../cli/recipe-set.mjs) yields — these, plus the ones this workspace's

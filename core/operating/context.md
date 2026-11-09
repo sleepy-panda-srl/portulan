@@ -314,11 +314,12 @@ and nothing echoed on every turn.** This is [the loop's compact-error rule](loop
 applied to every output the model reads, with failure evidence retained so the saving cannot lower
 quality. The reading rules above govern how a session asks for bounded output.
 
-The uniform agent mode for recipes and `doctor` remains separate work in
-[row 13](../../docs/plan.md#milestones). The repository's `cache-stability` recipe
-checks static text against its reviewed golden, with the runtime limits stated
-above. This doctrine supplies no enforcement by itself: each installation's
-configured recipes determine what is checked.
+`doctor --agent` returns one aggregate count line on green. `recipe-set --agent`
+wraps every yielded workspace and pack command in a shared executor: one counted
+green line, complete stdout and stderr on failure. Direct commands retain human
+output. Required tests and the existing CI job exercise that interface. Prefix
+stability is a separate claim: a text baseline cannot establish runtime cache
+behavior. The remaining demonstrations stay in [row 13](../../docs/plan.md#milestones).
 
 ### A local model runs without the host floor
 

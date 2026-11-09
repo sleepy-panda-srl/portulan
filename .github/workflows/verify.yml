@@ -27,7 +27,7 @@ jobs:
           set +e   # GitHub's default shell is `bash -e`; a red recipe must not abort the loop
 
           err=$(mktemp)
-          recipes=$(node cli/recipe-set.mjs --workspace .portulan --repo-root . --pack-root packs 2>"$err")
+          recipes=$(node cli/recipe-set.mjs --agent --workspace .portulan --repo-root . --pack-root packs 2>"$err")
           rc=$?
           if [ "$rc" -ne 0 ]; then
             printf '::error::verify recipes unusable: %s\n' "$(tr '\n' ' ' <"$err" | sed 's/  */ /g' | cut -c1-400)"

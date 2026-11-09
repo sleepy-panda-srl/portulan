@@ -72,6 +72,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`pack-version.mjs`](pack-version.mjs) | A change to a pack's `contributes` must move that pack's `portulan.version`. |
 | [`payload.mjs`](payload.mjs) | Every `cli/*.mjs` the npm payload carries is classified, and nothing arrives in it unclassified. Not shipped. |
 | [`plugin-lint.mjs`](plugin-lint.mjs) | `plugin-lint` — the packaging validator. |
+| [`recipe-output.mjs`](recipe-output.mjs) | Agent output for any recipe: one green count, complete failure streams. |
 | [`recipe-runner.mjs`](recipe-runner.mjs) | Shared asynchronous recipe execution, bounded output and process-tree cleanup. |
 | [`recipe-set.mjs`](recipe-set.mjs) | The recipe set: the verify recipes a workspace yields, its own plus each composed pack's, namespaced by pack. |
 | [`release-eval.mjs`](release-eval.mjs) | Portulan — the eval result a release carries. |
@@ -139,6 +140,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`pinned-roots.live.test.mjs`](pinned-roots.live.test.mjs) | Required checks name their resolution root, and every suite whose imports reach the host's plugin record empties it. |
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Tests for `plugin-lint` — the packaging validator. |
 | [`portulan.test.mjs`](portulan.test.mjs) | Tests for the `npx` entry point: dispatch through an injected loader, its refusals, and its version. |
+| [`recipe-output.test.mjs`](recipe-output.test.mjs) | Agent recipe output controls. |
 | [`recipe-runner.test.mjs`](recipe-runner.test.mjs) | Recipe cleanup controls use isolated, test-owned process groups and late filesystem writes. |
 | [`recipe-set.live.test.mjs`](recipe-set.live.test.mjs) | The composed recipe set, against THIS repository rather than against fixtures. |
 | [`recipe-set.test.mjs`](recipe-set.test.mjs) | The recipe set — one carrier, and every reader reaches it. |
