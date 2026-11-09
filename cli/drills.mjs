@@ -386,6 +386,17 @@ export const DRILLS = [
         why: "A verify recipe that can reach the network goes red about the world rather than about the tree, and this repository prohibits it in three carriers while nothing checked it. The drill proves the checker sees a real invocation — spread across continued lines, the spelling a recipe actually uses — rather than only the literal string a test would hand it.",
     },
     {
+        rail: "telemetry",
+        perturb: {
+            file: ".portulan/verify/doctor.sh",
+            find: "node cli/doctor.mjs --static --pack-root packs",
+            replace: "node cli/doctor.mjs --pack-root packs",
+        },
+        exit: 1,
+        tell: "invokes cli/doctor.mjs without an immediate --static",
+        why: "Doctor reads local usage records by default. Removing static mode from its recipe must fail the source audit before verification can depend on this machine's records. The drill runs telemetry, never the altered doctor recipe; filesystem-denial tests separately prove the static runtime path does not consult usage files.",
+    },
+    {
         rail: "ab",
         perturb: {
             create: ".portulan/a-file-the-drill-left-unclassified.md",
