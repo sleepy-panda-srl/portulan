@@ -948,11 +948,11 @@ describe("this repository", () => {
         const lines = text.split("\n");
         const inFence = fenced(lines);
         lines.forEach((line, i) => {
-            const code = inFence[i] ? [line] : [...line.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+            const code = inFence[i] ? [line] : [...line.matchAll(/(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)/g)].map((m) => m[2]);
             // A command starts at `node` after the span's start, a `$ ` prompt, a separator, or a `case` pattern's `)`.
             for (const span of code) {
                 for (const [, command] of span.matchAll(/(?:^\s*|\$\s+|[;&|()]\s*)(node\s[^;&|)]*)/g)) {
-                    for (const [word] of command.matchAll(/(?:"[^"]*"|'[^']*'|[^\s"'])+/g)) {
+                    for (const [word] of command.matchAll(/(?:"[^"]*"|'[^']*'|[^\s])+/g)) {
                         if (PATH.test(word) && !/^"[^"]*"$/.test(word)) found.push(`${i + 1} ${word}`);
                     }
                 }
@@ -986,10 +986,18 @@ describe("this repository", () => {
             "node ${CLAUDE_PROJECT_DIR}/z.mjs",
             "  node <workspace-dir>",
             "~~~",
+            '`node "${CLAUDE_PLUGIN_ROOT}/x""`',
+            '``node ${CLAUDE_PLUGIN_ROOT}/`x`.mjs``',
+            'Run ```node ${CLAUDE_PROJECT_DIR}/``x``.mjs```.',
+            '``node "${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs"``',
+            'Run ```node "${CLAUDE_PROJECT_DIR}/x.mjs"```.',
+            'Run ``node ${CLAUDE_PLUGIN_ROOT}/unmatched.mjs```.',
+            'Run ```node ${CLAUDE_PROJECT_DIR}/unmatched.mjs``.',
+            'Use ``node "${CLAUDE_PLUGIN_ROOT}/x.mjs"`` then `node ${CLAUDE_PROJECT_DIR}/y.mjs`.',
         ].join("\n");
         assert.deepEqual(unquotedPaths(fixture), [
             "2 ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs",
-            "3 ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs",
+            '3 "${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs',
             '4 "${CLAUDE_PLUGIN_ROOT}"/cli/doctor.mjs',
             "5 '${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs'",
             "6 ${CLAUDE_PROJECT_DIR}/y.mjs",
@@ -998,6 +1006,10 @@ describe("this repository", () => {
             "11 ${CLAUDE_PLUGIN_ROOT}/cli/discover.mjs",
             "14 ${CLAUDE_PROJECT_DIR}/z.mjs",
             "15 <workspace-dir>",
+            '17 "${CLAUDE_PLUGIN_ROOT}/x""',
+            '18 ${CLAUDE_PLUGIN_ROOT}/`x`.mjs',
+            '19 ${CLAUDE_PROJECT_DIR}/``x``.mjs',
+            '24 ${CLAUDE_PROJECT_DIR}/y.mjs',
         ]);
     });
 });
