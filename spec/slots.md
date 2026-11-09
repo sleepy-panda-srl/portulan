@@ -750,9 +750,11 @@ a `tree`, through [`../cli/context.mjs`](../cli/context.mjs), and fails it over 
 where a declared budget cannot be judged; with none declared it reports the figure. _(This paragraph read
 *"What nothing checks yet: the budget itself"* until that report landed, and it was true then:
 [`a-mandate-nothing-checks-is-already-broken.md`](../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md)
-is why no workspace here declared the key before something checked it.)_ No workspace in this tree
-declares it now either: Portulan's own contribution is railed by this repository's recipes, not by a
-budget in its manifest. And, as with memory, no checker establishes that a budget was not raised in the
+is why no workspace here declared the key before something checked it.)_ Neither this repository's
+workspace nor the demo workspace declares it: Portulan's own contribution is railed by this repository's
+recipes, not by a budget in its manifest. The synthetic
+[budget demonstration fixture](../cli/fixtures/context-budget/) does declare one. And, as with memory,
+no general checker establishes that a budget was not raised in the
 change that breached it.
 
 ## `sessions` — the host switches that change what a fresh session writes

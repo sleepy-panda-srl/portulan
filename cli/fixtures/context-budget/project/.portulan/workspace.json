@@ -1,0 +1,21 @@
+{
+  "portulan": { "spec": "2.11" },
+  "name": "context-budget-fixture",
+  "summary": "An invented catalog project's fixed-budget demonstration; its ratio is a synthetic estimate, not a host calibration.",
+  "kind": "repository",
+  "tree": "../",
+  "slots": {
+    "identity": "identity.md",
+    "principles": "principles.md",
+    "gates": "gate-map.md",
+    "context": "context/"
+  },
+  "verify": {
+    "default": "fixture",
+    "recipes": [{ "id": "fixture", "run": "true" }]
+  },
+  "context": {
+    "always": { "budget": { "tokens": 200 } },
+    "ratio": { "bytes_per_token": 3, "calibrated_by": "fixture-estimate-not-calibrated" }
+  }
+}
