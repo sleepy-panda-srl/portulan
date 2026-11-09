@@ -164,5 +164,6 @@ What the tools and suites read.
 | File | What it is |
 |---|---|
 | [`eval-license.template.md`](eval-license.template.md) | Portulan Evaluation Issue (`EVAL-LICENSE.md`). Not shipped. |
+| [`finish.md`](finish.md) | Finish verification boundaries |
 | [`recipe-runner.md`](recipe-runner.md) | Recipe execution and cleanup |
 | [`fixtures/`](fixtures/) | The fixtures the suites build on; each suite names the ones it reads. Not shipped. |

@@ -1,0 +1,1 @@
+- **Finish boundary controls.** Added end-to-end regression evidence for absent tree pack roots, unresolved-pack refusal before commit, and shell parse diagnostics with rollback and no push. Documented the investigated cases and the current single-line manifest boundary; no runtime behavior changed.
