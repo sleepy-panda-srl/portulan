@@ -971,7 +971,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("a missing answer is asked for at a terminal, and the draft is written", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "", "n", "none", "y"]);
         const code = await run([dir], { ...harness().options, io: s.io });
         assert.equal(code, 0, "an interviewed run that confirms must write");
         assert.match(s.asked.join("\n"), /residence/, "the one question init may not answer must be asked");
@@ -980,7 +980,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("nothing is asked where stdin or stdout is not a TTY — the refusal is the old one, unchanged", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "", "y"], { interactive: false });
+        const s = scripted(["in-repo", "", "", "none", "", "n", "none", "y"], { interactive: false });
         const h = harness();
         const code = await run([dir], { ...h.options, io: s.io });
         assert.equal(code, 2, "a non-interactive run must refuse exactly as it did before the interview existed");
@@ -991,7 +991,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("`--no-interview` forces the non-interactive path at a terminal", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "", "n", "none", "y"]);
         const h = harness();
         assert.equal(await run(["--no-interview", dir], { ...h.options, io: s.io }), 2);
         assert.equal(s.asked.length, 0);
@@ -1000,7 +1000,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("what the flags already answered is never asked again", async () => {
         const dir = scratch();
-        const s = scripted(["none", "", "y"]);
+        const s = scripted(["none", "", "n", "none", "y"]);
         assert.equal(await run(["--residence", "in-repo", "--name", "acme", "--summary", "one line", dir], { ...harness().options, io: s.io }), 0);
         const questions = s.asked.join("\n");
         assert.doesNotMatch(questions, /residence/, "being asked to confirm a flag you just typed reads as not having listened");
@@ -1011,7 +1011,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("a question offers the derived default where one exists, and an empty line accepts it", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "", "n", "none", "y"]);
         assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
         const name = s.asked.find((q) => q.startsWith("workspace name"));
         assert.match(name, /\[.+\]/, "the name question must offer the directory-derived slug");
@@ -1033,14 +1033,14 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("the governor and the feed are asked only for a pointer", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "", "n", "none", "y"]);
         assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
         assert.doesNotMatch(s.asked.join("\n"), /governing|feed/, "a workspace that lives here has no governor and no feed");
     });
 
     test("an answer the schema refuses is re-asked with the reason, and does not abort the run", async () => {
         const dir = scratch();
-        const s = scripted(["feed-side", "in-repo", "Not A Slug", "acme", "", "none", "", "y"]);
+        const s = scripted(["feed-side", "in-repo", "Not A Slug", "acme", "", "none", "", "n", "none", "y"]);
         assert.equal(await run([dir], { ...harness().options, io: s.io }), 0, "a typo at a prompt must be re-asked, never fatal");
         assert.equal(s.asked.filter((q) => q.startsWith("residence")).length, 2);
         assert.equal(s.asked.filter((q) => q.startsWith("workspace name")).length, 2);
@@ -1052,7 +1052,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("declining at the confirmation writes nothing, and exits 2", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "", "n"]);
+        const s = scripted(["in-repo", "", "", "none", "", "n", "none", "n"]);
         const h = harness();
         assert.equal(await run([dir], { ...h.options, io: s.io }), 2, "0 must keep meaning `it wrote`");
         assert.equal(fs.existsSync(path.join(dir, ".portulan")), false, "a decline must leave the repository untouched");
@@ -1070,7 +1070,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("the confirmation echoes every answer before a byte is written", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "acme", "one line", "none", "", "y"]);
+        const s = scripted(["in-repo", "acme", "one line", "none", "", "n", "none", "y"]);
         assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
         const echoed = s.said.join("\n");
         assert.match(echoed, /about to draft/);
@@ -1080,7 +1080,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("an already-governed repository is refused before the questions, not after them", async () => {
         const dir = scratch({ ".portulan/workspace.json": JSON.stringify({ portulan: { spec: "2.7" }, name: "already", kind: "repository" }) });
-        const s = scripted(["in-repo", "", "", "none", "", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "", "n", "none", "y"]);
         const h = harness();
         assert.equal(await run([dir], { ...h.options, io: s.io }), 2);
         assert.equal(s.asked.length, 0, "the machine's question comes first");
@@ -1089,18 +1089,18 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("`none` at the checkpoints prompt composes no packs", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "", "n", "none", "y"]);
         assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
         assert.equal(ok(dir).packs, undefined, "opting out at the prompt must be the same answer as --no-cycle");
     });
 
-    test("the lifetime is asked last, after the offer's reason and its trade-off, and a yes drafts it at 2.11", async () => {
+    test("the lifetime is asked before spend, after the offer's reason and its trade-off, and a yes drafts it at 2.11", async () => {
         const dir = scratch();
-        const s = scripted(["in-repo", "", "", "none", "y", "y"]);
+        const s = scripted(["in-repo", "", "", "none", "y", "n", "none", "y"]);
         const h = harness();
         assert.equal(await run([dir], { ...h.options, io: s.io }), 0, h.warned.join("\n"));
         const question = s.asked.indexOf("Five-minute cache writes? [y/N]: ");
-        assert.equal(question, s.asked.length - 2, "the question comes after every other one and before the confirmation");
+        assert.equal(question, s.asked.length - 4, "the lifetime precedes the two spend questions and the confirmation");
         const said = s.said.join("\n");
         for (const text of [LIFETIME_OFFER.reason, LIFETIME_OFFER.tradeOff]) assert.ok(said.includes(text), "a yes is given knowing the reason and the trade-off");
         assert.match(said, /^ {2}cache {7}5m, as `sessions\.cache_lifetime` at Workspace Definition 2\.11$/m, "the confirmation echoes the answer");
@@ -1112,7 +1112,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
     test("anything but a yes leaves the host's default, and the report says so in one line, not the offer again", async () => {
         for (const answer of ["", "n", "5m"]) {
             const dir = scratch();
-            const s = scripted(["in-repo", "", "", "none", answer, "y"]);
+            const s = scripted(["in-repo", "", "", "none", answer, "n", "none", "y"]);
             const h = harness();
             assert.equal(await run([dir], { ...h.options, io: s.io }), 0, h.warned.join("\n"));
             assert.match(s.said.join("\n"), /^ {2}cache {7}\(none — the host's default lifetime\)$/m);
@@ -1127,7 +1127,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
 
     test("a lifetime the flags gave is not asked again, and a pointer is never asked", async () => {
         const given = scratch();
-        const s = scripted(["", "", "none", "y"]);
+        const s = scripted(["", "", "none", "n", "none", "y"]);
         assert.equal(await run(["--residence", "in-repo", "--cache-lifetime", "1h", given], { ...harness().options, io: s.io }), 0);
         assert.ok(!s.asked.some((q) => q.startsWith("Five-minute")), "being asked to confirm a flag you just typed reads as not having listened");
         assert.match(s.said.join("\n"), /^ {2}cache {7}1h, as `sessions\.cache_lifetime`/m);
@@ -1521,7 +1521,7 @@ describe("init offers the cache lifetime, and writes it only where it was chosen
         const at = h.said.findIndex((l) => l.includes("A budget is yours to declare"));
         assert.ok(at >= 0);
         assert.deepEqual(h.said.slice(at + 1, at + 1 + offerLines().length), offerLines().map((l) => `init: ${l}`));
-        assert.ok(!h.said.some((l) => l.includes("spend.multipliers")), h.said.join("\n"));
+        assert.ok(h.said.some((l) => l.includes("spend.multipliers offer")), h.said.join("\n"));
     });
 
     test("a lifetime the host does not take is refused, by flag and by answers file, and nothing is written", async () => {

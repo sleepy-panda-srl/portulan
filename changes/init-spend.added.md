@@ -1,0 +1,1 @@
+- `init` offers the price multipliers and remaining-request horizon independently, using the last recorded Claude Code model's file-based managed rates, a dated vendor table, then general figures; declarations remain opt-in through the interview, flags or answers file.
