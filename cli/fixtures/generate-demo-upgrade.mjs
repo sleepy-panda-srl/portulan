@@ -52,7 +52,7 @@ export function demonstrateUpgrade({ inputs = INPUTS, replace = replaceBundle, r
     assert.equal(inputs.after.commit, AFTER, "wrong after release");
     assert.deepEqual(inputs.workspace.commits, [BEFORE, AFTER], "workspace release provenance drift");
     assert.equal(repo, "combcount", "this demonstration selects the fictional Combcount project");
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-demo-upgrade-"));
+    const scratch = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "portulan-demo-upgrade-")));
     try {
         const project = path.join(scratch, repo);
         const workspaceDir = path.join(project, ".portulan");

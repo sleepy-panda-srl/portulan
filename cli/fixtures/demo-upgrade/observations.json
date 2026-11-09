@@ -237,7 +237,7 @@
     ],
     "host": "empty CLAUDE_CONFIG_DIR; demo declares no tree",
     "exit": 0,
-    "stdout": "upgrade: <project>/.portulan owes nothing — it is current at 2.4\n",
+    "stdout": "upgrade: .portulan owes nothing — it is current at 2.4\n",
     "stderr": "",
     "effect": "no applicable workspace migration owed at 2.4; no measured boot reduction attributed to this command"
   }
