@@ -49,11 +49,35 @@ raising the budget in the change that breached it. The shape is memory's on purp
 a budget is a rail, not an aim, and the no-raise half is a rule no checker establishes, for the reason
 [`memory.md`](memory.md) gives.
 
-**Bytes per token are declared too**, as `context.ratio`: measured exactly on demand, by asking the host
-for the true count, and recorded with the host whose exact count calibrated it. The exact measurement
-never runs inside a recipe, because no verify recipe may make a network call, and a ratio that moved
-between runs would make one tree red on one run and green on the next. The keys are argued in
-[`../../spec/slots.md`](../../spec/slots.md).
+**Bytes per token are declared too**, as `context.ratio`, with the compile host whose measurement
+domain the ratio describes. Calibration is deliberate, never repeated inside a recipe: no verify recipe
+may make a network call, and a ratio that moved between runs would make one tree red on one run and green
+on the next. The keys are argued in [`../../spec/slots.md`](../../spec/slots.md).
+
+**On-demand provider count.** `portulan doctor --count-tokens MODEL_ID .portulan` sends the measured
+project always corpus to Anthropic using `ANTHROPIC_API_KEY` from the environment. Replace `MODEL_ID`
+with a supported model; none is defaulted. The direct diagnostic also accepts
+`node cli/context.mjs --workspace .portulan --count-tokens MODEL_ID`. Both send whole instructions,
+imports and unscoped rules, but only extracted project skill, command and agent descriptions;
+later-tier bodies and the measurement's personal/global/system/tool/plugin exclusions stay excluded.
+Incomplete imports or invalid UTF-8 refuse before transport. Doctor validates the workspace first;
+count mode summarizes validation failures without source values, and a separate `doctor --static` run
+provides their details. The direct diagnostic validates its kind/tree/context domain, not the full schema.
+
+The result is a **provider estimate**, including API framing and possibly system-added tokens;
+actual host usage can differ. It reports provider/model, source bytes and an approximate effective
+ratio, changes no manifest and does not override offline budget judgments. Assess the ratio manually
+before declaring it for a compile host; `calibrated_by` remains that host's ID, never a provider/model
+identifier. A ratio below the schema's minimum is reported as not declarable. An empty corpus makes
+no request and supplies no ratio. Marius accepted “Provider count with stated limit” on 2026-11-09 for
+[#506](https://github.com/sleepy-panda-srl/portulan/issues/506), qualifying proposal `0036`'s original
+exact-host wording. The [provider guide](https://platform.claude.com/docs/en/build-with-claude/token-counting)
+and [API contract](https://platform.claude.com/docs/en/api/messages/count_tokens) were checked that day.
+This demonstrates a counting contract, not Claude Code's actual complete prompt.
+
+Counting is unavailable with `--static` or in CI. The existing telemetry audit rejects literal
+count-mode invocations in yielded recipe commands and their shell scripts; injected transports test
+the contract offline. This is textual inspection of known modes, not arbitrary-shell prevention.
 
 **A report by default, a rail by declaration.** A workspace is failed only against a budget it declared.
 
@@ -194,8 +218,7 @@ supplies its description, and recompiles and measures before/after when applying
 the demotion. The pass changes no guidance, and its measurement keeps the same
 Claude Code project domain and exclusions as `context`; other hosts and full-host
 context remain outside it. **Still to land**: the
-exact mode that calibrates a ratio, the degradation report's half that says which tiers a host can
-express and the Stop-gate's named demotion, one change at a time, in `0036`'s order
+degradation report's half that says which tiers a host can express and the Stop-gate's named demotion, one change at a time, in `0036`'s order
 of work and under row 12 of
 [`../../docs/plan.md`](../../docs/plan.md).
 Until each lands, the rule it would enforce is held by the human gate, and saying so is the point: a rule

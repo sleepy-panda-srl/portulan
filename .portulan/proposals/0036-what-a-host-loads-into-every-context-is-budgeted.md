@@ -123,6 +123,11 @@ lines used today):
   The manifest records which host's exact count calibrated the declared ratio. It exits 0, 1 or 2 like
   every recipe. **The exact mode never runs inside a recipe**, because no verify
   recipe may make a network call ([`../gate-map.md`](../gate-map.md)).
+  _Implementation ruling, 2026-11-09: for [#506](https://github.com/sleepy-panda-srl/portulan/issues/506),
+  Marius accepted “Provider count with stated limit” after the provider documented its API count as an
+  estimate that can differ from actual usage. The current mode reports that boundary and an approximate
+  effective ratio, with no automatic declaration or claim of actual complete host-prompt tokens. The
+  accepted wording above remains here as history._
 - **A report by default, a rail by declaration.** `doctor` reports every workspace's always tier per host
   with no configuration: its size, the top contributors, and the tier each sits in. The same figure closes
   the boot. `doctor` fails only where the manifest declares a budget. A defaulted rail is a non-goal; the

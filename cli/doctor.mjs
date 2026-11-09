@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // `doctor` — the Workspace Definition validator.
 //
-//   node cli/doctor.mjs [--static] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir>...
+//   node cli/doctor.mjs [--static | --count-tokens <model>] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir>...
 //
 // Exit 0 every workspace validates · 1 at least one does not · 2 could not run.
 
@@ -25,7 +25,7 @@ import { isInside, recordType } from "./index.mjs";
 import { parseFrontmatter, AGENT_DIR } from "./plugin-lint.mjs";
 import { resolveGovernor, AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 import { composedId } from "./recipe-set.mjs";
-import { alwaysLine, alwaysTier, declaredContext, treeOf, ESTIMATED_BYTES_PER_TOKEN } from "./context.mjs";
+import { alwaysLine, alwaysTier, declaredContext, treeOf, ESTIMATED_BYTES_PER_TOKEN, countAlways, countLine, countRoot, ContextError } from "./context.mjs";
 import { movableSections } from "./instructions.mjs";
 import { formLine } from "./form.mjs";
 import { sessionsLine } from "./sessions.mjs";
@@ -1997,6 +1997,8 @@ function usage() {
         "  portulan doctor [--static] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]",
         "",
         "  --static      skip local usage records; validation and plugin discovery remain unchanged.",
+        "  --count-tokens <model>  send the measured project always corpus to Anthropic for a provider estimate.",
+        "                Requires ANTHROPIC_API_KEY; unavailable with --static or in CI. No manifest is changed.",
         "  --pack-root   where declared packs are resolved from; `auto` discovers the host's plugin cache.",
         "                A named root REPLACES every other source. A directory actually named `auto` is `./auto`",
         "  --repo-root   where the repositories this workspace's cards NAME are checked out, so their",
@@ -2020,6 +2022,7 @@ export async function run(argv, options = {}) {
     }
     try {
         let staticMode = false;
+        let countModel = null;
         const namedRoots = [];
         let discoverPacks = false;
         const repoRoots = [];
@@ -2048,6 +2051,9 @@ export async function run(argv, options = {}) {
         for (let i = 0; i < argv.length; i += 1) {
             if (argv[i] === "--static") {
                 staticMode = true;
+            } else if (argv[i] === "--count-tokens") {
+                if (countModel !== null || !argv[i + 1] || argv[i + 1].startsWith("-")) throw new DoctorError("--count-tokens needs one explicit provider model ID");
+                countModel = argv[++i];
             } else if (argv[i] === "--repo-root") {
                 repoRoots.push(directoryRoot("--repo-root", argv[i + 1], REPO_ROOT));
                 i += 1;
@@ -2064,6 +2070,7 @@ export async function run(argv, options = {}) {
         }
         const bothAsked = namedWithAuto(namedRoots, discoverPacks);
         if (bothAsked) throw new DoctorError(bothAsked);
+        if (countModel !== null && staticMode) throw new DoctorError("--count-tokens is unavailable with --static; verify recipes stay offline");
         if (dirs.length === 0) {
             if (!options.quiet) {
                 process.stderr.write("usage: node cli/doctor.mjs [--static] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");
@@ -2073,6 +2080,10 @@ export async function run(argv, options = {}) {
 
         let failed = 0;
         for (const dir of dirs) {
+            if (countModel !== null) {
+                try { countRoot(path.resolve(dir)); }
+                catch (error) { throw new DoctorError(error instanceof ContextError ? error.message : "provider source validation could not run"); }
+            }
             const roots = {
                 ...(namedRoots.length ? { packRoots: namedRoots } : {}),
                 ...(discoverPacks ? { discoverPacks } : {}),
@@ -2084,6 +2095,12 @@ export async function run(argv, options = {}) {
             const usageLines = !staticMode && !options.quiet && !bad.length && workspace
                 ? await workspaceUsageReport(path.resolve(dir), workspace, { ...options, onLedger: (report) => { evidence = report; } }) : [];
             say(display(dir));
+            if (countModel !== null && bad.length) {
+                say(`  RED — ${bad.length} validation failure(s); provider count skipped. Run doctor --static separately for validation details.`);
+                say();
+                failed += 1;
+                continue;
+            }
             for (const f of findings) say(`  ${ICON[f.severity]} ${f.check.padEnd(10)} ${f.check === "lever" && evidence !== null ? biggestLeverLine(path.resolve(dir), workspace, evidence) : f.message}`);
             say(
                 `  ${bad.length ? "RED" : "GREEN"} — ${bad.length} failure(s), ` +
@@ -2091,6 +2108,10 @@ export async function run(argv, options = {}) {
                     (stats.unverifiable ? `, ${stats.unverifiable} unverifiable` : ""),
             );
             for (const line of usageLines) say(line);
+            if (countModel !== null && !bad.length && workspace) {
+                try { say(countLine(await countAlways(path.resolve(dir), { ...options.countOptions, model: countModel }))); }
+                catch (error) { throw new DoctorError(error instanceof ContextError ? error.message : "provider token count could not run"); }
+            }
             say();
             if (bad.length) failed += 1;
         }
