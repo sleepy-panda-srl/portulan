@@ -147,6 +147,14 @@ lines used today):
   changed.)_
 - **A librarian pass** reports always-tier headroom beside memory's and **drafts** demotions as a pull
   request. It never applies one, because the curated layer is agent-drafted and human-owned.
+  _Delivery qualification recorded 2026-11-10: the maintainer-authored
+  [#508](https://github.com/sleepy-panda-srl/portulan/issues/508) names the standing report as the
+  natural carrier. The [implemented contract](../../core/operating/context.md#what-is-machinery-today-and-what-is-not)
+  puts conditional demotion drafts in that report. The
+  [workflow](../../.github/workflows/librarian.yml) creates a PR beside the report when a new pass
+  changes permitted derived files; a clean report-only pass skips PR creation, and an already-filed
+  pass retains its existing handling. The original wording above remains as accepted history.
+  This qualifies delivery only: the human decides whether and how to apply a demotion._
 - **`init` offers a starting budget** in its interview: the larger of 8k tokens and what the repository
   loads today. It is an offer the human accepts, not a default.
 - **Not a ninth subcommand.** [`../../docs/vision.md`](../../docs/vision.md) enumerates eight, and that
