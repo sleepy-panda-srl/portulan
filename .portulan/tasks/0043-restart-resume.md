@@ -47,3 +47,10 @@ with existing directory-only icon and untracked system-file warnings. Both
 adjustments are folded with focused controls; a review of this fold precedes commit.
 Real-host execution of newly compiled declarations and estimate accuracy remain
 undemonstrated. The private seam scan is the implementer's separate obligation.
+
+
+**Integration.** Main advanced to `01ca4887` while the PR was open. Its exported
+advisory formatter and owned-prompt rail are retained. The independent sync review
+caught obsolete synthetic pricing fields: native Stop profiles now use explicit
+profitable estimates, tool/prompt profiles cover priced and conditional advice,
+and a priced-only growth mutation must trip the unchanged hook cap. No cap rises.

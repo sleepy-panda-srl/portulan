@@ -84,6 +84,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`skill-goldens.mjs`](skill-goldens.mjs) | The core-skill golden corpus — every mandate a core skill states, bound to the live artifacts it governs, and graded. |
 | [`skills-set.mjs`](skills-set.mjs) | The registrable set: the `skills` paths a plugin manifest must declare so a composed pack's skills register. |
 | [`spend-offer.mjs`](spend-offer.mjs) | Local evidence for init's optional spend declaration. |
+| [`stop-diagnostics.mjs`](stop-diagnostics.mjs) | Bounded streaming failure excerpts for the Stop recipe relay. |
 | [`stop-policy.mjs`](stop-policy.mjs) | Stop recipe deadline policy. |
 | [`symbols.mjs`](symbols.mjs) | A code file's outline, one line per symbol, and a Markdown file's, one line per heading with its size. |
 | [`telemetry.mjs`](telemetry.mjs) | The OTel emitter: the review-loop figures as OTLP/HTTP JSON, sent only when a committed config opts in. |
@@ -145,6 +146,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`pinned-roots.live.test.mjs`](pinned-roots.live.test.mjs) | Required checks name their resolution root, and every suite whose imports reach the host's plugin record empties it. |
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Tests for `plugin-lint` — the packaging validator. |
 | [`portulan.test.mjs`](portulan.test.mjs) | Tests for the `npx` entry point: dispatch through an injected loader, its refusals, and its version. |
+| [`prompt-footprint.test.mjs`](prompt-footprint.test.mjs) | Owned prompt footprint regression checks. |
 | [`recipe-output.test.mjs`](recipe-output.test.mjs) | Agent recipe output controls. |
 | [`recipe-runner.test.mjs`](recipe-runner.test.mjs) | Recipe cleanup controls use isolated, test-owned process groups and late filesystem writes. |
 | [`recipe-set.live.test.mjs`](recipe-set.live.test.mjs) | The composed recipe set, against THIS repository rather than against fixtures. |
@@ -160,6 +162,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`skills-set.live.test.mjs`](skills-set.live.test.mjs) | The registrable set, against THIS repository rather than against fixtures. |
 | [`skills-set.test.mjs`](skills-set.test.mjs) | The registrable set — what a plugin manifest must declare so a composed pack's skills register. |
 | [`spend-offer.test.mjs`](spend-offer.test.mjs) | Init spend offers. |
+| [`stop-diagnostics.test.mjs`](stop-diagnostics.test.mjs) | Stop recipe diagnostics retain failures across noise and stream boundaries. |
 | [`stop-gate.test.mjs`](stop-gate.test.mjs) | Tests for the Stop-gate runner: its per-reason caps, the handoff date, its verdicts, the did-work signals and the tree it answers about. |
 | [`symbols.live.test.mjs`](symbols.live.test.mjs) | `symbols` against this repository: tracked code and Markdown files outline, each declaration compiles alone, and heading links land. |
 | [`symbols.test.mjs`](symbols.test.mjs) | The outline's contract, on fixtures: what each construct prints, and every refusal. |

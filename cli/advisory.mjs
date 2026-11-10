@@ -1,20 +1,11 @@
 #!/usr/bin/env node
 // Restart comparison with explicit horizon and resume expense; unknown recovery cost stays conditional.
 //
-//   node cli/advisory.mjs tool [<figures>]      a PostToolUse hook: the line, as additionalContext, once, mid-stretch
-//   node cli/advisory.mjs prompt [<figures>]    a UserPromptSubmit hook: the same line, at the next prompt, if not said yet
-//   node cli/advisory.mjs status [<figures>]    a status-line command: the figure and the request count, on every refresh
-//   node cli/advisory.mjs stop [<figures>]      a Stop hook, where a workspace declares it: the same line as a block, once
-//
-//   <figures>  --read <m> --write-5m <m> --write-1h <m>, all three or none, and --horizon <n>: a workspace's
-//              `spend`, as `./compile.mjs` writes it; --resume-tokens adds restart expense in input-equivalent tokens.
-//
-// Exit 0 on every path: a 2 would erase the person's prompt at `UserPromptSubmit` and hold every turn's end at
-// `Stop`. What it cannot read or use, it passes over and names on stderr.
-//
-// The line rides a tool result or a prompt: a non-blocking `Stop` hook's output never reaches the model, and a
-// headless run's one prompt comes before any request. The transcript is written asynchronously, so the line may
-// come one request late, never early.
+// node cli/advisory.mjs tool|prompt|status|stop [--read m --write-5m m --write-1h m] [--horizon n] [--resume-tokens cost]
+// Undeclared prices/horizon use general figures; unknown resume cost permits conditional reports only.
+// Tool/prompt output reaches the agent; a declared Stop holds only with explicit profitable estimates.
+// Transcripts may lag one request. Exit 0 always: hook failure must not erase a prompt or hold every Stop.
+// Unusable figures are named on stderr.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -206,6 +197,13 @@ export function statusLine(figure) {
         `multipliers ${m.source}: read ${m.read}×, write ${m.write}×`;
 }
 
+export function advisoryOutput(figure, event) {
+    const line = adviceLine(figure, event);
+    return event === "Stop"
+        ? JSON.stringify({ decision: "block", reason: line })
+        : JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: line } });
+}
+
 function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = null, horizon = null, resume = null } = {}) {
     // Claude Code 2.1.281: a subagent's tool call carries its own `agent_id` and the main session's transcript,
     // and a subagent told to end its session would end nothing.
@@ -245,13 +243,13 @@ function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = n
         }
         return null;
     }
-    if (event !== "Stop") return JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: adviceLine(figure, event) } });
+    if (event !== "Stop") return advisoryOutput(figure, event);
     try {
         mark(toldFile(sessionId, figure.compactions, dir));
     } catch (error) {
         if (error.code !== "EEXIST") warn(`the told-once record could not be written — ${error.code ?? error.message}; the line may come once more after the block`);
     }
-    return JSON.stringify({ decision: "block", reason: adviceLine(figure, event) });
+    return advisoryOutput(figure, event);
 }
 
 export const onTool = (payload, options) => once("PostToolUse", payload, options);
