@@ -1,0 +1,1 @@
+- Restart advice includes optional resume expense in input-equivalent tokens, names its remaining-request assumptions, and reports conditionally when recovery cost is unknown; Stop holds require an explicit horizon, explicit expense and positive estimated savings (#503).

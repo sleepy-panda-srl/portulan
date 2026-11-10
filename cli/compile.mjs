@@ -629,6 +629,7 @@ export function claudeCode(parsed, options = {}) {
     const figures = [];
     if (spend?.multipliers) figures.push("--read", spend.multipliers.read, "--write-5m", spend.multipliers.write["5m"], "--write-1h", spend.multipliers.write["1h"]);
     if (spend?.horizon) figures.push("--horizon", spend.horizon);
+    if (spend?.resume != null) figures.push("--resume-tokens", spend.resume);
     const spendFlags = figures.map((f) => ` ${f}`).join("");
     const restartBlock = spend?.restart === "block";
     const spendFrom = figures.length || restartBlock ? spend.manifest : null;
@@ -729,11 +730,12 @@ export function claudeCode(parsed, options = {}) {
                 `commands carry them, so an edit to \`spend\` is drift until recompiled`,
         );
     }
+    if (spend?.resume != null) notes.push(`restart resume expense: ${spend.resume} input-equivalent tokens, excluding the fresh-context write and baseline reads`);
     if (restartBlock) {
         notes.push(
-            `the restart advisory also holds a turn's end (\`spend.restart\` "block"): at the first stop at or past the restart ` +
-                `threshold that no block provoked, once in a session and again after each compaction, with the line as the reason, beside the Stop-gate. Nothing ends the ` +
-                `session, and the line still comes with a tool result or at the prompt`,
+            `the restart advisory's Stop command (\`spend.restart\` "block") holds once only with an explicit horizon, an explicit resume expense ` +
+                `and finite positive estimated savings; equality never holds. Without both estimates it reports conditionally without holding. ` +
+                `Retry protection and once per compaction still apply; nothing ends the session`,
         );
     }
     if (editCoveredGates.length) {
@@ -2176,6 +2178,14 @@ export function spendDeclaration(workspaceRoot, workspaceDir = ".portulan") {
                 `\`spend.restart\` in ${where} is Workspace Definition 2.13's, and this manifest declares ${version[0]}, whose validator ` +
                     "refuses it as an unknown key. Declare 2.13, or remove the key",
             );
+        }
+    }
+    if (spend.resume !== null) {
+        const version = typeof parsed.portulan?.spec === "string" ? /^2\.([0-9]+)$/.exec(parsed.portulan.spec) : null;
+        const schema = JSON.parse(fs.readFileSync(new URL("../spec/workspace.schema.json", import.meta.url), "utf8"));
+        const supported = /\/spec\/2\.([0-9]+)\//.exec(schema.$id ?? "");
+        if (!version || !supported || Number(version[1]) < 16 || Number(version[1]) > Number(supported[1])) {
+            throw new CompileError(`\`spend.resume\` in ${where} requires Workspace Definition 2.16 through the shipped schema's supported minor`);
         }
     }
     return spend;

@@ -31,7 +31,7 @@ import { handoffPolicy } from "./handoff-policy.mjs";
 import { movableSections } from "./instructions.mjs";
 import { formLine } from "./form.mjs";
 import { sessionsLine } from "./sessions.mjs";
-import { hostPaths, ledger, print, readSpend, worktrees, linesChanged, GENERAL_READ, HORIZON } from "./ledger.mjs";
+import { hostPaths, ledger, print, readSpend, restartSaving, worktrees, linesChanged, GENERAL_READ, HORIZON } from "./ledger.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -833,6 +833,7 @@ export async function inspect(workspaceDir, options = {}) {
             ["sessions", 11, workspace.sessions],
             ["spend", 12, workspace.spend],
             ["spend.restart", 13, workspace.spend?.restart],
+            ["spend.resume", 16, workspace.spend?.resume],
             ["handoffs.series", 15, workspace.handoffs?.series],
             ["handoffs.index.budget", 15, workspace.handoffs?.index?.budget],
         ]) {
@@ -1364,6 +1365,10 @@ export async function inspect(workspaceDir, options = {}) {
         }
     }
     const horizonRequests = workspace.spend?.horizon?.requests;
+    const resumeTokens = workspace.spend?.resume?.tokens;
+    if (resumeTokens !== undefined && !(Number.isFinite(resumeTokens) && resumeTokens >= 0)) {
+        fail("schema", "spend.resume.tokens must be a finite nonnegative number of input-equivalent tokens; absent means unknown, not zero");
+    }
     if (horizonRequests !== undefined && !positive(horizonRequests)) {
         fail(
             "schema",
@@ -1953,16 +1958,16 @@ export function biggestLeverLine(workspaceDir, workspace, evidence = null) {
             saving: c.bytes / ratio * horizon * read,
             basis: `${c.bytes} B after ${c.routing} B routing allowance / ${ratio} B per token; assumes unused throughout the horizon`,
         }));
-        if (measured) candidates.push({
+        if (measured && session.resume != null && session.horizonDeclared) candidates.push({
             action: "review restarting the recorded session",
-            saving: horizon * read * (session.context - session.fresh) - session.multipliers.write * session.fresh,
-            basis: `${horizon} × ${read} × (${session.context} − ${session.fresh}) − ${session.multipliers.write} × ${session.fresh}; resume cost unmeasured`,
+            saving: restartSaving({ fresh: session.fresh, context: session.context, horizon, read, write: session.multipliers.write, resume: session.resume }),
+            basis: `${horizon} × ${read} × (${session.context} − ${session.fresh}) − ${session.multipliers.write} × ${session.fresh} − ${session.resume}; resume expense priced in input-equivalent tokens`,
         });
         const winner = candidates.filter((c) => Number.isFinite(c.saving) && c.saving > 0).sort((a, b) => b.saving - a.saving || (a.action < b.action ? -1 : 1))[0];
         const assumptions = `${horizon} requests at ${read}× read (${spend.multipliers === null ? "general, undeclared" : "declared"}); ` +
-            `${measured ? "recorded restart compared" : "session-dependent levers not compared"}${evidence?.malformed ? "; partial usage data" : ""}; ${limits}`;
+            `${measured && session.resume != null && session.horizonDeclared ? "recorded restart compared" : "session-dependent levers not compared: explicit horizon and resume expense required"}${evidence?.malformed ? "; partial usage data" : ""}; ${limits}`;
         return winner
-            ? `biggest lever: ${winner.action} — up to ~${Math.round(winner.saving).toLocaleString("en-US")} estimated input-equivalent tokens; ${winner.basis}; ${assumptions}; review candidates only, not guaranteed session savings`
+            ? `biggest lever: ${winner.action} — up to ~${Number(winner.saving.toPrecision(6)).toLocaleString("en-US", { maximumSignificantDigits: 6 })} estimated input-equivalent tokens; ${winner.basis}; ${assumptions}; review candidates only, not guaranteed session savings`
             : `no positive measured lever; ${assumptions}`;
     } catch {
         return `unmeasured — context or spend inputs are invalid, unreadable or incomplete; session-dependent levers not compared; ${limits}`;

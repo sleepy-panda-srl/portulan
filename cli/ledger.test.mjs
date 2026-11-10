@@ -563,7 +563,7 @@ describe("the restart threshold", () => {
         assert.equal(describeMultipliers(multipliers({ declared })), "multipliers declared: read 0.05×, write 1.25× (a five-minute write, the lifetime the records did not state)");
         // A fresh context of 40,000 written for an hour, judged 30 requests out: 40,000 × (1 + 2 / (30 × 0.05)).
         const figure = figureOf({ ...sessionFigures(), fresh: 40000, freshLifetime: "1h", lifetime: "1h", last: 50000 }, { declared, horizon: 30 });
-        assert.deepEqual([figure.threshold, figure.horizon, figure.multipliers.write], [93333, 30, 2]);
+        assert.deepEqual([figure.threshold, figure.horizon, figure.multipliers.write], [93334, 30, 2]);
     });
 });
 
@@ -572,10 +572,10 @@ describe("a declared `spend`, as a manifest carries it", () => {
     const write = { "5m": 1.25, "1h": 2 };
 
     test("undeclared, either half alone, or both, each read as the shape the threshold takes", () => {
-        assert.deepEqual(readSpend(undefined, "w.json"), { multipliers: null, horizon: null, restart: null });
-        assert.deepEqual(readSpend({}, "w.json"), { multipliers: null, horizon: null, restart: null });
-        assert.deepEqual(readSpend({ horizon: { requests: 30 } }, "w.json"), { multipliers: null, horizon: 30, restart: null });
-        assert.deepEqual(readSpend({ multipliers: { read: 0.05, write }, horizon: { requests: 30 } }, "w.json"), { multipliers: { read: 0.05, write }, horizon: 30, restart: null });
+        assert.deepEqual(readSpend(undefined, "w.json"), { multipliers: null, horizon: null, restart: null, resume: null });
+        assert.deepEqual(readSpend({}, "w.json"), { multipliers: null, horizon: null, restart: null, resume: null });
+        assert.deepEqual(readSpend({ horizon: { requests: 30 } }, "w.json"), { multipliers: null, horizon: 30, restart: null, resume: null });
+        assert.deepEqual(readSpend({ multipliers: { read: 0.05, write }, horizon: { requests: 30 } }, "w.json"), { multipliers: { read: 0.05, write }, horizon: 30, restart: null, resume: null });
         // The bounds themselves: a read at the cost of an uncached token, and writes at it.
         assert.deepEqual(readSpend({ multipliers: { read: 1, write: { "5m": 1, "1h": 1 } } }, "w.json").multipliers, { read: 1, write: { "5m": 1, "1h": 1 } });
         // `doctor`'s positive-integer check passes a horizon past 2^53, so it is taken here too.
@@ -584,7 +584,7 @@ describe("a declared `spend`, as a manifest carries it", () => {
 
     test("what a crossed threshold does is read as declared, alone or beside the figures", () => {
         for (const restart of ["advise", "block"]) {
-            assert.deepEqual(readSpend({ restart }, "w.json"), { multipliers: null, horizon: null, restart });
+            assert.deepEqual(readSpend({ restart }, "w.json"), { multipliers: null, horizon: null, restart, resume: null });
             assert.equal(readSpend({ multipliers: { read: 0.05, write }, horizon: { requests: 30 }, restart }, "w.json").restart, restart);
         }
     });
@@ -753,16 +753,16 @@ describe("the command", () => {
                 return out.lines.find((l) => l.startsWith("  restart: "));
             };
             const general = restart([]);
-            assert.equal(general, "  restart: session s is at 80,002 tokens and has reached its threshold of 80,002 = 40,001 × (1 + 2 / (20 × 0.1)); multipliers undeclared: the general read 0.1× and the 2× of the one-hour writes the host recorded");
+            assert.equal(general, "  restart: session s is at 80,002 tokens and has reached its threshold of 80,002 = 40,001 × (1 + 2 / (20 × 0.1)) + 0 / (20 × 0.1); multipliers undeclared: the general read 0.1× and the 2× of the one-hour writes the host recorded; horizon 20 requests remaining (default); resume cost unknown: threshold is a lower bound");
             manifest({ portulan: { spec: "2.11" } });
             assert.equal(restart(["--workspace", ws]), general, "a manifest declaring no `spend` prices as no flag does");
             manifest({ portulan: { spec: "2.12" }, spend: { multipliers: { read: 0.05, write: { "5m": 1.25, "1h": 2 } }, horizon: { requests: 30 } } });
             assert.equal(
                 restart(["--workspace", ws]),
-                "  restart: session s is at 80,002 tokens and is below its threshold of 93,336 = 40,001 × (1 + 2 / (30 × 0.05)); multipliers declared: read 0.05×, write 2× (the one-hour writes the host recorded)",
+                "  restart: session s is at 80,002 tokens and is below its threshold of 93,336 = 40,001 × (1 + 2 / (30 × 0.05)) + 0 / (30 × 0.05); multipliers declared: read 0.05×, write 2× (the one-hour writes the host recorded); horizon 30 requests remaining (declared); resume cost unknown: threshold is a lower bound",
             );
             manifest({ portulan: { spec: "2.12" }, spend: { horizon: { requests: 10 } } });
-            assert.match(restart(["--workspace", ws]), /threshold of 120,003 = 40,001 × \(1 \+ 2 \/ \(10 × 0\.1\)\); multipliers undeclared/, "the horizon stands alone");
+            assert.match(restart(["--workspace", ws]), /threshold of 120,003 = 40,001 × \(1 \+ 2 \/ \(10 × 0\.1\)\) \+ 0 \/ \(10 × 0\.1\); multipliers undeclared/, "the horizon stands alone");
         });
     });
 
@@ -778,15 +778,15 @@ describe("the command", () => {
                 return out.lines.find((l) => l.startsWith("  restart: "));
             };
             const unjudged = "  restart: no session on this branch has a request with a time to judge; a threshold would take a horizon of ";
-            assert.equal(restart([]), `${unjudged}20 requests and the general multipliers, undeclared: read 0.1×, writes 1.25× for five minutes and 2× for an hour`);
+            assert.equal(restart([]), `${unjudged}20 requests (default) and the general multipliers, undeclared: read 0.1×, writes 1.25× for five minutes and 2× for an hour; resume cost unknown`);
             fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify({ portulan: { spec: "2.12" }, spend: { multipliers: { read: 0.05, write: { "5m": 1.25, "1h": 2 } }, horizon: { requests: 30 } } }));
-            assert.equal(restart(["--workspace", ws]), `${unjudged}30 requests and the declared multipliers: read 0.05×, writes 1.25× for five minutes and 2× for an hour`);
+            assert.equal(restart(["--workspace", ws]), `${unjudged}30 requests (declared) and the declared multipliers: read 0.05×, writes 1.25× for five minutes and 2× for an hour; resume cost unknown`);
             // A request with no time is counted, and still leaves no session to judge.
             write(path.join(dir, "projects", projectKey(dir), "s.jsonl"), blocks({ cwd: dir, at: null }));
             const out = say();
             assert.equal(run(["--branch", "b", "--workspace", ws], out.fn, host), 0, out.lines.join("\n"));
             assert.ok(!out.lines.includes("  no request on b is recorded here"), out.lines.join("\n"));
-            assert.equal(out.lines.at(-1), `${unjudged}30 requests and the declared multipliers: read 0.05×, writes 1.25× for five minutes and 2× for an hour`);
+            assert.equal(out.lines.at(-1), `${unjudged}30 requests (declared) and the declared multipliers: read 0.05×, writes 1.25× for five minutes and 2× for an hour; resume cost unknown`);
         });
     });
 
@@ -795,7 +795,7 @@ describe("the command", () => {
         assert.throws(() => readSpend({ multipliers: { read: 0.05, write: { "5m": 1.25, "1h": Number.MAX_VALUE } } }, where), (error) => error instanceof LedgerError && /gives no finite restart threshold, since `write\["1h"\]` divided by `read` overflows/.test(error.message));
         assert.equal(overflowingWrite({ read: 0.05, write: { "5m": 1.25, "1h": 2 } }), null);
         // A quotient in range, which a fresh context of 100 still carries past the largest number.
-        assert.throws(() => restartThreshold({ fresh: 100, write: Number.MAX_VALUE, read: 1, horizon: 1 }), (error) => error instanceof LedgerError && /overflows, so these multipliers give none$/.test(error.message));
+        assert.throws(() => restartThreshold({ fresh: 100, write: Number.MAX_VALUE, read: 1, horizon: 1 }), (error) => error instanceof LedgerError && /overflows, so these figures give none$/.test(error.message));
     });
 
     test("--workspace naming a manifest that cannot be read, or a `spend` it refuses, is could-not-run, never a report", () => {

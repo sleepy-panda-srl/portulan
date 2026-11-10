@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The restart advisory — one line, once, where the agent is, and the same figure for the human.
+// Restart comparison with explicit horizon and resume expense; unknown recovery cost stays conditional.
 //
 //   node cli/advisory.mjs tool [<figures>]      a PostToolUse hook: the line, as additionalContext, once, mid-stretch
 //   node cli/advisory.mjs prompt [<figures>]    a UserPromptSubmit hook: the same line, at the next prompt, if not said yet
@@ -7,7 +7,7 @@
 //   node cli/advisory.mjs stop [<figures>]      a Stop hook, where a workspace declares it: the same line as a block, once
 //
 //   <figures>  --read <m> --write-5m <m> --write-1h <m>, all three or none, and --horizon <n>: a workspace's
-//              `spend`, as `./compile.mjs` writes it; undeclared, the general multipliers and horizon.
+//              `spend`, as `./compile.mjs` writes it; --resume-tokens adds restart expense in input-equivalent tokens.
 //
 // Exit 0 on every path: a 2 would erase the person's prompt at `UserPromptSubmit` and hold every turn's end at
 // `Stop`. What it cannot read or use, it passes over and names on stderr.
@@ -21,9 +21,10 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { HORIZON, LedgerError, SPEND_FIGURES, figureOf, foldFigures, overflowingWrite, readLine, sessionFigures } from "./ledger.mjs";
+import { HORIZON, LedgerError, SPEND_FIGURES, figureOf, foldFigures, overflowingWrite, readLine, restartSaving, sessionFigures } from "./ledger.mjs";
 
 const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+const savingWords = (n) => grouped(Number(n.toPrecision(6)));
 
 const STATE_VERSION = 2;
 
@@ -188,31 +189,24 @@ function refresh(found, warn, spend) {
         : { why: "no request is recorded yet", after: "the first recorded request" };
 }
 
-const FINISH = { PostToolUse: "finish the current step, then ", UserPromptSubmit: "finish what this prompt asks, then ", Stop: "" };
-
 export function adviceLine(figure, event = "UserPromptSubmit") {
     const m = figure.multipliers;
-    const assumed =
-        m.source === "declared"
-            ? "multipliers declared"
-            : `multipliers undeclared, so the general read multiplier and the ${m.recorded ? `${m.lifetime === "1h" ? "one-hour" : "five-minute"} writes the host recorded` : "five-minute write the records did not state"}`;
-    return (
-        `Portulan restart advisory: after ${grouped(figure.requests)} requests, each re-reading it, this session's context, ${grouped(figure.context)} tokens, has reached its restart threshold of ` +
-        `${grouped(figure.threshold)} = fresh context ${grouped(figure.fresh)} × (1 + write ${m.write}× / (${figure.horizon} more requests × read ${m.read}×)); ${assumed}. ` +
-        `Continuing costs more in re-reads than restarting: ${FINISH[event]}write the handoff and end the session. Said once.`
-    );
+    const horizon = `${figure.horizon} more requests (${figure.horizonDeclared ? "declared" : "default"})`;
+    const resume = figure.resume == null ? "resume cost unknown; threshold is a lower bound" : `resume expense ${grouped(figure.resume)} input-equivalent tokens`;
+    const comparison = figure.resume != null && figure.horizonDeclared
+        ? `Estimated savings ${savingWords(figure.saving)} input-equivalent tokens: consider a handoff and restart if these estimates still fit the task.`
+        : "Consider restarting only if the remaining work and handoff/reload cost make it cheaper; finish bounded work when that costs less.";
+    return `Portulan restart advisory: after ${grouped(figure.requests)} requests, context ${grouped(figure.context)} tokens, threshold ${grouped(figure.threshold)}; assumes ${horizon}, read ${m.read}×, write ${m.write}× (${m.source}); ${resume}. ${comparison} Said once.`;
 }
 
 export function statusLine(figure) {
     const m = figure.multipliers;
-    const multiplied = `${m.source === "declared" ? "multipliers declared" : "multipliers undeclared"}: read ${m.read}×, write ${m.write}×`;
-    const requests = `${grouped(figure.requests)} request${figure.requests === 1 ? "" : "s"}`;
-    return figure.context >= figure.threshold
-        ? `${requests} · context ${compact(figure.context)} has reached its ${compact(figure.threshold)} restart threshold: write the handoff and restart · ${multiplied}`
-        : `${requests} · context ${compact(figure.context)} of a ${compact(figure.threshold)} restart threshold · ${multiplied}`;
+    return `${grouped(figure.requests)} requests · context ${compact(figure.context)} / restart ${compact(figure.threshold)} · ${figure.horizon} remaining (${figure.horizonDeclared ? "declared" : "default"}) · ` +
+        `${figure.resume == null ? "resume cost unknown: lower bound" : `resume ${grouped(figure.resume)} input-equivalent tokens; estimated saving ${savingWords(figure.saving)}`} · ` +
+        `multipliers ${m.source}: read ${m.read}×, write ${m.write}×`;
 }
 
-function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = null, horizon = HORIZON } = {}) {
+function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = null, horizon = null, resume = null } = {}) {
     // Claude Code 2.1.281: a subagent's tool call carries its own `agent_id` and the main session's transcript,
     // and a subagent told to end its session would end nothing.
     if (typeof payload?.agent_id === "string" && payload.agent_id !== "") return null;
@@ -231,12 +225,13 @@ function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = n
     const record = event === "Stop" ? heldFile : toldFile;
     // Nothing written since the figures were kept, so nothing compacted: the record at the kept count answers without a read.
     if (found.stat.size === found.kept.offset && fs.existsSync(record(sessionId, found.kept.figures.compactions, dir))) return null;
-    const figure = refresh(found, warn, { declared, horizon });
+    const figure = refresh(found, warn, { declared, horizon, resume });
     if (figure.why !== undefined) {
         warn(figure.why);
         return null;
     }
-    if (figure.context < figure.threshold) return null;
+    if (figure.saving < 0) return null;
+    if (event === "Stop" && (!figure.horizonDeclared || figure.resume === null || !(figure.saving > 0))) return null;
     const mark = (file) => fs.writeFileSync(file, `${figure.context} ${figure.threshold}\n`, { flag: "wx", mode: 0o600 });
     try {
         mark(record(sessionId, figure.compactions, dir));
@@ -266,13 +261,22 @@ export const onPrompt = (payload, options) => once("UserPromptSubmit", payload, 
 export const onStop = (payload, options) => once("Stop", payload, options);
 
 /** The status line, its context the host's own last-call counts where sent: current where the transcript may lag a request. */
-export function onStatus(payload, { dir = os.tmpdir(), warn = () => {}, declared = null, horizon = HORIZON } = {}) {
+export function onStatus(payload, { dir = os.tmpdir(), warn = () => {}, declared = null, horizon = null, resume = null } = {}) {
     const found = locate(payload, dir);
-    const figure = found.why === undefined ? refresh(found, warn, { declared, horizon }) : found;
+    const figure = found.why === undefined ? refresh(found, warn, { declared, horizon, resume }) : found;
     if (figure.why !== undefined) return figure.after !== undefined ? `restart threshold: after ${figure.after}` : `restart threshold: not known, because ${figure.why}`;
     const usage = payload?.context_window?.current_usage;
     const counts = usage !== null && typeof usage === "object" ? ["input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"].map((k) => usage[k]) : [];
-    if (counts.length === 3 && counts.every((n) => Number.isSafeInteger(n) && n >= 0)) figure.context = counts.reduce((a, b) => a + b, 0);
+    if (counts.length === 3 && counts.every((n) => Number.isSafeInteger(n) && n >= 0)) {
+        const context = counts.reduce((a, b) => a + b, 0);
+        try {
+            figure.saving = restartSaving({ fresh: figure.fresh, context, horizon: figure.horizon, read: figure.multipliers.read, write: figure.multipliers.write, resume: figure.resume ?? 0 });
+        } catch (error) {
+            if (error instanceof LedgerError) return "restart threshold: not known, because the estimated saving overflows";
+            throw error;
+        }
+        figure.context = context;
+    }
     return statusLine(figure);
 }
 
@@ -284,7 +288,7 @@ function readPayload() {
     }
 }
 
-const SPEND_FLAGS = { "--read": "read", "--write-5m": "write", "--write-1h": "write", "--horizon": "requests" };
+const SPEND_FLAGS = { "--read": "read", "--write-5m": "write", "--write-1h": "write", "--horizon": "requests", "--resume-tokens": "resume" };
 
 const MULTIPLIER_FLAGS = ["--read", "--write-5m", "--write-1h"];
 
@@ -294,7 +298,7 @@ const DECIMAL = /^[0-9]+(\.[0-9]+)?(e[+-]?[0-9]+)?$/;
 /** The figures after the mode, `{ declared, horizon, fault }`, each null where absent; a partial multiplier set is undeclared whole. */
 export function spendFlags(args) {
     const values = new Map();
-    const faults = { multipliers: [], horizon: [], other: [] };
+    const faults = { multipliers: [], horizon: [], resume: [], other: [] };
     const shown = (s) => (typeof s === "string" && /^[-+.a-zA-Z0-9]+$/.test(s) ? s : JSON.stringify(s));
     for (let i = 0; i < args.length; i += 2) {
         const [flag, raw] = [args[i], args[i + 1]];
@@ -302,7 +306,7 @@ export function spendFlags(args) {
             faults.other.push(`${shown(flag)} is no flag it takes`);
             continue;
         }
-        const part = flag === "--horizon" ? faults.horizon : faults.multipliers;
+        const part = flag === "--horizon" ? faults.horizon : flag === "--resume-tokens" ? faults.resume : faults.multipliers;
         const range = SPEND_FIGURES[SPEND_FLAGS[flag]];
         const value = typeof raw === "string" && DECIMAL.test(raw) ? Number(raw) : Number.NaN;
         if (values.has(flag)) part.push(`${flag} is given twice`);
@@ -319,10 +323,12 @@ export function spendFlags(args) {
     const said = [];
     if (faults.multipliers.length) said.push(`${faults.multipliers.join(", ")}, so the multipliers are undeclared`);
     if (faults.horizon.length) said.push(`${faults.horizon.join(", ")}, so the horizon is undeclared, and ${HORIZON} requests`);
+    if (faults.resume.length) said.push(`${faults.resume.join(", ")}, so resume cost is unknown`);
     if (faults.other.length) said.push(`${faults.other.join(", ")}, so ${faults.other.length === 1 ? "it is" : "each is"} passed over with the value after it`);
     return {
         declared: missing.length === 0 && !faults.multipliers.length ? { read: values.get("--read"), write: { "5m": values.get("--write-5m"), "1h": values.get("--write-1h") } } : null,
         horizon: values.has("--horizon") && !faults.horizon.length ? values.get("--horizon") : null,
+        resume: values.has("--resume-tokens") && !faults.resume.length ? values.get("--resume-tokens") : null,
         fault: said.length ? said.join("; ") : null,
     };
 }
@@ -334,7 +340,8 @@ export function main(argv = process.argv.slice(2), { stdout = process.stdout, st
     try {
         const figures = spendFlags(argv.slice(1));
         if (figures.fault !== null) warn(`the figures after ${mode} are not all usable — ${figures.fault}`);
-        const priced = { dir, warn, declared: figures.declared, horizon: figures.horizon ?? HORIZON };
+        if (mode === "stop" && figures.fault !== null) return 0;
+        const priced = { dir, warn, declared: figures.declared, horizon: figures.horizon, resume: figures.resume };
         if (mode === "prompt" || mode === "tool" || mode === "stop") {
             const out = { tool: onTool, prompt: onPrompt, stop: onStop }[mode](input, priced);
             if (out !== null) stdout.write(`${out}\n`);

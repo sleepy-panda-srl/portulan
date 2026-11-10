@@ -322,6 +322,7 @@ export const SPEND_FIGURES = {
     read: { holds: (v) => Number.isFinite(v) && v > 0 && v <= 1, is: "a number above 0 and at most 1" },
     write: { holds: (v) => Number.isFinite(v) && v >= 1, is: "a number of at least 1" },
     requests: { holds: (v) => Number.isInteger(v) && v > 0, is: "a positive integer" },
+    resume: { holds: (v) => Number.isFinite(v) && v >= 0, is: "a finite nonnegative number of input-equivalent tokens" },
 };
 
 /** What a crossed restart threshold does: `"advise"` says the line; `"block"` also holds the turn's end once. */
@@ -333,7 +334,7 @@ export function overflowingWrite({ read, write }) {
 
 /** Each part null where undeclared; throws at the first fault, since no reader may rely on `doctor` having run. */
 export function readSpend(value, where) {
-    if (value === undefined) return { multipliers: null, horizon: null, restart: null };
+    if (value === undefined) return { multipliers: null, horizon: null, restart: null, resume: null };
     const refuse = (what) => new LedgerError(`\`spend\` in ${where} ${what}; ../spec/slots.md gives its shape, and \`doctor\` names every finding`);
     const code = (key) => `\`${key}\``;
     const shaped = (v, at, keys, allRequired) => {
@@ -348,7 +349,7 @@ export function readSpend(value, where) {
         if (!SPEND_FIGURES[range].holds(v)) throw refuse(`${at}sets ${code(key)} to ${JSON.stringify(v)}, which is not ${SPEND_FIGURES[range].is}`);
         return v;
     };
-    shaped(value, "", ["multipliers", "horizon", "restart"], false);
+    shaped(value, "", ["multipliers", "horizon", "restart", "resume"], false);
     let multipliers = null;
     if (value.multipliers !== undefined) {
         const m = shaped(value.multipliers, "at `multipliers` ", ["read", "write"], true);
@@ -360,7 +361,8 @@ export function readSpend(value, where) {
     }
     const horizon = value.horizon === undefined ? null : figure(shaped(value.horizon, "at `horizon` ", ["requests"], true).requests, "at `horizon` ", "requests", "requests");
     if (value.restart !== undefined && !RESTARTS.includes(value.restart)) throw refuse(`sets \`restart\` to ${JSON.stringify(value.restart)}, which is neither ${RESTARTS.map((r) => `"${r}"`).join(" nor ")}`);
-    return { multipliers, horizon, restart: value.restart ?? null };
+    const resume = value.resume === undefined ? null : figure(shaped(value.resume, "at `resume` ", ["tokens"], true).tokens, "at `resume` ", "tokens", "resume");
+    return { multipliers, horizon, restart: value.restart ?? null, resume };
 }
 
 export function multipliers({ declared = null, lifetime = null } = {}) {
@@ -370,11 +372,14 @@ export function multipliers({ declared = null, lifetime = null } = {}) {
     return { read: GENERAL_READ, write: WRITE_BY_LIFETIME[at], lifetime: at, recorded, source: "undeclared" };
 }
 
-/** `C* ≈ F × (1 + m_w / (n × m_r))`, in whole tokens. */
-export function restartThreshold({ fresh, write, read, horizon = HORIZON }) {
+/** Break-even context including additional resume expense; display rounding never decides profitability. */
+export function restartThreshold({ fresh, write, read, horizon = HORIZON, resume = 0 }) {
     if (!(fresh > 0 && write > 0 && read > 0 && horizon > 0)) throw new LedgerError("a restart threshold needs a fresh context, both multipliers and a horizon, each above zero");
-    const threshold = Math.round(fresh * (1 + write / (horizon * read)));
-    if (!Number.isFinite(threshold)) throw new LedgerError(`the restart threshold ${fresh} × (1 + ${write} / (${horizon} × ${read})) overflows, so these multipliers give none`);
+    if (!SPEND_FIGURES.resume.holds(resume)) throw new LedgerError("resume expense must be finite and nonnegative");
+    const reads = horizon * read;
+    const expense = fresh * write + resume;
+    const threshold = Math.ceil(fresh + expense / reads);
+    if (![reads, expense, threshold].every(Number.isFinite)) throw new LedgerError(`the restart threshold ${fresh} × (1 + ${write} / (${horizon} × ${read})) with resume expense ${resume} overflows, so these figures give none`);
     return threshold;
 }
 
@@ -385,12 +390,24 @@ export function describeMultipliers(m) {
     return `multipliers undeclared: the general read ${m.read}× and the ${m.write}× of ${at}`;
 }
 
+export function restartSaving({ fresh, context, horizon, read, write, resume = 0 }) {
+    const gross = horizon * read * (context - fresh);
+    const written = write * fresh;
+    const saving = gross - written - resume;
+    if (![gross, written, resume, saving].every(Number.isFinite)) throw new LedgerError("the estimated restart saving overflows, so no comparison is usable");
+    // Eight rounding units at the largest operand bound these products and subtractions, without a fixed cost margin.
+    const error = Math.max(Math.abs(gross), Math.abs(written), Math.abs(resume)) * Number.EPSILON * 8;
+    return Math.abs(saving) <= error ? 0 : saving;
+}
+
 /** null with no request yet, or none since the last compaction: the context held is the one it replaced. */
-export function figureOf(figures, { declared = null, horizon = HORIZON } = {}) {
+export function figureOf(figures, { declared = null, horizon = null, resume = null } = {}) {
     if (figures.fresh === null || figures.pending || figures.fresh === 0) return null;
     const m = multipliers({ declared, lifetime: figures.freshLifetime ?? figures.lifetime });
-    const threshold = restartThreshold({ fresh: figures.fresh, write: m.write, read: m.read, horizon });
-    return { fresh: figures.fresh, context: figures.last, threshold, horizon, multipliers: m, compactions: figures.compactions, requests: figures.requests };
+    const n = horizon ?? HORIZON;
+    const threshold = restartThreshold({ fresh: figures.fresh, write: m.write, read: m.read, horizon: n, resume: resume ?? 0 });
+    const saving = restartSaving({ fresh: figures.fresh, context: figures.last, horizon: n, read: m.read, write: m.write, resume: resume ?? 0 });
+    return { fresh: figures.fresh, context: figures.last, threshold, horizon: n, horizonDeclared: horizon !== null, resume, saving, multipliers: m, compactions: figures.compactions, requests: figures.requests };
 }
 
 export function thresholdFor(transcript, options = {}) {
@@ -663,7 +680,7 @@ export function ledger({ projects, config, roots, branch, lines = null, spend = 
     const figures = tally(collected.contexts, branch);
     const host = config === null ? [] : compareHost(collected.contexts, hostTotals(config, roots));
     const latest = latestSession(collected.contexts, branch);
-    const priced = { declared: spend.multipliers, horizon: spend.horizon ?? HORIZON };
+    const priced = { declared: spend.multipliers, horizon: spend.horizon ?? null, resume: spend.resume ?? null };
     const restart = latest === null ? null : { session: latest.session, ...thresholdFor(latest.transcript, priced) };
     const local = tallyLocal(collected.receipts, branch);
     return { projects, roots, branch, collected, figures, local, host, restart, lines, priced };
@@ -673,12 +690,12 @@ const signed = (n) => (n > 0 ? `+${grouped(n)}` : n < 0 ? `−${grouped(-n)}` : 
 
 const short = (id) => id.slice(0, 8);
 
-function unjudged({ declared, horizon } = { declared: null, horizon: HORIZON }) {
+function unjudged({ declared, horizon, resume = null } = { declared: null, horizon: null }) {
     const m = declared ?? { read: GENERAL_READ, write: WRITE_BY_LIFETIME };
     return (
         "  restart: no session on this branch has a request with a time to judge; a threshold would take a horizon of " +
-        `${horizon} requests and ${declared === null ? "the general multipliers, undeclared" : "the declared multipliers"}: ` +
-        `read ${m.read}×, writes ${m.write["5m"]}× for five minutes and ${m.write["1h"]}× for an hour`
+        `${horizon ?? HORIZON} requests (${horizon === null ? "default" : "declared"}) and ${declared === null ? "the general multipliers, undeclared" : "the declared multipliers"}: ` +
+        `read ${m.read}×, writes ${m.write["5m"]}× for five minutes and ${m.write["1h"]}× for an hour; ${resume === null ? "resume cost unknown" : `resume expense ${resume} input-equivalent tokens`}`
     );
 }
 
@@ -743,7 +760,9 @@ export function print(report, say) {
     say(
         `  restart: session ${short(restart.session)} is at ${grouped(restart.context)} tokens and ` +
             `${restart.context >= restart.threshold ? "has reached" : "is below"} its threshold of ${grouped(restart.threshold)} = ` +
-            `${grouped(restart.fresh)} × (1 + ${m.write} / (${restart.horizon} × ${m.read})); ${describeMultipliers(m)}`,
+            `${grouped(restart.fresh)} × (1 + ${m.write} / (${restart.horizon} × ${m.read})) + ${restart.resume ?? 0} / (${restart.horizon} × ${m.read}); ${describeMultipliers(m)}; ` +
+            `horizon ${restart.horizon} requests remaining (${restart.horizonDeclared ? "declared" : "default"}); ` +
+            `${restart.resume === null ? "resume cost unknown: threshold is a lower bound" : `resume expense ${restart.resume} input-equivalent tokens; estimated saving ${restart.saving}`}`,
     );
 }
 
