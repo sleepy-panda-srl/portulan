@@ -266,9 +266,13 @@ labeled as fallback; a nonzero exit with only passing lines says no failure diag
 The excerpt, executor diagnostics and clipping notices fit 4,096 bytes; the whole recipe problem fits
 6,144 bytes, including bounded identity and error text. Full output requires an explicit verification
 run. These are diagnostic excerpts, not a proof that arbitrary output was classified correctly.
-The measured relay reduction does not complete the footprint rails promised by row 12 of
-[`../../docs/plan.md`](../../docs/plan.md), which remains in progress. Unimplemented obligations remain
-held by the human gate rather than described as enforcement.
+The repository's `context` recipe also rails registered skill bodies (manual-only included), core and
+composed persona charters and actual plugin bindings, deterministic native hook message profiles, and
+vendored AGENTS.md profiles. The byte limits, inventories, fixed-input accounting and finite-profile
+limits live in [the verify README](../../.portulan/verify/README.md#owned-prompt-profiles).
+These checks cover repository growth, not arbitrary runtime payload size or whole-host context.
+Row 12 of [`../../docs/plan.md`](../../docs/plan.md) remains in progress; remaining obligations are held
+by the human gate rather than described as enforcement.
 
 _(Provenance: proposal `0036`'s sealed incident, in which an adopting repository's always-loaded
 instruction files measured 130k tokens per fresh context, cache writes were most of the spend, and every

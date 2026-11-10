@@ -7,7 +7,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { pathToFileURL } from "node:url";
 
 import { matchesRule, policyPath, packContributions, composeFragments, parse } from "./compile.mjs";
 
@@ -64,17 +64,19 @@ async function main() {
     const rule = decide(payload, yielded(policy));
     if (!rule) stepAside();
 
-    const decision = rule.tier === "prohibited" ? "deny" : "ask";
-    process.stdout.write(
-        `${JSON.stringify({
-            hookSpecificOutput: {
-                hookEventName: "PreToolUse",
-                permissionDecision: decision,
-                permissionDecisionReason: `PORTULAN GATE \`${rule.id}\` (${rule.tier}) — ${rule.reason}`,
-            },
-        })}\n`,
-    );
+    process.stdout.write(`${gateOutput(rule)}\n`);
     process.exit(0);
 }
 
-main().catch(stepAside);
+export function gateOutput(rule) {
+    if (!rule) return null;
+    return JSON.stringify({
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: rule.tier === "prohibited" ? "deny" : "ask",
+            permissionDecisionReason: `PORTULAN GATE \`${rule.id}\` (${rule.tier}) — ${rule.reason}`,
+        },
+    });
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) main().catch(stepAside);
