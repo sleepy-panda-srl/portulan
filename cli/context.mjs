@@ -396,7 +396,7 @@ function walkMarkdown(dir, kept) {
     return out;
 }
 
-export function alwaysTier(repoRoot, { includeText = false, host = "claude-code" } = {}) {
+export function alwaysTier(repoRoot, { includeText = false, host = "claude-code", materializeImport } = {}) {
     if (!Object.hasOwn(GUIDANCE_HOSTS, host)) throw new ContextError("unknown project guidance host");
     const entries = [];
     const missing = [];
@@ -470,6 +470,7 @@ export function alwaysTier(repoRoot, { includeText = false, host = "claude-code"
                     continue;
                 }
                 const resolved = path.resolve(path.dirname(file), bare);
+                if (depth + 1 < IMPORT_DEPTH) materializeImport?.({ file: resolved, source: file, bare });
                 if (!isFile(resolved)) {
                     missing.push(spelled);
                     continue;
@@ -708,7 +709,7 @@ export function judgeBudget(declared, bytes, { offer = true } = {}) {
             tokens,
             text:
                 "budget: undeclared (context.always.budget.tokens) — a report, not a rail" +
-                (offer ? "; init would offer the larger of " + `${grouped(OFFER_FLOOR_TOKENS)} tokens and today's load: ${grouped(Math.max(OFFER_FLOOR_TOKENS, tokens))} tokens` : ""),
+                (offer ? "; init offers a projected budget for both guidance formats at your accepted ratio, with an 8,000-token floor" : ""),
         };
     }
     if (tokens > declared.budget) {

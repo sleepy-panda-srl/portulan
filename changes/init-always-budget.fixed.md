@@ -1,0 +1,1 @@
+- Offer and accept an explicit always-tier budget before init writes, covering both projected project guidance formats at the chosen ratio and preserving a decline.

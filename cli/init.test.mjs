@@ -964,6 +964,7 @@ describe("the interview asks, and only where somebody is there to answer", () =>
                 async ask(question) {
                     asked.push(question);
                     if (question.startsWith("Handoff budgets JSON")) return "none";
+                    if (question.startsWith("Declare an always-tier budget?")) return "n";
                     return answers.length ? answers.shift() : null;
                 },
             },
@@ -1101,7 +1102,8 @@ describe("the interview asks, and only where somebody is there to answer", () =>
         const h = harness();
         assert.equal(await run([dir], { ...h.options, io: s.io }), 0, h.warned.join("\n"));
         const question = s.asked.indexOf("Five-minute cache writes? [y/N]: ");
-        assert.equal(question, s.asked.length - 5, "the handoff offer, two spend questions and confirmation follow the cache question");
+        assert.ok(question < s.asked.indexOf("Declare an always-tier budget? [y/N]: "));
+        assert.ok(s.asked.at(-1).startsWith("Write these files?"));
         const said = s.said.join("\n");
         for (const text of [LIFETIME_OFFER.reason, LIFETIME_OFFER.tradeOff]) assert.ok(said.includes(text), "a yes is given knowing the reason and the trade-off");
         assert.match(said, /^ {2}cache {7}5m, as `sessions\.cache_lifetime` at Workspace Definition 2\.11$/m, "the confirmation echoes the answer");
@@ -1403,7 +1405,7 @@ describe("init drafts a boot card and compiles it", () => {
         const manifest = ok(dir);
         assert.equal(manifest.portulan.spec, "2.10", "slots.context arrived at 2.10");
         assert.equal(manifest.slots.context, "context/");
-        assert.equal(manifest.context, undefined, "a budget is offered, never written: the schema cannot say a ratio nobody measured");
+        assert.equal(manifest.context, undefined, "unattended init declares no always budget or invented ratio");
         const card = fs.readFileSync(path.join(dir, ".claude", "rules", "portulan", "boot.md"), "utf8");
         assert.match(card, /^# Portulan boot card$/m);
         assert.match(card, /^@\.\.\/\.\.\/\.\.\/\.portulan\/identity\.md$/m, "the identity is imported whole, one source");
@@ -1423,14 +1425,15 @@ describe("init drafts a boot card and compiles it", () => {
         assert.match(fs.readFileSync(path.join(dir, ".claude", "rules", "portulan", "boot.md"), "utf8"), /^2\. \*\*A reviewer read every line\.\*\*$/m);
     });
 
-    test("the offer is the larger of 8,000 tokens and the always tier, printed and not written", async () => {
+    test("unattended init explains the two-format policy without declaring a budget", async () => {
         const dir = scratch();
         const h = harness();
         assert.equal(await run(["--residence", "in-repo", dir], h.options), 0);
         const line = h.said.find((l) => l.includes("A budget is yours to declare"));
         assert.ok(line, "the offer is said where the adopter reads it");
-        assert.match(line, /always tier here is ~[\d,]+ tokens with the card/);
-        assert.match(line, /offers the larger of 8,000 tokens and that, 8,000, as `context\.always\.budget\.tokens`/);
+        assert.match(h.said.join("\n"), /Claude Code project guidance is ~[\d,]+ tokens with the compiled card/);
+        assert.match(line, /larger of 8,000 tokens and the two project guidance estimates at your explicit context\.ratio/);
+        assert.equal(ok(dir).context, undefined);
     });
 
     test("a large instruction file is offered the split, printed, and not one byte of it changed", async () => {

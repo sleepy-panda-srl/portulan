@@ -764,12 +764,15 @@ export function historyOf(comments) {
     return comments.filter((comment) => kinds.has(comment)).map((comment) => ({ ...comment, kinds: [...kinds.get(comment)] }));
 }
 
-function trackedFiles(root) {
+function trackedFiles(root, timeout, env, noFsmonitor) {
     try {
-        const out = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], {
+        const out = execFileSync("git", [...(noFsmonitor ? ["-c", "core.fsmonitor=false"] : []), "ls-files", "--cached", "--others", "--exclude-standard", "-z"], {
             cwd: root,
             encoding: "utf8",
             maxBuffer: 256 * 1024 * 1024,
+            timeout,
+            env,
+            killSignal: "SIGKILL",
             stdio: ["ignore", "pipe", "pipe"],
         });
         return [...new Set(out.split("\0").filter(Boolean))].sort();
@@ -799,8 +802,8 @@ function readSource(root, file, linked) {
 }
 
 /** Every file the tree holds in a language this reads, with its comments and the ones recording history. */
-export function scan(root, { exclude = [] } = {}) {
-    const files = trackedFiles(root);
+export function scan(root, { exclude = [], timeout, env, noFsmonitor = false } = {}) {
+    const files = trackedFiles(root, timeout, env, noFsmonitor);
     const unused = exclude.filter((prefix) => !files.some((file) => file.startsWith(prefix)));
     if (unused.length) throw new CommentsError(`--exclude ${unused.join(", ")} names no file in the tree: remove it`);
     const read = [];
@@ -822,7 +825,7 @@ export function scan(root, { exclude = [] } = {}) {
 const sum = (items, pick) => items.reduce((total, item) => total + pick(item), 0);
 const figure = (n) => n.toLocaleString("en-US");
 
-export const historyCount = (root) => sum(scan(root), (entry) => entry.history.length);
+export const historyCount = (root, options) => sum(scan(root, options), (entry) => entry.history.length);
 
 function directoryTable(read) {
     const directories = new Map();
