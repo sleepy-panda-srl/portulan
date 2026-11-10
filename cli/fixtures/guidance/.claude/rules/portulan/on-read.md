@@ -1,0 +1,1 @@
+- `context/history.md` (<1 KB): Why the service is split the way it is. Read it before restructuring it.

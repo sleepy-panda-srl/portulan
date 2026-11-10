@@ -199,7 +199,7 @@ names.)_
 | [`doctor.sh`](doctor.sh) | both workspaces validate with `--static` (no usage-record discovery): schema, paths, cross-references, claims against the tree, provenance — plus the memory store's growth report (count, size, records stating no retirement condition; notes, never failures) | `bash`, `git`, `node` |
 | [`tests.sh`](tests.sh) | every `*.test.mjs` under [`../../cli/`](../../cli/) passes — counted by `find` first, then run by a recursive glob over that same set; a red run ends with each failing test, where it is and its name | `bash`, `node` |
 | [`plugin.sh`](plugin.sh) | the packaging: both manifests parse and agree, component paths resolve, declared skills and agents are real | `bash`, `git`, `node` |
-| [`compile.sh`](compile.sh) | both compiled artifacts — [`../../.claude/settings.json`](../../.claude/settings.json) and [`../compile/github-ruleset.json`](../compile/github-ruleset.json) — are exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
+| [`compile.sh`](compile.sh) | repository enforcement and persona fields match their sources, and the committed four-tier guidance fixture's rules and on-invoke skill match its units; both checks are read-only and either failure propagates, with could-not-run outranking red | `bash`, `node` |
 | [`workflow-filters.sh`](workflow-filters.sh) | every jq **and awk** program the workflows run, lifted out of the parsed `run:` scalars and executed against null-bearing and real-body fixtures — exact stdout, exact exit status | `awk`, `bash`, `jq`, `node` |
 | [`index.sh`](index.sh) | kept indexes match their render; memory budgets hold; handoff dates and declared new-record caps hold; a handoff index renders its complete budgeted window, or the full series without a budget (this repository keeps no copy) | `bash`, `git`, `node` |
 | [`context.sh`](context.sh) | what a boot reads and what the host loads into every context, measured for both workspaces by [`../../cli/context.mjs`](../../cli/context.mjs) — each file with its size and why it counts, and what is left out — and **Portulan's own footprint railed**: this workspace's boot read-set, the demo's, the boot skill, its steps and the kernel, which every adopter's boot reads where no boot card is loaded, the skill's step files, which a boot reads where its manifest is a pointer or names a pack, and the plugin's skill and agent descriptions, each at its figure on the day it landed plus 2%. A boot whose card is loaded reads the skill and the always tier, card included, and nothing else. A demotion lowers its line in the recipe; a raise carries its reason on its line and in that change's commit. Proposal [`0036`](../proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md), items 3 and 6. Its workspace list is audited against the tree, as `index.sh`'s is | `bash`, `git`, `node` |
@@ -309,6 +309,12 @@ refused too, though it is outside C0: it is the same defect, invisible, and `cat
 **[`compile.sh`](compile.sh) never writes.** It recompiles in memory and byte-compares. A verify recipe
 that repairs what it is checking always passes, which is a fail-open dressed as a convenience — and this
 is the recipe most tempting to write that way, because the repair is one function call away.
+
+It also checks [`../../cli/fixtures/guidance/.claude/skills/release/SKILL.md`](../../cli/fixtures/guidance/.claude/skills/release/SKILL.md)
+and the companion fixture rules from their committed four-tier sources. The required control asserts
+tracked output exists before any write, forces on-invoke and scoped-rule drift independently, observes
+read-only red, and regenerates the original bytes. A source edit changes the derived output. Separate
+exit controls prove either workspace's red survives a later green and exit 2 outranks both.
 
 **And it cannot tell you the enforcement works.** It proves the artifact matches the policy. Whether the
 host *honours* the artifact is a fact about a running host, and CI installs nothing by stated doctrine —

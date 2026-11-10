@@ -2192,6 +2192,12 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         const found = await inspect(dir, { schema: SCHEMA, ...host });
         assert.match(text(checks(found.findings, "packs")), /could not be read .*so what differs could not be compared/,
             "a shadow we cannot read is not a shadow we may call harmless");
+        fs.writeFileSync(path.join(repo, "packs/rituals/checkpoints/pack.json"), Buffer.from([255]));
+        const unread = await inspect(dir, { schema: SCHEMA, ...host });
+        assert.match(text(checks(unread.findings, "packs")), /could not be read .*so what differs could not be compared/);
+        const result = spawnSync(process.execPath, [path.join(REPO, "cli/doctor.mjs"), "--static", "--pack-root", "auto", dir], { encoding: "utf8", env: { ...process.env, ...host.env }, timeout: 5000 });
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, /could not be read .*so what differs could not be compared/);
     });
 
     test("the arrangements, and BOTH resolve with no flag at all since the disposal", async () => {
@@ -2876,7 +2882,7 @@ describe("a composed persona is matched to the host binding that would carry it"
         } else {
             manifest.tree = treeDecl;
         }
-        tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify(manifest), ...agents });
+        tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify(manifest), ".claude-plugin/plugin.json": JSON.stringify({ name: "doctor-fixture", version: "1.0.0" }), ...agents });
         const root = scratch();
         tree(root, {
             "rituals/fixture/pack.json": JSON.stringify({
@@ -3121,6 +3127,7 @@ describe("a persona's name is a pack's free text, so the binding read is contain
     function poison(name) {
         const dir = scratch();
         tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/fixture"] }) });
+        tree(dir, { ".claude-plugin/plugin.json": JSON.stringify({ name: "doctor-fixture", version: "1.0.0" }) });
         const root = scratch();
         tree(root, {
             "rituals/fixture/pack.json": JSON.stringify({

@@ -239,12 +239,13 @@ because a pointer declares no tree. **A persona can declare what its context cos
 the hand-written binding of a persona a composed pack ships, and the core personas when compiling this
 engine's own declared tree, and byte-compares under `--check`, printing
 each field a host cannot express, with the persona and the host, as its degradation report for personas.
-Claude Code 2.1.317 takes all four on an agent, and loads `agents/` only from a plugin root (both read
-in its program text on 2026-11-03), so in a tree that is not a plugin the compiled block is loaded by
-nothing, and the degradation report says so; in one that is, only while the plugin is installed and
-enabled, which `compile` cannot see. That stops short of the row: `compile` writes no
-`.claude/agents/`, where a repository that is not a plugin loads its agents, and no binding where none
-exists; and no host has been shown honouring a compiled field. The core declarations choose
+The compiler and doctor select `agents/` in a plugin tree and `.claude/agents/` in an ordinary
+project, using the same bounded marker classification. Existing bindings compile even without a gate
+policy or guidance; missing adopter bindings remain unbound. Nonregular and unreadable inputs are
+not treated as absence. The two composed product roles have real plugin bindings. The committed
+four-tier fixture includes an on-invoke skill; the compile recipe checks it and its companion rules
+without writing. These are file/discovery contracts, not evidence of host enablement, field honoring
+or runtime savings. The core declarations choose
 `model: inherit`, `omitClaudeMd: false` and `cacheLifetime: 5m`, subject to the host precedence described in
 [`../personas/README.md`](../personas/README.md). **The librarian reports project always-tier headroom**
 against a declared budget and puts conditional demotion drafts in its standing report

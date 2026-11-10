@@ -1,0 +1,1 @@
+- Compile and inspect existing persona bindings at each tree's native plugin or project location, support persona-only workspaces, bind the product's composed roles and byte-check a committed on-invoke exemplar.
