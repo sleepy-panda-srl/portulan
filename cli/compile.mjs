@@ -11,6 +11,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { AUTO, discoverPackRoots, namedWithAuto, resolutionRoots } from "./discover.mjs";
 import { isInside } from "./inside.mjs";
+import { parseFrontmatter } from "./frontmatter.mjs";
 import { CannotOutline, sectionOf } from "./symbols.mjs";
 import { HORIZON, LedgerError, readSpend } from "./ledger.mjs";
 import { readStopPolicy, STOP_HOOK_MARGIN } from "./stop-policy.mjs";
@@ -1608,7 +1609,7 @@ export function guidanceDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     }
     let manifest;
     try {
-        manifest = JSON.parse(fs.readFileSync(path.join(base, "workspace.json"), "utf8"));
+        manifest = JSON.parse(readWorkspaceText(workspaceRoot, workspaceDir));
     } catch {
         return null;
     }
@@ -2067,7 +2068,7 @@ export function unreadableManifest(workspaceRoot, workspaceDir = ".portulan") {
     const file = path.join(workspaceRoot, workspaceDir, "workspace.json");
     let raw;
     try {
-        raw = fs.readFileSync(file, "utf8");
+        raw = readWorkspaceText(workspaceRoot, workspaceDir);
     } catch (cause) {
         if (cause.code === "ENOENT") return null;
         return { file, why: `it could not be read — ${cause.code ?? cause.message}` };
@@ -2089,7 +2090,7 @@ export function policyDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const fallback = (reason) => ({ file: path.join(workspaceRoot, workspaceDir, "gates.json"), declared: false, reason });
     let declared;
     try {
-        declared = JSON.parse(fs.readFileSync(manifest, "utf8")).gates;
+        declared = JSON.parse(readWorkspaceText(workspaceRoot, workspaceDir)).gates;
     } catch {
         // An unreadable manifest reaches here only from the hook's reader, which must not stop.
         return fallback("no-manifest");
@@ -2121,7 +2122,7 @@ export function sessionsDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
     let declared;
     try {
-        declared = JSON.parse(fs.readFileSync(manifest, "utf8")).sessions;
+        declared = JSON.parse(readWorkspaceText(workspaceRoot, workspaceDir)).sessions;
     } catch {
         return null;
     }
@@ -2148,7 +2149,7 @@ export function spendDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
     let parsed;
     try {
-        parsed = JSON.parse(fs.readFileSync(manifest, "utf8"));
+        parsed = JSON.parse(readWorkspaceText(workspaceRoot, workspaceDir));
     } catch {
         return null;
     }
@@ -2184,7 +2185,7 @@ export function spendDeclaration(workspaceRoot, workspaceDir = ".portulan") {
 function stopDeclaration(workspaceRoot, workspaceDir) {
     const file = path.join(workspaceRoot, workspaceDir, "workspace.json");
     let manifest;
-    try { manifest = JSON.parse(fs.readFileSync(file, "utf8")); } catch { return null; }
+    try { manifest = JSON.parse(readWorkspaceText(workspaceRoot, workspaceDir)); } catch { return null; }
     try {
         const policy = readStopPolicy(manifest);
         return policy.declared ? { ...policy, manifest: path.relative(workspaceRoot, file).split(path.sep).join("/") } : null;
@@ -2210,6 +2211,8 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
     const outcome =
         guidanceOnly === "leftover"
             ? "No enforcement is compiled, and no guidance is declared: what an earlier run compiled from guidance is this compiler's to remove, and is named below."
+            : guidanceOnly === "personas"
+              ? "No enforcement or guidance is compiled; existing persona bindings still carry their declared fields."
             : guidanceOnly
               ? "No enforcement is compiled; the workspace's guidance still is."
               : "Nothing was compiled and nothing was written.";
@@ -2263,7 +2266,15 @@ export function resolvePack(rawName, roots = []) {
     for (const root of roots) {
         const dir = path.join(root, category, pack);
         const manifest = path.join(dir, "pack.json");
-        if (fs.existsSync(manifest)) return { name, category, pack, dir, manifest, root, why: null };
+        try {
+            const realRoot = fs.realpathSync(root), realDir = fs.realpathSync(dir);
+            if (!isInside(realRoot, realDir)) throw new CompileError(`${dir} resolves outside its resolution root ${root}`);
+            readOwnedText(manifest, dir);
+            return { name, category, pack, dir, manifest, root, why: null };
+        } catch (error) {
+            if (error.code === "ENOENT") continue;
+            throw new CompileError(`cannot resolve \`${name}\` under ${root} — ${error.code ?? error.message}`);
+        }
     }
     return { name, category, pack, dir: null, manifest: null, root: null, why: "no pack.json under any resolution root" };
 }
@@ -2328,9 +2339,10 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
     const base = path.join(workspaceRoot, workspaceDir);
     let manifest;
     try {
-        manifest = JSON.parse(fs.readFileSync(path.join(base, "workspace.json"), "utf8"));
-    } catch {
-        return { contributions: [], unresolved: [] };
+        manifest = JSON.parse(readWorkspaceText(workspaceRoot, workspaceDir));
+    } catch (error) {
+        if (error.code === "ENOENT") return { contributions: [], unresolved: [] };
+        throw new CompileError(`the workspace manifest could not be read — ${error.code ?? error.message}`);
     }
     const declared = manifest?.packs;
     if (!Array.isArray(declared) || declared.length === 0) return { contributions: [], unresolved: [] };
@@ -2354,7 +2366,7 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
             unresolved.push(found);
             continue;
         }
-        const packManifest = readJson(found.manifest, `the pack manifest for \`${found.name}\``);
+        const packManifest = readJson(found.manifest, `the pack manifest for \`${found.name}\``, found.dir);
         if (!(options.forced ?? false) && plan.source !== "named") {
             const behind = shadowedCopy(found.name, recordedOrigin(found.root, plan, workspaceRoot), roots, (r) =>
                 (plan.origins ?? []).find((o) => path.resolve(o.root) === path.resolve(r))?.origin,
@@ -2362,7 +2374,7 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
             if (behind) {
                 let other = null;
                 try {
-                    other = JSON.parse(fs.readFileSync(behind.manifest, "utf8"));
+                    other = JSON.parse(readOwnedText(behind.manifest, behind.dir));
                 } catch (cause) {
                     throw new CompileError(
                         `\`${found.name}\` resolved under the root ${found.root} while the root ` +
@@ -2492,10 +2504,28 @@ export function composeFragments(policy, contributions) {
     return { policy: { ...policy, rules }, added, tightened };
 }
 
-function readJson(file, what) {
+export function readOwnedText(file, scope) {
+    fs.lstatSync(file);
+    let owner, real;
+    try { owner = fs.realpathSync(scope); real = fs.realpathSync(file); }
+    catch (error) { throw new CompileError(`${file} could not be resolved — ${error.code ?? error.message}`); }
+    if (!isInside(owner, real)) throw new CompileError(`${file} resolves outside its owner ${scope}`);
+    if (!fs.statSync(real).isFile()) throw new CompileError(`${file} is not a regular source file`);
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(real));
+}
+
+function readWorkspaceText(workspaceRoot, workspaceDir) {
+    const base = path.join(workspaceRoot, workspaceDir);
+    fs.lstatSync(path.join(base, "workspace.json"));
+    const root = fs.realpathSync(workspaceRoot), owner = fs.realpathSync(base);
+    if (!isInside(root, owner)) throw new CompileError(`${base} resolves outside its nominated workspace root`);
+    return readOwnedText(path.join(base, "workspace.json"), base);
+}
+
+function readJson(file, what, scope = path.dirname(file)) {
     let raw;
     try {
-        raw = fs.readFileSync(file, "utf8");
+        raw = readOwnedText(file, scope);
     } catch (error) {
         throw new CompileError(`cannot read ${what} at ${file} — ${error.code ?? error.message}`);
     }
@@ -2547,10 +2577,55 @@ export const PERSONA_HOSTS = {
     },
 };
 
-/** Where a Claude Code binding sits in a tree, as `AGENT_DIR` in ./plugin-lint.mjs, which a test holds it to. */
+/** The plugin location; ordinary projects use `.claude/agents/`. */
 export const BINDING_DIR = "agents";
 
 const PLUGIN_MANIFEST = ".claude-plugin/plugin.json";
+
+export function bindingDirectory(treeRoot) {
+    const unread = (where, cause) => {
+        const error = new CompileError(`${where} could not be examined — ${cause.code ?? cause.message}; binding location is unread, not absent`);
+        error.unread = true;
+        return error;
+    };
+    let realRoot;
+    try { realRoot = fs.realpathSync(treeRoot); }
+    catch (cause) { throw unread(treeRoot, cause); }
+    const directory = rel => {
+        let current = treeRoot;
+        for (const part of rel.split("/")) {
+            current = path.join(current, part);
+            try { fs.lstatSync(current); }
+            catch (cause) { if (cause.code === "ENOENT") return false; throw unread(current, cause); }
+            let real, target;
+            try { real = fs.realpathSync(current); target = fs.statSync(real); }
+            catch (cause) { throw unread(current, cause); }
+            if (!isInside(realRoot, real)) throw new CompileError(`${current} resolves outside the declared tree`);
+            if (!target.isDirectory()) throw new CompileError(`${current} is not a directory`);
+        }
+        return true;
+    };
+    let selected = ".claude/agents";
+    if (directory(".claude-plugin")) {
+        const marker = path.join(treeRoot, PLUGIN_MANIFEST);
+        let stat = null;
+        try { stat = fs.lstatSync(marker); }
+        catch (cause) { if (cause.code !== "ENOENT") throw unread(marker, cause); }
+        if (stat !== null) {
+            if (!stat.isFile()) throw new CompileError(`${marker} is not a regular plugin marker`);
+            let raw;
+            try { raw = fs.readFileSync(marker); }
+            catch (cause) { throw unread(marker, cause); }
+            let value;
+            try { value = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(raw)); }
+            catch (cause) { throw new CompileError(`${marker} is not a readable UTF-8 JSON plugin marker — ${cause.message}`); }
+            if (value === null || typeof value !== "object" || Array.isArray(value) || typeof value.name !== "string" || !SLUG.test(value.name)) throw new CompileError(`${marker} is not a named plugin object`);
+            selected = BINDING_DIR;
+        }
+    }
+    directory(selected);
+    return selected;
+}
 
 const unquoted = (raw) => (raw.length >= 2 && `"'`.includes(raw[0]) && raw.at(-1) === raw[0] ? raw.slice(1, -1) : raw);
 
@@ -2682,7 +2757,7 @@ export function planPersonas(contributions, workspaceRoot, workspaceDir = ".port
     const base = path.join(workspaceRoot, workspaceDir);
     let tree = null;
     try {
-        tree = JSON.parse(fs.readFileSync(path.join(base, "workspace.json"), "utf8"))?.tree;
+        tree = JSON.parse(readWorkspaceText(workspaceRoot, workspaceDir))?.tree;
     } catch {
         // `run` refuses an unreadable manifest before this is reached; an absent one declares no tree.
     }
@@ -2712,6 +2787,7 @@ export function planPersonas(contributions, workspaceRoot, workspaceDir = ".port
     const degraded = [];
     const owners = new Map();
     let compared = 0;
+    const bindingDir = treeRoot && sources.some(source => source.personas?.length) ? bindingDirectory(treeRoot) : BINDING_DIR;
     for (const contribution of sources) {
         for (const rel of contribution.personas ?? []) {
             const where = contribution.core ? `core persona \`${rel}\`` : `\`${contribution.pack}\`'s persona \`${rel}\``;
@@ -2719,7 +2795,8 @@ export function planPersonas(contributions, workspaceRoot, workspaceDir = ".port
             let text;
             try {
                 if (!isInside(fs.realpathSync(contribution.dir), fs.realpathSync(file))) throw new CompileError(`${where} resolves outside its ${contribution.core ? "engine" : "pack"}`);
-                text = fs.readFileSync(file, "utf8");
+                if (!fs.statSync(file).isFile()) throw new CompileError(`${where} is not a regular persona file`);
+                text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(file));
             } catch (cause) {
                 if (cause instanceof CompileError) throw cause;
                 throw new CompileError(`${where} could not be read — ${cause.code ?? cause.message}, so what it declares is unknown.${contribution.core ? " Restore the core source" : " Run `doctor` to validate the pack"}`);
@@ -2733,7 +2810,7 @@ export function planPersonas(contributions, workspaceRoot, workspaceDir = ".port
             if (contribution.core && name !== path.basename(rel, ".md")) {
                 throw new CompileError(`${where} declares name \`${name}\`, which differs from its filename and binding identity`);
             }
-            if (fields.length && !SLUG.test(name)) {
+            if (!SLUG.test(name)) {
                 throw new CompileError(`${where} is named \`${name}\`, which is not a slug, so no binding file can be named for it`);
             }
             const source = contribution.core ? rel : `${contribution.pack}'s ${rel}`;
@@ -2742,8 +2819,7 @@ export function planPersonas(contributions, workspaceRoot, workspaceDir = ".port
                     if (host[field] === null) degraded.push({ persona: name, field, host: id, line: `degraded ${name.padEnd(22)} ${field.padEnd(14)} ${id} (${host.label}): ${host.why}` });
                 }
             }
-            if (!SLUG.test(name)) continue;
-            const bindingRel = `${BINDING_DIR}/${name}.md`;
+            const bindingRel = `${bindingDir}/${name}.md`;
             if (owners.has(bindingRel)) {
                 const sources = [owners.get(bindingRel), source].sort();
                 throw new CompileError(`${bindingRel} has multiple persona owners: ${sources.join(" and ")}. Each binding must have one owner`);
@@ -2753,7 +2829,7 @@ export function planPersonas(contributions, workspaceRoot, workspaceDir = ".port
                 if (fields.length) lines.push(`persona  ${name.padEnd(22)} UNBOUND — declares ${listed(fields)}, and this workspace declares no \`tree\` to hold its binding`);
                 continue;
             }
-            const binding = path.join(treeRoot, BINDING_DIR, `${name}.md`);
+            const binding = path.join(treeRoot, bindingDir, `${name}.md`);
             const shown = path.relative(workspaceRoot, binding).split(path.sep).join("/");
             let stat = null;
             try {
@@ -2776,19 +2852,15 @@ export function planPersonas(contributions, workspaceRoot, workspaceDir = ".port
                 if (cause instanceof CompileError) throw cause;
                 throw new CompileError(`${shown} could not be resolved against the declared tree — ${cause.code ?? cause.message}`);
             }
-            const current = fs.readFileSync(binding, "utf8");
+            let current;
+            try { current = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(binding)); }
+            catch (cause) { throw new CompileError(`${shown} could not be read as UTF-8 — ${cause.code ?? cause.message}`); }
             const next = boundAgent(current, declared, source, shown);
-            if (fields.length) lines.push(`persona  ${name.padEnd(22)} ${listed(fields)} → ${shown} (${PERSONA_HOSTS["claude-code"].label})`);
-            if (fields.length && !fs.existsSync(path.join(treeRoot, ...PLUGIN_MANIFEST.split("/")))) {
-                degraded.push({
-                    persona: name,
-                    field: null,
-                    host: "claude-code",
-                    line:
-                        `degraded ${name.padEnd(22)} ${listed(fields)} claude-code (Claude Code): ${shown} loads only from a plugin root, and this tree ` +
-                        `has no ${PLUGIN_MANIFEST}; compile writes no .claude/agents/, so nothing here loads the compiled fields`,
-                });
+            const { fields: bindingFields, error } = parseFrontmatter(current);
+            if (error || bindingFields?.name?.trim() !== name || !bindingFields?.tools?.trim()) {
+                throw new CompileError(`${shown} needs matching name: ${name} and a tools allow-list in usable frontmatter before compilation`);
             }
+            if (fields.length) lines.push(`persona  ${name.padEnd(22)} ${listed(fields)} → ${shown} (${PERSONA_HOSTS["claude-code"].label})`);
             if (fields.length || next !== current) compared += 1;
             if (next !== current) files.push({ path: shown, file: binding, text: next, source });
         }
@@ -2885,7 +2957,7 @@ export function resolveWorkspace(named) {
     const manifestPath = path.join(dir, "workspace.json");
     let raw;
     try {
-        raw = fs.readFileSync(manifestPath, "utf8");
+        raw = readOwnedText(manifestPath, dir);
     } catch (cause) {
         // As given, not resolved: `compile` prints paths built on it.
         if (cause.code === "ENOENT") return { workspaceRoot: named, workspaceDir: ".portulan" };
@@ -3018,10 +3090,18 @@ export function run(argv, options = {}) {
         if (!policyDeclared && !fs.existsSync(policyFile)) {
             // Only a manifest read and naming no policy clears leftovers: one that is missing has not been authored.
             const leftover = guidance === null && policyReason === "no-key" && guidancePlan !== null && guidancePlan.stray.length > 0;
-            if (guidance === null && !leftover) {
+            let packs;
+            try { packs = packContributions(workspaceRoot, workspaceDir, packOptions); }
+            catch (cause) {
+                if (guidance === null && !leftover) throw new CompileError(`${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason)}\n  Persona planning was unavailable: ${cause.message}`);
+                throw cause;
+            }
+            const personas = planPersonas(packs.contributions, workspaceRoot, workspaceDir);
+            if (guidance === null && !leftover && personas.compared === 0) {
+                printPersonaReport(say, personas);
                 throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
             }
-            say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, leftover ? "leftover" : true)}`);
+            say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, leftover ? "leftover" : guidance === null ? "personas" : true)}`);
             if (sessions !== null) {
                 say(
                     `note    \`sessions\` in ${sessions.manifest} compiled nothing: its host switches ride the settings a gate ` +
@@ -3036,12 +3116,10 @@ export function run(argv, options = {}) {
             }
             if (stopPolicy !== null) say("note    verify.stopTimeout compiled no outer hook timeout: this workspace has no gate policy");
             say();
-            const packs = packContributions(workspaceRoot, workspaceDir, packOptions);
             for (const u of packs.unresolved) say(unresolvedLine(u));
             if (packs.unresolved.length) say();
-            const personas = planPersonas(packs.contributions, workspaceRoot, workspaceDir);
             if (showMatrix) {
-                printGuidanceMatrix(say, guidance);
+                if (guidance) printGuidanceMatrix(say, guidance);
                 printPersonaReport(say, personas);
                 return 0;
             }
@@ -3051,7 +3129,7 @@ export function run(argv, options = {}) {
             say(`GREEN — every compiled guidance file matches its unit${personas.compared ? ", and every persona binding its persona" : ""}`);
             return 0;
         }
-        const policy = readJson(policyFile, "the gate policy");
+        const policy = readJson(policyFile, "the gate policy", path.join(workspaceRoot, workspaceDir));
         // A thunk, so the host's plugin record is read only where discovery can win.
         const { contributions, unresolved, plan } = packContributions(workspaceRoot, workspaceDir, {
             named: namedRoots,

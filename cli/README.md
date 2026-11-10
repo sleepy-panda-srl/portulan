@@ -58,6 +58,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`eval-bundle.mjs`](eval-bundle.mjs) | Cut a named-recipient evaluation bundle of Portulan from a commit. Not shipped. |
 | [`finish.mjs`](finish.mjs) | The finishing command — one call closes a change: its recipes, its changelog fragment, its commit, its push. |
 | [`form.mjs`](form.mjs) | `form` — which form a consumer's records and boot are in, and the files that move them to the new one. |
+| [`frontmatter.mjs`](frontmatter.mjs) | Flat frontmatter for plugin components and host bindings. |
 | [`fuzz-shell.mjs`](fuzz-shell.mjs) | Grammar-aware fuzzing over this repository's two shell segmenters. |
 | [`goldens.mjs`](goldens.mjs) | Grade this workspace's compiled gates against a corpus of adversarial fixtures. |
 | [`handoff-policy.mjs`](handoff-policy.mjs) | Handoff caps and windows. |

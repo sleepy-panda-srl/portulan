@@ -21,18 +21,21 @@ for required in cli/compile.mjs .portulan/gates.json; do
     fi
 done
 
-printf 'compile: checking .claude/settings.json and .portulan/compile/github-ruleset.json against .portulan/gates.json, and any compiled guidance against slots.context\n'
+printf 'compile: checking repository enforcement/bindings and committed four-tier guidance exemplar\n'
 
 # The pack root is pinned so the verdict is about this tree, never the host's plugin cache.
-node cli/compile.mjs --workspace . --pack-root packs --check
-status=$?
-
-case "$status" in
-    0) exit 0 ;;
-    1) exit 1 ;;
-    2) exit 2 ;;
-    *)
-        printf 'verify: compile exited %s, which is not a verdict it documents — refusing to translate it into one\n' "$status" >&2
-        exit 2
-        ;;
-esac
+worst=0
+for workspace in . cli/fixtures/guidance; do
+    node cli/compile.mjs --workspace "$workspace" --pack-root packs --check
+    status=$?
+    case "$status" in
+        0) ;;
+        1) [ "$worst" -eq 0 ] && worst=1 ;;
+        2) worst=2 ;;
+        *)
+            printf 'verify: compile exited %s, which is not a verdict it documents\n' "$status" >&2
+            exit 2
+            ;;
+    esac
+done
+exit "$worst"

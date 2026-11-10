@@ -11,6 +11,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { HOST_SKILL_DEPTH, skillsSet, canonical } from "./skills-set.mjs";
+import { parseFrontmatter } from "./frontmatter.mjs";
+export { parseFrontmatter };
+import { packContributions, personaDeclarations } from "./compile.mjs";
 
 /** Raised when `plugin-lint` cannot run at all. Always exit 2, never 1. */
 export class PluginLintError extends Error {
@@ -25,7 +28,6 @@ const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 // Kept by hand with docs/plan.md's repo topology: visibility is a GitHub setting no file can read.
 const PRIVATE_FEEDS = ["sleepy-panda-srl/portulan-internal"];
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
-const BLOCK_SCALAR = /^[|>][+-]?$/;
 
 const PATH_FIELDS = [
     "skills",
@@ -45,53 +47,13 @@ export const AGENT_DIR = "agents";
 const MAX_WALK_DEPTH = 6;
 
 // ===========================================================================================
-// Frontmatter
-// ===========================================================================================
-
-/** A flat-YAML reader: `fields` is null without a usable block, and `error` is set when that is a defect. */
-export function parseFrontmatter(text) {
-    const lines = text.split(/\r?\n/);
-    if (lines[0]?.trim() !== "---") return { fields: null };
-
-    const close = lines.indexOf("---", 1);
-    if (close === -1) {
-        return { fields: null, error: "the frontmatter block is never closed" };
-    }
-
-    const fields = {};
-    const body = lines.slice(1, close);
-    for (let i = 0; i < body.length; i += 1) {
-        const match = /^([A-Za-z_][\w-]*)\s*:\s*(.*)$/.exec(body[i]);
-        if (!match) continue;
-        const key = match[1];
-        let value = match[2].trim();
-
-        if (BLOCK_SCALAR.test(value)) {
-            const collected = [];
-            while (i + 1 < body.length && (body[i + 1].trim() === "" || /^\s+/.test(body[i + 1]))) {
-                i += 1;
-                collected.push(body[i].trim());
-            }
-            value = collected.join(" ").trim();
-        } else if (
-            (value.startsWith('"') && value.endsWith('"') && value.length >= 2) ||
-            (value.startsWith("'") && value.endsWith("'") && value.length >= 2)
-        ) {
-            value = value.slice(1, -1);
-        }
-        fields[key] = value;
-    }
-    return { fields };
-}
-
-// ===========================================================================================
 // Inspection
 // ===========================================================================================
 
 /** Lexical: a symlink inside `root` can still lead out of it. */
 function escapes(root, target) {
     const inside = path.relative(root, target);
-    return inside.startsWith("..") || path.isAbsolute(inside);
+    return inside === ".." || inside.startsWith(`..${path.sep}`) || path.isAbsolute(inside);
 }
 
 /** Throws PluginLintError only when the root is not a readable directory; `payload` excuses an absent marketplace.json. */
@@ -119,10 +81,21 @@ export function inspect(rawRoot, { payload = false } = {}) {
     const fail = (check, message) => findings.push({ severity: "fail", check, message });
     const note = (check, message) => findings.push({ severity: "note", check, message });
 
+    const ownedText = (file, scope = root) => {
+        const realScope = fs.realpathSync(scope), real = fs.realpathSync(file);
+        if (escapes(root, realScope) || escapes(realScope, real)) throw Error(`${file} resolves outside its bundled owner`);
+        if (!fs.statSync(real).isFile()) throw Error(`${file} is not a regular source file`);
+        return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(real));
+    };
+    const ownedJson = (file, scope = root) => {
+        const value = JSON.parse(ownedText(file, scope));
+        if (value === null || typeof value !== "object" || Array.isArray(value)) throw Error(`${file} is not a JSON object`);
+        return value;
+    };
     /** Never throws: a failed read becomes a finding and returns null. */
     const read = (file, check, label) => {
         try {
-            return fs.readFileSync(file, "utf8");
+            return ownedText(file);
         } catch (error) {
             fail(check, `${label} could not be read — ${error.code ?? error.message}`);
             return null;
@@ -420,7 +393,7 @@ export function inspect(rawRoot, { payload = false } = {}) {
     let composition;
     let composable = true;
     try {
-        composition = JSON.parse(fs.readFileSync(path.join(root, GOVERNING), "utf8"));
+        composition = JSON.parse(ownedText(path.join(root, GOVERNING), path.join(root, ".portulan")));
     } catch (error) {
         if (error.code === "ENOENT") composable = false;
         else {
@@ -550,7 +523,7 @@ export function inspect(rawRoot, { payload = false } = {}) {
         for (const { name, dir } of composed) {
             let text;
             try {
-                text = fs.readFileSync(path.join(dir, "pack.json"), "utf8");
+                text = ownedText(path.join(dir, "pack.json"), dir);
             } catch (error) {
                 if (error.code === "ENOENT") continue;
                 fail(
@@ -616,8 +589,8 @@ export function inspect(rawRoot, { payload = false } = {}) {
     for (const stranded of walkForStrandedAgents(root)) {
         note(
             "agents",
-            `${path.relative(root, stranded)} is not in ./${AGENT_DIR}/, the only directory the host ` +
-                "loads agents from — it will not load",
+            `${path.relative(root, stranded)} is not in ./${AGENT_DIR}/, this plugin's agent directory — ` +
+                "it will not load as a plugin binding",
         );
     }
 
@@ -703,28 +676,77 @@ export function inspect(rawRoot, { payload = false } = {}) {
     // Fails where doctor only reports: this bundle targets one host, and an unbound persona is inert there.
     const personaDir = path.join(root, "core", "personas");
     let personaFiles = null;
+    let corePresent = false;
     try {
+        fs.lstatSync(personaDir);
+        corePresent = true;
+        if (escapes(root, fs.realpathSync(personaDir))) throw Error("core/personas/ resolves outside the plugin");
         personaFiles = fs
             .readdirSync(personaDir)
             .filter((entry) => entry.endsWith(".md") && entry !== "README.md")
             .map((entry) => path.basename(entry, ".md"))
             .sort();
     } catch (error) {
-        if (error.code !== "ENOENT") fail("agents", `core/personas/ could not be read — ${error.code ?? error.message}, so the binding correspondence went unchecked`);
+        if (error.code !== "ENOENT" || corePresent) fail("agents", `core/personas/ could not be read — ${error.code ?? error.message}, so the binding correspondence went unchecked`);
     }
-    if (personaFiles && !agentsExamined) {
+    const owners = new Map();
+    for (const name of personaFiles ?? []) {
+        const source = `core/personas/${name}.md`;
+        try { ownedText(path.join(root, source)); owners.set(name, source); }
+        catch (error) { fail("agents", `${source} could not be read — ${error.message}`); }
+    }
+    let composedDeclared = false;
+    const workspaceFile = path.join(root, ".portulan/workspace.json");
+    let workspacePresent = false;
+    try {
+        fs.lstatSync(workspaceFile);
+        workspacePresent = true;
+        const workspace = ownedJson(workspaceFile, path.dirname(workspaceFile));
+        if (workspace?.packs !== undefined && !Array.isArray(workspace.packs)) throw Error("workspace packs is not an array");
+        composedDeclared = (workspace?.packs?.length ?? 0) > 0;
+        if (composedDeclared) {
+            for (const ref of workspace.packs) {
+                if (typeof ref !== "string" || !/^[a-z0-9-]+\/[a-z0-9-]+$/.test(ref)) throw Error("a composed pack reference is malformed");
+                const packsRoot = fs.realpathSync(path.join(root, "packs"));
+                const packDir = fs.realpathSync(path.join(root, "packs", ref));
+                if (escapes(root, packsRoot) || escapes(packsRoot, packDir)) throw Error(`${ref} resolves outside its bundled packs root`);
+                const pack = ownedJson(path.join(packDir, "pack.json"), packDir);
+                if (pack.contributes !== undefined && (pack.contributes === null || typeof pack.contributes !== "object" || Array.isArray(pack.contributes))) throw Error(`${ref} contributes is not a mapping`);
+            }
+            const composed = packContributions(root, ".portulan", { packRoots: [path.join(root, "packs")] });
+            if (composed.unresolved.length) throw Error(`unresolved persona owners: ${composed.unresolved.map(pack => pack.name).join(", ")}`);
+            for (const contribution of composed.contributions) {
+                for (const rel of contribution.personas) {
+                    if (typeof rel !== "string" || !rel.trim()) throw Error("a composed persona path is not a nonempty string");
+                    const file = path.resolve(contribution.dir, rel);
+                    if (escapes(contribution.dir, file)) throw Error(`${contribution.pack}'s ${rel} resolves outside its bundled pack`);
+                    const source = `${contribution.pack}'s ${rel}`;
+                    const parsed = personaDeclarations(ownedText(file, contribution.dir));
+                    if (parsed.problems.length) throw Error(`${source}: ${parsed.problems.join("; ")}`);
+                    const name = parsed.name ?? path.basename(rel, ".md");
+                    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) throw Error(`${source} has no usable binding name`);
+                    if (owners.has(name)) throw Error(`${name} has multiple persona owners: ${owners.get(name)} and ${source}`);
+                    owners.set(name, source);
+                }
+            }
+        }
+    } catch (error) {
+        if (error.code !== "ENOENT" || workspacePresent) fail("agents", `composed persona ownership could not be read — ${error.code ?? error.message}`);
+    }
+    const correspondence = personaFiles !== null || composedDeclared;
+    if (correspondence && !agentsExamined) {
         note(
             "agents",
             `the persona↔binding correspondence went unchecked — ./${AGENT_DIR}/ could not be examined, so an empty binding set is a ` +
-                `question nobody answered rather than ${personaFiles.length} persona(s) with nothing bound to them`,
+                `question nobody answered rather than ${owners.size} persona(s) with nothing bound to them`,
         );
-    } else if (personaFiles) {
-        for (const persona of personaFiles) {
+    } else if (correspondence) {
+        for (const [persona, source] of owners) {
             const binding = bindings.get(persona);
             if (!binding) {
                 fail(
                     "agents",
-                    `core/personas/${persona}.md has no binding at ./${AGENT_DIR}/${persona}.md — a persona this plugin ships and does not bind ` +
+                    `${source} has no binding at ./${AGENT_DIR}/${persona}.md — a persona this plugin ships and does not bind ` +
                         `is doctrine the host never registers, which looks from the outside exactly like a role that is available`,
                 );
                 continue;
@@ -732,14 +754,13 @@ export function inspect(rawRoot, { payload = false } = {}) {
             if (binding.name !== undefined && binding.name !== persona) {
                 fail(
                     "agents",
-                    `${binding.rel} binds \`core/personas/${persona}.md\` by its filename while declaring \`name: ${binding.name}\` — the host keys ` +
+                    `${binding.rel} binds \`${source}\` by its filename while declaring \`name: ${binding.name}\` — the host keys ` +
                         `on the field, so the two disagree about which role this file registers`,
                 );
             }
         }
-        const personaNames = new Set(personaFiles);
         for (const [name, binding] of bindings) {
-            if (!personaNames.has(name)) {
+            if (!owners.has(name)) {
                 fail(
                     "agents",
                     `${binding.rel} binds no persona — there is no \`core/personas/${name}.md\`. A host file that outlived the doctrine it was ` +
