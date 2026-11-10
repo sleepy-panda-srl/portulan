@@ -1882,7 +1882,10 @@ export async function inspect(workspaceDir, options = {}) {
     );
 
     const always = alwaysLine(dir, workspace);
-    (always.verdict === "over" || always.verdict === "unjudged" ? fail : report)("context", always.line);
+    const agentsAlways = alwaysLine(dir, workspace, { host: "agents-md" });
+    for (const measured of [always, agentsAlways]) {
+        (measured.verdict === "over" || measured.verdict === "unjudged" ? fail : report)("context", measured.line);
+    }
     try {
         const handoffs = handoffReport(dir, workspace);
         for (const line of handoffs.lines) (handoffs.over && line.startsWith("handoffs cap:") ? fail : report)("handoffs", line);
@@ -1895,6 +1898,7 @@ export async function inspect(workspaceDir, options = {}) {
     } catch (error) {
         form = `not read — ${error.message}`;
     }
+    if ((agentsAlways.verdict === "over" || agentsAlways.verdict === "unjudged") && form.startsWith("today's form")) form += "; resolve the AGENTS.md budget verdict before applying this migration";
     report("form", form);
 
     let sessions;
@@ -1904,7 +1908,7 @@ export async function inspect(workspaceDir, options = {}) {
         sessions = `not read — ${error.message}`;
     }
     report("sessions", sessions);
-    report("lever", biggestLeverLine(dir, workspace));
+    report("lever", `Claude Code project domain: ${biggestLeverLine(dir, workspace)}`);
 
     return { dir, workspace, findings, stats };
 }
@@ -2009,7 +2013,8 @@ function usage() {
         "  portulan doctor [--agent] [--static | --count-tokens <model>] [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]",
         "",
         "  --static      skip local usage records; validation and plugin discovery remain unchanged.",
-        "  --count-tokens <model>  send the measured project always corpus to Anthropic for a provider estimate.",
+        "  Always tiers: Claude Code and vendored AGENTS.md are measured and budgeted independently.",
+        "  --count-tokens <model>  validate both budgets, then send only the Claude Code project corpus to Anthropic.",
         "                Requires ANTHROPIC_API_KEY; unavailable with --static or in CI. No manifest is changed.",
         "  --agent       one counted line on green; complete reports on failure (also PORTULAN_AGENT=1).",
         "  --pack-root   where declared packs are resolved from; `auto` discovers the host's plugin cache.",
@@ -2129,7 +2134,7 @@ export async function run(argv, options = {}) {
                 failed += 1;
                 continue;
             }
-            for (const f of findings) say(`  ${ICON[f.severity]} ${f.check.padEnd(10)} ${f.check === "lever" && evidence !== null ? biggestLeverLine(path.resolve(dir), workspace, evidence) : f.message}`);
+            for (const f of findings) say(`  ${ICON[f.severity]} ${f.check.padEnd(10)} ${f.check === "lever" && evidence !== null ? `Claude Code project domain: ${biggestLeverLine(path.resolve(dir), workspace, evidence)}` : f.message}`);
             say(
                 `  ${bad.length ? "RED" : "GREEN"} — ${bad.length} failure(s), ` +
                     `${findings.length - bad.length} note(s), ${stats.claims} claim(s) checked` +

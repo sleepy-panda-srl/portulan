@@ -864,7 +864,7 @@ describe("--brief: the line `doctor` reports and the boot closes with", () => {
         const over = repository({ manifest: context(5), files: { "CLAUDE.md": "x".repeat(30) } });
         const { code, out } = brief(over);
         assert.equal(code, 1);
-        assert.match(out, /3 bytes per token, declared, calibrated by a-host/);
+        assert.match(out, /3 bytes per token, shared declared ratio extrapolated to this host; calibration reference a-host/);
         const clause = "budget: the always tier is ~10 tokens, over the 5 declared by 5 — repair by demotion to a later tier, by a merge or by a retirement, never by raising the budget in this change";
         assert.ok(out.endsWith(`; ${clause}`), out);
         assert.ok(measured(over).out.includes(`✗ ${clause}`), "the full report judges the same budget in the same words");

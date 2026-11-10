@@ -10,6 +10,7 @@ import { BOOT_CARD_LINE, BOOT_CARD_UNIT, GUIDANCE_RULES_DIR, leadsOfText } from 
 import { CHANGE_SECTIONS, readChanges, renderChanges } from "./index.mjs";
 import { instructionsState, shellWord, splitCommand } from "./instructions.mjs";
 import { recipeSet } from "./recipe-set.mjs";
+import { isInside } from "./inside.mjs";
 
 /** Anything that means the form could not be read. Carries no verdict. */
 export class FormError extends Error {}
@@ -40,12 +41,23 @@ function present(file) {
     }
 }
 
-function readOrNull(file) {
+function readOrNull(file, boundary) {
     try {
-        return fs.readFileSync(file, "utf8");
+        fs.lstatSync(file);
     } catch (cause) {
         if (cause.code === "ENOENT" || cause.code === "ENOTDIR") return null;
-        throw new FormError(`${file} could not be read — ${cause.code ?? cause.message}`);
+        throw new FormError(`${file} could not be inspected — ${cause.code ?? "read error"}`);
+    }
+    try {
+        const real = fs.realpathSync(file);
+        if (!isInside(fs.realpathSync(boundary), real)) throw new FormError(`${file} is outside the form's source boundary`);
+        if (!fs.statSync(real).isFile()) throw new FormError(`${file} is not a regular form source`);
+        const raw = fs.readFileSync(real), text = raw.toString("utf8");
+        if (!Buffer.from(text, "utf8").equals(raw)) throw new FormError(`${file} is not valid UTF-8`);
+        return text;
+    } catch (cause) {
+        if (cause instanceof FormError) throw cause;
+        throw new FormError(`${file} could not be read — ${cause.code ?? "read error"}`);
     }
 }
 
@@ -298,7 +310,7 @@ export function markdownOnDisk(root, keep = null) {
 export function sessionLogsIn(root, files) {
     const found = [];
     for (const rel of files) {
-        const text = readOrNull(path.join(root, ...rel.split("/")));
+        const text = readOrNull(path.join(root, ...rel.split("/")), root);
         if (text === null || !text.includes("Session log")) continue;
         const logs = sessionLogSections(text).filter((s) => s.entries);
         if (logs.length) found.push({ file: rel, line: logs[0].line });
@@ -569,7 +581,7 @@ export function formOf(workspaceDir, manifest) {
     const tree = typeof manifest?.tree === "string" ? path.resolve(wsDir, manifest.tree) : null;
     if (tree === null) return { tree, pieces };
 
-    const changelog = readOrNull(path.join(tree, CHANGELOG));
+    const changelog = readOrNull(path.join(tree, CHANGELOG), tree);
     const fragments = present(path.join(tree, CHANGES_README));
     if (changelog !== null || fragments) add("changes", fragments ? "new" : "today", fragments ? `changelog fragments in ${CHANGES_DIR}/` : `no ${CHANGES_README}`);
     const entries = changelog === null ? null : unreleasedCount(changelog);
@@ -595,16 +607,16 @@ export function formOf(workspaceDir, manifest) {
         if (typeof context !== "string") {
             add("card", "today", "no boot card: `slots.context` is undeclared");
         } else {
-            const source = readOrNull(path.resolve(wsDir, context, `${BOOT_CARD_UNIT}.md`));
+            const source = readOrNull(path.resolve(wsDir, context, `${BOOT_CARD_UNIT}.md`), wsDir);
             if (source === null) add("card", "new", "no boot card, by choice: `slots.context` holds no `boot` unit");
             else if (withReading(source) !== null) add("card", "today", "a boot card drafted before it carried the engine's rules on reading and the cache");
             else if (!carriesReading(source)) {
                 pieces.push({ id: "card", state: "today", hand: true, text: `a boot card without the engine's rules on reading and the cache, whose head \`upgrade\` does not recognise: add a section holding the line \`${READING_LINE}\`` });
-            } else if (readOrNull(path.join(tree, COMPILED_CARD)) !== null) add("card", "new", "a compiled boot card");
-            else if ((readOrNull(path.join(tree, "AGENTS.md")) ?? "").split(/\r?\n/).includes(BOOT_CARD_LINE)) add("card", "new", "a boot card at the head of AGENTS.md, which this host reads");
+            } else if (readOrNull(path.join(tree, COMPILED_CARD), tree) !== null) add("card", "new", "a compiled boot card");
+            else if ((readOrNull(path.join(tree, "AGENTS.md"), tree) ?? "").split(/\r?\n/).includes(BOOT_CARD_LINE)) add("card", "new", "a boot card at the head of AGENTS.md, which this host reads");
             else add("card", "today", `a boot card not yet compiled to ${COMPILED_CARD}: run \`portulan compile\``);
         }
-        const marked = instructionsState(tree, (rel) => readOrNull(path.join(tree, ...rel.split("/"))));
+        const marked = instructionsState(tree, (rel) => readOrNull(path.join(tree, ...rel.split("/")), tree));
         if (marked.files.length) {
             const files = marked.files.join(" and ");
             const count = (n) => `${n} section${n === 1 ? "" : "s"}`;

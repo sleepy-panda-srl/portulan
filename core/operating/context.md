@@ -55,13 +55,15 @@ may make a network call, and a ratio that moved between runs would make one tree
 on the next. The keys are argued in [`../../spec/slots.md`](../../spec/slots.md).
 
 **On-demand provider count.** `portulan doctor --count-tokens MODEL_ID .portulan` sends the measured
-project always corpus to Anthropic using `ANTHROPIC_API_KEY` from the environment. Replace `MODEL_ID`
+Claude Code project always corpus to Anthropic using `ANTHROPIC_API_KEY` from the environment. Replace `MODEL_ID`
 with a supported model; none is defaulted. The direct diagnostic also accepts
 `node cli/context.mjs --workspace .portulan --count-tokens MODEL_ID`. Both send whole instructions,
 imports and unscoped rules, but only extracted project skill, command and agent descriptions;
 later-tier bodies and the measurement's personal/global/system/tool/plugin exclusions stay excluded.
-Incomplete imports or invalid UTF-8 refuse before transport. Doctor validates the workspace first;
-count mode summarizes validation failures without source values, and a separate `doctor --static` run
+Incomplete imports or invalid UTF-8 refuse before transport. Doctor validates the workspace and both
+supported project-format budgets first; the request contains only the Claude Code corpus. Boot's
+`--brief` line and the standalone context diagnostic also use that Claude Code domain. Count mode
+summarizes validation failures without source values, and a separate `doctor --static` run
 provides their details. The direct diagnostic validates its kind/tree/context domain, not the full schema.
 
 The result is a **provider estimate**, including API framing and possibly system-added tokens;
@@ -199,10 +201,26 @@ and no minimum length. These are accepted proposal 0037's rules, implemented in 
 
 As of Workspace Definition 2.9 a workspace can declare the budget and the ratio, and both are checked
 for shape, by the schema and by `doctor`; the manifest key refuses a budget with no ratio to count it by.
-**The always tier is measured and reported.** [`cli/context.mjs`](../../cli/context.mjs) measures what
-Claude Code loads into every context from a workspace's `tree`; `doctor` reports that for every workspace
-and fails it only over a declared budget or where a declared budget cannot be judged; the boot closes
-with the same line; and this repository's `context` recipe rails Portulan's own footprint. **A boot can
+**The always tier is measured and reported per project format.**
+[`cli/context.mjs`](../../cli/context.mjs) measures Claude Code's project files and the root vendored
+`AGENTS.md` in a workspace's `tree`. Doctor reports both without host-selection configuration. The
+single declared cap is judged independently for each, never against their sum. A shared ratio is called
+calibrated only where its declared calibration ID matches the reported format ID; a different or unknown
+ID is explicitly extrapolated. The AGENTS measurement includes its
+inline guidance and pointer text; pointer targets, at-sign expansion, personal, above-tree, nested
+files and plugins are outside that domain. An absent optional root file is zero; a present root source
+that is unreadable, nonregular, dangling or invalid UTF-8 is unmeasured, and an escaping AGENTS root
+is unmeasured too. Without a budget that is a report; with one it cannot judge the declaration and
+fails. Known excluded Claude imports and its ignored missing/depth-limited imports stay excluded.
+Each host receives its verdict even when the other cannot be measured. These are project-file
+estimates, not whole-host prompts. The boot closes with the Claude Code line. Split offers and priced
+demotion levers describe that domain; the form report also recognizes a vendored AGENTS boot card and
+requires its budget verdict to be resolved before applying an offered migration. Form reads check
+canonical containment and regular-file status before opening project sources; its boot-unit source is
+bounded to the workspace. Instruction-state advice checks ancestors too, while preserving valid local
+links and supplied prospective readers. This repository's
+`context` recipe holds its existing boot and description rails; the remaining named footprint surfaces
+are still owed by row 12. **A boot can
 read a card instead of the slots**: the `boot` unit of `slots.context` (Workspace Definition 2.10) is
 compiled into every context, imports whole the files it needs, writes out the lead sentences of others,
 and names the file behind each line, so the rest loads when a rule's path or the card sends a session to

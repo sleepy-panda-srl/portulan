@@ -340,8 +340,10 @@ describe("what every context loads is reported, and failed only against a declar
     // 3,000 bytes: 1,000 tokens at the ratio above.
     const instructions = "Always run the recipe before you say done.\n".repeat(70).slice(0, 3000);
     const only = (findings) => {
-        const hits = checks(findings, "context");
-        assert.equal(hits.length, 1, `expected one context finding, got ${JSON.stringify(hits)}`);
+        const hosts = checks(findings, "context");
+        assert.equal(hosts.length, 2, `expected both context hosts, got ${JSON.stringify(hosts)}`);
+        const hits = hosts.filter(f => f.message.startsWith("Claude Code:"));
+        assert.equal(hits.length, 1, `expected one Claude Code finding, got ${JSON.stringify(hits)}`);
         return hits[0];
     };
 
