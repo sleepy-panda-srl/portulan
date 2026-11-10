@@ -1,0 +1,44 @@
+{
+  "captured": {
+    "utc": "2026-11-10T06:25:00.654463+00:00",
+    "exit": 0,
+    "model": "claude-sonnet-4-6",
+    "source_bytes": 126,
+    "synthetic_corpus": "Use concise explanations. Verify examples before declaring completion. Preserve source ownership and report missing evidence.\n",
+    "report": "Anthropic provider estimate (claude-sonnet-4-6): 29 input tokens for 126 B of measured project source; effective ratio 4.344828 B/token (approximate; assess manually before declaring a host ratio). API framing/system-added tokens may be included; actual host usage may differ. No manifest written. Excludes personal/global instructions, auto-memory, system/tools/MCP, plugin descriptions, scoped-rule bodies and on-invoke bodies.\n"
+  },
+  "checked_afterward": {
+    "provider_input_tokens_from_report": 29,
+    "effective_bytes_per_token_rounded": 4.344828,
+    "corpus_sha256": "ae40ca8ac231c04bc45e7bcecfdac9ac418f83d154deb8d3c6c36a24b8c8f23b",
+    "invocation_worktree_revision": "0f8b394a089e93b786382d24bedef98d88cf4fc8",
+    "revision_provenance": "The invocation worktree HEAD reflog records this revision at 2026-11-10T06:18:01Z, before the observation, with no subsequent HEAD change observed at review. The capture itself contains no revision or manifest digest."
+  },
+  "reconstructed_fixture": {
+    "instruction_path": "CLAUDE.md",
+    "workspace_path": ".portulan/workspace.json",
+    "workspace_manifest": {
+      "portulan": {
+        "spec": "2.15"
+      },
+      "name": "token-proof",
+      "kind": "repository",
+      "tree": "../",
+      "slots": {
+        "identity": "identity.md",
+        "principles": "principles.md",
+        "gates": "gate-map.md"
+      },
+      "verify": {
+        "default": "check",
+        "recipes": [
+          {
+            "id": "check",
+            "run": "true"
+          }
+        ]
+      }
+    },
+    "command": "node cli/context.mjs --workspace <fresh-fixture>/.portulan --count-tokens claude-sonnet-4-6"
+  }
+}
