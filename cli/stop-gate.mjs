@@ -187,11 +187,6 @@ function allow() {
     process.exit(0);
 }
 
-function block(reason) {
-    process.stdout.write(`${JSON.stringify({ decision: "block", reason })}\n`);
-    process.exit(0);
-}
-
 function defaultRecipe() {
     try {
         const manifest = JSON.parse(fs.readFileSync(path.join(WORKSPACE, "workspace.json"), "utf8"));
@@ -362,6 +357,19 @@ function handoffInHistory(stamp, tree, handoffsDir, held = []) {
     }
 }
 
+export function workNotice({ stamp, directory, identity, answeredElsewhere = "", recorded = [], found = "" }) {
+    if (directory === null) return `${identity} holds work that is not committed and pushed. Commit and push it, its why in the commit message.`;
+    const notCounted = recorded.length
+        ? `${recorded.map((f) => `\`${f}\``).join(", ")} ${recorded.length === 1 ? "is" : "are"} committed and pushed already, ` +
+          `so ${recorded.length === 1 ? "it records" : "they record"} work already recorded. `
+        : "";
+    return `no handoff dated ${stamp}${recorded.length ? " of this tree's own" : ""} in ${directory}, read from ` +
+        `${identity}${answeredElsewhere}. ${notCounted}` +
+        "This tree holds work that is not committed and pushed. Commit and push it, its why in the commit " +
+        "message, or end with a dated handoff naming what is open: where things stand, the open questions " +
+        `and the next action. Five lines is enough; absent is not.${found}`;
+}
+
 function workProblems(tree) {
     const problems = [];
 
@@ -376,7 +384,7 @@ function workProblems(tree) {
         if (work === true) {
             problems.push({
                 reason: "handoff",
-                text: `${treeIdentity(tree.root)} holds work that is not committed and pushed. Commit and push it, its why in the commit message.`,
+                text: workNotice({ identity: treeIdentity(tree.root), directory: null }),
             });
         }
         return { problems, handoffEnabled, handoffCleared: work === false };
@@ -405,18 +413,9 @@ function workProblems(tree) {
               `${elsewhere.commit}${elsewhere.ref ? ` on \`${elsewhere.ref}\`` : ""} — so this working tree may not be ` +
               "the tree that did the work. Check before writing a second one."
             : "";
-        const notCounted = recorded.length
-            ? `${recorded.map((f) => `\`${f}\``).join(", ")} ${recorded.length === 1 ? "is" : "are"} committed and pushed already, ` +
-              `so ${recorded.length === 1 ? "it records" : "they record"} work already recorded. `
-            : "";
         problems.push({
             reason: "handoff",
-            text:
-                `no handoff dated ${stamp}${recorded.length ? " of this tree's own" : ""} in ${policy.directory}, read from ` +
-                `${treeIdentity(tree.root)}${answeredElsewhere}. ${notCounted}` +
-                "This tree holds work that is not committed and pushed. Commit and push it, its why in the commit " +
-                "message, or end with a dated handoff naming what is open: where things stand, the open questions " +
-                `and the next action. Five lines is enough; absent is not.${found}`,
+            text: workNotice({ stamp, directory: policy.directory, identity: treeIdentity(tree.root), answeredElsewhere, recorded, found }),
         });
     }
 
@@ -490,6 +489,13 @@ export function verdict({ problems, counts = {}, total = 0, chain = 0, max = MAX
     };
 }
 
+export function stopOutput(result) {
+    return {
+        stdout: result.action === "block" ? JSON.stringify({ decision: "block", reason: result.message }) : "",
+        stderr: result.action === "release" ? result.message : "",
+    };
+}
+
 async function main() {
     let payload = {};
     try {
@@ -517,12 +523,10 @@ async function main() {
     if (problems.length === 0) bumpChain(false, os.tmpdir(), tree.root);
     const result = verdict({ problems, counts: state.counts, total: state.total, chain, handoffEnabled });
 
-    if (result.action === "allow") allow();
-    if (result.action === "release") {
-        process.stderr.write(result.message);
-        allow();
-    }
-    block(result.message);
+    const output = stopOutput(result);
+    if (output.stderr) process.stderr.write(output.stderr);
+    if (output.stdout) process.stdout.write(`${output.stdout}\n`);
+    allow();
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

@@ -23,6 +23,25 @@ cd -- "$root" || exit 2
     printf 'verify: cli/context.mjs not found — this recipe cannot run\n' >&2
     exit 2
 }
+[ -f .portulan/verify/prompt-footprint.mjs ] || {
+    printf 'verify: owned prompt measurement is unavailable\n' >&2
+    exit 2
+}
+if ! node --input-type=module -e '
+    import fs from "node:fs";
+    import path from "node:path";
+    try {
+        const root = fs.realpathSync(".");
+        for (const selected of [".portulan/verify/prompt-footprint.mjs", "cli/compile.mjs", "cli/skills-set.mjs", "cli/plugin-lint.mjs", "cli/gate.mjs", "cli/stop-gate.mjs", "cli/advisory.mjs", "cli/vendor.mjs"]) {
+            const file = fs.realpathSync(selected);
+            const rel = path.relative(root, file);
+            if (!fs.statSync(file).isFile() || rel === ".." || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) process.exit(2);
+        }
+    } catch { process.exit(2); }
+'; then
+    printf 'verify: a selected owned prompt source is not a regular file inside this checkout\n' >&2
+    exit 2
+fi
 
 # The rails, one line each, in bytes.
 RAIL_OWN_BOOT=15893       # .portulan's boot read-set, 15,581 B: the skill, and the boot card with its two
@@ -36,6 +55,10 @@ RAIL_DESCRIPTIONS=3454    # the plugin's skill and agent descriptions, 3,386 B
 RAIL_ADOPTER_BOOT=8208    # a consumer `init` drafts, 8,047 B: the skill, the plugin's kernel, and the card
                           # `init` compiles, with the identity it imports; the card carries every rule on
                           # reading and the cache, the one on comments included, since a consumer is owed them
+RAIL_SKILLS=38811         # 38,050 B + 2%, rounded up
+RAIL_PERSONAS=23236       # 22,780 B + 2%, rounded up
+RAIL_HOOKS=12831          # 12,579 B + 2%, rounded up
+RAIL_VENDOR=14556         # 14,270 B + 2%, rounded up
 
 WORKSPACES=(.portulan examples)
 FIXTURE_PREFIX="cli/fixtures/"
@@ -76,10 +99,14 @@ if ! drafted=$(CLAUDE_CONFIG_DIR="$drafts/host" node cli/init.mjs --residence in
 fi
 node cli/context.mjs --workspace "$drafts/consumer/.portulan" --rail "boot=$RAIL_ADOPTER_BOOT"
 adopter=$?
+printf '\n'
+node .portulan/verify/prompt-footprint.mjs \
+    "skills=$RAIL_SKILLS" "personas=$RAIL_PERSONAS" "hooks=$RAIL_HOOKS" "vendor=$RAIL_VENDOR"
+owned=$?
 
 # Could-not-run outranks red: a run that judged nothing cannot vouch for the one that did.
 worst=0
-for status in "$own" "$demo" "$adopter"; do
+for status in "$own" "$demo" "$adopter" "$owned"; do
     case "$status" in
         0) ;;
         1) [ "$worst" -eq 0 ] && worst=1 ;;

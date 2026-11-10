@@ -212,6 +212,12 @@ export function statusLine(figure) {
         : `${requests} · context ${compact(figure.context)} of a ${compact(figure.threshold)} restart threshold · ${multiplied}`;
 }
 
+export function advisoryOutput(figure, event) {
+    return JSON.stringify(event === "Stop"
+        ? { decision: "block", reason: adviceLine(figure, event) }
+        : { hookSpecificOutput: { hookEventName: event, additionalContext: adviceLine(figure, event) } });
+}
+
 function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = null, horizon = HORIZON } = {}) {
     // Claude Code 2.1.281: a subagent's tool call carries its own `agent_id` and the main session's transcript,
     // and a subagent told to end its session would end nothing.
@@ -250,13 +256,13 @@ function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = n
         }
         return null;
     }
-    if (event !== "Stop") return JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: adviceLine(figure, event) } });
+    if (event !== "Stop") return advisoryOutput(figure, event);
     try {
         mark(toldFile(sessionId, figure.compactions, dir));
     } catch (error) {
         if (error.code !== "EEXIST") warn(`the told-once record could not be written — ${error.code ?? error.message}; the line may come once more after the block`);
     }
-    return JSON.stringify({ decision: "block", reason: adviceLine(figure, event) });
+    return advisoryOutput(figure, event);
 }
 
 export const onTool = (payload, options) => once("PostToolUse", payload, options);

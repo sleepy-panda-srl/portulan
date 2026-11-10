@@ -146,6 +146,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`pinned-roots.live.test.mjs`](pinned-roots.live.test.mjs) | Required checks name their resolution root, and every suite whose imports reach the host's plugin record empties it. |
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Tests for `plugin-lint` — the packaging validator. |
 | [`portulan.test.mjs`](portulan.test.mjs) | Tests for the `npx` entry point: dispatch through an injected loader, its refusals, and its version. |
+| [`prompt-footprint.test.mjs`](prompt-footprint.test.mjs) | Owned prompt footprint regression checks. |
 | [`recipe-output.test.mjs`](recipe-output.test.mjs) | Agent recipe output controls. |
 | [`recipe-runner.test.mjs`](recipe-runner.test.mjs) | Recipe cleanup controls use isolated, test-owned process groups and late filesystem writes. |
 | [`recipe-set.live.test.mjs`](recipe-set.live.test.mjs) | The composed recipe set, against THIS repository rather than against fixtures. |

@@ -94,17 +94,17 @@
     },
     {
       "id": "hook:cli/advisory.mjs",
-      "sha256": "0ff181a199d169e474d3fe6159734fad52de11dc9b96999361a8c5b476ef7ea1",
+      "sha256": "faaf2b0fffe44d31502bc95c1d832cf2da125a765eb25ae288548aef2b6d8237",
       "volatile": []
     },
     {
       "id": "hook:cli/gate.mjs",
-      "sha256": "0f1046536e2d0b1b1fb34fc1d8db7e2bc15aff65ac91d14c54e03ea4893958e3",
+      "sha256": "c70f95aa29b7ee0a6f0403236f7c05af176d82ba861bd8b59eba091740703277",
       "volatile": []
     },
     {
       "id": "hook:cli/stop-gate.mjs",
-      "sha256": "4b4bdd915ab18c09e5d7ce14a63acaabbf669c17fbe9ca3988f57926bf5cbf59",
+      "sha256": "07679ad10c6a4310876c8cd7f12ec0fc1fad60272a2451208a8b81dc4bf4e6eb",
       "volatile": [
         {
           "kind": "path",

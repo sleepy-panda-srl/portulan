@@ -5,6 +5,75 @@
 > ([`../../core/operating/verification.md`](../../core/operating/verification.md)). A workspace supplies
 > the recipes themselves, because what "green" means is a property of the repository.
 
+## Owned prompt profiles
+
+The existing [`context.sh`](context.sh) also invokes [`prompt-footprint.mjs`](prompt-footprint.mjs)
+for four owned families. Each cap is `ceil(baseline × 1.02)`, fixed on its line in the recipe; a
+breach is repaired by reduction, never a raise in the change the rail refuses. Provenance is M12's
+independent closure review, which grew each of these four families while the old context recipe
+remained green. Existing boot, kernel, steps and description rails remain independent.
+
+| Family | Baseline bytes | Rail bytes | Aggregation |
+|---|---:|---:|---|
+| Skill bodies | 38,050 | 38,811 | Each physically distinct reachable body once |
+| Persona prompts | 22,780 | 23,236 | Core/composed charters and actual plugin bindings, once each |
+| Hook messages | 12,579 | 12,831 | Sum of every rendered profile, including separately labeled operator stderr |
+| Vendored AGENTS.md | 14,270 | 14,556 | Sum of bare, boot/tier and degraded profiles |
+
+Body inventory follows the host's existing skill-root depth, before filtering descriptions or
+manual-only invocation: default roots where present and declared roots in both shipped plugin
+manifests. Overlapping declarations and hard links share bytes by device/inode and retain their
+provenance and aliases. Contained regular-file links in a skill collection are ignored as files,
+not mistaken for child directories. Core persona charters,
+actual root plugin agents, and persona contributions resolved from the workspace's pinned local
+`packs/` are counted. A missing compiler binding is printed separately; no fixture binding stands in
+for it. Unregistered fixture skills are outside this inventory. Body bytes exclude YAML frontmatter;
+description bytes already have their own rail. CRLF and multibyte text retain their byte cost.
+Declared missing roots, missing persona sources, malformed frontmatter, invalid UTF-8, nonregular
+sources and lexical/physical escapes refuse measurement at exit 2, which outranks red.
+Plugin, workspace and pack manifests must be named objects. The repo-internal frontmatter guard
+accepts a deliberately small syntax: key/scalar mappings, nested mappings, flat scalar arrays and
+indented block scalars. Double-quoted scalars use JSON escapes; single quotes use doubled-quote
+escaping. Unsupported YAML forms, duplicate keys and unclosed structures are unavailable, not a
+claim of general YAML validation. Header lines accept ordinary spaces as whitespace; other
+JavaScript whitespace is unsupported. CRLF endings are removed before that check, and body bytes
+retain their original line endings. Renderer modules are also required to be regular files resolving
+inside this checkout before import; the consumer preflights all eight selected sources before its first repository command,
+and that helper checks all selected modules before its first repository-module import. Unquoted
+scalars start with a letter, digit or underscore and contain no colon; flat unquoted array items also
+exclude flow punctuation and hash comments. Mapping dedents land on an existing enclosing level.
+The guard adds no product parser or dependency.
+
+Hook profiles use the production formatters called by native entrypoints. Gate ask/deny measures
+`permissionDecisionReason`; ignored calls are silent. Stop uses its actual recipe problem builder
+with an injected executor for red, unavailable, timeout, throw and green outcomes, plus missing
+recipe, ordinary work/handoff messages and each release bound. Agent blocks measure `reason`;
+released Stop diagnostics measure **operator stderr**, explicitly not an agent context field.
+Advisory tool/prompt messages measure `additionalContext`, and Stop measures `reason`, with declared,
+recorded five-minute/hour and undeclared multiplier variants. Shape, nonempty and allow-silence checks
+refuse an empty renderer, and a green Stop requires literally empty stdout and stderr rather than
+an empty extracted reason; runner coverage is compared against `HOOK_RUNNERS`. Human status-line output
+is excluded. Small pure formatter exports share the native templates without reading real usage
+records or running a recipe command.
+
+Profiles use fixed synthetic IDs, paths, figures, reasons and adopter text. Hook byte totals include
+that fixed input overhead; they are sums, so growth in a shorter branch cannot hide behind a maximum.
+Vendor profiles pin every schema slot and refuse a newly named slot until coverage is updated. Bare
+and boot/tier profiles carry the actual engine kernel, whose bytes appear in the roster separately;
+the degraded profile measures the missing-kernel and invalid-recipe notices. The complete output
+includes repeated kernel bytes and the fixed synthetic manifest/guidance overhead: it is not a claim
+that all adopters load that sum. Both successful outputs are byte-compared with the real vendor CLI
+in the required tests. Schema slots, recipe table, composed-pack caveat, always guidance and later
+tier pointers are exercised, without copying this team's private layer.
+
+**Limits.** Finite message profiles guard their rendered branches against repository growth, not
+every possible runtime combination or variable-length team input. This is no runtime payload cap,
+whole-host inventory, token calibration or live-host demonstration. Hook source digests remain a
+separate cache-stability check; refreshing them does not repair a prompt-size breach. Required tests
+apply the closure review's independent 41,602-byte skill/persona and 45,000-byte Stop/vendor growth
+probes, require each named fixed rail red, restore and require green, then force missing coverage to
+exit 2. The Stop injection is measured after its existing 6,144-byte problem clip.
+
 ## The recipes
 
 `cache-stability` compares the actual always-tier files (imports included), every
