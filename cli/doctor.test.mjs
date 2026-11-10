@@ -347,14 +347,14 @@ describe("what every context loads is reported, and failed only against a declar
         return hits[0];
     };
 
-    test("with no budget declared it is a note: the size, the largest file and what it is, and init's offer", async () => {
+    test("with no budget declared it reports size and qualifies init's prospective offer", async () => {
         const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()), "CLAUDE.md": instructions });
         const { findings } = await inspect(dir, { schema: SCHEMA });
         const hit = only(findings);
         assert.equal(hit.severity, "report");
         assert.match(hit.message, /^Claude Code: this repository's always tier is ~1,003 tokens, 3,000 B at 2\.99 bytes per token/);
         assert.match(hit.message, /the largest: CLAUDE\.md ~1,003 \(instructions\)/);
-        assert.match(hit.message, /budget: undeclared \(context\.always\.budget\.tokens\) — a report, not a rail; init would offer/);
+        assert.match(hit.message, /budget: undeclared \(context\.always\.budget\.tokens\) — a report, not a rail; init offers a projected budget/);
         assert.deepEqual(severities(findings, "fail"), []);
     });
 

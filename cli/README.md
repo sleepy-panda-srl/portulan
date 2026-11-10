@@ -63,6 +63,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`goldens.mjs`](goldens.mjs) | Grade this workspace's compiled gates against a corpus of adversarial fixtures. |
 | [`handoff-policy.mjs`](handoff-policy.mjs) | Handoff caps and windows. |
 | [`html-entities.mjs`](html-entities.mjs) | HTML5 named references (semicolon forms): https://html.spec.whatwg.org/entities.json Generated from Python 3 html.entities.html5. |
+| [`init-preview.mjs`](init-preview.mjs) | Project guidance preview. |
 | [`inside.mjs`](inside.mjs) | Is one path inside another? One predicate, one file, no dependencies. |
 | [`instructions.mjs`](instructions.mjs) | `instructions` — the sections a team marks in its own instruction file, moved to on-read units and proved. |
 | [`ledger.mjs`](ledger.mjs) | What a change spends, measured from the host's own usage records. |
@@ -130,6 +131,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`goldens.test.mjs`](goldens.test.mjs) | Tests for `goldens` — the gate-corpus rail: the exemption, both rails, every corpus refusal and the CLI. |
 | [`handoff-budget.test.mjs`](handoff-budget.test.mjs) | Handoff budget tests. |
 | [`index.test.mjs`](index.test.mjs) | Tests for `index` — the memory, handoff and scope indexes, the memory budgets, and changelog fragments. |
+| [`init-budget.test.mjs`](init-budget.test.mjs) | The init interview's declared always-tier choice. |
 | [`init.test.mjs`](init.test.mjs) | Tests for `init` — the onboarding subcommand that drafts a workspace for a repository that has none. |
 | [`instructions.test.mjs`](instructions.test.mjs) | Tests for `instructions`: the sections a team marks, moved to on-read units and proved, and the join back. |
 | [`ledger.test.mjs`](ledger.test.mjs) | Tests for `ledger` — what a change spends, from the host's own usage records. |

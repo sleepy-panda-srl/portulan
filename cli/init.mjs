@@ -6,13 +6,15 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { isInside } from "./inside.mjs";
+import { outsideTempParents, previewAlways } from "./init-preview.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 import { historyCount } from "./comments.mjs";
-import { CACHE_LIFETIMES, compileGuidance } from "./compile.mjs";
-import { alwaysTier, ESTIMATED_BYTES_PER_TOKEN, OFFER_FLOOR_TOKENS, tokensOf } from "./context.mjs";
-import { cardIgnored, changesReadme, claudeRulesUnignore, commentsRecipe, commentsRecipeEntry, COMPILED_CARD, draftCard, handoffIndexIgnore, handoffsReadme, withIgnoreLines } from "./form.mjs";
+import { CACHE_LIFETIMES, compileGuidance, readOwnedText, readOwnedBytes } from "./compile.mjs";
+import { alwaysTier, declaredContext, ESTIMATED_BYTES_PER_TOKEN, OFFER_FLOOR_TOKENS, tokensOf } from "./context.mjs";
+import { cardIgnored, gitIn, changesReadme, claudeRulesUnignore, commentsRecipe, commentsRecipeEntry, COMPILED_CARD, draftCard, handoffIndexIgnore, handoffsReadme, withIgnoreLines } from "./form.mjs";
 import { offerText, splitOffers } from "./instructions.mjs";
 import { offerLines } from "./sessions.mjs";
 import { HANDOFF_OFFER, handoffOffer, realHandoffDay } from "./handoff-policy.mjs";
@@ -232,8 +234,17 @@ export function validateAnswers(answers) {
         );
     }
     const lifetime = answers.cacheLifetime ?? null;
-    try { handoffOffer(answers.handoffBudget); }
+    try {
+        const handoff = handoffOffer(answers.handoffBudget);
+        if (handoff && !SLUG.test(handoff.context.ratio.calibrated_by)) throw new InitError("the calibration reference must be a slug");
+    }
     catch (error) { throw new InitError(error.message); }
+    if (answers.alwaysBudget) {
+        declaredContext({ context: { ratio: answers.alwaysBudget.ratio, always: { budget: { tokens: answers.alwaysBudget.tokens } } } });
+        if (!SLUG.test(answers.alwaysBudget.ratio.calibrated_by)) throw new InitError("the calibration reference must be a slug");
+        const shared = handoffOffer(answers.handoffBudget)?.context.ratio;
+        if (shared && (shared.bytes_per_token !== answers.alwaysBudget.ratio.bytes_per_token || shared.calibrated_by !== answers.alwaysBudget.ratio.calibrated_by)) throw new InitError("always and handoff budgets must share one ratio");
+    }
     answers.spend = spendAnswers(answers);
     if (lifetime !== null && !CACHE_LIFETIMES.includes(lifetime)) {
         throw new InitError(
@@ -286,12 +297,20 @@ function spendAnswers(answers) {
 // ------------------------------------------------------------------------- the codebase scan
 
 /** What the repository says of itself, observed only: a field nothing states stays null, never a likely default. */
-export function scan(dir, { comments = true } = {}) {
+export function scan(dir, { comments = true, env } = {}) {
     const observed = { stack: [], build: null, test: null, run: null, name: null, vcs: null, evidence: [], commentHistory: null, uncounted: null };
-    const has = (rel) => fs.existsSync(path.join(dir, rel));
+    const owner = fs.realpathSync(dir);
+    const has = rel => {
+        try {
+            const real = fs.realpathSync(path.join(dir, rel));
+            if (!isInside(owner, real)) return false;
+            const value = fs.statSync(real);
+            return value.isFile() || rel === ".git" && value.isDirectory();
+        } catch { return false; }
+    };
     const read = (rel) => {
         try {
-            return fs.readFileSync(path.join(dir, rel), "utf8");
+            return has(rel) ? readOwnedText(path.join(dir, rel), owner) : null;
         } catch {
             return null;
         }
@@ -338,7 +357,7 @@ export function scan(dir, { comments = true } = {}) {
 
     if (comments) {
         try {
-            observed.commentHistory = historyCount(dir);
+            observed.commentHistory = historyCount(dir, { timeout: 1000, env, noFsmonitor: true });
         } catch (error) {
             observed.uncounted = error.message;
         }
@@ -423,7 +442,7 @@ function draftWorkspace(answers, observed) {
     const files = new Map();
     const name = answers.name ?? "workspace";
     const lifetime = answers.cacheLifetime ?? null;
-    const offeredHandoffs = handoffOffer(answers.handoffBudget, { newest: answers.handoffNewest });
+    const offeredHandoffs = handoffOffer(answers.handoffBudget, { newest: answers.handoffNewest, today: answers.handoffToday });
 
     const manifest = {
         portulan: { spec: offeredHandoffs ? "2.15" : answers.spend ? "2.12" : lifetime === null ? WORKSPACE_SPEC : SESSIONS_SPEC },
@@ -468,6 +487,7 @@ function draftWorkspace(answers, observed) {
         Object.assign(manifest, offeredHandoffs);
         renderHandoffIndex(manifest, { records: [], bytes: 0 });
     }
+    if (answers.alwaysBudget) manifest.context = { ratio: answers.alwaysBudget.ratio, always: { budget: { tokens: answers.alwaysBudget.tokens } } };
     if (answers.spend) manifest.spend = answers.spend;
     const commented = observed.commentHistory !== null;
 
@@ -914,7 +934,7 @@ exit "\$code"
 }
 
 /** After the write, so a failed compile only warns; the guidance half only, since `.claude/settings.json` comes from a `compile` a person runs. */
-function reportCard(target, say, warn) {
+function reportCard(target, say, warn, interviewing = false, env) {
     try {
         compileGuidance(target);
         say(`init: compiled the boot card into ${COMPILED_CARD}, which Claude Code loads into every context here`);
@@ -922,7 +942,7 @@ function reportCard(target, say, warn) {
         warn(`init: the boot card was drafted and NOT compiled — ${error.message}. Until \`portulan compile\` runs clean, a session here boots through the slots, as before`);
         return;
     }
-    if (cardIgnored(target)) {
+    if (cardIgnored(target, gitIn(target, { env, timeout: 1000, noFsmonitor: true }))) {
         warn(`init: git ignores ${COMPILED_CARD}, so the card would reach no review and no fresh checkout — add an exception for it to .gitignore`);
     }
     let bytes;
@@ -933,11 +953,8 @@ function reportCard(target, say, warn) {
         return;
     }
     const tokens = tokensOf(bytes, ESTIMATED_BYTES_PER_TOKEN);
-    say(
-        `init: the always tier here is ~${tokens.toLocaleString("en-US")} tokens with the card, at 0036's estimate of ${ESTIMATED_BYTES_PER_TOKEN} bytes a token. ` +
-            `A budget is yours to declare: 0036 offers the larger of ${OFFER_FLOOR_TOKENS.toLocaleString("en-US")} tokens and that, ` +
-            `${Math.max(OFFER_FLOOR_TOKENS, tokens).toLocaleString("en-US")}, as \`context.always.budget.tokens\`, beside a \`context.ratio\` Claude Code's exact count measured here`,
-    );
+    say(`init: Claude Code project guidance is ~${tokens.toLocaleString("en-US")} tokens with the compiled card, at the illustrative ${ESTIMATED_BYTES_PER_TOKEN} B/token estimate.`);
+    if (!interviewing) say(`init: A budget is yours to declare: use the larger of ${OFFER_FLOOR_TOKENS.toLocaleString("en-US")} tokens and the two project guidance estimates at your explicit context.ratio. Interactive init projects both formats before asking. A provider count is an estimate; actual host usage may differ.`);
     const offer = offerText(splitOffers(target, { ratio: ESTIMATED_BYTES_PER_TOKEN, floor: OFFER_FLOOR_TOKENS }));
     if (offer !== null) say(`init: ${offer}`);
 }
@@ -1102,6 +1119,82 @@ function terminal() {
     };
 }
 
+function prepareDraft(target, answers, beforeConsent = false) {
+    const parent = outsideTempParents(target)[0];
+    if (!parent && beforeConsent) throw new InitError("no external location for bounded pre-consent preparation");
+    const env = parent ? { ...process.env, TMPDIR: parent, TMP: parent, TEMP: parent } : process.env;
+    const observed = scan(target, { comments: answers.residence !== "pointer", env });
+    const handoffToday = new Date().toISOString().slice(0, 10);
+    let handoffNewest;
+    if (answers.handoffBudget && answers.handoffBudget !== "none") {
+        const dir = path.join(target, ".portulan/handoffs");
+        try {
+            if (!isInside(fs.realpathSync(target), fs.realpathSync(dir)) || !fs.statSync(dir).isDirectory()) throw new InitError("handoff dates cannot be read from an owned directory");
+            handoffNewest = fs.readdirSync(dir).map(name => name.slice(0, 10)).filter(realHandoffDay).sort().at(-1);
+        } catch (error) { if (error.code !== "ENOENT") throw error; }
+    }
+    return { observed, handoffToday, handoffNewest, env, ignoreLines: answers.residence === "pointer" ? [] : claudeRulesUnignore(target, gitIn(target, { env, timeout: 1000, noFsmonitor: true })).lines };
+}
+
+function preparedFiles(target, answers, preparation) {
+    const files = draft({ ...answers, handoffToday: preparation.handoffToday, handoffNewest: preparation.handoffNewest }, preparation.observed);
+    if (files.has(".gitignore")) files.get(".gitignore").append.push(...(preparation.ignoreLines.length ? ["", ...preparation.ignoreLines] : []));
+    for (const [rel, file] of files) {
+        if (!file.append) continue;
+        let before = null;
+        try { before = readOwnedBytes(path.join(target, rel), target); }
+        catch (error) { if (error.code !== "ENOENT") throw error; }
+        file.appendBefore = before;
+        file.contents = withIgnoreLines(before, file.append);
+    }
+    return files;
+}
+
+function projectedAlways(target, answers, ratio) {
+    if (!answers.preparation) answers.preparation = prepareDraft(target, answers, true);
+    let tokens = OFFER_FLOOR_TOKENS;
+    for (let pass = 0; pass < 8; pass++) {
+        const files = preparedFiles(target, { ...answers, alwaysBudget: { tokens, ratio } }, answers.preparation);
+        const clash = collisions(target, files);
+        if (clash.length) throw new InitError("drafted paths conflict with existing files");
+        const measured = previewAlways(target, files);
+        const next = Math.max(OFFER_FLOOR_TOKENS, ...[...measured.before, ...measured.after].map(bytes => tokensOf(bytes, ratio.bytes_per_token)));
+        if (next === tokens) return { tokens, files };
+        tokens = next;
+    }
+    throw new InitError("the self-counting budget did not converge");
+}
+
+async function alwaysInterview(answers, io, target, ask) {
+    const unavailable = error => io.say(`Always-tier offer unavailable: ${error.message}. No always cap will be declared; you may continue or cancel at confirmation.`);
+    const shared = handoffOffer(answers.handoffBudget)?.context.ratio;
+    const illustrative = shared ?? { bytes_per_token: ESTIMATED_BYTES_PER_TOKEN, calibrated_by: "illustrative-estimate" };
+    let preview;
+    try { preview = projectedAlways(target, answers, illustrative); }
+    catch (error) { unavailable(error); return; }
+    io.say(`Always-tier projected offer: ${preview.tokens.toLocaleString("en-US")} tokens at ${illustrative.bytes_per_token} B/token${shared ? " (your supplied ratio)" : " (illustrative estimate)"}. Covers the larger of today's and projected Claude Code project guidance and root AGENTS.md, never their sum. Excludes personal/global instructions, system/tools/MCP and later-loaded bodies.`);
+    const decision = await io.ask("Declare an always-tier budget? [y/N]: ");
+    if (decision === null) throw new InitError("no answer — the interview ended before it finished, and nothing was written");
+    if (!/^y(es)?$/i.test(decision.trim())) return;
+    let ratio = shared;
+    if (!ratio) {
+        const raw = await ask("Measured ratio JSON {bytes_per_token, calibrated_by}", { validate: value => {
+            try {
+                const ratio = JSON.parse(value); declaredContext({ context: { ratio } });
+                return SLUG.test(ratio.calibrated_by) ? null : "the calibration reference must be a slug";
+            } catch (error) { return error.message; }
+        } });
+        ratio = JSON.parse(raw);
+    }
+    let offered;
+    try { offered = projectedAlways(target, answers, ratio); }
+    catch (error) { unavailable(error); return; }
+    io.say("A provider count is an estimate with framing and domain limits; the supplied ratio is your assessment, not calibration verified by init.");
+    const accepted = await io.ask(`Accept ${offered.tokens.toLocaleString("en-US")} tokens at ${ratio.bytes_per_token} B/token (${ratio.calibrated_by})? [y/N]: `);
+    if (accepted === null) throw new InitError("no answer — the interview ended before it finished, and nothing was written");
+    if (/^y(es)?$/i.test(accepted.trim())) { answers.alwaysBudget = { tokens: offered.tokens, ratio }; answers.preparedFiles = offered.files; }
+}
+
 /** Asks for what the flags and the answers file did not give, and fills `answers` in place. */
 export async function interview(answers, { io, target, derivedName, offer }) {
     const ask = async (prompt, { fallback = null, validate = () => null } = {}) => {
@@ -1211,6 +1304,7 @@ export async function interview(answers, { io, target, derivedName, offer }) {
     }
 
     io.say("");
+    if (answers.residence === "in-repo") await alwaysInterview(answers, io, target, ask);
     io.say("init: about to draft");
     io.say(`  residence   ${answers.residence}`);
     io.say(`  name        ${answers.name}`);
@@ -1221,7 +1315,8 @@ export async function interview(answers, { io, target, derivedName, offer }) {
     } else {
         io.say(`  cycle       ${answers.cycle ? answers.checkpoints : "(none — composing no packs)"}`);
         const offered = handoffOffer(answers.handoffBudget);
-        io.say(`  handoffs    ${offered ? JSON.stringify(offered) : "(none — no budgets or ratio declared)"}`);
+        io.say(`  handoffs    ${offered ? JSON.stringify(offered) : "(none — no handoff budgets declared)"}`);
+        io.say(`  always      ${answers.alwaysBudget ? JSON.stringify(answers.alwaysBudget) : "(none — no always cap declared)"}`);
         io.say(`  spend       ${answers.spend ? JSON.stringify(answers.spend) : "(none — undeclared general figures)"}`);
         io.say(
             `  cache       ${
@@ -1357,19 +1452,9 @@ export async function run(argv, options = {}) {
             packAdvice = { resolved, why: expanded.why, inTree: resolvedAt !== null && resolvedAt === path.join(target, "packs") };
         }
 
-        const observed = scan(target, { comments: answers.residence !== "pointer" });
-        if (answers.handoffBudget && answers.handoffBudget !== "none") {
-            try {
-                const dates = fs.readdirSync(path.join(target, ".portulan", "handoffs")).map(name => name.slice(0, 10)).filter(realHandoffDay).sort();
-                answers.handoffNewest = dates.at(-1);
-            } catch (error) { if (error.code !== "ENOENT") throw new InitError(`cannot read existing handoff dates: ${error.message}`); }
-        }
-        const files = draft(answers, observed);
-
-        if (files.has(".gitignore")) {
-            const { lines } = claudeRulesUnignore(target);
-            if (lines.length) files.get(".gitignore").append.push("", ...lines);
-        }
+        const preparation = answers.preparation ?? prepareDraft(target, answers);
+        const observed = preparation.observed;
+        const files = answers.preparedFiles ?? preparedFiles(target, answers, preparation);
 
         const clash = collisions(target, files);
         if (clash.length) {
@@ -1390,6 +1475,16 @@ export async function run(argv, options = {}) {
             );
         }
 
+        for (const [rel, file] of files) {
+            if (!file.append) continue;
+            let current = null;
+            try { current = readOwnedBytes(path.join(target, rel), target); }
+            catch (error) { if (error.code !== "ENOENT") throw error; }
+            if (current === null ? file.appendBefore !== null : file.appendBefore === null || !current.equals(file.appendBefore)) {
+                throw new InitError(`${rel} changed during confirmation; run init again to prepare a fresh draft`);
+            }
+        }
+
         // The manifest last: a run failing midway leaves no torso that `residenceAt` would read as a governed repository.
         const manifest = ".portulan/workspace.json";
         const left = [];
@@ -1400,16 +1495,6 @@ export async function run(argv, options = {}) {
                 continue;
             }
             fs.mkdirSync(path.dirname(full), { recursive: true });
-            if (file.append !== undefined) {
-                let before = null;
-                try {
-                    before = fs.readFileSync(full, "utf8");
-                } catch (error) {
-                    if (error.code !== "ENOENT") throw error;
-                }
-                fs.writeFileSync(full, withIgnoreLines(before, file.append));
-                continue;
-            }
             fs.writeFileSync(full, file.contents);
             if (file.mode !== undefined) fs.chmodSync(full, file.mode);
         }
@@ -1422,7 +1507,7 @@ export async function run(argv, options = {}) {
         );
         for (const rel of left) say(`init: left the repository's own \`${rel}\` as it is`);
         if (answers.residence !== "pointer") {
-            reportCard(target, say, warn);
+            reportCard(target, say, warn, interviewing, preparation.env);
             reportLifetime(answers, say);
             if (!interviewing) for (const line of spendOfferLines(offer ?? spendOffer(target, { env: options.env, ...options.spendHost }))) say(`init: ${line}`);
             if (answers.spend) say(`init: declared spend ${JSON.stringify(answers.spend)} (available since spec 2.12); run portulan compile to carry it into advisory commands`);

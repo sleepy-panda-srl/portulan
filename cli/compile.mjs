@@ -1405,7 +1405,7 @@ function gatesOf(file, where, packs = []) {
 }
 
 /** The unit's body with each leads, engine and gates line written out; a leads path may end `#<heading>`. */
-function expandedBody(unit, dir, root, packs = []) {
+export function expandedBody(unit, dir, root, packs = []) {
     unit.leadSources = [];
     unit.written = new Set();
     return unit.body
@@ -1677,6 +1677,7 @@ export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
         }
         let text;
         try {
+            if (!fs.statSync(full).isFile()) throw new CompileError(`${source} is not a regular guidance unit`);
             text = fs.readFileSync(full, "utf8");
         } catch (cause) {
             throw new CompileError(`${source} could not be read — ${cause.code ?? cause.message}`);
@@ -1815,7 +1816,7 @@ function listReal(workspaceRoot, rel) {
 }
 
 /** Judged before either half writes, so a refusal leaves no gate artifact written beside it. */
-function planGuidance(guidance, workspaceRoot) {
+export function planGuidance(guidance, workspaceRoot) {
     const files = guidance ? claudeCodeGuidance(guidance).files : [];
     const rules = files.filter((f) => f.path.startsWith(`${GUIDANCE_RULES_DIR}/`));
     const owedFiles = rules.length
@@ -2504,14 +2505,18 @@ export function composeFragments(policy, contributions) {
     return { policy: { ...policy, rules }, added, tightened };
 }
 
-export function readOwnedText(file, scope) {
+export function readOwnedBytes(file, scope) {
     fs.lstatSync(file);
     let owner, real;
     try { owner = fs.realpathSync(scope); real = fs.realpathSync(file); }
     catch (error) { throw new CompileError(`${file} could not be resolved — ${error.code ?? error.message}`); }
     if (!isInside(owner, real)) throw new CompileError(`${file} resolves outside its owner ${scope}`);
     if (!fs.statSync(real).isFile()) throw new CompileError(`${file} is not a regular source file`);
-    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(real));
+    return fs.readFileSync(real);
+}
+
+export function readOwnedText(file, scope) {
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(readOwnedBytes(file, scope));
 }
 
 function readWorkspaceText(workspaceRoot, workspaceDir) {
