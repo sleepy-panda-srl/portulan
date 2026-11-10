@@ -91,6 +91,16 @@ binding bytes, effective effort, unique contexts/requests, frozen task bytes,
 protocol snapshots, repair history and usage accounting. Exit 1 is a finding;
 exit 2 is unavailable data or a failed read. The existing A/B recipe runs it.
 
+The records and costs remain observations of source `01ca4887`; later bundle
+changes are not new measurements. Current core charters must remain byte-identical
+to that capture. A current plugin binding may change only its one nonempty,
+single-line description scalar: every other byte, including tools, body and
+context declarations, must match the historical binding. Malformed, duplicate,
+missing or multiline descriptions refuse comparison. This permits the later
+librarian description compression while preserving the acquired routing contract;
+it establishes neither current whole-bundle costs nor equivalent automatic
+delegation after description changes.
+
 The npm payload carries the records, frozen protocol evidence, grader and offline
 checker. Live acquisition and private normalization commands remain workshop
 tools. A plugin update delivers the baked `agents/` files. The CLI's persona form

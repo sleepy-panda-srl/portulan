@@ -88,7 +88,11 @@ test("a pack installed only in the host cache arrives through the actual upgrade
     fs.cpSync(path.join(ROOT, "packs/tools/local-llm"), path.join(installed, "packs/tools/local-llm"), { recursive: true });
     fs.writeFileSync(path.join(config, "plugins/installed_plugins.json"), JSON.stringify({ version: 2,
         plugins: { "carrier@feed": [{ scope: "user", installPath: installed, version: "0.1.0" }] } }));
-    const workspace = path.join(adopter, "workspace"), binding = path.join(adopter, "agents/local-worker.md");
+    const workspace = path.join(adopter, "workspace"), legacy = path.join(adopter, "agents/local-worker.md");
+    const binding = path.join(adopter, ".claude/agents/local-worker.md");
+    fs.mkdirSync(path.dirname(binding), { recursive: true });
+    fs.copyFileSync(legacy, binding);
+    const legacyBefore = fs.readFileSync(legacy);
     const before = fs.readFileSync(binding, "utf8");
     const check = invoke(root, "--check", workspace);
     assert.equal(check.status, 1, check.stderr || check.stdout);
@@ -97,9 +101,10 @@ test("a pack installed only in the host cache arrives through the actual upgrade
     const write = invoke(root, "--write", workspace);
     assert.equal(write.status, 0, write.stderr || write.stdout);
     const source = fs.readFileSync(path.join(installed, "packs/tools/local-llm/personas/local-worker.md"), "utf8");
-    assert.equal(fs.readFileSync(binding, "utf8"), boundAgent(before, personaDeclarations(source).declared, "tools/local-llm's personas/local-worker.md", "agents/local-worker.md"));
+    assert.equal(fs.readFileSync(binding, "utf8"), boundAgent(before, personaDeclarations(source).declared, "tools/local-llm's personas/local-worker.md", ".claude/agents/local-worker.md"));
     assert.equal(invoke(root, "--check", workspace).status, 0);
     assert.equal(invoke(root, "--write", workspace).status, 0);
+    assert.deepEqual(fs.readFileSync(legacy), legacyBefore);
     assert.equal(fs.existsSync(path.join(adopter, ".claude/settings.json")), false);
 });
 

@@ -11,11 +11,35 @@ export const CAPTURE_SHA256 = "ff3688658bc20af6b78e834a5149ea6bd52bc88027b0340ec
 export const ROLES = ["implementer", "reviewer", "librarian"];
 export const ROUTING = { model: "inherit", effort: null, omitClaudeMd: false, cacheLifetime: "5m" };
 const CLASSES = ["uncached", "written5m", "written1h", "writtenUnknown", "read", "output"];
+const BAD_DESCRIPTION = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
 const sha = bytes => createHash("sha256").update(bytes).digest("hex");
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const hash = value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 const demand = (ok, why) => { if (!ok) throw new Finding(why); };
 export class Finding extends Error {}
+
+export function bindingContract(text) {
+    demand(typeof text === "string" && text.startsWith("---\n") && !text.includes("\uFFFD"), "binding frontmatter is unusable");
+    const close = text.indexOf("\n---\n", 4);
+    demand(close !== -1, "binding frontmatter is unclosed");
+    const lines = text.slice(4, close).split("\n");
+    const descriptions = lines.filter(line => /^\s*description\s*:/.test(line));
+    demand(descriptions.length === 1 && /^description: \S/.test(descriptions[0]), "binding needs one nonempty single-line description");
+    for (const line of lines.slice(lines.indexOf(descriptions[0]) + 1)) {
+        if (/^[A-Za-z_][\w-]*\s*:/.test(line)) break;
+        demand(!line.trim() || /^\s*#/.test(line), "binding description has a multiline continuation");
+    }
+    const raw = descriptions[0].slice("description: ".length);
+    demand(!BAD_DESCRIPTION.test(raw), "binding description contains a control or line separator");
+    let value;
+    if (raw.startsWith('"')) {
+        try { value = JSON.parse(raw); } catch {}
+    } else if (raw.startsWith("'")) {
+        if (/^'(?:[^']|'')*'$/.test(raw)) value = raw.slice(1, -1).replaceAll("''", "'");
+    } else if (/^[\p{L}_][^:#{}\[\]\r\n]*$/u.test(raw) && !/^(true|false|null)$/i.test(raw.trim())) value = raw;
+    demand(typeof value === "string" && value.trim() && !BAD_DESCRIPTION.test(value), "binding description is not a usable single-line scalar");
+    return text.slice(0, 4) + lines.map(line => line === descriptions[0] ? "description: <description>" : line).join("\n") + text.slice(close);
+}
 
 export function costOf(call) {
     const parent = price(call.usage.parent), child = price(call.usage.child);
@@ -169,7 +193,7 @@ export function verifyCapture(root, expectedDigest = CAPTURE_SHA256) {
         const binding = fs.readFileSync(path.join(directory, `bindings/${role}.txt`));
         demand(sha(binding) === capture.bindings[role], "captured binding differs");
         const installed = path.join(root, `agents/${role}.md`);
-        if (fs.existsSync(installed)) demand(sha(fs.readFileSync(installed)) === capture.bindings[role], "shipped plugin binding differs");
+        if (fs.existsSync(installed)) demand(bindingContract(fs.readFileSync(installed, "utf8")) === bindingContract(binding.toString("utf8")), "shipped plugin binding differs outside its description");
     }
     return verifyData(capture, records);
 }

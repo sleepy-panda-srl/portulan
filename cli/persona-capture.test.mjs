@@ -7,7 +7,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { CAPTURE, CAPTURE_SHA256, ROLES, verifyCapture, verifyData, register, summarize } from "./persona-routing.mjs";
+import { CAPTURE, CAPTURE_SHA256, ROLES, bindingContract, verifyCapture, verifyData, register, summarize } from "./persona-routing.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const load = file => JSON.parse(fs.readFileSync(path.join(ROOT, file), "utf8"));
@@ -70,6 +70,18 @@ test("the immutable capture and source routing rails reject byte drift; missing 
             for (const role of ROLES) fs.copyFileSync(path.join(ROOT, folder, role + ".md"), path.join(root, folder, role + ".md"));
         }
         assert.equal(verifyCapture(root).qualityChildren, 18);
+        const bindingFile = path.join(root, "agents/librarian.md"), binding = fs.readFileSync(bindingFile, "utf8");
+        const invoke = () => spawnSync(process.execPath, [path.join(ROOT, "cli/persona-routing.mjs"), "--repo-root", root], { encoding: "utf8", timeout: 15000 });
+        fs.writeFileSync(bindingFile, binding.replace(/^description:.*$/m, "description: A valid replacement."));
+        const green = invoke(); assert.equal(green.status, 0, green.stderr);
+        for (const code of [0, 31, 127, 128, 133, 159, 0x2028, 0x2029]) {
+            for (const scalar of ["before" + String.fromCharCode(code) + "after", '"before\\u' + code.toString(16).padStart(4, "0") + 'after"']) {
+                fs.writeFileSync(bindingFile, binding.replace(/^description:.*$/m, "description: " + scalar));
+                const red = invoke(); assert.equal(red.status, 1, `description code ${code}: ${red.stderr}`);
+                assert.match(red.stderr, /description/);
+            }
+        }
+        fs.writeFileSync(bindingFile, binding);
         fs.appendFileSync(path.join(root, CAPTURE), " ");
         assert.throws(() => verifyCapture(root), /acquisition digest/);
         const { capture } = inputs();
@@ -97,4 +109,20 @@ test("npm carries the acquired evidence and runnable offline checker, excluding 
         const check = spawnSync(process.execPath, [path.join(root, "package/cli/persona-routing.mjs"), "--repo-root", path.join(root, "package")], { encoding: "utf8", timeout: 30000 });
         assert.equal(check.status, 0, check.stderr);
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test("binding compatibility permits one valid description change and preserves every other byte", () => {
+    const original = fs.readFileSync(path.join(ROOT, "evals/ab/personas/bindings/librarian.txt"), "utf8");
+    const description = /^description:.*$/m;
+    for (const replacement of ["description: Short routing description.", 'description: "Quoted description."', "description: 'Single quoted description.'"]) {
+        assert.equal(bindingContract(original.replace(description, replacement)), bindingContract(original));
+    }
+    for (const replacement of ["", "description:", 'description: ""', "description: ''", "description: >\n  multiline", "description: |\n  multiline", "description: first\n  continued", 'description: "unclosed', "description: [one, two]", "description: first\ndescription: second", 'description: "escaped\\nnewline"']) {
+        assert.throws(() => bindingContract(original.replace(description, replacement)), /description/);
+    }
+    assert.throws(() => bindingContract(original.replace("\n---\n", "\n")), /unclosed/);
+    for (const mutation of [original + "body drift\n", original.replace("tools: Read", "tools: Bash"), original.replace('model: "inherit"', 'model: "other"'), original.replace("omitClaudeMd: false", "omitClaudeMd: true"), original.replace("cacheTtl: 5m", "cacheTtl: 1h"), original.replace('model: "inherit"', 'model: "inherit"\neffort: medium')]) {
+        assert.notEqual(bindingContract(mutation), bindingContract(original));
+    }
+    assert.equal(bindingContract(fs.readFileSync(path.join(ROOT, "agents/librarian.md"), "utf8")), bindingContract(original));
 });

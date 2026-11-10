@@ -14,8 +14,9 @@ requirement — *standards first, host adapters second* — so what is specific 
 
 **The agent bindings are not here — they are [`../agents/`](../agents/)**, at the repository root:
 [`implementer`](../agents/implementer.md), [`reviewer`](../agents/reviewer.md),
-[`librarian`](../agents/librarian.md), each short and pointing at its persona in
-[`../core/personas/`](../core/personas/) for the doctrine. That location is fixed by the platform rather
+[`librarian`](../agents/librarian.md), [`supervisor`](../agents/supervisor.md) and
+[`local-worker`](../agents/local-worker.md), each pointing at its core or composed pack charter.
+That plugin location is fixed by the platform rather
 than chosen, and the reasoning is below — it is the one place where "host-specific things live in
 `plugin/`" does not hold, and the exception has a shape worth understanding rather than working around.
 
@@ -75,7 +76,7 @@ searches `${CLAUDE_PROJECT_DIR}` and says so explicitly, and never `${CLAUDE_PLU
 
 ## Why the agent bindings sit at the repository root
 
-**The host loads agents from `./agents/` and from nowhere else, and `plugin.json` declares no `agents`
+**The host loads this plugin's agents from `./agents/`, and `plugin.json` declares no `agents`
 key at all** — because declaring one does not point the loader at the files, it *suppresses* the scan
 that finds them. The full measurement, with the positive control that makes it a measurement, is
 [`../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md`](../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md).
@@ -108,12 +109,12 @@ convention instead, fails on a present `agents` key, and **reports any agent fil
 `./agents/`** — the mistake this repository actually made, and the natural one to make, because *skills*
 load from custom declared paths and agents do not. That rule and the memory entry behind it retire
 together, on the day a release makes the `agents` key register what it names. This repository's count of
-three *is* asserted against the tree — by the lint's test suite
+five *is* asserted against the tree — by the lint's test suite
 ([`../cli/plugin-lint.test.mjs`](../cli/plugin-lint.test.mjs)), so that assertion runs with `tests.sh`,
-not with `plugin.sh`. One hole is left open deliberately and named rather than hidden: deleting `agents/` outright is
-a note and exit 0, because a plugin that ships no agents is legitimate. What binds it is
-[`../.portulan/tasks/0005-lint-the-persona-agent-binding.md`](../.portulan/tasks/0005-lint-the-persona-agent-binding.md)
-— a persona with no binding is not legitimate, and that is the check that can say so.
+not with `plugin.sh`. A generic plugin with no personas may ship no agents. This product's core and
+actually composed charters each require a matching binding: deletion of any of the five fails packaging.
+Ordinary projects instead load `.claude/agents/`; compiler and doctor choose that directory without
+creating missing adopter bindings. Neither file presence nor compilation proves a host honored a key.
 
 ## The two feeds point one way only
 
@@ -195,16 +196,16 @@ See [`../.portulan/memory/a-plugin-payload-can-enforce-on-strangers.md`](../.por
 When Portulan ships gate enforcement *for* an adopter, it will be by compiling **their** policy into
 **their** workspace — never by shipping ours inside the payload.
 
-**A fourth skill ships.** [`consolidate`](../core/skills/consolidate/SKILL.md) joined
+**Core and composed skills.** [`consolidate`](../core/skills/consolidate/SKILL.md) joined
 `clarify` and `codify` in [`../core/skills/`](../core/skills/); together with the boot skill in
-[`skills/`](skills/) here, the payload now carries **four** — so the milestone-3 measurement above is a
+[`skills/`](skills/) here, they are the core inventory; composed packs add their own skills. The milestone-3 measurement above is a
 record of an older tree rather than a current inventory. **The live count is not restated here as a
 number anyone must maintain:** [`plugin-lint`](../cli/plugin-lint.mjs) **derives** the totals from the
 tree on every pull request, so the figure it prints cannot disagree with what ships. **The two are found
 differently, and the difference is the platform's**: skills are read from the paths
 [`plugin.json`](../.claude-plugin/plugin.json) *declares*, while agents are found by **convention** at
-`./agents/`, the one directory the host scans. Neither is checked against an expected number, and saying
-so would claim a guarantee this validator does not make. What it *refuses* is the structural defect that
+`./agents/`, the directory the plugin loader scans. The generic validator derives counts rather than
+fixing them; this product's tests additionally pin its intended role roster. What it *refuses* is the structural defect that
 would make a count a lie — a declared `agents` key, which suppresses the agent scan entirely. A skill
 outside every declared path, or a `.md` stranded outside `./agents/`, is deliberately a **note**: the
 validator cannot tell a fixture from a binding. This paragraph exists because the section above

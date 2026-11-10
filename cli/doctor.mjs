@@ -21,9 +21,11 @@ import {
     packDifferences,
     shadowedCopy,
     personaDeclarations,
+    bindingDirectory,
+    readOwnedText,
 } from "./compile.mjs";
 import { isInside, recordType } from "./index.mjs";
-import { parseFrontmatter, AGENT_DIR } from "./plugin-lint.mjs";
+import { parseFrontmatter } from "./frontmatter.mjs";
 import { resolveGovernor, AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 import { composedId } from "./recipe-set.mjs";
 import { alwaysLine, alwaysTier, declaredContext, treeOf, ESTIMATED_BYTES_PER_TOKEN, countAlways, countLine, countRoot, ContextError, handoffReport } from "./context.mjs";
@@ -479,7 +481,7 @@ export function validateContributions(packDir, contributes, { fail, report, pack
         }
         let text;
         try {
-            text = fs.readFileSync(contained.real, "utf8");
+            text = readOwnedText(contained.real, packDir);
         } catch (cause) {
             fail("packs", `\`${pack}\`'s persona \`${rel}\` could not be read — ${cause.code ?? cause.message}. Only a missing file means absent`);
             continue;
@@ -786,7 +788,7 @@ export async function inspect(workspaceDir, options = {}) {
     const manifestPath = path.join(dir, "workspace.json");
     let workspace;
     try {
-        workspace = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        workspace = JSON.parse(readOwnedText(manifestPath, dir));
     } catch (cause) {
         // A verdict about the workspace, not an environment failure: exit 1, not 2.
         fail("schema", `no readable manifest at ${path.relative(process.cwd(), manifestPath)} — ${cause.message}`);
@@ -1156,7 +1158,13 @@ export async function inspect(workspaceDir, options = {}) {
         const claimed = roots.filter((root) => originOf.get(root) !== "discovered");
         report("packs", `resolution root ${plan.source} — ${plan.why}`);
         for (const name of workspace.packs) {
-            const found = resolvePack(name, roots);
+            let found;
+            try { found = resolvePack(name, roots); }
+            catch (cause) {
+                fail("packs", `\`${name}\` could not be resolved — ${cause.message}`);
+                packsUnresolved += 1;
+                continue;
+            }
             if (!found.dir) {
                 if (claimed.length === 0) {
                     stats.unverifiable += 1;
@@ -1172,7 +1180,7 @@ export async function inspect(workspaceDir, options = {}) {
             }
             let manifest;
             try {
-                manifest = JSON.parse(fs.readFileSync(found.manifest, "utf8"));
+                manifest = JSON.parse(readOwnedText(found.manifest, found.dir));
             } catch (cause) {
                 fail("packs", `\`${name}\` resolves to ${path.relative(dir, found.manifest)} but its manifest is unreadable — ${cause.message}`);
                 continue;
@@ -1231,11 +1239,15 @@ export async function inspect(workspaceDir, options = {}) {
 
             // First match wins and discovered roots come first, so an installed copy can shadow the tree's.
             {
-                const shadowed = shadowedCopy(name, origin, roots, (r) => originOf.get(r)) ?? { dir: null };
+                let shadowed = { dir: null };
+                try { shadowed = shadowedCopy(name, origin, roots, (r) => originOf.get(r)) ?? shadowed; }
+                catch (cause) {
+                    report("packs", `\`${name}\` is SHADOWED — the other copy could not be read (${cause.message}), so what differs could not be compared`);
+                }
                 if (shadowed.dir) {
                     let other = null;
                     try {
-                        other = JSON.parse(fs.readFileSync(shadowed.manifest, "utf8"));
+                        other = JSON.parse(readOwnedText(shadowed.manifest, shadowed.dir));
                     } catch (cause) {
                         report(
                             "packs",
@@ -1463,21 +1475,32 @@ export async function inspect(workspaceDir, options = {}) {
                     `so there is no repository to look in. Unverifiable, not unbound`,
             );
         }
-        // Both sides realpathed: a tree under a link (macOS `/var`) would otherwise refuse ordinary bindings.
+        // Compare canonical paths for aliased trees.
         let realTree = treeRoot;
         try {
             if (treeRoot) realTree = fs.realpathSync(treeRoot);
         } catch {
-            // Already reported by the claims checks; the declared path keeps the containment test running.
+            // Path validation reports the tree failure.
         }
-        for (const persona of treeRoot ? composedPersonas : []) {
-            const rel = path.join(AGENT_DIR, `${persona.key}.md`);
+        let bindingDir = null;
+        if (treeRoot) {
+            try { bindingDir = bindingDirectory(treeRoot); }
+            catch (error) {
+                (error.unread ? report : fail)("bindings", `host binding directory could not be determined: ${error.message}`);
+                stats.unverifiable += composedPersonas.length;
+            }
+        }
+        for (const persona of treeRoot && bindingDir ? composedPersonas : []) {
+            if (!SLUG_PATTERN.test(persona.key)) {
+                fail("bindings", `\`${persona.pack}\`'s \`${persona.rel}\` keys its host binding to \`${persona.key}\`, which is not a single host name; an escaping name leaves this workspace's tree`);
+                continue;
+            }
+            const rel = path.join(bindingDir, `${persona.key}.md`);
             const where = `\`${persona.pack}\`'s \`${persona.rel}\``;
             const keyed = persona.keyedBy === "declaration" ? "" : " (keyed by filename — the persona declares no `name`)";
             const file = path.join(treeRoot, rel);
 
-            // The key is a pack's free text, so it is contained before it is opened: lexically here, since the
-            // realpath test below is skipped where nothing exists.
+            // Pack keys must stay inside the tree before any read.
             if (!isInside(treeRoot, path.resolve(treeRoot, rel))) {
                 fail(
                     "bindings",
@@ -1487,6 +1510,14 @@ export async function inspect(workspaceDir, options = {}) {
                 continue;
             }
 
+            let stat = null;
+            try { stat = fs.lstatSync(file); }
+            catch (cause) {
+                if (cause.code !== "ENOENT") {
+                    report("bindings", `${where}'s binding at \`${rel}\` could not be examined — ${cause.code ?? cause.message}. Unread, not absent`);
+                    continue;
+                }
+            }
             let real = null;
             try {
                 real = fs.realpathSync(file);
@@ -1495,7 +1526,7 @@ export async function inspect(workspaceDir, options = {}) {
                     report("bindings", `${where}'s binding at \`${rel}\` could not be resolved — ${cause.code ?? cause.message}. Unread, not absent`);
                     continue;
                 }
-                // ENOENT falls through to the read below, which reports the persona unbound.
+                // Missing files remain unbound.
             }
             if (real !== null && !isInside(realTree, real)) {
                 fail(
@@ -1506,15 +1537,19 @@ export async function inspect(workspaceDir, options = {}) {
                 );
                 continue;
             }
+            if (stat !== null && !stat.isFile()) {
+                fail("bindings", `${where}'s binding at \`${rel}\` is not a regular file; it was not read`);
+                continue;
+            }
             let text;
             try {
-                text = fs.readFileSync(file, "utf8");
+                text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(file));
             } catch (cause) {
                 if (cause.code === "ENOENT") {
                     report(
                         "bindings",
                         `${where} has no host binding at \`${rel}\`${keyed} — reported, not failed: a persona without one is unbound rather than wrong, ` +
-                            "and this is where a Claude Code plugin's agents load from — a repository that is not a plugin loads its agents from `.claude/agents/`",
+                            `the selected ${bindingDir === "agents" ? "plugin" : "project"} location is where this tree's Claude Code agents load`,
                     );
                 } else {
                     report("bindings", `${where}'s binding at \`${rel}\` could not be read — ${cause.code ?? cause.message}. Unread, not absent`);
@@ -1547,7 +1582,7 @@ export async function inspect(workspaceDir, options = {}) {
                 );
                 continue;
             }
-            // Declared, not compared: a binding may grant less, or other, than its persona describes.
+            // Tool grants are declared, not compared to charter prose.
             report("bindings", `${where} is bound by \`${rel}\`${keyed} — ${BINDING_OK}`);
         }
     }

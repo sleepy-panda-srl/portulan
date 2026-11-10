@@ -119,7 +119,7 @@ commit, refusing any packed file that differs from its source.
 |---|---|
 | [`init`](cli/init.mjs) | Interview plus codebase scan, producing a drafted workspace |
 | [`doctor`](cli/doctor.mjs) | Validate a workspace against the Workspace Definition |
-| [`compile`](cli/compile.mjs) | Turn gates and verify recipes into host enforcement, and what a pack's persona declares about its context into the agent binding it is given, which Claude Code loads only at a plugin root |
+| [`compile`](cli/compile.mjs) | Turn gates and verify recipes into host enforcement, guidance into host tiers, and declared persona fields into existing plugin or project agent bindings |
 | [`vendor`](cli/vendor.mjs) | Materialise a workspace where it is needed, in either direction |
 | [`index`](cli/index.mjs) | Rebuild the declared indexes over memory, handoffs and personas; print changelog fragments for a release |
 | [`upgrade`](cli/upgrade.mjs) | Migrate a workspace across Workspace Definition versions |
@@ -138,7 +138,7 @@ are not subcommands at all. [`cli/README.md`](cli/README.md), rendered from the 
 | `cli/` | [The Node CLI](cli/) described above, plus its tests and the compiled-hook runners |
 | `packs/` | [Composable packs](packs/) — `stacks/`, `tools/`, `rituals/` |
 | `plugin/` | [The Claude Code adapter](plugin/): the `/portulan` boot skill |
-| `agents/` | [The three personas bound to this host's tools](agents/) — `implementer`, `reviewer`, `librarian`. A platform-fixed location; the doctrine they bind stays in [`core/personas/`](core/personas/) |
+| `agents/` | [Host bindings](agents/) for the core implementer, reviewer and librarian plus the composed supervisor and local-worker. Their charters stay in core or the contributing pack; ordinary projects bind roles under `.claude/agents/` |
 | `examples/` | [A fictional, public demo workspace](examples/) — two products, read end to end |
 | `docs/` | [`vision.md`](docs/vision.md) (the constitution), [`plan.md`](docs/plan.md) (the milestone map) and [`milestones/`](docs/milestones/) — one file per milestone from 12 on, holding amendment arguments, session notes and close evidence (milestones 0 to 11 read with `git show 8a33f9b:docs/milestones/mNN.md`) |
 | `evals/` | [The eval corpora](evals/) — golden tasks for the compiled gates and for the core skills — plus the review-loop register, the A/B corpus with its arms, graders and recorded baseline, and [`evals/releases/`](evals/releases/), the eval result each release from `0.1.3` onward carries. **No count is written here**; `git ls-files evals` derives it. _(This cell has now recorded going stale twice, and this is the second repair: it said the **graders** and the **baseline run** were *still to arrive* after both landed on 2026-08-31. The sentence that expires is always the one naming what is next, so this cell no longer names one — what is unbuilt lives in [`evals/README.md`](evals/README.md)'s own *What is NOT built yet*, which is the single carrier for it and is checked by nothing, exactly as this cell was.)_ |

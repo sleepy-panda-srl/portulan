@@ -32,7 +32,9 @@ host to express them. `effort` sets the host subagent's reasoning effort, and is
 `tools/local-llm` runner's `--effort` sends with each request it makes. `doctor` fails malformed values
 in composed pack personas; `compile` validates every persona source it compiles. Neither supplies a value
 the persona did not write. `compile` writes declared fields from composed pack personas into the
-frontmatter of the role's hand-written host binding, `agents/<name>.md` in the workspace's tree. When
+frontmatter of the role's existing host binding: `agents/<name>.md` in a plugin tree and
+`.claude/agents/<name>.md` in an ordinary project. Compiler and doctor share that selection; a malformed,
+unreadable or escaping plugin marker is not treated as an ordinary project. When
 the declared tree resolves to this compiler's own engine root, including a canonical alias, the same
 pipeline also reads `core/personas/*.md` except this README. A foreign tree's matching files do not
 participate. A core source's declared name must match its filename. The compiler leaves every other line of
@@ -44,13 +46,19 @@ field, `compile` owns every top-level key it could write, so a hand-written `exp
 even for a key other than `cacheTtl`. A field a host cannot express is
 named, with the persona and the host, in the degradation report `compile` prints. Claude Code takes all
 four on an agent (`cacheLifetime` as `experimental.cacheTtl`), and a vendored `AGENTS.md` takes none.
-**Claude Code loads `agents/` only from a plugin root**, and a repository that is not a plugin loads its
-agents from `.claude/agents/`, which `compile` does not write. So outside a plugin the compiled block is
-loaded by nothing, and the degradation report says so for each persona it applies to. Where the tree is
-a plugin root the report is silent, which is not proof of loading: a plugin's agents load only while it
-is installed and enabled, and `compile` cannot see that. _(Provenance:
+`compile` writes only existing bindings; an absent adopter binding remains unbound and is never
+created by compilation. A persona-only workspace can compile its declared fields without a gate
+policy or guidance. Nonregular, escaping and invalid UTF-8 inputs are refused before writes.
+Doctor checks the selected binding's name and declared tool grant, keeping an unread file distinct
+from an absent one. Plugin packaging checks core and actually composed charter owners in both
+directions, including personas declaring no context fields. File equality proves neither plugin
+enablement nor that a running host honored a field. _(Provenance:
 proposal `0036`'s order of work, item 7, and proposal `0039`'s first two rules. The host's keys, values
 and agent locations were read in Claude Code 2.1.317's program text on 2026-11-03.)_
+
+This product binds both composed roles. Supervisor still requires a fresh invocation for a checkpoint.
+Local-worker's host wrapper points to its existing loopback runner; loading that role does not itself
+invoke a local model or prove local execution.
 
 The three core sources explicitly declare `model: inherit`, `omitClaudeMd: false` and
 `cacheLifetime: 5m`, leaving effort undeclared. These are product-role policy choices: inherit the

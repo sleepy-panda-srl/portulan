@@ -79,3 +79,12 @@ protocol for capture
 disclosed citation-prefix normalization. All 32 recipes passed before that
 presentation fold; its capture checks also pass. Final pre-commit and verification
 results are carried by this task's commit.
+
+**Main integration.** Upstream `c5a325e1` added native ordinary-project binding
+selection and shortened only librarian's description among captured bindings.
+The capture, hashes, frozen charters, outcomes and historical costs remain
+unchanged. Independent plan review accepted preserving the new native adapter,
+testing an existing `.claude/agents/` binding with a legacy decoy left unchanged,
+and allowing only a valid single-line description difference in the binding
+comparison. Every other binding byte remains checked; automatic delegation and
+current whole-bundle costs are not established by this compatibility rule.

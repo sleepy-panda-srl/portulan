@@ -2,6 +2,7 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -513,8 +514,8 @@ describe("the agents nothing declares", () => {
         assert.equal(inspect(root).stats.agents, 0);
     });
 
-    test("this repository's three personas are found and checked", () => {
-        assert.equal(inspect(REPO).stats.agents, 3);
+    test("this repository's core and composed personas are found and checked", () => {
+        assert.equal(inspect(REPO).stats.agents, 5);
     });
 
     test("an agent stranded outside the loadable directory is reported", () => {
@@ -1320,9 +1321,95 @@ describe("a shipped persona and its host binding must correspond", () => {
         assert.equal(fails(findings).length, 0, said(findings));
     });
 
-    test("this repository's own three personas are each bound", () => {
+    test("actual composed charters own bindings in both directions, including fieldless personas", () => {
+        const root = withPersonas(["worker"], { worker: "worker", supervisor: "supervisor" });
+        write(root, ".portulan/workspace.json", JSON.stringify({ name: "fixture", kind: "repository", tree: "../", packs: ["tools/fixture"] }));
+        write(root, "packs/tools/fixture/pack.json", JSON.stringify({ portulan: { pack: "1.0" }, name: "fixture", category: "tools", contributes: { personas: ["personas/supervisor.md"] } }));
+        write(root, "packs/tools/fixture/personas/supervisor.md", PERSONA("supervisor"));
+        let checked = inspect(root);
+        assert.equal(fails(checked.findings).length, 0, said(checked.findings));
+        const binding = path.join(root, "agents/supervisor.md"), saved = fs.readFileSync(binding);
+        fs.writeFileSync(binding, AGENT("other", "A mismatched name."));
+        assert.match(said(inspect(root).findings), /disagree about which role/);
+        fs.rmSync(binding);
+        assert.match(said(inspect(root).findings), /supervisor.*has no binding/);
+        fs.writeFileSync(binding, saved);
+        write(root, ".portulan/workspace.json", JSON.stringify({ name: "fixture", packs: [] }));
+        assert.match(said(inspect(root).findings), /supervisor\.md binds no persona/);
+    });
+
+    test("first composition reads refuse nonregular and out-of-owner manifests", t => {
+        const root = withPersonas(["worker"], { worker: "worker", supervisor: "supervisor" });
+        const workspace = write(root, ".portulan/workspace.json", JSON.stringify({ name: "fixture", kind: "repository", tree: "../", packs: ["tools/fixture"] }));
+        const manifest = write(root, "packs/tools/fixture/pack.json", JSON.stringify({ portulan: { pack: "1.0" }, name: "fixture", category: "tools", contributes: { personas: ["personas/supervisor.md"] } }));
+        write(root, "packs/tools/fixture/personas/supervisor.md", PERSONA("supervisor"));
+        assert.equal(fails(inspect(root).findings).length, 0);
+        const outside = write(scratch(), "pack.json", '{"PRIVATE_SENTINEL":');
+        const saved = fs.readFileSync(manifest);
+        fs.rmSync(manifest);
+        fs.symlinkSync(outside, manifest);
+        const blocked = said(inspect(root).findings);
+        assert.match(blocked, /outside/);
+        assert.doesNotMatch(blocked, /PRIVATE_SENTINEL/);
+        fs.rmSync(manifest);
+        fs.writeFileSync(manifest, saved);
+        const other = write(root, "packs/tools/other/pack.json", saved);
+        fs.rmSync(manifest);
+        fs.symlinkSync(other, manifest);
+        assert.ok(fails(inspect(root).findings).length > 0);
+        fs.rmSync(manifest);
+        fs.writeFileSync(manifest, saved);
+        for (const file of [workspace, manifest]) {
+            const original = fs.readFileSync(file);
+            fs.writeFileSync(file, Buffer.concat([original, Buffer.from([255])]));
+            assert.ok(fails(inspect(root).findings).length > 0);
+            fs.rmSync(file);
+            const made = spawnSync("mkfifo", [file]);
+            if (made.error?.code === "ENOENT") { t.skip("mkfifo unavailable"); return; }
+            assert.equal(made.status, 0);
+            const checked = spawnSync(process.execPath, [path.join(REPO, "cli/plugin-lint.mjs"), root], { env: process.env, encoding: "utf8", timeout: 5000 });
+            assert.equal(checked.status, 1, checked.error?.message ?? checked.stderr);
+            fs.rmSync(file);
+            fs.writeFileSync(file, original);
+        }
+    });
+
+    test("a pack redirected outside packs is refused before its first manifest read", t => {
+        const root = withPersonas(["worker"], { worker: "worker", supervisor: "supervisor" });
+        write(root, ".portulan/workspace.json", JSON.stringify({ packs: ["tools/fixture"] }));
+        const outside = path.join(root, "elsewhere"), manifest = write(root, "elsewhere/pack.json", JSON.stringify({ portulan: { pack: "1.0" }, name: "fixture", category: "tools", contributes: { personas: ["personas/supervisor.md"] } }));
+        write(root, "elsewhere/personas/supervisor.md", PERSONA("supervisor"));
+        fs.mkdirSync(path.join(root, "packs/tools"), { recursive: true });
+        fs.symlinkSync(outside, path.join(root, "packs/tools/fixture"));
+        const original = fs.readFileSync, reads = [];
+        t.mock.method(fs, "readFileSync", (file, ...options) => {
+            if (typeof file === "string") { try { reads.push(fs.realpathSync(file)); } catch {} }
+            return original.call(fs, file, ...options);
+        });
+        let checked;
+        try { checked = inspect(root); } finally { t.mock.restoreAll(); }
+        assert.ok(fails(checked.findings).length > 0);
+        assert.equal(reads.includes(fs.realpathSync(manifest)), false);
+    });
+
+    test("this repository's own core and composed personas are each bound", () => {
         const { findings } = inspect(REPO);
         assert.equal(fails(findings).filter((f) => /persona|binds no/.test(f.message)).length, 0, said(findings));
+    });
+
+    test("deleting any intended product binding fails the actual packaging check", () => {
+        const root = scratch();
+        for (const rel of [".claude-plugin", "core", "plugin", "packs", "agents", ".portulan/workspace.json"]) {
+            fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+            fs.cpSync(path.join(REPO, rel), path.join(root, rel), { recursive: true });
+        }
+        assert.equal(fails(inspect(root).findings).length, 0);
+        for (const name of ["implementer", "librarian", "reviewer", "supervisor", "local-worker"]) {
+            const file = path.join(root, "agents", `${name}.md`), saved = fs.readFileSync(file);
+            fs.rmSync(file);
+            assert.match(said(inspect(root).findings), new RegExp(`${name}.*has no binding`));
+            fs.writeFileSync(file, saved);
+        }
     });
 });
 

@@ -2721,9 +2721,10 @@ describe("a workspace named directly, in either residence", () => {
 
         // A stub, not chmod: root ignores modes, and CI often runs as root.
         const dir2 = scratch();
+        fs.writeFileSync(path.join(dir2, "workspace.json"), "{}");
         const original = fs.readFileSync;
         t.mock.method(fs, "readFileSync", (p, ...rest) => {
-            if (String(p) === path.join(dir2, "workspace.json")) {
+            if (String(p) === path.join(fs.realpathSync(dir2), "workspace.json")) {
                 const error = new Error("permission denied");
                 error.code = "EACCES";
                 throw error;
@@ -3026,8 +3027,60 @@ const GUIDANCE_FIXTURE = path.join(HERE, "fixtures", "guidance");
 function guidanceCopy() {
     const dir = scratch();
     fs.cpSync(GUIDANCE_FIXTURE, dir, { recursive: true });
+    fs.rmSync(path.join(dir, ".claude"), { recursive: true, force: true });
     return dir;
 }
+
+test("committed on-invoke and companion outputs exist before a read-only clean-checkout comparison", t => {
+    const expectedPaths = [".claude/skills/release/SKILL.md", ".claude/rules/portulan/api.md"];
+    for (const rel of expectedPaths) {
+        const tracked = spawnSync("git", ["ls-files", "--error-unmatch", `cli/fixtures/guidance/${rel}`], { cwd: REPO, encoding: "utf8" });
+        assert.equal(tracked.status, 0, tracked.stderr);
+        assert.ok(fs.statSync(path.join(GUIDANCE_FIXTURE, rel)).isFile());
+    }
+    const original = personaSnapshot(GUIDANCE_FIXTURE);
+    const args = ["--workspace", GUIDANCE_FIXTURE, "--pack-root", PACKS];
+    const checked = said(t, [...args, "--check"]);
+    assert.equal(checked.code, 0, checked.out);
+    assert.deepEqual(personaSnapshot(GUIDANCE_FIXTURE), original);
+    const dir = scratch();
+    fs.cpSync(GUIDANCE_FIXTURE, dir, { recursive: true });
+    const scratchArgs = ["--workspace", dir, "--pack-root", PACKS];
+    for (const rel of expectedPaths) {
+        const file = path.join(dir, rel), committed = fs.readFileSync(file, "utf8");
+        fs.writeFileSync(file, committed + "Independent drift.\n");
+        assert.equal(said(t, [...scratchArgs, "--check"]).code, 1);
+        assert.equal(fs.readFileSync(file, "utf8"), committed + "Independent drift.\n");
+        assert.equal(said(t, scratchArgs).code, 0);
+        assert.equal(fs.readFileSync(file, "utf8"), committed);
+    }
+    const source = path.join(dir, "context/release.md"), saved = fs.readFileSync(source, "utf8");
+    fs.writeFileSync(source, saved + "\nNew source instruction.\n");
+    assert.equal(said(t, [...scratchArgs, "--check"]).code, 1);
+    assert.equal(said(t, scratchArgs).code, 0);
+    assert.match(fs.readFileSync(path.join(dir, expectedPaths[0]), "utf8"), /New source instruction/);
+    fs.writeFileSync(source, saved);
+    assert.equal(said(t, scratchArgs).code, 0);
+    assert.equal(said(t, [...scratchArgs, "--check"]).code, 0);
+});
+
+test("the repository compile recipe preserves either workspace's red and unavailable verdicts", () => {
+    const dir = scratch(), bin = path.join(dir, "bin");
+    fs.mkdirSync(path.join(dir, ".portulan/verify"), { recursive: true });
+    fs.mkdirSync(path.join(dir, "cli"));
+    fs.mkdirSync(bin);
+    fs.copyFileSync(path.join(REPO, ".portulan/verify/compile.sh"), path.join(dir, ".portulan/verify/compile.sh"));
+    fs.writeFileSync(path.join(dir, ".portulan/gates.json"), "{}");
+    fs.writeFileSync(path.join(dir, "cli/compile.mjs"), "");
+    const calls = path.join(dir, "calls");
+    fs.writeFileSync(path.join(bin, "node"), '#!/bin/sh\nprintf "%s\\n" "$3" >>"$RECIPE_CALLS"\nif [ "$3" = "." ]; then exit "$FIRST_RESULT"; else exit "$SECOND_RESULT"; fi\n', { mode: 0o755 });
+    for (const [first, second, expected] of [[0,0,0], [1,0,1], [0,1,1], [2,0,2], [0,2,2], [1,2,2], [2,1,2], [7,0,2]]) {
+        fs.writeFileSync(calls, "");
+        const run = spawnSync("bash", [".portulan/verify/compile.sh"], { cwd: dir, env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, RECIPE_CALLS: calls, FIRST_RESULT: String(first), SECOND_RESULT: String(second) }, encoding: "utf8" });
+        assert.equal(run.status, expected, `${first}/${second}: ${run.stderr}`);
+        assert.equal(fs.readFileSync(calls, "utf8"), first === 7 ? ".\n" : ".\ncli/fixtures/guidance\n");
+    }
+});
 
 function said(t, argv) {
     const out = [];
@@ -4084,7 +4137,7 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         const engine = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-engine-"));
         SCRATCH.push(engine);
         fs.mkdirSync(path.join(engine, "cli"));
-        for (const file of ["compile.mjs", "discover.mjs", "inside.mjs", "symbols.mjs", "html-entities.mjs", "ledger.mjs", "stop-policy.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
+        for (const file of ["compile.mjs", "discover.mjs", "inside.mjs", "frontmatter.mjs", "symbols.mjs", "html-entities.mjs", "ledger.mjs", "stop-policy.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
         fs.mkdirSync(path.join(engine, "core"));
         const leads = "# Leads\n\n- **A lead.**\n";
         fs.writeFileSync(path.join(engine, "core", "inside.md"), leads);
@@ -4205,6 +4258,8 @@ const PACKS = path.join(REPO, "packs");
 function personaCopy() {
     const dir = scratch();
     fs.cpSync(PERSONA_FIXTURE, dir, { recursive: true });
+    fs.mkdirSync(path.join(dir, ".claude-plugin"));
+    fs.writeFileSync(path.join(dir, ".claude-plugin/plugin.json"), JSON.stringify({ name: "persona-fixture", version: "1.0.0" }));
     return { dir, workspace: path.join(dir, "workspace"), binding: path.join(dir, "agents", "local-worker.md") };
 }
 
@@ -4235,6 +4290,14 @@ function withPersona(lines, binding = bindingText()) {
         fs.writeFileSync(path.join(dir, "agents", "my-role.md"), binding);
     }
     return { dir, workspace, root, binding: path.join(dir, "agents", "my-role.md") };
+}
+
+function ordinaryPersona(lines = ["effort: low"]) {
+    const state = withPersona(lines);
+    fs.rmSync(path.join(state.dir, ".claude-plugin"), { recursive: true });
+    fs.mkdirSync(path.join(state.dir, ".claude"));
+    fs.renameSync(path.join(state.dir, "agents"), path.join(state.dir, ".claude/agents"));
+    return { ...state, binding: path.join(state.dir, ".claude/agents/my-role.md") };
 }
 
 function personaSnapshot(dir) {
@@ -4310,11 +4373,7 @@ describe("personas: compile writes the declared fields into the binding, byte-co
         for (const field of ["effort", "omitClaudeMd"]) {
             assert.match(out, new RegExp(`^degraded local-worker +${field} +agents-md \\(AGENTS\\.md, vendored\\): AGENTS\\.md defines no agent to carry it`, "m"));
         }
-        assert.match(
-            out,
-            /^degraded local-worker +effort and omitClaudeMd claude-code \(Claude Code\): agents\/local-worker\.md loads only from a plugin root, and this tree has no \.claude-plugin\/plugin\.json; compile writes no \.claude\/agents\/, so nothing here loads the compiled fields$/m,
-            "Claude Code expresses both fields, and loads this binding only at a plugin root",
-        );
+        assert.doesNotMatch(out, /loads only from a plugin root|nothing here loads/);
         const checked = said(t, ["--workspace", workspace, "--pack-root", PACKS, "--check"]);
         assert.equal(checked.code, 0, checked.out);
         assert.match(checked.out, /^GREEN — every emitted artifact matches the policy, and every persona binding its persona$/m);
@@ -4395,7 +4454,7 @@ describe("personas: compile writes the declared fields into the binding, byte-co
 
     test("at a plugin root the report says nothing of Claude Code, since whether the plugin is enabled is not compile's to see", (t) => {
         const { dir, workspace } = personaCopy();
-        fs.mkdirSync(path.join(dir, ".claude-plugin"));
+        fs.mkdirSync(path.join(dir, ".claude-plugin"), { recursive: true });
         fs.writeFileSync(path.join(dir, ".claude-plugin", "plugin.json"), "{\"name\": \"fixture\"}\n");
         const { code, out } = said(t, ["--workspace", workspace, "--pack-root", PACKS]);
         assert.equal(code, 0, out);
@@ -4590,6 +4649,310 @@ describe("personas: compile writes the declared fields into the binding, byte-co
         const crlf = text.replaceAll("\n", "\r\n");
         assert.equal(boundAgent(crlf, { omitClaudeMd: true }, "a/b's p.md", "agents/my-role.md"), bound.replaceAll("\n", "\r\n"), "a binding keeps its own line ending");
         assert.throws(() => boundAgent(crlf.replace("color: blue\r\n", "color: blue\n"), { effort: "low" }, "a/b's p.md", "agents/my-role.md"), /mixes CRLF and LF line endings/);
+    });
+});
+
+describe("persona bindings follow the declared tree's host adapter", () => {
+    for (const plugin of [false, true]) test(plugin ? "plugin bindings remain in agents/" : "ordinary project bindings live in .claude/agents/", async (t) => {
+        const { dir, workspace: ws, root } = withPersona(["model: inherit", "effort: low", "omitClaudeMd: true", "cacheLifetime: 1h"]);
+        const location = plugin ? "agents" : ".claude/agents";
+        if (plugin) {
+            fs.writeFileSync(path.join(dir, ".claude-plugin/plugin.json"), JSON.stringify({ name: "binding-fixture", version: "1.0.0" }));
+        } else {
+            fs.rmSync(path.join(dir, ".claude-plugin"), { recursive: true });
+            fs.mkdirSync(path.join(dir, ".claude"));
+            fs.renameSync(path.join(dir, "agents"), path.join(dir, ".claude/agents"));
+        }
+        const decoy = path.join(dir, plugin ? ".claude/agents/my-role.md" : "agents/my-role.md");
+        fs.mkdirSync(path.dirname(decoy), { recursive: true });
+        fs.writeFileSync(decoy, "A decoy with no binding frontmatter.\n");
+        const binding = path.join(dir, location, "my-role.md");
+        const args = ["--workspace", ws, "--pack-root", root];
+        const compiled = said(t, args);
+        assert.equal(compiled.code, 0, compiled.out);
+        const expected = boundAgent(bindingText(), { model: "inherit", effort: "low", omitClaudeMd: true, cacheLifetime: "1h" }, "tools/my-pack's personas/my-role.md", binding);
+        assert.equal(fs.readFileSync(binding, "utf8"), expected);
+        assert.equal(fs.readFileSync(decoy, "utf8"), "A decoy with no binding frontmatter.\n");
+        assert.match(compiled.out, new RegExp(`→ ${location.replaceAll(".", "\\.")}/my-role\\.md`));
+        const snapshot = personaSnapshot(dir);
+        for (const flag of ["--check", "--matrix"]) {
+            const result = said(t, [...args, flag]);
+            assert.equal(result.code, 0, result.out);
+            assert.deepEqual(personaSnapshot(dir), snapshot);
+        }
+        for (const [from, to] of [['model: "inherit"', 'model: "other"'], ["effort: low", "effort: high"], ["omitClaudeMd: true", "omitClaudeMd: false"], ["cacheTtl: 1h", "cacheTtl: 5m"]]) {
+            fs.writeFileSync(binding, expected.replace(from, to));
+            const result = said(t, [...args, "--check"]);
+            assert.equal(result.code, 1, result.out);
+            assert.notEqual(fs.readFileSync(binding, "utf8"), expected, "check never repairs");
+            assert.equal(said(t, args).code, 0);
+            assert.equal(fs.readFileSync(binding, "utf8"), expected);
+        }
+        let checked = await inspect(ws, { packRoots: [root] });
+        assert.ok(checked.findings.some(f => f.check === "bindings" && f.message.includes(`\`${location}/my-role.md\``) && f.message.includes("is bound")), checked.findings.map(f => f.message).join("\n"));
+        fs.writeFileSync(binding, expected.replace("name: my-role", "name: other"));
+        checked = await inspect(ws, { packRoots: [root] });
+        assert.ok(checked.findings.some(f => f.check === "bindings" && f.severity === "fail" && f.message.includes("persona nobody named")));
+        fs.writeFileSync(binding, expected.replace("tools: Read\n", ""));
+        checked = await inspect(ws, { packRoots: [root] });
+        assert.ok(checked.findings.some(f => f.check === "bindings" && f.severity === "fail" && f.message.includes("allow-list")));
+        fs.rmSync(binding);
+        const missing = said(t, [...args, "--check"]);
+        assert.equal(missing.code, 0, missing.out);
+        assert.match(missing.out, /UNBOUND/);
+        assert.equal(fs.existsSync(binding), false);
+    });
+
+    test("a persona-only project compiles without creating policy or guidance", (t) => {
+        const { dir, workspace: ws, root } = withPersona(["effort: low", "omitClaudeMd: true"]);
+        fs.rmSync(path.join(dir, ".claude-plugin"), { recursive: true });
+        const file = path.join(ws, "workspace.json"), manifest = JSON.parse(fs.readFileSync(file));
+        delete manifest.gates;
+        fs.writeFileSync(file, JSON.stringify(manifest));
+        fs.rmSync(path.join(ws, "gates.json"));
+        fs.mkdirSync(path.join(dir, ".claude"));
+        fs.renameSync(path.join(dir, "agents"), path.join(dir, ".claude/agents"));
+        const binding = path.join(dir, ".claude/agents/my-role.md");
+        const args = ["--workspace", ws, "--pack-root", root];
+        const first = said(t, args);
+        assert.equal(first.code, 0, first.out);
+        assert.match(fs.readFileSync(binding, "utf8"), /omitClaudeMd: true/);
+        assert.equal(fs.existsSync(path.join(dir, ".claude/settings.json")), false);
+        assert.equal(fs.existsSync(path.join(dir, ".claude/rules")), false);
+        fs.writeFileSync(binding, fs.readFileSync(binding, "utf8").replace("effort: low", "effort: high"));
+        assert.equal(said(t, [...args, "--check"]).code, 1);
+        assert.equal(said(t, args).code, 0);
+        assert.equal(said(t, [...args, "--check"]).code, 0);
+        const beforeMatrix = personaSnapshot(dir);
+        const matrix = said(t, [...args, "--matrix"]);
+        assert.equal(matrix.code, 0, matrix.out);
+        assert.match(matrix.out, /my-role.*effort and omitClaudeMd/);
+        assert.deepEqual(personaSnapshot(dir), beforeMatrix);
+    });
+
+    for (const project of [false, true]) test(`malformed binding identity/grants refuse before writes (${project ? "project" : "plugin"})`, t => {
+        const state = project ? ordinaryPersona() : withPersona(["effort: low"]);
+        const args = ["--workspace", state.workspace, "--pack-root", state.root];
+        for (const body of [bindingText().replace("name: my-role", "name: other"), bindingText().replace("tools: Read\n", "")]) {
+            fs.writeFileSync(state.binding, body);
+            const before = personaSnapshot(state.dir);
+            const result = said(t, args);
+            assert.equal(result.code, 2, result.out);
+            assert.deepEqual(personaSnapshot(state.dir), before);
+        }
+    });
+
+    for (const project of [false, true]) test(`doctor refuses binding namespace aliases before reads (${project ? "project" : "plugin"})`, async t => {
+        const state = project ? ordinaryPersona([]) : withPersona([]);
+        const selected = project ? ".claude/agents" : "agents";
+        const source = path.join(state.root, "tools/my-pack/personas/my-role.md");
+        for (const name of ["../probe-file", "alias/../my-role", "not a host name"]) {
+            fs.writeFileSync(source, personaText([]).replace("name: my-role", `name: ${name}`));
+            const target = path.resolve(state.dir, selected, `${name}.md`);
+            fs.mkdirSync(path.dirname(target), { recursive: true });
+            fs.writeFileSync(target, bindingText().replace("name: my-role", `name: ${name}`));
+            const opened = [], originalRead = fs.readFileSync;
+            t.mock.method(fs, "readFileSync", (file, ...options) => {
+                if (typeof file === "string") { try { opened.push({ real: fs.realpathSync(file), stack: new Error().stack }); } catch { /* record only existing paths */ } }
+                return originalRead.call(fs, file, ...options);
+            });
+            let checked;
+            try { checked = await inspect(state.workspace, { packRoots: [state.root] }); }
+            finally { t.mock.restoreAll(); }
+            const findings = checked.findings.filter(f => f.check === "bindings");
+            assert.ok(findings.some(f => f.severity === "fail"), findings.map(f => f.message).join("\n"));
+            assert.equal(opened.some(read => read.real === fs.realpathSync(target) && !/at (readOrNull|source) \([^\n]*\/(form|context)\.mjs:/.test(read.stack)), false);
+            assert.ok(findings.every(f => !f.message.includes("names match")));
+        }
+    });
+
+    test("doctor refuses unreadable charter bytes and FIFO before deriving bindings", async t => {
+        const state = ordinaryPersona();
+        const source = path.join(state.root, "tools/my-pack/personas/my-role.md"), saved = fs.readFileSync(source);
+        fs.writeFileSync(source, Buffer.concat([saved, Buffer.from([255])]));
+        const checked = await inspect(state.workspace, { packRoots: [state.root] });
+        assert.ok(checked.findings.some(f => f.check === "packs" && f.severity === "fail"));
+        assert.ok(checked.findings.every(f => !f.message.includes("names match")));
+        fs.rmSync(source);
+        const made = spawnSync("mkfifo", [source]);
+        if (made.error?.code === "ENOENT") { t.skip("mkfifo unavailable"); return; }
+        assert.equal(made.status, 0);
+        const doctor = spawnSync(process.execPath, [path.join(REPO, "cli/doctor.mjs"), "--static", "--pack-root", state.root, state.workspace], { env: process.env, encoding: "utf8", timeout: 5000 });
+        assert.equal(doctor.status, 1, doctor.error?.message ?? doctor.stderr);
+        assert.doesNotMatch(doctor.stdout, /names match/);
+    });
+
+    test("workspace and pack authority bytes are validated before a stale binding is rewritten", t => {
+        const state = ordinaryPersona(), args = ["--workspace", state.workspace, "--pack-root", state.root];
+        assert.equal(said(t, args).code, 0);
+        const protectedFiles = [state.binding, path.join(state.dir, ".claude/settings.json"), path.join(state.workspace, "compile/github-ruleset.json")];
+        const snapshot = () => protectedFiles.map(file => fs.existsSync(file) ? fs.readFileSync(file).toString("base64") : null);
+        for (const file of [path.join(state.workspace, "workspace.json"), path.join(state.root, "tools/my-pack/pack.json")]) {
+            const saved = fs.readFileSync(file);
+            const parts = JSON.stringify({ ...JSON.parse(saved), summary: "INVALID_BYTE" }).split("INVALID_BYTE");
+            fs.writeFileSync(state.binding, fs.readFileSync(state.binding, "utf8").replace("effort: low", "effort: high"));
+            const before = snapshot();
+            fs.writeFileSync(file, Buffer.concat([Buffer.from(parts[0]), Buffer.from([255]), Buffer.from(parts[1])]));
+            assert.equal(said(t, args).code, 2);
+            assert.deepEqual(snapshot(), before);
+            fs.writeFileSync(file, saved);
+            fs.rmSync(file);
+            const made = spawnSync("mkfifo", [file]);
+            if (made.error?.code === "ENOENT") { t.skip("mkfifo unavailable"); return; }
+            assert.equal(made.status, 0);
+            const result = spawnSync(process.execPath, [path.join(REPO, "cli/compile.mjs"), ...args], { env: process.env, encoding: "utf8", timeout: 5000 });
+            assert.equal(result.status, 2, result.error?.message ?? result.stderr);
+            assert.deepEqual(snapshot(), before);
+            fs.rmSync(file);
+            fs.writeFileSync(file, saved);
+        }
+    });
+
+    test("doctor refuses unsafe authority before interpreting persona ownership", t => {
+        const state = ordinaryPersona();
+        const files = [path.join(state.workspace, "workspace.json"), path.join(state.root, "tools/my-pack/pack.json")];
+        const check = () => spawnSync(process.execPath, [path.join(REPO, "cli/doctor.mjs"), "--static", "--pack-root", state.root, state.workspace], { env: process.env, encoding: "utf8", timeout: 5000 });
+        for (const file of files) {
+            const saved = fs.readFileSync(file), other = path.join(scratch(), "authority.json");
+            const parts = JSON.stringify({ ...JSON.parse(saved), summary: "INVALID_BYTE" }).split("INVALID_BYTE");
+            fs.writeFileSync(file, Buffer.concat([Buffer.from(parts[0]), Buffer.from([255]), Buffer.from(parts[1])]));
+            assert.equal(check().status, 1);
+            fs.writeFileSync(other, saved);
+            fs.rmSync(file);
+            fs.symlinkSync(other, file);
+            assert.equal(check().status, 1);
+            fs.rmSync(file);
+            const made = spawnSync("mkfifo", [file]);
+            if (made.error?.code === "ENOENT") { t.skip("mkfifo unavailable"); return; }
+            assert.equal(made.status, 0);
+            const refused = check();
+            assert.equal(refused.status, 1, refused.error?.message ?? refused.stderr);
+            fs.rmSync(file);
+            fs.writeFileSync(file, saved);
+        }
+        const pack = path.join(state.root, "tools/my-pack"), outside = path.join(scratch(), "pack");
+        fs.renameSync(pack, outside);
+        fs.symlinkSync(outside, pack);
+        assert.equal(check().status, 1);
+    });
+
+    test("workspace authority has the same owner through repository and direct CLI forms", t => {
+        const state = ordinaryPersona();
+        const conventional = path.join(state.dir, ".portulan");
+        fs.renameSync(state.workspace, conventional);
+        state.workspace = conventional;
+        const file = path.join(state.workspace, "workspace.json");
+        const args = ["--pack-root", state.root], saved = fs.readFileSync(file);
+        assert.equal(said(t, ["--workspace", state.dir, ...args]).code, 0);
+        fs.writeFileSync(state.binding, fs.readFileSync(state.binding, "utf8").replace("effort: low", "effort: high"));
+        const before = personaSnapshot(state.dir), other = path.join(state.dir, "sibling-workspace.json");
+        fs.writeFileSync(other, saved);
+        fs.rmSync(file);
+        fs.symlinkSync(other, file);
+        const blockedBefore = personaSnapshot(state.dir);
+        for (const workspace of [state.dir, state.workspace]) for (const mode of [[], ["--check"], ["--matrix"]]) {
+            const result = spawnSync(process.execPath, [path.join(REPO, "cli/compile.mjs"), "--workspace", workspace, ...args, ...mode], { encoding: "utf8", timeout: 5000 });
+            assert.equal(result.status, 2, result.stdout + result.stderr);
+            assert.deepEqual(personaSnapshot(state.dir), blockedBefore);
+            const original = fs.readFileSync, opened = [];
+            t.mock.method(fs, "readFileSync", (file, ...options) => {
+                if (typeof file === "string") { try { opened.push(fs.realpathSync(file)); } catch {} }
+                return original.call(fs, file, ...options);
+            });
+            try { assert.equal(said(t, ["--workspace", workspace, ...args, ...mode]).code, 2); }
+            finally { t.mock.restoreAll(); }
+            assert.equal(opened.includes(fs.realpathSync(other)), false);
+        }
+        fs.rmSync(file);
+        fs.writeFileSync(file, saved);
+        fs.rmSync(other);
+        assert.deepEqual(personaSnapshot(state.dir), before);
+        const alias = path.join(scratch(), "repository-alias");
+        fs.symlinkSync(state.dir, alias);
+        assert.equal(said(t, ["--workspace", alias, ...args]).code, 0);
+    });
+
+    test("nominated packs stay inside their root and their manifests inside their pack", t => {
+        const state = ordinaryPersona(), args = ["--workspace", state.workspace, "--pack-root", state.root];
+        assert.equal(said(t, args).code, 0);
+        fs.writeFileSync(state.binding, fs.readFileSync(state.binding, "utf8").replace("effort: low", "effort: high"));
+        const before = fs.readFileSync(state.binding), pack = path.join(state.root, "tools/my-pack"), manifest = path.join(pack, "pack.json"), saved = fs.readFileSync(manifest);
+        for (const other of [path.join(scratch(), "pack.json"), path.join(state.root, "tools/other/pack.json")]) {
+            fs.mkdirSync(path.dirname(other), { recursive: true });
+            fs.writeFileSync(other, saved);
+            fs.rmSync(manifest);
+            fs.symlinkSync(other, manifest);
+            assert.equal(said(t, args).code, 2);
+            assert.deepEqual(fs.readFileSync(state.binding), before);
+            fs.rmSync(manifest);
+            fs.writeFileSync(manifest, saved);
+        }
+        const outside = path.join(scratch(), "my-pack");
+        fs.renameSync(pack, outside);
+        fs.symlinkSync(outside, pack);
+        assert.equal(said(t, args).code, 2);
+        assert.deepEqual(fs.readFileSync(state.binding), before);
+        fs.rmSync(pack);
+        fs.renameSync(outside, pack);
+        const alias = path.join(state.dir, "named-pack-root");
+        fs.symlinkSync(state.root, alias);
+        const accepted = said(t, ["--workspace", state.workspace, "--pack-root", alias]);
+        assert.equal(accepted.code, 0, accepted.out);
+    });
+
+    test("malformed, escaping and nonregular plugin markers never select a fallback", (t) => {
+        const { dir, workspace: ws, root } = withPersona(["effort: low"]);
+        const marker = path.join(dir, ".claude-plugin/plugin.json");
+        const args = ["--workspace", ws, "--pack-root", root];
+        for (const content of ["[]", "null", "{", '{"name":123}', Buffer.from([255]), Buffer.concat([Buffer.from([239,187,191]), Buffer.from('{"name":"fixture"}')])]) {
+            fs.writeFileSync(marker, content);
+            const before = personaSnapshot(dir);
+            assert.equal(said(t, args).code, 2);
+            assert.deepEqual(personaSnapshot(dir), before);
+        }
+        fs.rmSync(marker);
+        fs.mkdirSync(marker);
+        assert.equal(said(t, args).code, 2);
+        fs.rmSync(marker, { recursive: true });
+        const outside = scratch();
+        fs.writeFileSync(path.join(outside, "plugin.json"), '{"name":"fixture"}');
+        fs.symlinkSync(path.join(outside, "plugin.json"), marker);
+        assert.equal(said(t, args).code, 2);
+    });
+
+    test("invalid UTF-8 bindings are unread without replacing handwritten bytes", async t => {
+        const { dir, workspace: ws, root, binding } = withPersona(["effort: low"]);
+        fs.writeFileSync(binding, Buffer.concat([Buffer.from(bindingText()), Buffer.from([255])]));
+        const before = personaSnapshot(dir);
+        const result = said(t, ["--workspace", ws, "--pack-root", root]);
+        assert.equal(result.code, 2, result.out);
+        assert.deepEqual(personaSnapshot(dir), before);
+        const checked = await inspect(ws, { packRoots: [root] });
+        const messages = checked.findings.filter(f => f.check === "bindings").map(f => f.message).join("\n");
+        assert.match(messages, /Unread, not absent/);
+        assert.doesNotMatch(messages, /names match/);
+    });
+
+    test("FIFO bindings and markers are refused before either reader can block", t => {
+        const { workspace: ws, root, binding, dir } = withPersona(["effort: low"]);
+        fs.rmSync(binding);
+        const made = spawnSync("mkfifo", [binding], { encoding: "utf8" });
+        if (made.error?.code === "ENOENT") { t.skip("mkfifo unavailable"); return; }
+        assert.equal(made.status, 0, made.stderr);
+        const env = { ...process.env, CLAUDE_CONFIG_DIR: HERMETIC_HOST };
+        const compile = spawnSync(process.execPath, [path.join(REPO, "cli/compile.mjs"), "--workspace", ws, "--pack-root", root, "--check"], { env, encoding: "utf8", timeout: 5000 });
+        assert.equal(compile.status, 2, compile.error?.message ?? compile.stderr);
+        assert.match(compile.stderr, /not a regular file/);
+        const doctor = spawnSync(process.execPath, [path.join(REPO, "cli/doctor.mjs"), "--static", "--pack-root", root, ws], { env, encoding: "utf8", timeout: 5000 });
+        assert.equal(doctor.status, 1, doctor.error?.message ?? doctor.stderr);
+        assert.match(doctor.stdout + doctor.stderr, /not a regular file; it was not read/);
+        fs.rmSync(binding);
+        fs.writeFileSync(binding, bindingText());
+        const marker = path.join(dir, ".claude-plugin/plugin.json");
+        fs.rmSync(marker);
+        assert.equal(spawnSync("mkfifo", [marker]).status, 0);
+        const refused = said(t, ["--workspace", ws, "--pack-root", root]);
+        assert.equal(refused.code, 2, refused.out);
     });
 });
 
