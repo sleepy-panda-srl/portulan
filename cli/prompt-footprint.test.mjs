@@ -35,7 +35,9 @@ function copy() {
 const sum = entries => entries.reduce((n, entry) => n + entry.bytes, 0);
 
 test("inventory includes manual skills, both plugin manifests, actual bindings and composed charters once", () => {
-    const result = inventory(ROOT);
+    const fixture = copy();
+    fs.rmSync(path.join(fixture, "agents/local-worker.md"), { force: true });
+    const result = inventory(fixture);
     const files = result.skills.map(entry => entry.file);
     assert.equal(files.filter(file => file.endsWith("/delegate-local/SKILL.md")).length, 1);
     assert.ok(files.includes("core/skills/clarify/SKILL.md"));
@@ -43,6 +45,8 @@ test("inventory includes manual skills, both plugin manifests, actual bindings a
         assert.ok(result.personas.some(entry => entry.file === file), file);
     }
     assert.ok(result.unbound.includes("local-worker"), "missing compiler bindings are reported, never invented");
+    write(fixture, "agents/local-worker.md", "---\nname: local-worker\n---\nSynthetic binding.\n");
+    assert.equal(inventory(fixture).unbound.includes("local-worker"), false);
     assert.ok(result.skills.every(entry => entry.provenance.length > 0 && entry.bytes > 0));
     assert.equal(new Set(files).size, files.length);
 });
