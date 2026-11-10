@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { BOOT_CARD_LINE, CompileError, IMPORT_DEPTH, importPath, importSpans } from "./compile.mjs";
+import { BOOT_CARD_LINE, CompileError, GUIDANCE_HOSTS, IMPORT_DEPTH, importPath, importSpans } from "./compile.mjs";
 import { offerText, splitOffers } from "./instructions.mjs";
 import { AGENT_DIR, parseFrontmatter } from "./plugin-lint.mjs";
 import { HOST_SKILL_DEPTH, manifestPath } from "./skills-set.mjs";
@@ -396,7 +396,8 @@ function walkMarkdown(dir, kept) {
     return out;
 }
 
-export function alwaysTier(repoRoot, { includeText = false } = {}) {
+export function alwaysTier(repoRoot, { includeText = false, host = "claude-code" } = {}) {
+    if (!Object.hasOwn(GUIDANCE_HOSTS, host)) throw new ContextError("unknown project guidance host");
     const entries = [];
     const missing = [];
     const outside = [];
@@ -404,21 +405,42 @@ export function alwaysTier(repoRoot, { includeText = false } = {}) {
     const seen = new Set();
     const captured = new Map();
     const source = (file) => {
-        if (!includeText) return { text: readText(file, file), bytes: sizeOf(file, file) };
         const real = realOf(file);
-        if (!captured.has(real)) {
+        if (!includeText || !captured.has(real)) {
             let raw;
             try { raw = fs.readFileSync(file); }
             catch { throw new ContextError("an always-tier source could not be read"); }
             const text = raw.toString("utf8");
             if (!Buffer.from(text, "utf8").equals(raw)) throw new ContextError("an always-tier source is not valid UTF-8");
-            captured.set(real, { text, bytes: raw.length });
+            const value = { text, bytes: raw.length };
+            if (!includeText) return value;
+            captured.set(real, value);
         }
         return captured.get(real);
     };
 
     // Judged on real paths: a link out of the repository is named, never opened, since it is not this repository's to measure.
     const realRoot = realOf(repoRoot);
+    if (host === "agents-md") {
+        const file = path.join(repoRoot, "AGENTS.md");
+        let entry;
+        try { entry = fs.lstatSync(file); }
+        catch (error) {
+            if (!ABSENT.has(error.code)) throw new ContextError(`AGENTS.md could not be inspected (${error.code ?? "read error"})`);
+        }
+        if (entry) {
+            let real, raw;
+            try {
+                real = fs.realpathSync(file);
+                if (!inside(realRoot, real) || !fs.statSync(file).isFile()) throw new Error("source boundary");
+                raw = fs.readFileSync(file);
+            } catch (error) { throw new ContextError(`AGENTS.md is present but cannot be measured within the repository (${error.code ?? "nonregular or outside source"})`); }
+            const text = raw.toString("utf8");
+            if (!Buffer.from(text, "utf8").equals(raw)) throw new ContextError("AGENTS.md is not valid UTF-8");
+            entries.push({ label: "vendored instructions", file, bytes: raw.length, ...(includeText ? { text } : {}) });
+        }
+        return { entries, scoped: 0, unlisted: 0, missing, outside, tooDeep, card: null };
+    }
     const kept = (file) => {
         const real = realOf(file);
         if (real === realRoot || inside(realRoot, real)) return true;
@@ -465,12 +487,17 @@ export function alwaysTier(repoRoot, { includeText = false } = {}) {
             }
         }
     };
-    follow(
-        ["CLAUDE.md", path.join(".claude", "CLAUDE.md")]
-            .map((rel) => path.join(repoRoot, rel))
-            .filter((file) => isFile(file) && kept(file))
-            .map((file) => ({ file, label: "instructions" })),
-    );
+    const instructions = [];
+    for (const rel of ["CLAUDE.md", path.join(".claude", "CLAUDE.md")]) {
+        const file = path.join(repoRoot, rel);
+        let entry;
+        try { entry = fs.lstatSync(file); }
+        catch (error) { if (!ABSENT.has(error.code)) throw new ContextError(`${rel} could not be inspected (${error.code ?? "read error"})`); }
+        if (!entry) continue;
+        if (!isFile(file)) throw new ContextError(`${rel} is present but not a readable regular file`);
+        if (kept(file)) instructions.push({ file, label: "instructions" });
+    }
+    follow(instructions);
 
     let scoped = 0;
     let card = null;
@@ -673,15 +700,15 @@ export function treeOf(workspaceDir, manifest) {
     return repoRoot;
 }
 
-export function judgeBudget(declared, bytes) {
+export function judgeBudget(declared, bytes, { offer = true } = {}) {
     const tokens = tokensOf(bytes, declared.ratio ?? ESTIMATED_BYTES_PER_TOKEN);
     if (declared.budget === null) {
         return {
             verdict: "undeclared",
             tokens,
             text:
-                "budget: undeclared (context.always.budget.tokens) — a report, not a rail; init would offer the larger of " +
-                `${grouped(OFFER_FLOOR_TOKENS)} tokens and today's load: ${grouped(Math.max(OFFER_FLOOR_TOKENS, tokens))} tokens`,
+                "budget: undeclared (context.always.budget.tokens) — a report, not a rail" +
+                (offer ? "; init would offer the larger of " + `${grouped(OFFER_FLOOR_TOKENS)} tokens and today's load: ${grouped(Math.max(OFFER_FLOOR_TOKENS, tokens))} tokens` : ""),
         };
     }
     if (tokens > declared.budget) {
@@ -728,7 +755,9 @@ export function measure(workspaceDir, { bundleRoot = BUNDLE_ROOT, repo = null } 
 // ===========================================================================================
 
 /** `over` and `unjudged` are verdicts; `unmeasured` is a report, said where no budget waits on the figure. */
-export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } = {}) {
+export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT, host = "claude-code" } = {}) {
+    if (!Object.hasOwn(GUIDANCE_HOSTS, host)) throw new ContextError("unknown project guidance host");
+    const claude = host === "claude-code";
     // Read raw, so a budget whose key is malformed still counts as one somebody meant to declare.
     const budgeted = manifest.context?.always !== undefined;
     // The tree as declared, before it is checked, since checking it is one of the things that can fail on it.
@@ -736,7 +765,7 @@ export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } 
         [typeof manifest.tree === "string" ? path.resolve(workspaceDir, manifest.tree) : null, "the repository"],
         [path.resolve(bundleRoot), "the plugin"],
     ];
-    const said = (verdict, text) => ({ verdict, line: printable(relativeTo(`${MEASURED_HOST}: ${text}`, roots)) });
+    const said = (verdict, text) => ({ verdict, line: printable(relativeTo(`${GUIDANCE_HOSTS[host].label}: ${text}`, roots)) });
     const notMeasured = (why) =>
         budgeted ? said("unjudged", `the declared budget cannot be judged — ${why}`) : said("unmeasured", `the always tier is not measured — ${why}`);
     let declared;
@@ -747,14 +776,14 @@ export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } 
         if (manifest.kind === "pointer") return notMeasured("the manifest is a pointer, which declares no tree, so the repository it sits in is not measured here");
         root = treeOf(workspaceDir, manifest);
         if (root === null) return notMeasured("this workspace declares no tree, so there is no repository here whose instruction files a host would load");
-        always = alwaysTier(root);
+        always = alwaysTier(root, { host });
     } catch (error) {
         if (!(error instanceof ContextError)) throw error;
         return notMeasured(error.message);
     }
     let plugin;
     try {
-        plugin = pluginDescriptions(bundleRoot);
+        plugin = claude ? pluginDescriptions(bundleRoot) : null;
     } catch (error) {
         if (!(error instanceof ContextError)) throw error;
         plugin = { unavailable: error.message };
@@ -762,10 +791,10 @@ export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } 
 
     const ratio = declared.ratio ?? ESTIMATED_BYTES_PER_TOKEN;
     const bytes = sum(always.entries);
-    const judged = judgeBudget(declared, bytes);
+    const judged = judgeBudget(declared, bytes, { offer: claude });
     const parts = [
         `this repository's always tier is ~${grouped(judged.tokens)} tokens, ${grouped(bytes)} B at ${ratio} bytes per token` +
-            (declared.ratio === null ? ", proposal 0036's estimate: none is declared" : `, declared, calibrated by ${declared.calibratedBy}`),
+            (declared.ratio === null ? ", proposal 0036's estimate: none is declared" : host === declared.calibratedBy ? `, declared, calibrated by ${declared.calibratedBy}` : `, shared declared ratio extrapolated to this host; calibration reference ${declared.calibratedBy}`),
     ];
     if (always.entries.length) {
         // Stable, so files of one size keep the host's own order.
@@ -775,27 +804,29 @@ export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } 
                 (always.entries.length > top.length ? `, of ${grouped(always.entries.length)} files` : ""),
         );
     } else {
-        parts.push("nothing in it: no CLAUDE.md, .claude/CLAUDE.md, unscoped rule, or project skill, command or agent");
+        parts.push(claude ? "nothing in it: no CLAUDE.md, .claude/CLAUDE.md, unscoped rule, or project skill, command or agent" : "nothing in it: no root AGENTS.md");
     }
     const scoped = always.scoped;
-    parts.push(scoped === 0 ? "no path-scoped rule sits on-path" : scoped === 1 ? "1 path-scoped rule sits on-path" : `${grouped(scoped)} path-scoped rules sit on-path`);
+    if (claude) parts.push(scoped === 0 ? "no path-scoped rule sits on-path" : scoped === 1 ? "1 path-scoped rule sits on-path" : `${grouped(scoped)} path-scoped rules sit on-path`);
     const outside = always.outside.length;
-    parts.push(
+    if (claude) parts.push(
         outside === 0
             ? "no import or link out of the repository loads"
             : outside === 1
               ? "1 import or link out of the repository loads and is not counted"
               : `${grouped(outside)} imports or links out of the repository load and are not counted`,
     );
-    parts.push(
+    if (claude) parts.push(
         plugin.unavailable === undefined
             ? `the Portulan plugin's descriptions add ~${grouped(tokensOf(sum(plugin.entries), ratio))} tokens wherever it is enabled, Portulan's to budget, not this workspace's`
             : `the Portulan plugin's descriptions are not measured — ${plugin.unavailable}`,
     );
+    if (!claude) parts.push("root AGENTS.md only: pointer targets and at-sign text are not expanded; personal, above-tree, nested files and plugins are excluded");
+    if (claude && (always.missing.length || always.tooDeep.length)) parts.push(`${always.missing.length} missing imports and ${always.tooDeep.length} beyond the host's import depth are not loaded or counted`);
     parts.push(judged.text);
     // `init` and `upgrade` draft a card importing the identity whole, so over a budget that import is the demotion to name.
     const identity = typeof manifest.slots?.identity === "string" ? path.resolve(workspaceDir, manifest.slots.identity) : null;
-    const whole = judged.verdict === "over" && identity !== null ? always.entries.find((e) => e.label.startsWith("import") && path.resolve(e.file) === identity) : undefined;
+    const whole = claude && judged.verdict === "over" && identity !== null ? always.entries.find((e) => e.label.startsWith("import") && path.resolve(e.file) === identity) : undefined;
     if (whole) {
         parts.push(
             `the tier imports ${path.relative(root, identity)} whole, ~${grouped(tokensOf(whole.bytes, ratio))} tokens: one demotion is to make it an on-demand read, ` +
@@ -803,7 +834,7 @@ export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } 
         );
     }
     const over = judged.verdict === "over";
-    const offer = offerText(splitOffers(root, { ratio, floor: OFFER_FLOOR_TOKENS, over }), { over, workspace: path.relative(root, workspaceDir).split(path.sep).join("/") || "." });
+    const offer = claude ? offerText(splitOffers(root, { ratio, floor: OFFER_FLOOR_TOKENS, over }), { over, workspace: path.relative(root, workspaceDir).split(path.sep).join("/") || "." }) : null;
     if (offer !== null) parts.push(offer);
     return said(judged.verdict, parts.join("; "));
 }

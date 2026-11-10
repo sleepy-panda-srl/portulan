@@ -701,7 +701,7 @@ one source for what each load tier holds; this object is its machine half, as `m
 |---|---|
 | `always.budget.tokens` | The most tokens the always tier may load, counted at the ratio below. |
 | `ratio.bytes_per_token` | Manually declared bytes per token for the host's measured domain. At least 1; provider estimates are qualified below. |
-| `ratio.calibrated_by` | The compile host whose measurement domain the ratio describes, by its ID: `claude-code`. Provider/model provenance belongs in the count report. |
+| `ratio.calibrated_by` | The declared compile-host/domain ID. Doctor matches `claude-code` or `agents-md` to its reported format; a different or unknown valid ID is labeled as extrapolated. Provider/model provenance belongs in the count report. |
 
 ```json
 "context": {
@@ -718,12 +718,14 @@ is the report.
 
 **Declared, not measured per run.** On-demand counting is a network call no verify recipe may make,
 and a ratio that moved between runs would make one tree red on one run and green on the next. There is
-no date field, because the commit that changes the ratio dates it, and one ratio rather than one per
-host, because nothing yet reads a second.
+no date field, because the commit that changes the ratio dates it. One declared ratio is shared by the
+two measured project formats. Reports compare `calibrated_by` with the format ID (`claude-code` or
+`agents-md`); a nonmatching or unknown ID makes that use an explicit extrapolation. The declaration
+still accepts any valid host slug. No second per-host ratio is declared.
 
 For [#506](https://github.com/sleepy-panda-srl/portulan/issues/506), Marius accepted “Provider count with
 stated limit” on 2026-11-09. `doctor --count-tokens MODEL_ID` and the direct context diagnostic submit
-the measured project corpus to Anthropic, which returns an estimate that may differ from actual host
+the measured Claude Code project corpus to Anthropic, which returns an estimate that may differ from actual host
 usage and includes API framing. The effective ratio is approximate and manual; neither command writes
 this object or invents a `calibrated_by` provider ID. An empty corpus produces no request or ratio.
 The original exact-host wording is historical acceptance, not a claim of current host integration.
@@ -741,8 +743,14 @@ Both are `doctor`'s because the subset has no `minimum` and cannot say `integer`
 key is gated from birth, when no manifest can newly fail the check.
 
 **What checks the budget itself.** `doctor` measures the always tier of every workspace that declares
-a `tree`, through [`../cli/context.mjs`](../cli/context.mjs), and fails it over a declared budget, or
-where a declared budget cannot be judged; with none declared it reports the figure. _(This paragraph read
+a `tree`, through [`../cli/context.mjs`](../cli/context.mjs), for Claude Code and root vendored AGENTS.md.
+Doctor reports both automatically and judges the same declared cap independently for each, never
+summing separate contexts. AGENTS includes the file's inline guidance and pointer text without opening
+targets or expanding at-sign text; personal, above-tree, nested and plugin files are excluded. An absent
+optional root is zero; present unmeasurable sources, including an escaping AGENTS root, are reported
+unmeasured. A declared budget then cannot be judged and fails. Without a budget, measurement does not
+change the verdict. The default context/boot line and optional provider request stay Claude-specific;
+doctor validates both applicable budgets before requesting that count. _(This paragraph read
 *"What nothing checks yet: the budget itself"* until that report landed, and it was true then:
 [`a-mandate-nothing-checks-is-already-broken.md`](../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md)
 is why no workspace here declared the key before something checked it.)_ Neither this repository's

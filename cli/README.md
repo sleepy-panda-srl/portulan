@@ -108,6 +108,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`comments.test.mjs`](comments.test.mjs) | Tests for `comments`: each language's comments found exactly, and the four kinds of history told from the rest. |
 | [`compile.test.mjs`](compile.test.mjs) | Tests for `compile` — the enforcement compiler. |
 | [`context-count.test.mjs`](context-count.test.mjs) | On-demand provider counts preserve the measured corpus and remain outside offline verification. |
+| [`context-hosts.test.mjs`](context-hosts.test.mjs) | Independent project context measurements for the two guidance formats. |
 | [`context.test.mjs`](context.test.mjs) | Tests for `context` — what a boot reads and what the host loads into every context, measured. |
 | [`control-chars.test.mjs`](control-chars.test.mjs) | Tests for `control-chars` — the rail on bytes a reader cannot see. |
 | [`demo-upgrade.test.mjs`](demo-upgrade.test.mjs) | The demo's pinned bundle replacement reproduces its boot reduction without changing its workspace. |

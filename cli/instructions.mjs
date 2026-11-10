@@ -563,18 +563,24 @@ export function linkRefusal(tree, rel) {
 export function instructionReader(tree, read) {
     return (rel) => {
         const at = path.join(tree, ...rel.split("/"));
-        if (!INSTRUCTION_FILES.includes(rel) || !fs.lstatSync(at, { throwIfNoEntry: false })?.isSymbolicLink()) return read(rel);
-        let to;
+        if (!INSTRUCTION_FILES.includes(rel)) return read(rel);
+        let to, entry;
         try {
+            entry = fs.lstatSync(at);
             to = fs.realpathSync(at);
         } catch (error) {
-            if (error.code === "ENOENT" || error.code === "ENOTDIR") return null;
+            if (error.code === "ENOENT" || error.code === "ENOTDIR") return entry ? null : read(rel);
             throw new InstructionsError(`${rel} could not be followed — ${error.code ?? error.message}`);
         }
         if (!isInside(fs.realpathSync(tree), to)) return null;
         try {
-            return fs.readFileSync(to, "utf8");
+            if (!fs.statSync(to).isFile()) throw new InstructionsError(`${rel} is not a regular instruction source`);
+            if (!entry.isSymbolicLink()) return read(rel);
+            const raw = fs.readFileSync(to), text = raw.toString("utf8");
+            if (!Buffer.from(text, "utf8").equals(raw)) throw new InstructionsError(`${rel} is not valid UTF-8`);
+            return text;
         } catch (error) {
+            if (error instanceof InstructionsError) throw error;
             throw new InstructionsError(`${rel} could not be read — ${error.code ?? error.message}`);
         }
     };
@@ -596,7 +602,7 @@ export function splitOffers(tree, { ratio, floor, over = false }) {
         const from = path.join(tree, ...rel.split("/"));
         let text;
         try {
-            if (!isInside(fs.realpathSync(tree), fs.realpathSync(from)) || fs.lstatSync(from).isSymbolicLink()) continue;
+            if (!isInside(fs.realpathSync(tree), fs.realpathSync(from)) || fs.lstatSync(from).isSymbolicLink() || !fs.statSync(from).isFile()) continue;
             text = fs.readFileSync(from, "utf8");
         } catch {
             continue;
@@ -650,8 +656,12 @@ export function treeReader(tree) {
         if (!isInside(tree, at)) throw new InstructionsError(`${rel} resolves outside the repository`);
         let text;
         try {
-            if (!isInside(real, fs.realpathSync(at))) throw new InstructionsError(`${rel} is a link out of the repository, which this does not read`);
-            text = fs.readFileSync(at, "utf8");
+            const target = fs.realpathSync(at);
+            if (!isInside(real, target)) throw new InstructionsError(`${rel} is a link out of the repository, which this does not read`);
+            if (!fs.statSync(target).isFile()) throw new InstructionsError(`${rel} is not a regular instruction source`);
+            const raw = fs.readFileSync(target);
+            text = raw.toString("utf8");
+            if (!Buffer.from(text, "utf8").equals(raw)) throw new InstructionsError(`${rel} is not valid UTF-8`);
         } catch (error) {
             if (error instanceof InstructionsError) throw error;
             if (error.code === "ENOENT" || error.code === "ENOTDIR") return null;
