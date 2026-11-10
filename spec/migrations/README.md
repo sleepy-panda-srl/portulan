@@ -107,6 +107,7 @@ is a question that could not be answered.
 | [`0008-card-reading.mjs`](0008-card-reading.mjs) | `form` | A card drafted before it carried the engine's rules on reading and the cache gets that section, which `compile` writes out from the installed Portulan's `core/operating/context.md`, and `0007` compiles it. A card lacking the section under any other head is owed it by hand: the run names the head the step looks for and the line to add, applies the rest of the chain and exits 1, and `doctor` names the card until the line is there. |
 | [`0009-instruction-sections-on-read.mjs`](0009-instruction-sections-on-read.mjs) | `form` | Each section a team marks with a line `<!-- portulan: on-read -->` under its heading, in `CLAUDE.md` or `.claude/CLAUDE.md`, moves byte for byte into an on-read unit of `slots.context`, and a comment is left where it was. **Proved before it is offered**: the file must reassemble from its units byte for byte and each clause land once, or the step refuses; a section importing a file, a mark inside a marked section and a mark under no heading are refused too, and a mark in an instruction file that is a link is owed by hand while the rest of the chain runs. Owed only where a team marked a section, and put back by [`../../cli/instructions.mjs`](../../cli/instructions.mjs) `--join`. |
 | [`0010-comment-rail.mjs`](0010-comment-rail.mjs) | `form` | Where a `repository` workspace's tree is one git lists and no `comments` recipe is declared, `verify/comments.sh` is drafted as `init` drafts it, holding the comment lines that record a change's history at the count the tree has, and declared. **Refused where `verify/comments.sh` is already there undeclared**, rather than written over. |
+| [`0011-persona-bindings-compiled.mjs`](0011-persona-bindings-compiled.mjs) | `form` | Refresh existing eligible persona bindings through the compiler's ownership planner. Core sources participate only in the installed engine's own tree; composed pack sources retain their existing boundary. Missing bindings are not created and gate settings are untouched. |
 
 **`0001` has no subject in this tree** — nothing declares 1.0 — and is exercised against a fixture,
 which is said here rather than dressed up. **`0002` has no subject in this repository either**: this
@@ -117,6 +118,11 @@ consumer the real `init` drafts, put back in the form it drafted before, and com
 either, since this repository keeps no `CLAUDE.md`, and is exercised against such a consumer whose
 instruction file the suite marks; `0010` against one `init` drafted where git listed no files, then
 committed.
+
+`0011` is exercised against exact v0.2.0 core bindings in a copy of the engine and against
+foreign trees and absent bindings. The command-level demonstration holds unrelated bytes,
+modes and settings constant, checks idempotence, and forces a staging collision after one
+replacement to demonstrate rollback while preserving the unowned collision file.
 
 ## Adding one
 

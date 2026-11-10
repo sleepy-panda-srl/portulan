@@ -61,10 +61,32 @@ the host's precedence rules. Compilation proves the committed bytes, with no cla
 savings or live loading. _(Host precedence checked against the
 [official subagent documentation](https://code.claude.com/docs/en/sub-agents) on 2026-11-09.)_
 
+The acquired [implementer](../../evals/ab/personas/implementer.md),
+[reviewer](../../evals/ab/personas/reviewer.md) and
+[librarian](../../evals/ab/personas/librarian.md) comparisons each have three
+frozen artifact cases, one attempt per arm, through native children on Sonnet 5.5
+in Claude Code 2.1.321. Both arms pass all nine cases. Medium has a lower
+cold-normalized cost index in this observation; observed cache costs differ,
+and the reviewer arm's observed cost rises. These results support the retained
+policy on that corpus and model, with no global medium default earned for other
+inherited models. The [protocol](../../evals/ab/personas/README.md) discloses the
+small sample, both probes, full parent/child usage and one retained-answer
+decoder repair after the first outcome. The shipped offline checker regrades
+the records and checks routing and source bytes.
+
 A binding has one persona owner across core and composed pack sources, including an unbound persona or one declaring
 no fields; duplicate destinations are refused before any artifact is written. The binding must be a
 regular file whose real path stays in the real declared tree, including its parent directories.
 `omitClaudeMd` accepts only unquoted `true` or `false`, in both declarations and compiled blocks.
+
+`upgrade` refreshes existing eligible bindings through the same compiler planner,
+including normal host-cache pack discovery and its shadow refusals. It preserves
+unrelated binding text and modes, creates no absent binding, and writes no gate
+settings. Core sources still participate only in the installed engine's own
+declared tree; an ordinary adopter receives the baked core agents by updating the
+plugin, without installing a foreign core adapter. The command-level historical
+v0.2.0 demonstration is in
+[`../../cli/persona-upgrade.test.mjs`](../../cli/persona-upgrade.test.mjs).
 
 ## Status
 

@@ -242,9 +242,12 @@ each field a host cannot express, with the persona and the host, as its degradat
 Claude Code 2.1.317 takes all four on an agent, and loads `agents/` only from a plugin root (both read
 in its program text on 2026-11-03), so in a tree that is not a plugin the compiled block is loaded by
 nothing, and the degradation report says so; in one that is, only while the plugin is installed and
-enabled, which `compile` cannot see. That stops short of the row: `compile` writes no
+enabled, which `compile` cannot see. `compile` writes no
 `.claude/agents/`, where a repository that is not a plugin loads its agents, and no binding where none
-exists; and no host has been shown honouring a compiled field. The core declarations choose
+exists. The acquired [native-child comparisons](../../evals/ab/personas/README.md)
+observe the three named core roles, matching inherited parent/child models and
+effective high/medium child effort. They do not isolate every compiled field or
+host precedence rule. The core declarations choose
 `model: inherit`, `omitClaudeMd: false` and `cacheLifetime: 5m`, subject to the host precedence described in
 [`../personas/README.md`](../personas/README.md). **The librarian reports project always-tier headroom**
 against a declared budget and puts conditional demotion drafts in its standing report
@@ -354,8 +357,12 @@ without lost quality, and the shipped routing must be the routing its record sup
 context that cannot do its role costs rework; a reviewer keeps the conventions it grades against.
 Session switches retain their [specific guards](sessions.md#a-switch-that-changes-the-prefix-is-earned),
 and local routing retains its screen-versus-comparison distinction below.
-The A/B demonstrations for all three fresh-context personas remain row 13's work, separate from the
-existing warm-start and local-worker records.
+The three [core-persona records](../../evals/ab/personas/README.md) compare shipped
+inheritance with a native medium-effort override on one concrete model. Both arms
+pass the nine frozen cases; the shipped policy retains inheritance and undeclared
+effort. Other parent models remain unmeasured. Plugin updates carry the baked
+bindings; `upgrade` refreshes existing eligible bindings through the compiler's
+ownership planner without creating foreign core adapters or changing settings.
 
 ### Budget what returns to the model
 

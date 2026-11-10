@@ -1,0 +1,758 @@
+{
+  "version": 1,
+  "role": "reviewer",
+  "host": "2.1.321 (Claude Code)",
+  "model": "claude-sonnet-5-5",
+  "turns": [
+    {
+      "key": "reviewer-verdict-b",
+      "task": "reviewer-verdict",
+      "role": "reviewer",
+      "effort": "medium",
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-80cb9a1bfa09358319c9d198247c41169fd7b693dd27667a0f728ece87f3656d",
+      "childContext": "child-b0a633636392435a4586b976c8e98c6ce20a4c168ced55e1f763a5967b80eb0b",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:16:25.184Z",
+      "ended": "2026-11-10T08:16:42.135Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:reviewer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/reviewer-verdict.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false,\"effort\":\"medium\"}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:reviewer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-ae392cee6c92f0b52e8e0521a44e56975b22af41bc75b5db536c2b81e283981e",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298589575,
+            "uncached": 2,
+            "written5m": 11901,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 250
+          },
+          {
+            "id": "request-81cdb2662531212518d932803618180148522f9978607250393d41b06fac3b7a",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298599253,
+            "uncached": 2,
+            "written5m": 864,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82088,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-2463a84fff2206eb48144ddd10f78c3be42f515e71355d6565913527463d9fea",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298591419,
+            "uncached": 2,
+            "written5m": 10594,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 2604,
+            "output": 319
+          },
+          {
+            "id": "request-d1f648fa57014bc7db565f1b282a416f60b4a02a24643bdb7e0b39fe24942476",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298597708,
+            "uncached": 2,
+            "written5m": 5488,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13198,
+            "output": 461
+          }
+        ]
+      },
+      "raw": {
+        "result": "0ff6114c06f41c6bda035e0732825cdc0f24b61be16ba1ce2c2a6a53784afcd7",
+        "parent": "76c72d9718e358ebf9d8282a1be606677f65f69fda50cdcb3482f3ef61a30b28",
+        "child": "94284a1b597ee547c9ec19c819194127fbcefcc0ad6f3dfb71094edf9b9127a7"
+      },
+      "hostEstimateUsd": 0.0992912,
+      "invocation": {
+        "type": "portulan:reviewer",
+        "effort": "medium",
+        "promptSha256": "d10ab19a4a8c90166b8bf999efa00c5ef8d0f9a31e84ba8d729c01f520bdce49",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\n  \"findings\": [\n    {\n      \"line\": 2,\n      \"input\": { \"status\": 2 }\n    }\n  ]\n}\n```\n\n**Verdict: reject.**\n\nThe contract says status 0 is green, status 1 is red, and every other status is could-not-run. The expression on line 2, `status === 0 ? 'green' : 'red'`, has only two outcomes. Every non-zero status therefore returns `'red'`, including the ones that should be could-not-run.\n\nWith `{status: 2}`, the contract expects could-not-run and the code returns `'red'`. Any status other than 0 or 1 fails the same way, for example 127, -1 or 255. The verification doctrine says the same: \"a recipe that could not run blocks exactly as a red one does\" is about blocking, but the contract here separates the two outcomes. Merging them hides the difference between \"it ran and failed\" and \"nothing looked\".\n\nThis is one defect, so I report one finding. I did not run the code or verify anything in the repository. I did not report non-numeric inputs because the contract doesn't cover them.",
+      "answerRawSha256": "387d44ff31b59bf48d5cd4317e88761ad00b0ed22fcdd30e99bd4a5642899be1",
+      "answerPresentationSha256": "387d44ff31b59bf48d5cd4317e88761ad00b0ed22fcdd30e99bd4a5642899be1",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 3
+      },
+      "grade": {
+        "ok": true,
+        "check": "review-verdict"
+      },
+      "arm": "b"
+    },
+    {
+      "key": "reviewer-verdict-a",
+      "task": "reviewer-verdict",
+      "role": "reviewer",
+      "effort": null,
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-a125489db9b51eb5f16726faad78385c4af1a14b599e4d09653cabe7a3f7f991",
+      "childContext": "child-2519411b6eb17b21e2fb69161f598629fd214ca2e037cd2715d3d0b48f985584",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:16:42.167Z",
+      "ended": "2026-11-10T08:17:03.035Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:reviewer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/reviewer-verdict.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:reviewer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-8fa081c976b8afff865ad168b5eb29c9d89546e2a830e2ff6b920c1310b91c68",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298609197,
+            "uncached": 2,
+            "written5m": 11892,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 227
+          },
+          {
+            "id": "request-550f4620d09c1f8b01b63c7362020e3137a45e794e02c1421db1bca8ddaecfd2",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298619156,
+            "uncached": 2,
+            "written5m": 819,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82079,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-95c8f122241d4533619c2735bd98681f2e1549c53455ba809f8f8ae1349d9947",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298610853,
+            "uncached": 2,
+            "written5m": 406,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 12792,
+            "output": 319
+          },
+          {
+            "id": "request-6e8bde0b034f5003fe7195570aa15b845eefb83fcd25ca849e6c921983b03d07",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298617596,
+            "uncached": 2,
+            "written5m": 5488,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13198,
+            "output": 513
+          }
+        ]
+      },
+      "raw": {
+        "result": "d07005a1d0a169349151cd6d0923faeab739cfa798a22fb11db14d0b468f2688",
+        "parent": "f73afba9894ad3b0de8858ab11ff0e37e987c89687ea5c943f90aee901c1c003",
+        "child": "5f24b4102b0aa5791f939d1f9422c9abf1f8978e68c2212f697e4bd90aae115e"
+      },
+      "hostEstimateUsd": 0.0749941,
+      "invocation": {
+        "type": "portulan:reviewer",
+        "effort": null,
+        "promptSha256": "d10ab19a4a8c90166b8bf999efa00c5ef8d0f9a31e84ba8d729c01f520bdce49",
+        "model": null,
+        "background": false
+      },
+      "answer": "The proposal has one defect. On line 2, any status other than 0 returns `'red'`, but the contract says only status 1 is red. Every other status must be could-not-run. I read the numbered code against the contract and did not run it.\n\n```json\n{\n  \"findings\": [\n    {\n      \"line\": 2,\n      \"input\": { \"status\": 2 }\n    }\n  ]\n}\n```\n\nWith `{status: 2}`, the code returns `'red'`, but the contract requires could-not-run. The same happens for any status other than 0 and 1, such as 3, -1, `null` or `undefined`. A run that could not look is reported as a red result. `core/operating/verification.md` says a could-not-run recipe must be told apart from a red one, because \"nothing looked\" must never be read as \"nothing wrong\".\n\nStatus 0 returns `'green'` and status 1 returns `'red'`, both correct, so I raised no findings against them.\n\nI edited nothing and claim no repository verification. This verdict comes from reading the code against the stated contract.",
+      "answerRawSha256": "02df1ee1ecdcf7abab7ede185658cc845890a6d6d4b6170d667dad47a131e5f0",
+      "answerPresentationSha256": "02df1ee1ecdcf7abab7ede185658cc845890a6d6d4b6170d667dad47a131e5f0",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 3
+      },
+      "grade": {
+        "ok": true,
+        "check": "review-verdict"
+      },
+      "arm": "a"
+    },
+    {
+      "key": "reviewer-clean-a",
+      "task": "reviewer-clean",
+      "role": "reviewer",
+      "effort": null,
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-7ab2d5cd2c4146ace06ff2b97d0e775ff63f47dd5298e36d71fd6fc2aa08fe4d",
+      "childContext": "child-8c1b3c3da73f93e05224aa4828642ed9b380dd1251c75bbe943ff50f6c67e89a",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:17:03.077Z",
+      "ended": "2026-11-10T08:17:21.360Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:reviewer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/reviewer-clean.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:reviewer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-6192a66164e878bdb1a548859f78d7c47c5ba1b8305ecda6178ecd8fdc313353",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298627464,
+            "uncached": 2,
+            "written5m": 11891,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 226
+          },
+          {
+            "id": "request-4b82e34dcdfa5b0a5e3024e6378dd0505c139c6af17fd73fe41a1a14bd86216c",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298637270,
+            "uncached": 2,
+            "written5m": 964,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82078,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-4e5390a3a801fa6e31b9c633480b15bf7bb0279a8543e1eb6e4b6538f56595ca",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298629122,
+            "uncached": 2,
+            "written5m": 9383,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 3814,
+            "output": 318
+          },
+          {
+            "id": "request-9be3649d1c32b5b24652c52a556679f842140e72f333135d2241263489dc98db",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298635728,
+            "uncached": 2,
+            "written5m": 5575,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13197,
+            "output": 657
+          }
+        ]
+      },
+      "raw": {
+        "result": "9c227cbce26357cdf7032d513fb016255f2e35343fce05471d6d8e5143f50cf8",
+        "parent": "36630187a1ba366da0edecf235207079330c488f2bc57b4dfffcd2b24b983dd4",
+        "child": "077f480c647df1cf620157f10a1ffec0ad5c5b52a01a29ea74a398ffa8702849"
+      },
+      "hostEstimateUsd": 0.0985361,
+      "invocation": {
+        "type": "portulan:reviewer",
+        "effort": null,
+        "promptSha256": "b9058d704f8269447df808ba0372ee08509dd7b02f6a230b45d30d73b583b272",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\"findings\": []}\n```\n\nI found no defect. I read the code by hand and did not run it, because this binding has no execution tool. This is not a repository verification, and no recipe was run.\n\n- **Loop invariant.** Every index below `lo` holds a value less than `x`, and every index at or above `hi` holds a value greater than or equal to `x`. The invariant holds at the start, with `lo=0` and `hi=a.length`.\n- **Midpoint.** `mid = lo + floor((hi-lo)/2)` always satisfies `lo <= mid < hi` while `lo < hi`, so `a[mid]` is always defined.\n- **Termination.** Both branches shrink the interval. `lo=mid+1` raises `lo`, and `hi=mid` lowers `hi` because `mid < hi`. The loop therefore ends.\n- **Result.** At exit `lo == hi`, so `lo` is the first index with `a[lo] >= x`, or `a.length` if there is none.\n- **Edge cases.**\n  - An empty array skips the loop and returns 0.\n  - Duplicate entries return the leftmost match, because equality takes the `hi=mid` branch.\n  - `-0` and `0` compare equal, so they do not change the result.\n  - Inputs are finite, so NaN cannot make a comparison unordered.\n- **Mutation.** The code only reads `a`, so the contract's no-mutation requirement holds.",
+      "answerRawSha256": "9c83f5bd1222ad5cf0d966a6b1205d1931b0c6042076da2fc14eb4bd7d76bacf",
+      "answerPresentationSha256": "9c83f5bd1222ad5cf0d966a6b1205d1931b0c6042076da2fc14eb4bd7d76bacf",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 3
+      },
+      "grade": {
+        "ok": true,
+        "check": "review-clean"
+      },
+      "arm": "a"
+    },
+    {
+      "key": "reviewer-clean-b",
+      "task": "reviewer-clean",
+      "role": "reviewer",
+      "effort": "medium",
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-f60a3e6fb96aadf5adc4d378675c39f9358d32c1b01a4dbc377db7d78fa4a611",
+      "childContext": "child-2725005d7834c23d896ee9bb71bdccfdacc7d01f1393c4c1ec3c6f9fc11aa17a",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:17:21.403Z",
+      "ended": "2026-11-10T08:17:38.630Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:reviewer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/reviewer-clean.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false,\"effort\":\"medium\"}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:reviewer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-e5f2cee7e34422ad78ef4bbb62696ba859d7065bd51afd68ae471f1a54044c79",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298645434,
+            "uncached": 2,
+            "written5m": 11900,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 249
+          },
+          {
+            "id": "request-b0aee13e512a61fe7013fe352eacde48290924998203a2e3264b8c24a5de2dae",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298654553,
+            "uncached": 2,
+            "written5m": 967,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82087,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-17ceafec4f9f25f2ef39fb8a415dc59c48f031c4079c8b74737491d856bb0dcd",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298647012,
+            "uncached": 2,
+            "written5m": 406,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 12791,
+            "output": 318
+          },
+          {
+            "id": "request-355cf7d256c7366be23a5cf71eb2375ea82367a6758efa01ad4eb2a7916afa4a",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298653050,
+            "uncached": 2,
+            "written5m": 5572,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13197,
+            "output": 536
+          }
+        ]
+      },
+      "raw": {
+        "result": "06e024d2907b346d87a5936abf43441f0efeafd16ab05f9990297bd7d4a649f9",
+        "parent": "b0aea1fe35ffc31c3febf0f8673286174881232605e9870e32b895004ab3171f",
+        "child": "c879948afc434b9e18419b3eda6ada4a8f8f6f7b5bd9a562f5f7d67de624ea63"
+      },
+      "hostEstimateUsd": 0.07603470000000001,
+      "invocation": {
+        "type": "portulan:reviewer",
+        "effort": "medium",
+        "promptSha256": "b9058d704f8269447df808ba0372ee08509dd7b02f6a230b45d30d73b583b272",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\"findings\":[]}\n```\n\nI found no defect, so the list is empty. This is a read-through only. I ran no code and made no repository verification claim.\n\n- **Invariant:** every index below `lo` holds a value less than `x`, and every index at or above `hi` holds a value of at least `x`.\n- **Start:** `lo=0` and `hi=a.length`, so the invariant holds vacuously.\n- **Branches:** if `a[mid]<x`, then `lo=mid+1` is safe. Otherwise `hi=mid` is safe.\n- **Midpoint:** `mid=lo+floor((hi-lo)/2)` stays in `[lo,hi)` whenever `lo<hi`, so there is no out-of-bounds read.\n- **Termination:** the interval shrinks on every iteration, so the loop ends with `lo==hi`. That is the first index with `a[i]>=x`, or `length`.\n- **Empty array:** returns 0, which matches the length.\n- **Duplicates:** the first of equal entries is returned, because a match moves `hi` left.\n- **Signed zero:** `-0<0` is false, so it is treated as equal, which is consistent with `>=`.\n- **Mutation:** the function only reads `a`.\n- **NaN and Infinity:** the contract excludes them, so they are not counterexamples.",
+      "answerRawSha256": "ea893a5800fbae1a21a440ea32abd54be87131a08cad812101722de75228fbbb",
+      "answerPresentationSha256": "ea893a5800fbae1a21a440ea32abd54be87131a08cad812101722de75228fbbb",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 3
+      },
+      "grade": {
+        "ok": true,
+        "check": "review-clean"
+      },
+      "arm": "b"
+    },
+    {
+      "key": "reviewer-boundaries-b",
+      "task": "reviewer-boundaries",
+      "role": "reviewer",
+      "effort": "medium",
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-92588952b2c59402140cd82ecf17ee9aeaae7ce88023cac324679f93bf4ac039",
+      "childContext": "child-d2225690b9c61a629bbb3f738b7472bd6a659b40a04ce6925dee6a94dc3cfdca",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:17:38.680Z",
+      "ended": "2026-11-10T08:17:57.145Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:reviewer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/reviewer-boundaries.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false,\"effort\":\"medium\"}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:reviewer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-e7c75afe648598e8ad4f31e27412567d52a1412fe28b87d639aea6304403aa14",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298663763,
+            "uncached": 2,
+            "written5m": 11902,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 251
+          },
+          {
+            "id": "request-86c97d54513894535faa2fae7a8eeeb1a643bc986580f0f75265c3e1d1a48a53",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298673515,
+            "uncached": 2,
+            "written5m": 867,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82089,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-df79d5a6aa1ca62a79e46bc059e46bb0fbb0cef696e71f4cf1eff81b3d75b9b3",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298665514,
+            "uncached": 2,
+            "written5m": 9385,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 3814,
+            "output": 320
+          },
+          {
+            "id": "request-695d0d7b6f066dbf14573f15a0795b68c4daf1c63fefe68c7565a4ad32d18548",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298671632,
+            "uncached": 2,
+            "written5m": 5543,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13199,
+            "output": 506
+          }
+        ]
+      },
+      "raw": {
+        "result": "bb851e093ac767d2bb2c8b1ed95b187917da947eebd944f7c2dd706751be12e0",
+        "parent": "1ea3d7e9f40293f8779a29c2328d66443a85ef694085b3ca7a44604c3069b5de",
+        "child": "bbe6aa634e1987076a01ad2307b03c754a5a4139edabb84fca811d6e4696fdc8"
+      },
+      "hostEstimateUsd": 0.0970074,
+      "invocation": {
+        "type": "portulan:reviewer",
+        "effort": "medium",
+        "promptSha256": "3a9d856c343050e54fc28a55b03c83038122b07f4d06199f3ecd4aa3fb230393",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\n  \"findings\": [\n    {\n      \"line\": 2,\n      \"input\": {\n        \"root\": \"/a/b\",\n        \"target\": \"/a/bc\"\n      }\n    },\n    {\n      \"line\": 5,\n      \"input\": {\n        \"status\": 2\n      }\n    }\n  ]\n}\n```\n\nBoth counterexamples come from reading the code against the stated contract. I did not run anything and I make no repository verification claim.\n\n- **Line 2:** `\"/a/bc\".startsWith(\"/a/b\")` is true. `/a/bc` is a sibling of `/a/b`, not the root or a descendant separated by `/`, so `inside` returns true where the contract requires false. The defect is the prefix test that ignores the path-segment boundary.\n- **Line 5:** `mayKeep` should accept only status 0, but `2 !== 1` is true. Status 2 means a recipe could not run, which the verification doctrine says must never be read as green. Any status other than 0 or 1 (2, -1, `null`) would also pass the same way, so this is one defect with status 2 as its counterexample.",
+      "answerRawSha256": "d91d66da547827d02d4d8c180d26c539b2c4ce6c0ba47d14a36e8f550c5e0327",
+      "answerPresentationSha256": "d91d66da547827d02d4d8c180d26c539b2c4ce6c0ba47d14a36e8f550c5e0327",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 3
+      },
+      "grade": {
+        "ok": true,
+        "check": "review-boundaries"
+      },
+      "arm": "b"
+    },
+    {
+      "key": "reviewer-boundaries-a",
+      "task": "reviewer-boundaries",
+      "role": "reviewer",
+      "effort": null,
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-b1960eddd0a9568dc731807de0e39a0a9717546832e28b045e5d8fecd390b784",
+      "childContext": "child-323639afa18c62c47dc500a3766f36a413d6f7a779d50a753944f852179483a2",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:17:57.193Z",
+      "ended": "2026-11-10T08:18:14.752Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:reviewer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/reviewer-boundaries.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:reviewer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-f93aea215748374c8e6a7b8a04909cf13a9072d6725ced407b761f7b652028b3",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298681245,
+            "uncached": 2,
+            "written5m": 11893,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 228
+          },
+          {
+            "id": "request-16d9671edeb26dfc0993d8ffee162b2db5233dbdc9c1bdb6ff16d884f7a2d833",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298690965,
+            "uncached": 2,
+            "written5m": 798,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82080,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-06356aa70d275370102d380124a0fd41fd6f3e2dbbd4d76c5600f3ee7d73efdb",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298683473,
+            "uncached": 2,
+            "written5m": 406,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 12793,
+            "output": 320
+          },
+          {
+            "id": "request-83a2bfb60f85160d699c40773e6f0c0a4b7e7682b58255597c7c6f44ec52a544",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298689301,
+            "uncached": 2,
+            "written5m": 5543,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13199,
+            "output": 496
+          }
+        ]
+      },
+      "raw": {
+        "result": "902e953fb4790d03505265973a0fe036da7f3e117d37289be18e51426ef667d6",
+        "parent": "7b36898963574d6bc82e53aa9fe2ac38b64cde487530cbb934f01845ba85dc2b",
+        "child": "3c3c7a81874cf349b271da502d4321f05fb451c01857431ccd0e04fdb8e2c16e"
+      },
+      "hostEstimateUsd": 0.07493190000000001,
+      "invocation": {
+        "type": "portulan:reviewer",
+        "effort": null,
+        "promptSha256": "3a9d856c343050e54fc28a55b03c83038122b07f4d06199f3ecd4aa3fb230393",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\n  \"findings\": [\n    {\n      \"line\": 2,\n      \"input\": { \"root\": \"/a/b\", \"target\": \"/a/bc\" }\n    },\n    {\n      \"line\": 5,\n      \"input\": { \"status\": 2 }\n    }\n  ]\n}\n```\n\n- **Line 2:** `\"/a/bc\".startsWith(\"/a/b\")` is true, so `inside` returns true. `/a/bc` is a sibling of `/a/b`, not the root or a descendant separated by `/`, so the contract says false.\n- **Line 5:** `2 !== 1` is true, so `mayKeep(2)` returns true. The contract accepts only status 0, so it should return false. Any status other than 0 or 1 gets through. That includes the \"could not run\" code, which `verification.md` says must block exactly as a red one does.\n\nI did this by reading the proposed code only. I edited nothing, ran no verify recipe, and make no repository verification claim.",
+      "answerRawSha256": "0617a7cae620da22065dde48ad20bbdae3981de93b177438a8f87bf88017cbc6",
+      "answerPresentationSha256": "0617a7cae620da22065dde48ad20bbdae3981de93b177438a8f87bf88017cbc6",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 3
+      },
+      "grade": {
+        "ok": true,
+        "check": "review-boundaries"
+      },
+      "arm": "a"
+    }
+  ],
+  "summary": {
+    "arms": {
+      "a": {
+        "passed": 3,
+        "cases": 3,
+        "observed": 150520.6,
+        "normalized": 426477.6
+      },
+      "b": {
+        "passed": 3,
+        "cases": 3,
+        "observed": 161948.05,
+        "normalized": 426186.55
+      }
+    },
+    "mediumWinsObservedCorpus": true,
+    "shipped": {
+      "model": "inherit",
+      "effort": null,
+      "omitClaudeMd": false,
+      "cacheLifetime": "5m"
+    },
+    "scope": "retained policy; one observed model and three cases; no global medium default earned"
+  }
+}

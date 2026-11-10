@@ -1,0 +1,23 @@
+```json
+{
+  "code": "function lowerBound(sorted, value) {\n  let lo = 0;\n  let hi = sorted.length;\n  while (lo < hi) {\n    const mid = lo + Math.floor((hi - lo) / 2);\n    if (sorted[mid] < value) {\n      lo = mid + 1;\n    } else {\n      hi = mid;\n    }\n  }\n  return lo;\n}"
+}
+```
+
+This is an artifact proposal only. I changed no repository files and ran nothing, since the task said no tools beyond reading the charter were needed.
+
+The search range is the half-open interval `[lo, hi)`, with `hi` starting at `sorted.length`. This replaces the old `sorted.length - 1` start, which could never return `sorted.length` and so gave the wrong answer when every entry is below `value`.
+
+- **Empty array:** `lo` and `hi` are both 0, so the loop never runs and it returns 0, which equals `sorted.length`.
+- **Duplicates:** when `sorted[mid] >= value`, `hi` moves to `mid`, so the search keeps narrowing toward the leftmost qualifying index.
+- **Value below the first entry:** every probe takes the `hi = mid` branch, so it returns 0.
+- **Value above the last entry:** every probe takes the `lo = mid + 1` branch, so it returns `sorted.length`.
+- **No mutation:** it only reads `sorted` and `value`.
+
+Hand-traced on `[1,2,2,3]`:
+
+| `value` | Result |
+|---|---|
+| 2 | 1 |
+| 0 | 0 |
+| 4 | 4 |
