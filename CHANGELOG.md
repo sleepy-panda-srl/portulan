@@ -61,10 +61,13 @@ an explicit resume expense and positive estimated savings; missing cache counter
 instead of producing one. The Stop-gate now follows `slots.handoffs`, so a workspace with no handoff
 series is asked to commit and push rather than to write one, and it accepts a declared recipe timeout.
 Restart compilation refuses a missing, malformed or unsupported-major spec declaration. Eligible
-core-persona bindings refresh on upgrade; missing bindings are not installed. Both independent closes
-leave whole-host counts, billing, cross-host timing and crash or concurrent-write guarantees unproven,
-and the estimates support no general quality or billing claim. The limits are recorded in
+core-persona bindings refresh on upgrade; missing bindings are not installed. Milestone 12's
+independent close leaves whole-host counts, billing, cross-host timing and crash or concurrent-write
+guarantees unproven. Milestone 13's found the November 9 raw originals unavailable, made no new
+native or provider run, and leaves broader routing quality, billing and cross-host timing
+unmeasured. The estimates support no general quality or billing claim. The limits are recorded in
 [milestone 12](docs/milestones/m12.md) and [milestone 13](docs/milestones/m13.md).
+The release carries its [eval register](evals/releases/0.4.0.md), cited rather than restated.
 
 ### Added
 

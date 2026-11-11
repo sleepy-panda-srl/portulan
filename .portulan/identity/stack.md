@@ -66,6 +66,13 @@ byte-identical, `package.json` included. The payload carries the local-worker pa
 historical; this is the new cut's roster, and the release act checks the approved merged/tagged tree
 again before publication.
 
+**Re-measured at the 0.4.0 cut: 159 files.** Measured the same way, on a clean `git archive` export
+of the staged cut packed outside the working copy: all 159 entries are byte-identical to their
+indexed Git blobs. Forty-two files joined the payload since `0.3.0` and none left it: nineteen under
+`cli/`, the twenty under `evals/ab/personas/`, `spec/migrations/0011-persona-bindings-compiled.mjs`
+and the [0.4.0 release eval pair](../../evals/releases/0.4.0.md). The release act checks the merged
+and tagged tree again before publication.
+
 ## Where the line sits, and the one tool outside it
 
 **Where the line sits now, precisely.** [`verify/docs.sh`](../verify/docs.sh) needs `git`, `bash`, and the
