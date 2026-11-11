@@ -12,12 +12,12 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { HORIZON, LedgerError, SPEND_FIGURES, figureOf, foldFigures, overflowingWrite, readLine, restartSaving, sessionFigures } from "./ledger.mjs";
+import { HORIZON, LedgerError, SPEND_FIGURES, figureOf, foldFigures, overflowingWrite, readLine, readTranscript, restartSaving, sessionFigures } from "./ledger.mjs";
 
 const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const savingWords = (n) => grouped(Number(n.toPrecision(6)));
 
-const STATE_VERSION = 3;
+const STATE_VERSION = 6;
 
 const CHUNK = 1 << 16;
 
@@ -90,12 +90,47 @@ function restore(file, transcriptPath, stat) {
     if (kept === null || typeof kept !== "object" || kept.v !== STATE_VERSION || kept.transcript !== transcriptPath) return null;
     if (kept.ino !== stat.ino || !isCount(kept.offset) || kept.offset > stat.size || typeof kept.tail !== "string" || !wellFormed(kept.figures)) return null;
     if (typeof kept.comparison !== "string") return null;
+    if (typeof kept.freshUnsafe !== "boolean" || typeof kept.latestUnsafe !== "boolean" || ![kept.freshId, kept.latestId, kept.crossingId].every(id => id === null || typeof id === "string")) return null;
+    if (![kept.freshInput, kept.latestInput, kept.crossingInput].every(v => v === null || (Array.isArray(v) && v.length === 5 && v.every(isCount)))) return null;
+    if (!Array.isArray(kept.recentInputs) || kept.recentInputs.length > 16 || !kept.recentInputs.every(v => Array.isArray(v) && v.length === 3 && typeof v[0] === "string" && Array.isArray(v[1]) && v[1].length === 5 && v[1].every(isCount) && (v[2] === 0 || v[2] === 1))) return null;
     if (kept.crossing !== null && (!wellFormed(kept.crossing) || kept.crossing.pending || kept.crossing.compactions !== kept.figures.compactions || kept.crossing.fresh !== kept.figures.fresh || kept.crossing.requests > kept.figures.requests || kept.crossing.recent.length !== 0)) return null;
     return kept;
 }
 
 const comparisonKey = ({ declared, horizon, resume }) => JSON.stringify([declared?.read ?? null, declared?.write?.["5m"] ?? null, declared?.write?.["1h"] ?? null, horizon, resume]);
-const reset = (kept) => Object.assign(kept, { offset: 0, tail: "", figures: sessionFigures(), crossing: null });
+const inputOf = r => [r.uncached, r.written1h, r.written5m, r.writtenUnknown, r.read];
+const validity = () => ({ freshUnsafe: false, latestUnsafe: false, freshId: null, latestId: null, crossingId: null, freshInput: null, latestInput: null, crossingInput: null });
+const reset = (kept) => Object.assign(kept, { offset: 0, tail: "", figures: sessionFigures(), crossing: null, recentInputs: [], ...validity() });
+function rememberInput(state, r) {
+    if (r.id === null) return;
+    state.recentInputs = [...state.recentInputs.filter(v => v[0] !== r.id), [r.id, inputOf(r), r.usageMissing & 1]].filter(v => state.figures.recent.includes(v[0])).slice(-16);
+}
+
+function replayValidity(kept, transcriptPath, spend) {
+    const transcript = readTranscript(transcriptPath, { end: kept.offset });
+    const state = { figures: sessionFigures(), crossing: null, recentInputs: [], ...validity() };
+    for (const r of transcript.requests.filter(r => !r.sidechain)) {
+        if (r.compacted) { foldFigures(state.figures, { boundary: true }); Object.assign(state, { crossing: null, ...validity() }); }
+        const fresh = state.figures.fresh === null || state.figures.pending;
+        foldFigures(state.figures, { request: r });
+        rememberInput(state, r);
+        const unsafe = ((r.usageMissing | r.usageUnsafe) & 1) !== 0;
+        if (fresh) { state.freshUnsafe = unsafe; state.freshId = r.id; state.freshInput = inputOf(r); }
+        state.latestUnsafe = unsafe; state.latestId = r.id; state.latestInput = inputOf(r);
+        if (state.freshUnsafe && !isCount(state.figures.fresh)) state.figures.fresh = 0;
+        if (state.latestUnsafe && !isCount(state.figures.last)) state.figures.last = 0;
+        if (state.freshUnsafe || state.latestUnsafe || state.crossing !== null) continue;
+        try {
+            const figure = figureOf(state.figures, spend);
+            if (figure !== null && figure.saving >= 0) { state.crossing = { ...state.figures, recent: [] }; state.crossingId = r.id; state.crossingInput = inputOf(r); }
+        } catch (error) { if (!(error instanceof LedgerError)) throw error; }
+    }
+    state.figures.compactions = transcript.figures.compactions;
+    state.figures.pending = transcript.figures.pending;
+    if (state.figures.pending) Object.assign(state, { crossing: null, ...validity() });
+    else if (state.crossing) state.crossing.compactions = state.figures.compactions;
+    Object.assign(kept, state);
+}
 
 function advance(kept, transcriptPath, size, spend) {
     if (size === kept.offset) return false;
@@ -106,6 +141,7 @@ function advance(kept, transcriptPath, size, spend) {
         }
         const start = kept.offset;
         let position = kept.offset;
+        let replay = false;
         // Joined once the newline lands: joining at every chunk would copy a long line once per chunk it spans.
         let waiting = [];
         while (position < size) {
@@ -124,12 +160,32 @@ function advance(kept, transcriptPath, size, spend) {
                 const read = readLine(line);
                 if (read === null || read.malformed) continue;
                 const { requests, compactions } = kept.figures;
+                const fresh = kept.figures.fresh === null || kept.figures.pending;
+                const r = read.request;
+                if (r && !r.synthetic && !r.sidechain) {
+                    const input = inputOf(r);
+                    const tracked = [[kept.freshId, kept.freshInput], [kept.latestId, kept.latestInput], [kept.crossingId, kept.crossingInput]];
+                    const recent = kept.recentInputs.find(v => v[0] === r.id);
+                    if (((r.usageMissing | r.usageUnsafe) & 1) || (recent && (JSON.stringify(recent[1]) !== JSON.stringify(input) || recent[2] !== (r.usageMissing & 1))) || (r.id !== null && tracked.some(([id, before]) => id === r.id && (JSON.stringify(before) !== JSON.stringify(input) || kept.freshUnsafe || kept.latestUnsafe)))) replay = true;
+                }
                 foldFigures(kept.figures, read);
-                if (compactions !== kept.figures.compactions) kept.crossing = null;
+                if (compactions !== kept.figures.compactions) Object.assign(kept, { crossing: null, ...validity() });
+                if (r && !r.synthetic && !r.sidechain) {
+                    rememberInput(kept, r);
+                    const unsafe = ((r.usageMissing | r.usageUnsafe) & 1) !== 0;
+                    if (requests !== kept.figures.requests) {
+                        if (fresh) { kept.freshUnsafe = unsafe; kept.freshId = r.id; kept.freshInput = inputOf(r); }
+                        kept.latestUnsafe = unsafe; kept.latestId = r.id; kept.latestInput = inputOf(r);
+                    } else if (r.id !== null && (r.usageUnsafe & 1)) {
+                        if (r.id === kept.freshId) kept.freshUnsafe = true;
+                        if (r.id === kept.latestId) kept.latestUnsafe = true;
+                    }
+                }
+                if (kept.freshUnsafe || kept.latestUnsafe) continue;
                 if (requests === kept.figures.requests || kept.crossing !== null) continue;
                 try {
                     const figure = figureOf(kept.figures, spend);
-                    if (figure !== null && figure.saving >= 0) kept.crossing = { ...kept.figures, recent: [] };
+                    if (figure !== null && figure.saving >= 0) { kept.crossing = { ...kept.figures, recent: [] }; kept.crossingId = r.id; kept.crossingInput = inputOf(r); }
                 } catch (error) {
                     if (!(error instanceof LedgerError)) throw error;
                 }
@@ -138,6 +194,7 @@ function advance(kept, transcriptPath, size, spend) {
             kept.offset = position - (got - end - 1);
         }
         if (kept.offset !== start) kept.tail = tailBefore(fd, kept.offset);
+        if (replay) replayValidity(kept, transcriptPath, spend);
         return kept.offset !== start;
     } finally {
         fs.closeSync(fd);
@@ -172,7 +229,7 @@ function locate(payload, dir) {
     if (!stat.isFile()) return { why: "the transcript could not be read — it is not a file" };
     const sessionId = sessionOf(payload);
     const file = sessionId === null ? null : stateFile(sessionId, dir);
-    const kept = (file === null ? null : restore(file, transcriptPath, stat)) ?? { v: STATE_VERSION, transcript: transcriptPath, ino: stat.ino, offset: 0, tail: "", figures: sessionFigures(), comparison: "", crossing: null };
+    const kept = (file === null ? null : restore(file, transcriptPath, stat)) ?? { v: STATE_VERSION, transcript: transcriptPath, ino: stat.ino, offset: 0, tail: "", figures: sessionFigures(), comparison: "", crossing: null, recentInputs: [], ...validity() };
     return { transcriptPath, sessionId, stat, file, kept };
 }
 
@@ -186,6 +243,8 @@ function refresh(found, warn, spend) {
         return { why: `the transcript could not be read — ${error.code ?? error.message}` };
     }
     let figure;
+    if (found.kept.freshUnsafe) return { why: "fresh context usage has invalid or missing counters; comparison unavailable (compaction or completed missing fields required)" };
+    if (found.kept.latestUnsafe) return { why: "latest context usage has invalid or missing counters; comparison unavailable (valid next request or completed missing fields required)" };
     try {
         figure = figureOf(found.kept.figures, spend);
         if (figure !== null) figure.crossing = found.kept.crossing === null ? null : figureOf(found.kept.crossing, spend);
@@ -291,6 +350,7 @@ export function onStatus(payload, { dir = os.tmpdir(), warn = () => {}, declared
     const counts = usage !== null && typeof usage === "object" ? ["input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"].map((k) => usage[k]) : [];
     if (counts.length === 3 && counts.every((n) => Number.isSafeInteger(n) && n >= 0)) {
         const context = counts.reduce((a, b) => a + b, 0);
+        if (!Number.isSafeInteger(context)) return "restart threshold: not known, because the current input sum is unsafe";
         try {
             figure.saving = restartSaving({ fresh: figure.fresh, context, horizon: figure.horizon, read: figure.multipliers.read, write: figure.multipliers.write, resume: figure.resume ?? 0 });
         } catch (error) {
