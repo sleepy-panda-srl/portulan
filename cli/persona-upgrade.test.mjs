@@ -132,10 +132,15 @@ test("a staging collision restores earlier binding bytes and preserves the unown
     const { run } = await import(pathToFileURL(path.join(root, "cli/upgrade.mjs")).href);
     const collision = path.join(root, `agents/librarian.md.portulan-upgrade.${process.pid}.1`);
     fs.writeFileSync(collision, "unowned staging artifact");
-    const targets = [], out = [], err = [];
-    const previous = process.env.CLAUDE_CONFIG_DIR, rename = fs.renameSync;
+    const publications = [], out = [], err = [];
+    const previous = process.env.CLAUDE_CONFIG_DIR, rename = fs.renameSync, link = fs.linkSync;
+    const binding = path.join(root, "agents/implementer.md");
+    const declared = personaDeclarations(fs.readFileSync(path.join(root, "core/personas/implementer.md"), "utf8")).declared;
+    const expected = boundAgent(before[0].toString(), declared, "core/personas/implementer.md", "agents/implementer.md");
+    const observe = (to) => { if (to === binding) publications.push(fs.readFileSync(to, "utf8")); };
     process.env.CLAUDE_CONFIG_DIR = path.join(root, "host");
-    t.mock.method(fs, "renameSync", (from, to) => { if (to.startsWith(root + path.sep)) targets.push(to); return rename(from, to); });
+    t.mock.method(fs, "renameSync", (from, to) => { const result = rename(from, to); observe(to); return result; });
+    t.mock.method(fs, "linkSync", (from, to) => { const result = link(from, to); observe(to); return result; });
     let status;
     try {
         status = await run(["--write", path.join(root, ".portulan")], {
@@ -145,7 +150,7 @@ test("a staging collision restores earlier binding bytes and preserves the unown
         if (previous === undefined) delete process.env.CLAUDE_CONFIG_DIR; else process.env.CLAUDE_CONFIG_DIR = previous;
     }
     assert.equal(status, 2);
-    assert.ok(targets.includes(path.join(root, "agents/implementer.md")));
+    assert.ok(publications.includes(expected), "the first binding was published before the second edit collided");
     assert.deepEqual(snapshot(root), before);
     assert.equal(fs.statSync(path.join(root, "agents/implementer.md")).mode & 0o777, 0o640);
     assert.match(err.join(""), /EEXIST/);

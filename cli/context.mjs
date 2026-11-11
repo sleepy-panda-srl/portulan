@@ -7,6 +7,7 @@
 // Exit 0 within every rail and declared budget · 1 a rail or budget exceeded · 2 could not run or judge a declared budget.
 
 import fs from "node:fs";
+import { isAbsentImportError } from "./import-files.mjs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -114,14 +115,11 @@ function readText(file, what) {
     }
 }
 
-// Only these are absent: a denied read or a loop of links, read as absent, would be a green over less than the host loads.
-const ABSENT = new Set(["ENOENT", "ENOTDIR", "ENAMETOOLONG", "ERR_INVALID_ARG_VALUE"]);
-
 function statOf(file) {
     try {
         return fs.statSync(file);
     } catch (error) {
-        if (ABSENT.has(error.code)) return null;
+        if (isAbsentImportError(error)) return null;
         throw new ContextError(`${file} could not be read (${error.code ?? error.message})`);
     }
 }
@@ -426,7 +424,7 @@ export function alwaysTier(repoRoot, { includeText = false, host = "claude-code"
         let entry;
         try { entry = fs.lstatSync(file); }
         catch (error) {
-            if (!ABSENT.has(error.code)) throw new ContextError(`AGENTS.md could not be inspected (${error.code ?? "read error"})`);
+            if (!isAbsentImportError(error)) throw new ContextError(`AGENTS.md could not be inspected (${error.code ?? "read error"})`);
         }
         if (entry) {
             let real, raw;
@@ -469,9 +467,12 @@ export function alwaysTier(repoRoot, { includeText = false, host = "claude-code"
                     outside.push(spelled);
                     continue;
                 }
-                const resolved = path.resolve(path.dirname(file), bare);
-                if (depth + 1 < IMPORT_DEPTH) materializeImport?.({ file: resolved, source: file, bare });
-                if (!isFile(resolved)) {
+                let resolved = path.resolve(path.dirname(file), bare);
+                if (depth + 1 < IMPORT_DEPTH) {
+                    const projected = materializeImport?.({ file: resolved, source: file, bare, depth });
+                    if (projected !== undefined) resolved = projected;
+                }
+                if (resolved === null || !isFile(resolved)) {
                     missing.push(spelled);
                     continue;
                 }
@@ -493,7 +494,7 @@ export function alwaysTier(repoRoot, { includeText = false, host = "claude-code"
         const file = path.join(repoRoot, rel);
         let entry;
         try { entry = fs.lstatSync(file); }
-        catch (error) { if (!ABSENT.has(error.code)) throw new ContextError(`${rel} could not be inspected (${error.code ?? "read error"})`); }
+        catch (error) { if (!isAbsentImportError(error)) throw new ContextError(`${rel} could not be inspected (${error.code ?? "read error"})`); }
         if (!entry) continue;
         if (!isFile(file)) throw new ContextError(`${rel} is present but not a readable regular file`);
         if (kept(file)) instructions.push({ file, label: "instructions" });

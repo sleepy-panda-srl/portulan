@@ -1,13 +1,29 @@
 // A form step — each section a team marks in its own instruction file moves to an on-read unit.
 
 import { ESTIMATED_BYTES_PER_TOKEN, alwaysTier, declaredContext, tokensOf } from "../../cli/context.mjs";
+import { previewMigration } from "../../cli/init-preview.mjs";
 import { notYetForm } from "../../cli/form.mjs";
-import { INSTRUCTION_FILES, contextDir, grouped, instructionReader, linkRefusal, marksOf, planSplit, splitLines } from "../../cli/instructions.mjs";
+import {
+    INSTRUCTION_FILES,
+    contextDir,
+    grouped,
+    instructionReader,
+    linkRefusal,
+    marksOf,
+    planSplit,
+    splitLines,
+} from "../../cli/instructions.mjs";
 
 function splitOf(ws) {
     const tree = ws.repository.dir;
     const context = contextDir(tree, ws.dir, ws.manifest);
-    const taken = context === null ? [] : ws.repository.names(context).filter((name) => name.endsWith(".md")).map((name) => name.slice(0, -3));
+    const taken =
+        context === null
+            ? []
+            : ws.repository
+                  .names(context)
+                  .filter((name) => name.endsWith(".md"))
+                  .map((name) => name.slice(0, -3));
     return planSplit({ tree, context, taken, read: instructionReader(tree, ws.repository.read) });
 }
 
@@ -26,29 +42,62 @@ export const step = {
     owed(ws, ctx) {
         const behind = notYetForm(ws, ctx);
         if (behind) return { owed: false, because: behind };
-        if (!ws.repository) return { owed: false, because: "this workspace declares no tree, so there is no instruction file of its own" };
+        if (!ws.repository)
+            return {
+                owed: false,
+                because: "this workspace declares no tree, so there is no instruction file of its own",
+            };
         const read = instructionReader(ws.repository.dir, ws.repository.read);
         const marked = INSTRUCTION_FILES.filter((rel) => marksOf(read(rel) ?? "").marks.length > 0);
-        if (marked.length === 0) return { owed: false, because: "no section of CLAUDE.md or .claude/CLAUDE.md is marked `<!-- portulan: on-read -->`" };
+        if (marked.length === 0)
+            return {
+                owed: false,
+                because: "no section of CLAUDE.md or .claude/CLAUDE.md is marked `<!-- portulan: on-read -->`",
+            };
         if (typeof ws.manifest?.slots?.context !== "string") {
-            return { owed: false, because: `${marked.join(" and ")} marks a section, and \`slots.context\` is undeclared: \`0006\` declares it, and this step is asked again then` };
+            return {
+                owed: false,
+                because: `${marked.join(" and ")} marks a section, and \`slots.context\` is undeclared: \`0006\` declares it, and this step is asked again then`,
+            };
         }
         const linked = marked.map((rel) => linkRefusal(ws.repository.dir, rel)).filter((refusal) => refusal !== null);
-        if (linked.length) return { owed: true, hand: true, because: `a marked section cannot move, so none is moved — ${linked.join("; ")}, or take the marks out, then upgrade again` };
+        if (linked.length)
+            return {
+                owed: true,
+                hand: true,
+                because: `a marked section cannot move, so none is moved — ${linked.join("; ")}, or take the marks out, then upgrade again`,
+            };
         const split = splitOf(ws);
-        if (split.refusals.length) return { owed: true, because: `a marked section cannot move — ${split.refusals.join("; ")}` };
+        if (split.refusals.length)
+            return { owed: true, because: `a marked section cannot move — ${split.refusals.join("; ")}` };
         const ratio = declaredContext(ws.manifest).ratio ?? ESTIMATED_BYTES_PER_TOKEN;
-        const before = alwaysTier(ws.repository.dir).entries.reduce((n, e) => n + e.bytes, 0);
-        const after = before - split.files.reduce((n, f) => n + f.removed, 0) + split.index;
+        const projected = previewMigration(ws.repository.dir, ws.dir, [
+            ...split.files.map((f) => ({ file: f.rel, next: f.after })),
+            ...split.units.map((u) => ({ file: u.source, next: u.text })),
+        ]);
+        const before = projected.before[0],
+            after = projected.after?.[0];
         return {
             owed: true,
-            because: `${splitLines(split).join("; ")}; the always tier goes from ~${grouped(tokensOf(before, ratio))} to ~${grouped(tokensOf(after, ratio))} tokens`,
+            because: `${splitLines(split).join("; ")}; ${after === undefined ? "the after forecast is unavailable because native imports cannot be projected exactly" : `the always tier goes from ~${grouped(tokensOf(before, ratio))} to ~${grouped(tokensOf(after, ratio))} tokens`}`,
         };
     },
 
     plan(ws) {
         const split = splitOf(ws);
-        if (split.refusals.length) return { ok: false, reason: `a marked section cannot move, so none is moved — ${split.refusals.join("; ")}` };
+        if (split.refusals.length)
+            return {
+                ok: false,
+                reason: `a marked section cannot move, so none is moved — ${split.refusals.join("; ")}`,
+            };
+        try {
+            previewMigration(ws.repository.dir, ws.dir, [
+                ...split.files.map((f) => ({ file: f.rel, next: f.after })),
+                ...split.units.map((u) => ({ file: u.source, next: u.text })),
+            ]);
+        } catch (error) {
+            return { ok: false, reason: `prospective guidance refuses — ${error.message}` };
+        }
         return {
             ok: true,
             edits: [

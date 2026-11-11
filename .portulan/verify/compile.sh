@@ -25,7 +25,7 @@ printf 'compile: checking repository enforcement/bindings and committed four-tie
 
 # The pack root is pinned so the verdict is about this tree, never the host's plugin cache.
 worst=0
-for workspace in . cli/fixtures/guidance; do
+for workspace in . cli/fixtures/guidance cli/fixtures/nested-guidance; do
     node cli/compile.mjs --workspace "$workspace" --pack-root packs --check
     status=$?
     case "$status" in

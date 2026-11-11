@@ -508,7 +508,7 @@ describe("the invented consumer of fixtures/consumer/, split and measured", () =
         assert.doesNotMatch(text, /A budget is yours to declare/);
     });
 
-    test("with an on-read unit in the slot already, its index line stale, the figure the plan printed is still the one measured after", async () => {
+    test("with an existing stale on-read index, the prospective forecast agrees with the emitted result", async () => {
         const { repo, ws } = consumer();
         const glossary = path.join(ws, "context", "glossary.md");
         fs.writeFileSync(glossary, '---\ntier: on-read\ndescription: "Glossary"\n---\n\n# Glossary\n\nA shelfmark names where a copy stands.\n');
@@ -516,7 +516,9 @@ describe("the invented consumer of fixtures/consumer/, split and measured", () =
         fs.writeFileSync(glossary, fs.readFileSync(glossary, "utf8").replace('"Glossary"', '"Glossary of the catalogue"'));
         const { code, text } = await cli(["--workspace", ws, "--write"]);
         assert.equal(code, 0, text);
-        assert.equal(alwaysBytes(repo), Number(/to ([\d,]+) B \(~/.exec(text)[1].replaceAll(",", "")), "the index counted once, as `compile` rewrites it");
+        const projected=/always tier goes from [\d,]+ B .* to ([\d,]+) B/.exec(text);assert.ok(projected,text);assert.equal(Number(projected[1].replaceAll(",","")),alwaysBytes(repo));
+        assert.equal(alwaysBytes(repo),Number(/written, and the index compiled: the always tier is ([\d,]+) B/.exec(text)[1].replaceAll(",","")));
+        assert.equal(compileGuidance(ws,{check:true}).drifted,0);
     });
 
     test("a write of the index failing partway rolls the split back with it, and nothing is changed", async () => {

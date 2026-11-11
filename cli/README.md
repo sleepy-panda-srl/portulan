@@ -62,10 +62,13 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`frontmatter.mjs`](frontmatter.mjs) | Flat frontmatter for plugin components and host bindings. |
 | [`fuzz-shell.mjs`](fuzz-shell.mjs) | Grammar-aware fuzzing over this repository's two shell segmenters. |
 | [`goldens.mjs`](goldens.mjs) | Grade this workspace's compiled gates against a corpus of adversarial fixtures. |
+| [`guidance-files.mjs`](guidance-files.mjs) | Nested instruction ownership and atomic guidance publication. |
 | [`handoff-policy.mjs`](handoff-policy.mjs) | Handoff caps and windows. |
 | [`html-entities.mjs`](html-entities.mjs) | HTML5 named references (semicolon forms): https://html.spec.whatwg.org/entities.json Generated from Python 3 html.entities.html5. |
-| [`init-preview.mjs`](init-preview.mjs) | Project guidance preview. |
+| [`import-files.mjs`](import-files.mjs) | Optional project import probes. |
+| [`init-preview.mjs`](init-preview.mjs) | Project guidance preview, shared by init and instruction migration. |
 | [`inside.mjs`](inside.mjs) | Is one path inside another? One predicate, one file, no dependencies. |
+| [`instructions-journal.mjs`](instructions-journal.mjs) | One CLI split/join, bounded to its original sources. The planner proves the saved operation again. Immutable lease children serialize recovery without deleting a possibly live writer's lock. Terminal proof outlives rollback authority; unproved initialization remains for human review. |
 | [`instructions.mjs`](instructions.mjs) | `instructions` — the sections a team marks in its own instruction file, moved to on-read units and proved. |
 | [`ledger.mjs`](ledger.mjs) | What a change spends, measured from the host's own usage records. |
 | [`librarian.mjs`](librarian.mjs) | `librarian` — the scheduled pass over the curated layer: reindex, staleness, nags, demotion drafts. |
@@ -136,6 +139,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`index.test.mjs`](index.test.mjs) | Tests for `index` — the memory, handoff and scope indexes, the memory budgets, and changelog fragments. |
 | [`init-budget.test.mjs`](init-budget.test.mjs) | The init interview's declared always-tier choice. |
 | [`init.test.mjs`](init.test.mjs) | Tests for `init` — the onboarding subcommand that drafts a workspace for a repository that has none. |
+| [`instructions-journal.test.mjs`](instructions-journal.test.mjs) | Process interruption and ownership controls for CLI instruction migration. |
 | [`instructions.test.mjs`](instructions.test.mjs) | Tests for `instructions`: the sections a team marks, moved to on-read units and proved, and the join back. |
 | [`ledger.test.mjs`](ledger.test.mjs) | Tests for `ledger` — what a change spends, from the host's own usage records. |
 | [`librarian.test.mjs`](librarian.test.mjs) | Tests for `librarian` — the scheduled pass over the curated layer. |
@@ -144,6 +148,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`local-transport.test.mjs`](local-transport.test.mjs) | Local HTTP deadlines, response bounds and compatibility tests. |
 | [`local-usage.test.mjs`](local-usage.test.mjs) | Usage, exhaustion and rollback tests. |
 | [`mutants.test.mjs`](mutants.test.mjs) | Tests for `mutants`, the mutation-census rail: its operator table, its imports, its corpus and its refusals. |
+| [`nested-instructions.test.mjs`](nested-instructions.test.mjs) | Nested guidance generation, ownership recovery and consumer parity. |
 | [`new.test.mjs`](new.test.mjs) | Tests for `new`: scaffolds that validate, written into the user's own layer and never into `core/`. |
 | [`pack-identity.test.mjs`](pack-identity.test.mjs) | Tests for the byte-identity rail: green, both findings and could-not-run, each exercised. |
 | [`pack-local-llm.test.mjs`](pack-local-llm.test.mjs) | Tests for the `tools/local-llm` pack's runner — its loopback, input-budget and rollback rails, its eval screen, dedup ranking and A/B record. |

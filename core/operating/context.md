@@ -219,8 +219,7 @@ requires its budget verdict to be resolved before applying an offered migration.
 canonical containment and regular-file status before opening project sources; its boot-unit source is
 bounded to the workspace. Instruction-state advice checks ancestors too, while preserving valid local
 links and supplied prospective readers. This repository's
-`context` recipe holds its existing boot and description rails; the remaining named footprint surfaces
-are still owed by row 12. **A boot can
+`context` recipe holds the boot, description and owned prompt rails described below. **A boot can
 read a card instead of the slots**: the `boot` unit of `slots.context` (Workspace Definition 2.10) is
 compiled into every context, imports whole the files it needs, writes out the lead sentences of others,
 and names the file behind each line, so the rest loads when a rule's path or the card sends a session to
@@ -243,7 +242,14 @@ The compiler and doctor select `agents/` in a plugin tree and `.claude/agents/` 
 project, using the same bounded marker classification. Existing bindings compile even without a gate
 policy or guidance; missing adopter bindings remain unbound. Nonregular and unreadable inputs are
 not treated as absence. The two composed product roles have real plugin bindings. The committed
-four-tier fixture includes an on-invoke skill; the compile recipe checks it and its companion rules
+four-tier fixture includes an on-invoke skill. An on-path unit can select a literal nested
+`CLAUDE.md` instead of scoped rules. Its mark and portable ownership registry distinguish repairable
+drift from human replacement and allow owned target retirement. The body refuses imports that could
+change meaning at its destination. From a project-root Claude session, the nested file is loaded on
+subtree access; starting within that subtree can load it at startup. An unimported nested file is
+outside project-root budget accounting, while an explicit root import is included. The unit contract
+and limits are in [the slot specification](../../spec/slots.md#slotscontext--the-guidance-a-host-loads-each-unit-in-its-tier).
+The compile recipe checks the committed exemplars and their companion rules
 without writing. These are file/discovery contracts, not evidence of host enablement, field honoring
 or runtime savings. The acquired [native-child comparisons](../../evals/ab/personas/README.md)
 observe the three named core roles, matching inherited parent/child models and

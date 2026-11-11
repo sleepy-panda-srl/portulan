@@ -4,6 +4,7 @@
 // Exit 0 succeeded · 1 a step owed under `--check` or left by hand, a red workspace, an unresolved pointer · 2 could not run.
 
 import fs from "node:fs";
+import { assertNoSourceJournal } from "./instructions-journal.mjs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -12,6 +13,7 @@ import { resolveGovernor } from "./discover.mjs";
 import { gitIn } from "./form.mjs";
 import { offerLines } from "./sessions.mjs";
 import { walk } from "./vendor.mjs";
+import { atomicWrite,guardedRemove,readOutput,sameContent } from "./guidance-files.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BUNDLE = path.resolve(HERE, "..");
@@ -275,6 +277,7 @@ export function applyEdits(dir, edits, options = {}) {
     const treeRoot = typeof options.treeDir === "string" ? path.resolve(options.treeDir) : null;
     const snapshots = [];
     for (const edit of edits) {
+        try{options.beforeMutation?.(edit);}catch(error){return {ok:false,snapshots,reason:error.message};}
         if (edit.root !== undefined && edit.root !== "workspace" && edit.root !== "tree") {
             return { ok: false, snapshots, reason: `an edit names root \`${edit.root}\`, which is neither the workspace nor the tree` };
         }
@@ -294,25 +297,31 @@ export function applyEdits(dir, edits, options = {}) {
         if (linked !== null) return { ok: false, snapshots, reason: linked };
 
         let previous = null;
-        let mode = null;
+        let mode = null, observedIdentity = null;
         try {
-            previous = fs.readFileSync(file, "utf8");
-            mode = fs.lstatSync(file).mode;
+            const at=fs.lstatSync(file);
+            if(!at.isFile()) return {ok:false,snapshots,reason:`${file} is not a regular file`};
+            if(edit.nested && edit.next!==null && at.nlink!==1) return {ok:false,snapshots,reason:`${file} is a multiply linked guidance output`};
+            previous = readOutput(file,root);
+            const after=fs.lstatSync(file);
+            if(after.dev!==at.dev||after.ino!==at.ino||after.mode!==at.mode)return {ok:false,snapshots,reason:`${file} changed while its original was read`};
+            mode=at.mode;observedIdentity={dev:at.dev,ino:at.ino,mode:at.mode};
         } catch (error) {
             if (error.code !== "ENOENT") {
                 return { ok: false, snapshots, reason: `${file} could not be read before writing — ${error.code ?? error.message}` };
             }
         }
 
+        if (Object.hasOwn(edit,"before") && !sameContent(previous,edit.before)) return {ok:false,snapshots,reason:`${file} changed after guidance planning`};
+        if(edit.beforeIdentity){const at=fs.lstatSync(file,{throwIfNoEntry:false});if(!at||at.dev!==edit.beforeIdentity.dev||at.ino!==edit.beforeIdentity.ino||at.mode!==edit.beforeIdentity.mode)return {ok:false,snapshots,reason:`${file} changed identity after source planning`};}
         if (edit.next === null) {
             if (previous === null) continue;
             if (!fs.lstatSync(file).isFile()) return { ok: false, snapshots, reason: `${file} is not a regular file — refusing to delete it` };
             try {
-                fs.rmSync(file);
+                guardedRemove(file,{before:previous,identity:edit.beforeIdentity??observedIdentity,allowLinks:Boolean(edit.claimBase),claimBase:edit.claimBase,onClaim:data=>options.journal?.(edit,"claim",data),onRemove:claim=>{snapshots.push({file:edit.file,root:edit.root,previous,mode,created:[],deleted:true,after:null,identity:null,cleanup:[claim]});options.journal?.(edit,"retired",claim);}});
             } catch (error) {
                 return { ok: false, snapshots, reason: `${file} could not be deleted — ${error.code ?? error.message}` };
             }
-            snapshots.push({ file: edit.file, root: edit.root, previous, mode, created: [], deleted: true });
             continue;
         }
 
@@ -330,7 +339,7 @@ export function applyEdits(dir, edits, options = {}) {
             }
         }
 
-        // Before rename, failures must unwind these unowned directories.
+        // Unwind this edit's created directories if publication fails.
         const created = [];
         try {
             for (const dir of wanted) {
@@ -347,24 +356,17 @@ export function applyEdits(dir, edits, options = {}) {
             return { ok: false, snapshots, reason: `${path.dirname(file)} could not be created — ${error.code ?? error.message}` };
         }
 
-        // Unique staging beside the target keeps rename atomic.
+        // Stage each edit beside its target for exclusive publication.
         const staging = `${file}.portulan-upgrade.${process.pid}.${stagingSeq++}`;
+        let published;
         try {
             // Exclusive creation refuses existing files and symlinks.
-            write(staging, edit.next, { flag: "wx" });
             const keep = mode ?? edit.mode ?? null;
-            if (keep !== null) fs.chmodSync(staging, keep);
-            fs.renameSync(staging, file);
+            published=atomicWrite(file,edit.next,{exclusive:edit.exclusive??previous===null,before:previous,identity:edit.beforeIdentity??observedIdentity??undefined,mode:keep,write,stagingPath:edit.nested?undefined:staging,onPrepare:data=>options.journal?.(edit,"stage",data),onClaim:data=>options.journal?.(edit,"claim",data),onCleanupClaim:data=>options.journal?.(edit,"undo-claim",data),onPublish:(id,cleanup)=>snapshots.push({file:edit.file,root:edit.root,previous,mode,created,after:edit.next,identity:{dev:id.dev,ino:id.ino,mode:id.mode},cleanup})});
         } catch (error) {
-            try {
-                if (error.code !== "EEXIST") fs.rmSync(staging, { force: true });
-            } catch {
-                /* the staging file is the lesser problem; the write failure is what gets reported */
-            }
             unwindDirs(created);
             return { ok: false, snapshots, reason: `${file} could not be written — ${error.code ?? error.message}` };
         }
-        snapshots.push({ file: edit.file, root: edit.root, previous, mode, created });
     }
     return { ok: true, snapshots };
 }
@@ -374,8 +376,11 @@ export function restore(dir, snapshots, options = {}) {
     const treeRoot = typeof options.treeDir === "string" ? path.resolve(options.treeDir) : null;
     const restored = [];
     const failed = [];
+    const restoredIdentities=new Map();
     // Reverse order empties shared directories before their owner removes them.
     for (const snapshot of [...snapshots].reverse()) {
+        if(options.stopOnFailure&&failed.length){failed.push(snapshot.file);continue;}
+        try{options.beforeMutation?.(snapshot);}catch{failed.push(snapshot.file);continue;}
         // Exported restore must recheck containment of caller-supplied snapshots.
         const root = snapshot.root === "tree" ? treeRoot : workspaceRoot;
         const file = root === null ? null : inside(root, snapshot.file);
@@ -384,15 +389,27 @@ export function restore(dir, snapshots, options = {}) {
             continue;
         }
         try {
-            if (snapshot.previous === null) {
-                fs.rmSync(file, { force: true });
-                unwindDirs(snapshot.created ?? []);
-            } else {
-                const at = fs.lstatSync(file, { throwIfNoEntry: false });
-                if (at?.isSymbolicLink()) throw new UpgradeError(`${file} is a symlink — refusing to restore through it`);
-                fs.writeFileSync(file, snapshot.previous);
-                if (snapshot.mode !== null && snapshot.mode !== undefined) fs.chmodSync(file, snapshot.mode);
+            for(const item of snapshot.cleanup??[])if(typeof item.file!=="string"||inside(root,path.relative(root,item.file))!==item.file||linkOnPath(root,item.file)!==null)throw new UpgradeError("cleanup journal is outside its transaction root or aliases another path");
+            const at=fs.lstatSync(file,{throwIfNoEntry:false});
+            const aliases=(snapshot.cleanup??[]).filter(item=>{try{const linked=fs.lstatSync(item.file);return linked.isFile()&&linked.dev===at?.dev&&linked.ino===at?.ino&&sameContent(readOutput(item.file,root),item.before);}catch{return false;}});
+            const allowLinks=Boolean(at&&at.nlink>1&&at.nlink===aliases.length+1);
+            if(at && (!at.isFile() || at.isSymbolicLink() || (at.nlink!==1&&!allowLinks))) throw new UpgradeError(`${file} is not an ordinary singly linked restore target`);
+            const current=at ? readOutput(file,root) : null;
+            if(Object.hasOwn(snapshot,"after")) {
+                const expected=restoredIdentities.has(file) ? restoredIdentities.get(file) : snapshot.identity;
+                if(!sameContent(current,snapshot.after) || (expected && (!at || at.dev!==expected.dev || at.ino!==expected.ino || (expected.mode!==undefined&&at.mode!==expected.mode)))) throw new UpgradeError(`${file} changed since this transaction wrote it`);
             }
+            let replacedIdentity=null;
+            if (snapshot.previous === null) {
+                if(at)guardedRemove(file,{before:current,identity:{dev:at.dev,ino:at.ino,mode:at.mode},allowLinks,onClaim:data=>options.journal?.(snapshot,"undo-claim",data),onRemove:claim=>options.journal?.(snapshot,"retired",claim)});
+            } else {
+                replacedIdentity=atomicWrite(file,snapshot.previous,{exclusive:!at,before:current,identity:at ? {dev:at.dev,ino:at.ino,mode:at.mode} : undefined,allowLinks,mode:snapshot.mode,onPrepare:data=>options.journal?.(snapshot,"undo-stage",data),onClaim:data=>options.journal?.(snapshot,"undo-claim",data),onCleanupClaim:data=>options.journal?.(snapshot,"claim",data)});
+            }
+            for(const item of snapshot.cleanup??[])if(fs.lstatSync(item.file,{throwIfNoEntry:false}))guardedRemove(item.file,{before:item.before,identity:item.identity,allowLinks:true,claimBase:path.basename(file)});
+            if(snapshot.previous===null)unwindDirs(snapshot.created??[]);
+            const replaced=fs.lstatSync(file,{throwIfNoEntry:false});
+            if(replacedIdentity?(!replaced||replaced.dev!==replacedIdentity.dev||replaced.ino!==replacedIdentity.ino||replaced.mode!==replacedIdentity.mode):Boolean(replaced))throw new UpgradeError(`${file} changed during rollback publication`);
+            restoredIdentities.set(file,replacedIdentity);
             restored.push(snapshot.file);
         } catch {
             failed.push(snapshot.file);
@@ -524,6 +541,7 @@ export async function run(argv = [], options = {}) {
         return read.code;
     }
     const ws = read.ws;
+    try{assertNoSourceJournal(ws.dir);if(ws.repository)assertNoSourceJournal(ws.repository.dir);}catch(error){warn(`upgrade: ${error.message}`);return 2;}
     const relative = path.relative(process.cwd(), ws.dir);
     const shown = relative && relative.length < ws.dir.length ? relative : ws.dir;
 
