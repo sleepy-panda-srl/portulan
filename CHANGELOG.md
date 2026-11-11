@@ -49,16 +49,18 @@ same lines; `node cli/index.mjs --changes changes` prints them as the cut pastes
 
 ## 0.4.1 — 2026-11-11
 
-**A closing command a drafted card can name.** 0.4.0's drafted boot card told an agent to run
+**A closing command a drafted card can name.** The boot card `init` drafted told an agent to run
 `finish.mjs` under a placeholder path no session could resolve, and agents searched the disk for it.
 `finish` is now a subcommand, and `init` drafts a card that names `portulan finish`.
 
 **Upgrade notes.** A card drafted before this version keeps the old line: nothing rewrites it, so
 edit it by hand as the entry below gives it
 ([issue 659](https://github.com/sleepy-panda-srl/portulan/issues/659) tracks an `upgrade` repair).
-`npx @sleepy_panda_srl/portulan finish` answers only from this version on; where `npx` still runs an
-older cached copy, ask for `@latest`. The subcommand is named in [`docs/vision.md`](docs/vision.md),
+`portulan finish` answers only from this version on, so update a `portulan` already installed; where
+`npx @sleepy_panda_srl/portulan finish` still runs an older cached or installed copy, ask for
+`@latest`. The subcommand is named in [`docs/vision.md`](docs/vision.md),
 amended on the maintainer's ruling of 2026-11-11.
+The release carries its [eval register](evals/releases/0.4.1.md), cited rather than restated.
 
 ### Fixed
 
