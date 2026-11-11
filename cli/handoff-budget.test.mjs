@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { inspect, IndexError } from "./index.mjs";
+import { inspect, IndexError, readHandoffs, run as actualIndex } from "./index.mjs";
 import { inspect as doctor } from "./doctor.mjs";
 import { run as context } from "./context.mjs";
 import { run as init } from "./init.mjs";
@@ -239,4 +239,154 @@ test("init preserves handoff, spend and cache settings together at the newest re
     assert.equal(manifest.spend.horizon.requests, 3);
     assert.equal(manifest.spend.multipliers.read, 0.04);
     assert.equal(manifest.sessions.cache_lifetime, "5m");
+});
+
+const cutoffRatio = { bytes_per_token: 4, calibrated_by: "cutoff-fixture" };
+const cutoffFlags = budget => ["--residence", "in-repo", "--name", "fixture", "--no-cycle", "--no-interview", "--handoff-budget", JSON.stringify({ record_tokens: 100, ratio: cutoffRatio, ...budget })];
+function adoptionTree(seed = {}) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-cutoff-")); roots.push(root);
+    for (const [rel, contents] of Object.entries(seed)) {
+        fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+        fs.writeFileSync(path.join(root, rel), contents);
+    }
+    return root;
+}
+function treeState(root) {
+    const entries = [];
+    const walk = dir => {
+        for (const item of fs.readdirSync(path.join(root, dir), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+            const rel = path.join(dir, item.name), file = path.join(root, rel), mode = fs.lstatSync(file).mode & 0o777;
+            if (item.isSymbolicLink()) entries.push([rel, "link", fs.readlinkSync(file)]);
+            else if (item.isDirectory()) { entries.push([rel, "directory", mode]); walk(rel); }
+            else if (item.isFile()) entries.push([rel, mode, fs.readFileSync(file).toString("base64")]);
+            else entries.push([rel, "special", mode]);
+        }
+    }; walk(""); return entries;
+}
+async function adopt(root, budget) {
+    const lines = [], code = await init([...cutoffFlags(budget), root], { say: line => lines.push(line), warn: line => lines.push(line) });
+    return { code, lines };
+}
+const adoptedPolicy = root => JSON.parse(fs.readFileSync(path.join(root, ".portulan/workspace.json")));
+const utcDay = offset => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
+
+test("cutoff eligibility: nonrecord clutter cannot exempt a new over-cap handoff", async () => {
+    const clutter = { ".portulan/handoffs/2099-12-01-unrelated.txt": "Ordinary notes.\n", ".portulan/handoffs/2099-12-02-unrelated.MD": "Different extension.\n" };
+    const root = adoptionTree(clutter), found = await adopt(root);
+    assert.equal(found.code, 0, found.lines.join("\n"));
+    const workspace = path.join(root, ".portulan"), policyFile = path.join(workspace, "workspace.json"), before = fs.readFileSync(policyFile);
+    assert.equal(adoptedPolicy(root).handoffs.series.budget.cutoff, utcDay(0));
+    const record = path.join(workspace, "handoffs", `${utcDay(1)}-new.md`), decision = "# Decision\n\nUse one record: preserve its decision and why.\n";
+    const long = decision + "x".repeat(2968 - Buffer.byteLength(decision));
+    assert.equal(Buffer.byteLength(long) / 4, 742);
+    fs.writeFileSync(record, long);
+    const red = [];
+    assert.equal(actualIndex(["--check", workspace], line => red.push(line)), 1, red.join("\n"));
+    assert.match(red.join("\n"), /742 tokens.*100/);
+    fs.writeFileSync(record, decision);
+    const green = [];
+    assert.equal(actualIndex(["--check", workspace], line => green.push(line)), 0, green.join("\n"));
+    assert.deepEqual(fs.readFileSync(policyFile), before);
+    for (const [rel, text] of Object.entries(clutter)) assert.equal(fs.readFileSync(path.join(root, rel), "utf8"), text);
+});
+test("cutoff eligibility: the newest eligible record can be tomorrow, with bytes preserved", async () => {
+    const seed = Object.fromEntries([-3, 0, 1].map(offset => [`.portulan/handoffs/${utcDay(offset)}-kept.md`, "# Kept decision\n\nKeep its reason.\n"]));
+    seed[".portulan/handoffs/2099-12-01-not-a-record.txt"] = "Clutter.\n";
+    const root = adoptionTree(seed), found = await adopt(root);
+    assert.equal(found.code, 0, found.lines.join("\n"));
+    assert.equal(adoptedPolicy(root).handoffs.series.budget.cutoff, utcDay(1));
+    for (const [rel, bytes] of Object.entries(seed)) assert.equal(fs.readFileSync(path.join(root, rel), "utf8"), bytes);
+});
+test("cutoff eligibility: README and non-Markdown files stay outside the actual series", () => {
+    const f = fixture();
+    f.add("README.md", "2099-12-01 is ordinary documentation.\n");
+    f.add("2099-12-01-unrelated.txt", "Ordinary notes.\n");
+    f.add("2099-12-01-unrelated.MD", "Other extension.\n");
+    f.add("2026-11-09-kept.md", "# Kept\n");
+    assert.deepEqual(readHandoffs(f.dir, f.manifest).records.map(record => record.file), ["2026-11-09-kept.md"]);
+});
+for (const name of ["2026-02-30-invalid.md", "2099-12-01-too-future.md", "2026-11-12missing-separator.md", "undated.md"]) test(`cutoff eligibility refuses selected invalid date ${name}`, async () => {
+    const root = adoptionTree({ [`.portulan/handoffs/${name}`]: "# Keep this record\n" }), before = treeState(root), found = await adopt(root);
+    assert.equal(found.code, 2, found.lines.join("\n"));
+    assert.deepEqual(treeState(root), before);
+    assert.match(found.lines.join("\n"), /handoff|cutoff|date/i);
+});
+for (const kind of ["directory", "link", "dangling-link", "series-link", "dangling-series", "linked-parent", "not-directory"]) test(`cutoff eligibility refuses ${kind} without writes`, async () => {
+    const root = adoptionTree(), outside = adoptionTree({ "keep.txt": "Unrelated bytes.\n" }), series = path.join(root, ".portulan/handoffs");
+    fs.mkdirSync(series, { recursive: true });
+    const file = path.join(series, `${utcDay(0)}-selected.md`);
+    if (kind === "directory") fs.mkdirSync(file);
+    if (kind === "link") fs.symlinkSync(path.join(outside, "keep.txt"), file);
+    if (kind === "dangling-link") fs.symlinkSync("absent", file);
+    if (kind === "series-link" || kind === "dangling-series" || kind === "not-directory") {
+        fs.rmdirSync(series);
+        if (kind === "not-directory") fs.writeFileSync(series, "Keep this file.\n");
+        else fs.symlinkSync(kind === "series-link" ? outside : "absent", series);
+    }
+    if (kind === "linked-parent") { fs.rmdirSync(series); fs.rmdirSync(path.dirname(series)); fs.symlinkSync(outside, path.dirname(series)); }
+    const before = treeState(root), other = treeState(outside), found = await adopt(root);
+    assert.equal(found.code, 2, found.lines.join("\n"));
+    assert.deepEqual(treeState(root), before); assert.deepEqual(treeState(outside), other);
+});
+test("cutoff eligibility examines a FIFO as metadata and refuses without blocking", () => {
+    const root = adoptionTree(), series = path.join(root, ".portulan/handoffs"); fs.mkdirSync(series, { recursive: true });
+    const fifo = path.join(series, `${utcDay(0)}-selected.md`);
+    assert.equal(spawnSync("mkfifo", [fifo]).status, 0);
+    const before = treeState(root), result = spawnSync(process.execPath, [fileURLToPath(new URL("./init.mjs", import.meta.url)), ...cutoffFlags(), root], { encoding: "utf8", timeout: 5000 });
+    assert.equal(result.error, undefined, result.error?.message);
+    assert.equal(result.status, 2, result.stdout + result.stderr);
+    assert.deepEqual(treeState(root), before);
+    const ignored = path.join(series, "2099-12-01-unrelated.txt");
+    fs.renameSync(fifo, ignored);
+    const accepted = spawnSync(process.execPath, [fileURLToPath(new URL("./init.mjs", import.meta.url)), ...cutoffFlags(), root], { encoding: "utf8", timeout: 5000 });
+    assert.equal(accepted.error, undefined, accepted.error?.message);
+    assert.equal(accepted.status, 0, accepted.stdout + accepted.stderr);
+    assert.ok(fs.lstatSync(ignored).isFIFO());
+    assert.equal(adoptedPolicy(root).handoffs.series.budget.cutoff, utcDay(0));
+});
+test("cutoff eligibility leaves index-only adoption without a record cutoff", async () => {
+    const root = adoptionTree({ ".portulan/handoffs/2099-12-01-unrelated.txt": "Ordinary notes.\n" }), found = await adopt(root, { record_tokens: undefined, index_tokens: 3000 });
+    assert.equal(found.code, 0, found.lines.join("\n"));
+    assert.equal(adoptedPolicy(root).handoffs.series, undefined);
+    assert.equal(adoptedPolicy(root).handoffs.index.budget.tokens, 3000);
+});
+test("cutoff eligibility refuses a selected entry that disappears during examination", async t => {
+    const root = adoptionTree({ [`.portulan/handoffs/${utcDay(0)}-selected.md`]: "# Preserve the external deletion\n" }), series = path.join(root, ".portulan/handoffs");
+    const readdir = fs.readdirSync; let removed = false, expected;
+    t.mock.method(fs, "readdirSync", (dir, ...args) => {
+        const entries = readdir(dir, ...args);
+        if (path.resolve(String(dir)) === series && !removed && !args[0]?.withFileTypes) {
+            removed = true; fs.unlinkSync(path.join(series, `${utcDay(0)}-selected.md`)); expected = treeState(root);
+        }
+        return entries;
+    });
+    const found = await adopt(root);
+    t.mock.restoreAll();
+    assert.equal(removed, true);
+    assert.equal(found.code, 2, found.lines.join("\n"));
+    assert.deepEqual(treeState(root), expected);
+});
+test("cutoff eligibility refuses an unreadable series without treating it as empty", async t => {
+    const root = adoptionTree({ [`.portulan/handoffs/${utcDay(0)}-kept.md`]: "# Kept\n" }), series = path.join(root, ".portulan/handoffs"), before = treeState(root);
+    const readdir = fs.readdirSync;
+    t.mock.method(fs, "readdirSync", (dir, ...args) => {
+        if (path.resolve(String(dir)) === series && !args[0]?.withFileTypes) { const error = new Error("read denied"); error.code = "EACCES"; throw error; }
+        return readdir(dir, ...args);
+    });
+    const found = await adopt(root);
+    t.mock.restoreAll();
+    assert.equal(found.code, 2, found.lines.join("\n"));
+    assert.deepEqual(treeState(root), before);
+});
+test("cutoff eligibility needs metadata, never historical handoff bodies", async t => {
+    const rel = `.portulan/handoffs/${utcDay(-1)}-kept.md`, root = adoptionTree({ [rel]: "# Kept decision\n" }), file = path.join(root, rel), read = fs.readFileSync;
+    t.mock.method(fs, "readFileSync", (at, ...args) => {
+        if (typeof at === "string" && path.resolve(at) === file) throw new Error("cutoff discovery opened a historical body");
+        return read(at, ...args);
+    });
+    const found = await adopt(root);
+    t.mock.restoreAll();
+    assert.equal(found.code, 0, found.lines.join("\n"));
+    assert.equal(adoptedPolicy(root).handoffs.series.budget.cutoff, utcDay(0));
+    assert.equal(fs.readFileSync(file, "utf8"), "# Kept decision\n");
 });
