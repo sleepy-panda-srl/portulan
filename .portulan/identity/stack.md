@@ -73,6 +73,10 @@ indexed Git blobs. Forty-two files joined the payload since `0.3.0` and none lef
 and the [0.4.0 release eval pair](../../evals/releases/0.4.0.md). The release act checks the merged
 and tagged tree again before publication.
 
+**Re-measured at the 0.4.1 cut: 161 files.** Measured the same way: all 161 entries are
+byte-identical to their indexed Git blobs. Two files joined the payload since `0.4.0`, the
+[0.4.1 release eval pair](../../evals/releases/0.4.1.md), and none left it.
+
 ## Where the line sits, and the one tool outside it
 
 **Where the line sits now, precisely.** [`verify/docs.sh`](../verify/docs.sh) needs `git`, `bash`, and the
