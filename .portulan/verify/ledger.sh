@@ -152,11 +152,14 @@ if [ -s "$tmp/stop-below" ]; then
 fi
 [ "$advisory" -eq 0 ] && printf '  ok advisory: the session past its threshold is told once, at its first prompt or with its first tool result, and never twice; a subagent'"'"'s tool result and a session below the threshold are not; with an explicit horizon and resume expense, it is held once at a profitable stop, a line said first spares no block, and nothing is said after one\n'
 
+node cli/fixtures/advisory-crossing/verify.mjs
+trace=$?
+
 # Could-not-run outranks red: a run that judged nothing cannot vouch for the one that did.
 worst=$advisory
 [ "$local_line" -eq 1 ] && worst=1
 could_not_run=0
-for status in "$fixture" "$real" "$hybrid"; do
+for status in "$fixture" "$real" "$hybrid" "$trace"; do
     case "$status" in
         0) ;;
         1) worst=1 ;;

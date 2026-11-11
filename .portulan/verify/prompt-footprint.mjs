@@ -250,6 +250,14 @@ export async function hookProfiles(root) {
             add("advisory.mjs", `${event}-${name}`, event === "Stop" ? "reason" : "additionalContext", event === "Stop" ? native.reason : native.hookSpecificOutput.additionalContext);
         }
     }
+    for (const event of ["PostToolUse", "UserPromptSubmit"]) {
+        const spend = { horizon: 20, resume: 10000 };
+        const figure = figureOf({ ...sessionFigures(), requests: 20, fresh: 16000, last: 20000 }, spend);
+        figure.crossing = figureOf({ ...sessionFigures(), requests: 18, fresh: 16000, last: 40000 }, spend);
+        const native = JSON.parse(advisoryOutput(figure, event)).hookSpecificOutput;
+        if (native.hookEventName !== event || !native.additionalContext.includes("First crossing:") || !native.additionalContext.includes("Latest estimate does not favor restarting")) throw Error("retrospective advisory coverage missing");
+        add("advisory.mjs", `${event}-retrospective`, "additionalContext", native.additionalContext);
+    }
     const covered = ordered(new Set(entries.map(e => e.runner)));
     if (JSON.stringify(covered) !== JSON.stringify(ordered(HOOK_RUNNERS))) throw Error("HOOK_RUNNERS profile coverage is stale");
     return entries;
