@@ -1,0 +1,330 @@
+{
+  "version": 1,
+  "phase": "complete",
+  "sourceCommit": "01ca48872fdceac9d7aa548ac12a5107173f2b31",
+  "host": "2.1.321 (Claude Code)",
+  "model": "claude-sonnet-5-5",
+  "seed": "portulan-m13-personas-20261110",
+  "prices": {
+    "uncached": 1,
+    "written5m": 1.25,
+    "written1h": 2,
+    "writtenUnknown": 1.25,
+    "read": 0.1,
+    "output": 5,
+    "coldFirstInput": 1.25
+  },
+  "routing": {
+    "model": "inherit",
+    "effort": null,
+    "omitClaudeMd": false,
+    "cacheLifetime": "5m"
+  },
+  "publication": {
+    "answerTransformation": "replace only known plugin-root and acquisition-root prefixes with <plugin> and <acquisition>",
+    "normalizedAnswers": [
+      "librarian-sealed-a"
+    ],
+    "note": "Original wording otherwise retained; original answers stay private with raw-answer digests. This presentation normalization changes no semantic artifact or score."
+  },
+  "qualityFrozenAt": "2026-11-10T07:29:01.199Z",
+  "continuationFrozenAt": "2026-11-10T07:49:23.195Z",
+  "order": [
+    "implementer-lower-bound-a",
+    "implementer-lower-bound-b",
+    "implementer-dedup-b",
+    "implementer-dedup-a",
+    "implementer-containment-a",
+    "implementer-containment-b",
+    "reviewer-verdict-b",
+    "reviewer-verdict-a",
+    "reviewer-clean-a",
+    "reviewer-clean-b",
+    "reviewer-boundaries-b",
+    "reviewer-boundaries-a",
+    "librarian-duplicate-a",
+    "librarian-duplicate-b",
+    "librarian-conflict-b",
+    "librarian-conflict-a",
+    "librarian-sealed-a",
+    "librarian-sealed-b"
+  ],
+  "taskSha256": {
+    "implementer-lower-bound": "4862de332848a8546671bbd33b6a2827d3bced336d65b92ed4aa8f02ce763290",
+    "implementer-dedup": "558e39b28c0f012f7fc5c0ceeec8898fd6fc77040305c587908b8795113afce8",
+    "implementer-containment": "2d991b5fc2fdb3e7d03dbebce8f9406d5ad1e55892d4dce1503a544b24cc525a",
+    "reviewer-verdict": "85e4e4f33f81550775e8b155906e2ecfe6c05661ce40da023e3723429a188102",
+    "reviewer-clean": "562e341017f1da94f7f8be4c6dd878db8c5ce1498596856c58f003c4256f28c2",
+    "reviewer-boundaries": "36d848b6d1d015225680efca9f459fb326b691906de006e429ce62f8f7bb793c",
+    "librarian-duplicate": "8332dd4efbcde4643088f07c07439d0abbdf7d703bf1dd4d332531196197512e",
+    "librarian-conflict": "4af2b7ce4790e069235825a0b5d64d61ec0a66f0e61294a313701d92d9eb6cca",
+    "librarian-sealed": "6408193ff1b6315658d34200116e15f7300e0a5c639fc36ae44391867a69828b"
+  },
+  "preflights": [
+    {
+      "key": "mechanism-medium",
+      "task": "mechanism",
+      "role": "implementer",
+      "effort": "medium",
+      "requestedModel": null,
+      "model": "claude-fable-5-2",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-bd202d2470debba47cf5529f97fd4759da5a81e041d200d112d8ade5c6dc2de0",
+      "childContext": "child-3e143bad7e549e19b35c2318b06a8121ad1695e3df8d41c473e09600cb9d2acf",
+      "state": "invalid",
+      "exit": 1,
+      "timedOut": false,
+      "started": "2026-11-10T07:15:36.623Z",
+      "ended": "2026-11-10T07:15:45.112Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:implementer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/mechanism.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false,\"effort\":\"medium\"}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:implementer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1"
+      ],
+      "argvProvenance": "reconstructed-after-execution",
+      "instrumentSha256": "a02b6d2185b59e5b43a96a7cb3a5fcee7965c29a45b1533aa02c033369937f44",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-832595efc5c05c77691a8e9c83ebd22210d0bf5aecccb43876f0e3860460dad8",
+            "model": "claude-fable-5-2",
+            "effort": "high",
+            "at": 1794294941008,
+            "uncached": 2,
+            "written5m": 83513,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 0,
+            "output": 245
+          }
+        ],
+        "child": [
+          {
+            "id": "request-4e55082b4084a7622c2d5623a1b91d9bb0ba9e4a6e8445799b10ca7305295b36",
+            "model": "claude-fable-5-2",
+            "effort": "medium",
+            "at": 1794294942508,
+            "uncached": 2,
+            "written5m": 13333,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 0,
+            "output": 314
+          },
+          {
+            "id": "request-9a157d22debc4d6232568c09309de1c0b38aeb1cfc73384bca3cbce633ad7eec",
+            "model": "claude-fable-5-2",
+            "effort": "medium",
+            "at": 1794294944421,
+            "uncached": 2,
+            "written5m": 5993,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13333,
+            "output": 11
+          }
+        ]
+      },
+      "raw": {
+        "parent": "218d6fdf034153ffafe1b6ac5a96854180ea6a4310a4876cd888bcd6ce067d64",
+        "child": "324d3c6e00ba0ac72ed03478bffbb6dbf65e8173490467b460f242eaca0fd3ec",
+        "result": "40affabe76d7e056ab7867a593410a74ecb2e3eac8e725fcdad5aecf45f2021f"
+      },
+      "hostEstimateUsd": 1.0539046,
+      "reason": "error_max_budget_usd",
+      "markerSeen": true,
+      "sourceSnapshotTiming": "after-execution",
+      "freshContextEvidence": "one parent transcript and one child transcript; no resume option"
+    },
+    {
+      "key": "mechanism-medium",
+      "task": "mechanism",
+      "role": "implementer",
+      "effort": "medium",
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-9521e523e92aab3fb2a046a983432e56511424e7a91df2c4a5a76143e4f87dff",
+      "childContext": "child-847477035c4dfacc71140c7d805005629bc874cf015a83acf28bd62a2190be0f",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T07:22:15.599Z",
+      "ended": "2026-11-10T07:22:29.819Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:implementer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/mechanism.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false,\"effort\":\"medium\"}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:implementer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "fbde0bff490748c02803a6f953505eaa057031285a39957573785cd14aa388d8",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-8d5746971407ca792e9da0fb449c6028995eee2f8d7b2ddda1f4e6da61937613",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794295341109,
+            "uncached": 2,
+            "written5m": 82083,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 0,
+            "output": 245
+          },
+          {
+            "id": "request-ac34361003d5e3e5e9d2ebe0ac70382e3e7aea7c418ec7c07c73ddc5813c5543",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794295346829,
+            "uncached": 2,
+            "written5m": 503,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82083,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-9c5e95a551188dc248414fc894df567dadbd76c16bf02cfaa91a1c3cfd946425",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794295342891,
+            "uncached": 2,
+            "written5m": 13337,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 0,
+            "output": 314
+          },
+          {
+            "id": "request-f771db03c2ead365b17b2fcb5ef6f2e0d0d25b594161035e0a092fd115d2fc32",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794295345372,
+            "uncached": 2,
+            "written5m": 5989,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13337,
+            "output": 11
+          }
+        ]
+      },
+      "raw": {
+        "result": "6b6faa6b1ee0157c9b931ab46e15e016df7f34b647bb34c1d7553ed6b2d81441",
+        "parent": "31fabf7e7f548051937823e01c49ec1b573d37d903a010eb72eecbdcde91b037",
+        "child": "f4af68b961cac7eacfec012332061b67b6ba2f34c2eeb7a9ffc9b43421b211a8"
+      },
+      "hostEstimateUsd": 0.27008800000000005,
+      "invocation": {
+        "type": "portulan:implementer",
+        "effort": "medium",
+        "promptSha256": "7bbcfe957dfaf278f89ae1cb9fb6902479eb1d8f53e131ce49d5f0aa74ff064d",
+        "model": null,
+        "background": false
+      },
+      "answer": "MECHANISM_OK",
+      "answerRawSha256": "72a7832e87334fc8c2dda2407f419a828f8fb30eda2eed583debfa49b4112c70",
+      "answerPresentationSha256": "72a7832e87334fc8c2dda2407f419a828f8fb30eda2eed583debfa49b4112c70",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 2
+      },
+      "markerSeen": true
+    }
+  ],
+  "decodeRepair": {
+    "retainedKey": "implementer-lower-bound-a",
+    "approvedBy": "/root/checkpoint_520_open",
+    "approvalSha256": "9a8c8e99cfaec94ad350cac295d1f79dcca2396645c94578f575c9f69dab1b12",
+    "abortedJournalSha256": "6afb381b0e9d3eaefe2514e48d78295b01aec58ae2f878fdbb64c9fc667ad6ab",
+    "previousGrader": "9035deb344ea5a3ba5d31485836a5dda4d3dba6e06b20bfa78afb945ae1096b0",
+    "grader": "914d7744b73e9a79dd157038ed57c6f3034b2a05ce46fb4b5546a08b2e660978",
+    "observedOutcomes": 1,
+    "approval": "PASS",
+    "reruns": 0,
+    "semanticSuffixSha256": "3b8bde9accae1687d26b4621cafbadf7fb11e8ebd5dfd348ba3d15534f451146",
+    "explanation": "After one outcome, the original decoder rejected one JSON fence followed by prose. The same retained answer passes the revised decoder; all semantic predicates, cases and price code are byte-identical. The original false score remains. Independent approval covered exact decoder and continuation instrument hashes before the remaining seventeen calls."
+  },
+  "accounting": {
+    "calls": 20,
+    "parentContexts": 20,
+    "qualityChildren": 18,
+    "requests": 80,
+    "note": "Both probes, every parent and every child are included. Host USD values are lifecycle estimates, not subscription bills, and are not added to the declared-vector indexes."
+  },
+  "sources": {
+    "evals/ab/personas/corpus.json": "89554b37030657bd7167395e425461cb6f7acf5c223090c074ff054c7dac6b9b",
+    "evals/ab/personas/grader.mjs": "914d7744b73e9a79dd157038ed57c6f3034b2a05ce46fb4b5546a08b2e660978",
+    "core/personas/implementer.md": "bea6b78808fd6c390ebdfb53124d0b132e8a1454d78cecbabe04a632a0e2d45c",
+    "core/personas/reviewer.md": "6c364f370e61bc80a32697dc7d84eeb267ef3a2bbf48da16744356a90ce5078f",
+    "core/personas/librarian.md": "a79ef87153c2a5f52d36bd33b95fcdc2b0ed9bf79362a76bbf6a85459c094f46"
+  },
+  "bindings": {
+    "implementer": "3c3874f38defa6ea2bb42e45aa5a3b4267cc6794e1c7b11edc27440f861c0b97",
+    "reviewer": "436896a48ce036eeab69091fce7cee7482e8891efa2315da288378d9158f9a69",
+    "librarian": "7ad4e74c09482940444be0a1fe4de7eacc98e24aee145fdb6c25a162879053fc"
+  },
+  "instruments": {
+    "firstProbe": {
+      "sha256": "a02b6d2185b59e5b43a96a7cb3a5fcee7965c29a45b1533aa02c033369937f44",
+      "timing": "snapshotted-after-execution"
+    },
+    "secondProbe": {
+      "sha256": "fbde0bff490748c02803a6f953505eaa057031285a39957573785cd14aa388d8",
+      "timing": "frozen-before-execution"
+    },
+    "firstOutcome": {
+      "sha256": "2f0c0843c55ced112b8f5fc6872de6acb84f16319dcdd8edcf763bac4c37aa30",
+      "timing": "frozen-before-execution"
+    },
+    "continuation": {
+      "sha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "timing": "approved-and-frozen-before-seventeen-untouched-cells"
+    },
+    "publisher": {
+      "sha256": "58ceb6aa7b361f627816fc92c1b7cdc755b3c473c5509b25c1a97c3c88a0d96c",
+      "timing": "after-acquisition; whitelisted normalization only"
+    }
+  },
+  "files": {
+    "implementer.json": "0b63097bec76852cccdd8edf3c7c9f20d83b9caae9536d1badb51a269003cdef",
+    "reviewer.json": "b9ea8b9d5b24ab33b67a1274b507b8416a482d349a9d64b4261b76ceac856774",
+    "librarian.json": "adf79f475a83dcc321dff1e4867d9af232052ffda6ffc92e5d2c8c75cf65a466"
+  }
+}

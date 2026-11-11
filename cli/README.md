@@ -49,6 +49,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`ab-grade.mjs`](ab-grade.mjs) | The A/B graders — what an arm's tree says it did, and the discrimination that proves a grader read it. Not shipped. |
 | [`ab-run.mjs`](ab-run.mjs) | The A/B runner: spawns the agent turns of both arms and records the baseline they measure. Not shipped. |
 | [`ab.mjs`](ab.mjs) | The A/B arm builder — what "Portulan on" is made of, built rather than described. Not shipped. |
+| [`acquire-personas.mjs`](acquire-personas.mjs) | Acquire the frozen persona comparisons through native children; never run by a recipe. Not shipped. |
 | [`cache-stability.mjs`](cache-stability.mjs) | Prefix baseline. Not shipped. |
 | [`comments.mjs`](comments.mjs) | `comments` — the comments in a tree that record a change's history instead of what the code cannot show. |
 | [`context.mjs`](context.mjs) | Measure boot reads and the project's always tier. |
@@ -71,9 +72,11 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`local-routing.mjs`](local-routing.mjs) | Verify the shipped operational local roles against their immutable acquired A/B record. No model. Not shipped. |
 | [`manifest.mjs`](manifest.mjs) | The two facts every tool here needs out of `package.json`, read once and in a module that imports nothing of ours. |
 | [`mutants.mjs`](mutants.mjs) | Mutation-test this repository's two gate matchers against the corpus that claims to cover them. |
+| [`normalize-personas.mjs`](normalize-personas.mjs) | Publish whitelisted numeric metadata and generic answers from the completed private persona acquisition. Not shipped. |
 | [`pack-identity.mjs`](pack-identity.mjs) | Every file `npm pack` emits is byte-identical to the tracked blob it came from. |
 | [`pack-version.mjs`](pack-version.mjs) | A change to a pack's `contributes` must move that pack's `portulan.version`. |
 | [`payload.mjs`](payload.mjs) | Every `cli/*.mjs` the npm payload carries is classified, and nothing arrives in it unclassified. Not shipped. |
+| [`persona-routing.mjs`](persona-routing.mjs) | Regrade the acquired core-persona records and check their shipped routing without a model. |
 | [`plugin-lint.mjs`](plugin-lint.mjs) | `plugin-lint` — the packaging validator. |
 | [`recipe-output.mjs`](recipe-output.mjs) | Agent output for any recipe: one green count, complete failure streams. |
 | [`recipe-runner.mjs`](recipe-runner.mjs) | Shared asynchronous recipe execution, bounded output and process-tree cleanup. |
@@ -146,6 +149,10 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`pack-local-llm.test.mjs`](pack-local-llm.test.mjs) | Tests for the `tools/local-llm` pack's runner — its loopback, input-budget and rollback rails, its eval screen, dedup ranking and A/B record. |
 | [`pack-version.test.mjs`](pack-version.test.mjs) | The pack-version rail, driven on REAL git repositories rather than an injected history. |
 | [`payload.test.mjs`](payload.test.mjs) | Tests for the payload-classification rail. |
+| [`persona-acquisition.test.mjs`](persona-acquisition.test.mjs) | Check native invocation and no-resampling guards. |
+| [`persona-capture.test.mjs`](persona-capture.test.mjs) | Force acquired persona, routing and packaging rails red. |
+| [`persona-routing.test.mjs`](persona-routing.test.mjs) | Semantic controls for the acquired core-persona routing comparisons. |
+| [`persona-upgrade.test.mjs`](persona-upgrade.test.mjs) | Exercise historical persona upgrade, ownership and rollback. |
 | [`pinned-roots.live.test.mjs`](pinned-roots.live.test.mjs) | Required checks name their resolution root, and every suite whose imports reach the host's plugin record empties it. |
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Tests for `plugin-lint` — the packaging validator. |
 | [`portulan.test.mjs`](portulan.test.mjs) | Tests for the `npx` entry point: dispatch through an injected loader, its refusals, and its version. |

@@ -1,0 +1,774 @@
+{
+  "version": 1,
+  "role": "implementer",
+  "host": "2.1.321 (Claude Code)",
+  "model": "claude-sonnet-5-5",
+  "turns": [
+    {
+      "key": "implementer-lower-bound-a",
+      "task": "implementer-lower-bound",
+      "role": "implementer",
+      "effort": null,
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-2a49ca0451d862f60334ace9b0edde7521721f20f81d05288a1e3ac0892ac8cb",
+      "childContext": "child-d5d1bd8764c2f05406b3ff6ec0d91fa308f51e5851669e837c24b911c264e4f0",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T07:30:37.952Z",
+      "ended": "2026-11-10T07:30:55.329Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:implementer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/implementer-lower-bound.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:implementer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "2f0c0843c55ced112b8f5fc6872de6acb84f16319dcdd8edcf763bac4c37aa30",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-8fdbcb61fd15410063b263c48e5162a61795c2a65796fa22481a53e730318f86",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794295842767,
+            "uncached": 2,
+            "written5m": 82079,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 0,
+            "output": 227
+          },
+          {
+            "id": "request-c5ba846cb213a89320d64c0dda2ee07a0004381e16399b534f1bc3f3709e7b81",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794295852271,
+            "uncached": 2,
+            "written5m": 1063,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82079,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-89714254e791e9a8defcda42bb44ccae9071e0c92452512dad1fe0f34c4fd5e7",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794295844532,
+            "uncached": 2,
+            "written5m": 13342,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 0,
+            "output": 319
+          },
+          {
+            "id": "request-f13c21a0f16b57a78fd0d37faf0406e1948f311a61ccf7284e5fb2f252b0c16e",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794295850783,
+            "uncached": 2,
+            "written5m": 6125,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13342,
+            "output": 687
+          }
+        ]
+      },
+      "raw": {
+        "result": "355d02b6202a49d1186cd0e13831495bec6e20d5d38d64a8da1c98fe8fb6913d",
+        "parent": "115c1f8913176d9debe168a653519f72dbbc927a92885cf46c5bc492472430f6",
+        "child": "002a7b56a64726ea374ba25677fc28ca803b53e5d323762fd43da88a057540d6"
+      },
+      "hostEstimateUsd": 0.2784606,
+      "invocation": {
+        "type": "portulan:implementer",
+        "effort": null,
+        "promptSha256": "c9e39de0cb04474fa4f2d7eb860725c86fc696072dc89bb390be49deaa89194c",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\n  \"code\": \"function lowerBound(sorted, value) {\\n  let lo = 0;\\n  let hi = sorted.length;\\n  while (lo < hi) {\\n    const mid = lo + Math.floor((hi - lo) / 2);\\n    if (sorted[mid] < value) {\\n      lo = mid + 1;\\n    } else {\\n      hi = mid;\\n    }\\n  }\\n  return lo;\\n}\"\n}\n```\n\nThis is an artifact proposal only. I changed no repository files and ran nothing, since the task said no tools beyond reading the charter were needed.\n\nThe search range is the half-open interval `[lo, hi)`, with `hi` starting at `sorted.length`. This replaces the old `sorted.length - 1` start, which could never return `sorted.length` and so gave the wrong answer when every entry is below `value`.\n\n- **Empty array:** `lo` and `hi` are both 0, so the loop never runs and it returns 0, which equals `sorted.length`.\n- **Duplicates:** when `sorted[mid] >= value`, `hi` moves to `mid`, so the search keeps narrowing toward the leftmost qualifying index.\n- **Value below the first entry:** every probe takes the `hi = mid` branch, so it returns 0.\n- **Value above the last entry:** every probe takes the `lo = mid + 1` branch, so it returns `sorted.length`.\n- **No mutation:** it only reads `sorted` and `value`.\n\nHand-traced on `[1,2,2,3]`:\n\n| `value` | Result |\n|---|---|\n| 2 | 1 |\n| 0 | 0 |\n| 4 | 4 |",
+      "answerRawSha256": "e300dd431329299a604d5bc4e22d4dbf4c7534883dbc1ee063606f6e7754d5e9",
+      "answerPresentationSha256": "e300dd431329299a604d5bc4e22d4dbf4c7534883dbc1ee063606f6e7754d5e9",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 3
+      },
+      "grade": {
+        "ok": false,
+        "check": "lower-bound"
+      },
+      "regraded": {
+        "ok": true,
+        "check": "lower-bound"
+      },
+      "arm": "a"
+    },
+    {
+      "key": "implementer-lower-bound-b",
+      "task": "implementer-lower-bound",
+      "role": "implementer",
+      "effort": "medium",
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-10d4903e1ccacb5e3ce710713eb4844a80872a459f7980e504cc33dbef348f4a",
+      "childContext": "child-b52705053ee0db7cc95a4f14ec61644ac964c7be59c753069ef931bbabffe59a",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:14:47.060Z",
+      "ended": "2026-11-10T08:15:05.980Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:implementer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/implementer-lower-bound.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false,\"effort\":\"medium\"}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:implementer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-b4f5570f9f0bb769e41bc60cce8bea33edd65b7d84d0825df73afcee0c8d0635",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298492876,
+            "uncached": 2,
+            "written5m": 82088,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 0,
+            "output": 250
+          },
+          {
+            "id": "request-3eae4c1fca1c3bbdd40b8d0a6fc65252c7520ec866cb3f8e45ef66e260d131c1",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298502334,
+            "uncached": 2,
+            "written5m": 890,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82088,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-cdd69fa257c908913d4195575f8b335b1cc9be1b667532b58877df65c39c808f",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298494889,
+            "uncached": 2,
+            "written5m": 13342,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 0,
+            "output": 319
+          },
+          {
+            "id": "request-9f149653f0f4d0a7167909d38d4af6ca3d152145b7e2190c8170365721a36b07",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298499202,
+            "uncached": 2,
+            "written5m": 6123,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13342,
+            "output": 371
+          }
+        ]
+      },
+      "raw": {
+        "result": "dd9719a748adf5a59d5571cc8a52191d32813b59e5d124589d6ae7c6436d5322",
+        "parent": "9af809e11a5be2d8daf7093602a55c3c57b89942d57ae6b39effc72c1ded6cea",
+        "child": "e8f6ece996f45d56149d5e90bfda8dd4e1bae3918a16fac14d25e5d671ae0674"
+      },
+      "hostEstimateUsd": 0.2751165,
+      "invocation": {
+        "type": "portulan:implementer",
+        "effort": "medium",
+        "promptSha256": "c9e39de0cb04474fa4f2d7eb860725c86fc696072dc89bb390be49deaa89194c",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\"code\":\"function lowerBound(sorted, value) { let lo = 0; let hi = sorted.length; while (lo < hi) { const mid = lo + Math.floor((hi - lo) / 2); if (sorted[mid] < value) { lo = mid + 1; } else { hi = mid; } } return lo; }\"}\n```\n\nThis is an artifact proposal only. I ran no tests and changed no files.\n\nThe function does a binary search over the half-open range `[lo, hi)`, with `hi` starting at `sorted.length`. That start value fixes the old bug, where `hi = sorted.length - 1` meant the search could never return `sorted.length`.\n\nI traced these cases by hand:\n- **Empty array:** the loop never runs and it returns 0.\n- **Value below the first entry:** it returns 0.\n- **Value above the last entry:** it returns `sorted.length`.\n- **Duplicates:** an entry equal to `value` sets `hi = mid`, so the search keeps moving left and lands on the first equal entry.\n\nIt only reads `sorted` and `value`, so it doesn't mutate its inputs.",
+      "answerRawSha256": "f103cf2dd75f2dae3e73fe9f2254eec74e17ed10d95728d8ba3a5b0ce4b2dce3",
+      "answerPresentationSha256": "f103cf2dd75f2dae3e73fe9f2254eec74e17ed10d95728d8ba3a5b0ce4b2dce3",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 2
+      },
+      "grade": {
+        "ok": true,
+        "check": "lower-bound"
+      },
+      "arm": "b"
+    },
+    {
+      "key": "implementer-dedup-b",
+      "task": "implementer-dedup",
+      "role": "implementer",
+      "effort": "medium",
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-3b9c33ad5acd0cee984de61ca0a7500525c1a5b86969fd70edb21fb6f0597d46",
+      "childContext": "child-52056eb27a33ced3623aea4d3b6d9702348fce5da0663a107b19d927ec3d2cdf",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:15:06.123Z",
+      "ended": "2026-11-10T08:15:27.715Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:implementer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/implementer-dedup.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false,\"effort\":\"medium\"}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:implementer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-9bc8db9e84f1a6b08d01e28df5a251cdd9979934092e3d7c9af574e9fbd597d0",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298512991,
+            "uncached": 2,
+            "written5m": 11899,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 248
+          },
+          {
+            "id": "request-8d4673a70424c392562db5fb502e64bd4362d9659112496d930a34c9499374da",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298524613,
+            "uncached": 2,
+            "written5m": 1086,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82086,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-e6988d064dde0def6d15a3fac6cd33d744fdfaa874a5053599845a32177eb908",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298514633,
+            "uncached": 2,
+            "written5m": 9383,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 3957,
+            "output": 317
+          },
+          {
+            "id": "request-8a2d9de396d1648ab1a7c714338dd18269d4bba5381c61c236e31d95734957c8",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298517246,
+            "uncached": 2,
+            "written5m": 6133,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13340,
+            "output": 108
+          },
+          {
+            "id": "request-c317d5efd80ef930540d51346bd7a3a7ee792538bf7504aee6e202784bc4e6bd",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298523132,
+            "uncached": 2,
+            "written5m": 357,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 19473,
+            "output": 650
+          }
+        ]
+      },
+      "raw": {
+        "result": "f13eef9e9a3451d8e942fce6d8e4c601b61e40cbfe018e6038ec3855e6998212",
+        "parent": "8ba0b280af694745f7f967e98c3a6761182329f7c96268ecff9ad5ae4f64b9ff",
+        "child": "59a3e81c3bc84009b260c939201c0fbebf8e06cdcc5df4802a1e4097941f8f34"
+      },
+      "hostEstimateUsd": 0.1043493,
+      "invocation": {
+        "type": "portulan:implementer",
+        "effort": "medium",
+        "promptSha256": "a6791785d81f691f674c61ddd4136e53629bdd823b85058177d3d2c7c72b1fe1",
+        "model": null,
+        "background": false
+      },
+      "answer": "This is a proposed artifact only. I have not run it or changed the repository. I read the task and the charter, and no other tools were needed.\n\nThe task doesn't name the row fields, so I assumed each row looks like `{ id, tokens }`. A `Map` keeps `__proto__` and `constructor` as ordinary ids. A row counts only when it is a non-array object with a nonempty string `id` and a `tokens` value that is a nonnegative safe integer. The function never writes to its input.\n\n```json\n{\n  \"code\": \"function sumUnique(rows) {\\n  if (!Array.isArray(rows)) return 0;\\n  const maxById = new Map();\\n  for (const row of rows) {\\n    if (row === null || typeof row !== 'object' || Array.isArray(row)) continue;\\n    const id = row.id;\\n    const tokens = row.tokens;\\n    if (typeof id !== 'string' || id === '') continue;\\n    if (typeof tokens !== 'number' || !Number.isSafeInteger(tokens) || tokens < 0) continue;\\n    const prev = maxById.get(id);\\n    if (prev === undefined || tokens > prev) maxById.set(id, tokens);\\n  }\\n  let sum = 0;\\n  for (const v of maxById.values()) sum += v;\\n  return sum;\\n}\"\n}\n```\n\n- **Duplicate ids:** each id keeps its largest valid `tokens` value across its rows. A malformed duplicate row is skipped and does not lower or remove that id's maximum.\n- **Non-array input:** returns 0.\n- **Large sums:** the total is a plain number sum, so it could pass the safe-integer range if the maxima are very large. The task didn't ask for a guard there.",
+      "answerRawSha256": "d60dc12383383c9763692b2ac6d930d37fc8197a532d8b1e16a687ceede3fe6b",
+      "answerPresentationSha256": "d60dc12383383c9763692b2ac6d930d37fc8197a532d8b1e16a687ceede3fe6b",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 3
+      },
+      "grade": {
+        "ok": true,
+        "check": "dedup"
+      },
+      "arm": "b"
+    },
+    {
+      "key": "implementer-dedup-a",
+      "task": "implementer-dedup",
+      "role": "implementer",
+      "effort": null,
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-2d6599ecc1faed65e59ff6c2ca2f95224522ff1357dada7c3115ff837fce8394",
+      "childContext": "child-e2b3a807d52239f27468897db573a82822552e7c9d91780658abfbd2b74e0f76",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:15:27.827Z",
+      "ended": "2026-11-10T08:15:46.975Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:implementer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/implementer-dedup.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:implementer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-b469c1ffb4dcf6fd083331de9fe1c3cee8c433940a4638e35ea6ee00d5aef091",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298531661,
+            "uncached": 2,
+            "written5m": 11890,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 225
+          },
+          {
+            "id": "request-046c9e428b74e83d65be4fd6ebc899d0847cbdda2125c88248c54e6962cf729f",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298543953,
+            "uncached": 2,
+            "written5m": 1022,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82077,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-be2c801edd16d8f4e3090dfd62b304bc9b00cdd6b3bd79111be48692e969dc05",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298533222,
+            "uncached": 2,
+            "written5m": 406,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 12934,
+            "output": 317
+          },
+          {
+            "id": "request-4b61e2f09d55f1b5929161a85d4e85afd1bdf3d2881186c518c41a80ed8fe0b3",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298542458,
+            "uncached": 2,
+            "written5m": 6136,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13340,
+            "output": 992
+          }
+        ]
+      },
+      "raw": {
+        "result": "f173a40ff64dc78d5b8d110232ac25084efefb06eccbc541b242412dcc90cfec",
+        "parent": "1de0cebb90262932fe627940c31c077a1525b1ece26aa5533aa93a1c37783cb5",
+        "child": "86e85829759ce5fbc80cb2aec7a08b6d6e52358e589acce86f8a548d51aafe21"
+      },
+      "hostEstimateUsd": 0.08189479999999999,
+      "invocation": {
+        "type": "portulan:implementer",
+        "effort": null,
+        "promptSha256": "a6791785d81f691f674c61ddd4136e53629bdd823b85058177d3d2c7c72b1fe1",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\n  \"code\": \"function sumUnique(rows) {\\n  if (!Array.isArray(rows)) return 0;\\n  const maxById = new Map();\\n  for (const row of rows) {\\n    if (row === null || typeof row !== 'object' || Array.isArray(row)) continue;\\n    const id = row.id;\\n    const tokens = row.tokens;\\n    if (typeof id !== 'string' || id === '') continue;\\n    if (typeof tokens !== 'number' || !Number.isSafeInteger(tokens) || tokens < 0) continue;\\n    const seen = maxById.get(id);\\n    if (seen === undefined || tokens > seen) maxById.set(id, tokens);\\n  }\\n  let total = 0;\\n  for (const value of maxById.values()) total += value;\\n  return total;\\n}\"\n}\n```\n\n- **Field names:** the task doesn't name the row fields. I assumed `id` for the id and `tokens` for the count. If the real field is called something else, change the `row.tokens` read.\n- **Not run:** this is an artifact proposal. I didn't execute it, add tests or touch the repository.\n- **Malformed rows:** a row is skipped whole, so a malformed duplicate never registers its id or lowers an existing maximum.\n- **Ids:** maxima live in a `Map`, so `__proto__` and `constructor` behave like any other id.\n- **Inputs:** the function only reads its input. A non-array `rows` returns 0.\n- **Overflow:** the total isn't checked against the safe-integer range. Many large maxima could sum past it.",
+      "answerRawSha256": "750641c49d4ca03fa9c8bbfb18929ccd650256003d5e111b7a7f0c667090660c",
+      "answerPresentationSha256": "750641c49d4ca03fa9c8bbfb18929ccd650256003d5e111b7a7f0c667090660c",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 3
+      },
+      "grade": {
+        "ok": true,
+        "check": "dedup"
+      },
+      "arm": "a"
+    },
+    {
+      "key": "implementer-containment-a",
+      "task": "implementer-containment",
+      "role": "implementer",
+      "effort": null,
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-9ba8340bec5eea4aec1893575e768619c4d6c30064b066f772370d22ef4bbacc",
+      "childContext": "child-dc42e92197261e2e8a6dc3346de5bc9e2000aacc99967dc2bc3d8a1351ddee58",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:15:47.090Z",
+      "ended": "2026-11-10T08:16:08.336Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:implementer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/implementer-containment.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:implementer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-5801fcb86e14a151143915d0bdbe0fb73401a82c6d3f4b9083decd23ee900c08",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298553677,
+            "uncached": 2,
+            "written5m": 11889,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 224
+          },
+          {
+            "id": "request-29ac9fb00f1c64a904fee4be9ba3c6ed5d56d3b3f50cc422ac14d57d8ef98f0e",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298565051,
+            "uncached": 2,
+            "written5m": 1071,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82076,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-f847a0fa1f74861906483568b185a2e00b975c2a1a9144abe49dd118eef17bef",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298555454,
+            "uncached": 2,
+            "written5m": 9382,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 3957,
+            "output": 316
+          },
+          {
+            "id": "request-75a22bb78186786f442c77e4a0e54cd38219e45d7ff51cbecbb5e55aaa6fa857",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298563378,
+            "uncached": 2,
+            "written5m": 6146,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13339,
+            "output": 1002
+          }
+        ]
+      },
+      "raw": {
+        "result": "ffc2a50ba6aaf412f2c26c495fecca8f7c9286c147830d06324400852a4bb3e3",
+        "parent": "96e38b7eb8729b7065ac9da9b6c3d9d54405b8c484eccfcad39e745cfce1ee55",
+        "child": "eda95172a78ca9473c9b147e9f1c35774501190a5f4e8b385e51a87a6205b9c2"
+      },
+      "hostEstimateUsd": 0.1036619,
+      "invocation": {
+        "type": "portulan:implementer",
+        "effort": null,
+        "promptSha256": "9a76dbb2700ce325e8b6db3a8cd11f1bf3dcfb6d5eda1ada5d44c46ce8185b82",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\n  \"code\": \"function (root, target) {\\n  function segments(p) {\\n    if (typeof p !== 'string' || p.charAt(0) !== '/') return null;\\n    var out = [];\\n    var parts = p.split('/');\\n    for (var i = 0; i < parts.length; i++) {\\n      var s = parts[i];\\n      if (s === '' || s === '.') continue;\\n      if (s === '..') { out.pop(); continue; }\\n      out.push(s);\\n    }\\n    return out;\\n  }\\n  var r = segments(root);\\n  var t = segments(target);\\n  if (r === null || t === null || t.length < r.length) return false;\\n  for (var i = 0; i < r.length; i++) {\\n    if (r[i] !== t[i]) return false;\\n  }\\n  return true;\\n}\"\n}\n```\n\nNotes on behaviour. I did not run this, since the task said no tools were needed.\n\n- **Return value:** it returns a boolean. A non-string or non-absolute `root` or `target` returns `false`, and so does the empty string.\n- **Normalization:** the function splits each path on `/` and drops empty and `.` segments. A `..` pops the previous segment, and at the root it pops nothing, so `/..` normalizes to `/`.\n- **Containment:** it compares whole segments. `/work/pkg-other` therefore fails under `/work/pkg`, because `pkg-other` is not the segment `pkg`.\n- **Root cases:** the root itself is accepted, since equal segment lists pass. For root `/` the segment list is empty, so every absolute target passes.\n- **Inputs:** they are only read and never mutated.\n- **Scope:** the check is lexical only. It makes no claim about the filesystem or symlinks.",
+      "answerRawSha256": "0ead0e7dfbc8db8f5c22d682c191f6e24f2f778598182e5bf7369aee7b7097e7",
+      "answerPresentationSha256": "0ead0e7dfbc8db8f5c22d682c191f6e24f2f778598182e5bf7369aee7b7097e7",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 3
+      },
+      "grade": {
+        "ok": true,
+        "check": "containment"
+      },
+      "arm": "a"
+    },
+    {
+      "key": "implementer-containment-b",
+      "task": "implementer-containment",
+      "role": "implementer",
+      "effort": "medium",
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-2c03709ac1642451f296d42b928bb27d60f9919a74451da81e7997593bb2e8e9",
+      "childContext": "child-d19452ff2f2129b60da263a3af8c256306d1cf9a714872c50ad9d3638c7b0d9c",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:16:08.483Z",
+      "ended": "2026-11-10T08:16:25.053Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:implementer\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/implementer-containment.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false,\"effort\":\"medium\"}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:implementer),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-71c69d229928dadaaa29ebcfd0d5bfc0ee6626d5ce2e7c7e7f3809bd78b70dea",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298572686,
+            "uncached": 2,
+            "written5m": 11898,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 247
+          },
+          {
+            "id": "request-d4c3f498e6cabdf530ec35bd9ac7743128467e0efadde102b8838cba7f8d927d",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298581951,
+            "uncached": 2,
+            "written5m": 1137,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82085,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-cbf734451772870c4f3b6ee4ece828fc7df278c8b20f8002b219f3ba3b100856",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298574258,
+            "uncached": 2,
+            "written5m": 406,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 12933,
+            "output": 212
+          },
+          {
+            "id": "request-a64333ae0983685887d528e1746b58d0e01022d73c881991edda37bdcb270529",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298580454,
+            "uncached": 2,
+            "written5m": 3661,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13339,
+            "output": 710
+          }
+        ]
+      },
+      "raw": {
+        "result": "90df31a390454bf7badd32a354245d075c39c4a3cc2629bdba38b8a285259653",
+        "parent": "a5ccf0fec4224d2c857feee594afa1c09b43f97079cfbcdaa5405cf8a8517b32",
+        "child": "56b884ef81ef7b5a19624582458668110973ab090aecd2c46b74dbe408b80bcb"
+      },
+      "hostEstimateUsd": 0.0723654,
+      "invocation": {
+        "type": "portulan:implementer",
+        "effort": "medium",
+        "promptSha256": "9a76dbb2700ce325e8b6db3a8cd11f1bf3dcfb6d5eda1ada5d44c46ce8185b82",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\n  \"code\": \"function inside(root, target) {\\n  if (typeof root !== 'string' || typeof target !== 'string') return false;\\n  if (root.charAt(0) !== '/' || target.charAt(0) !== '/') return false;\\n  var split = function (p) {\\n    var out = [];\\n    var parts = p.split('/');\\n    for (var i = 0; i < parts.length; i++) {\\n      var s = parts[i];\\n      if (s === '' || s === '.') continue;\\n      if (s === '..') { out.pop(); continue; }\\n      out.push(s);\\n    }\\n    return out;\\n  };\\n  var r = split(root);\\n  var t = split(target);\\n  if (t.length < r.length) return false;\\n  for (var j = 0; j < r.length; j++) {\\n    if (r[j] !== t[j]) return false;\\n  }\\n  return true;\\n}\"\n}\n```\n\nThe function is lexical only. It makes no claim about the filesystem or symlinks.\n\n- **Normalization:** it splits each path on `/` and drops empty and `.` segments. A `..` segment pops the previous one, and at the root it does nothing, so `/..` normalizes to `/`.\n- **Containment:** the target is inside when the root's segments are a prefix of the target's segments, compared whole. `/work/pkg-other` therefore fails under `/work/pkg`, and the root itself passes.\n- **Root `/`:** it normalizes to zero segments, so every absolute path is inside it.\n- **Rejected input:** a non-string argument or a path that doesn't start with `/` returns `false`.\n- **Inputs:** strings are immutable and the function only builds new arrays, so nothing is mutated.\n\nI did not run this. The task said no tools beyond reading my charter were needed, so it has no test or verify run behind it. This is an artifact proposal, not a repository change.",
+      "answerRawSha256": "2090265c2c95cf6688d264345261b4d526e3daaf34f90c2eefd864e5893b5f08",
+      "answerPresentationSha256": "2090265c2c95cf6688d264345261b4d526e3daaf34f90c2eefd864e5893b5f08",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 2
+      },
+      "grade": {
+        "ok": true,
+        "check": "containment"
+      },
+      "arm": "b"
+    }
+  ],
+  "summary": {
+    "arms": {
+      "a": {
+        "passed": 3,
+        "cases": 3,
+        "observed": 254184.55000000002,
+        "normalized": 435042.30000000005
+      },
+      "b": {
+        "passed": 3,
+        "cases": 3,
+        "observed": 249066.44999999998,
+        "normalized": 429923.05000000005
+      }
+    },
+    "mediumWinsObservedCorpus": true,
+    "shipped": {
+      "model": "inherit",
+      "effort": null,
+      "omitClaudeMd": false,
+      "cacheLifetime": "5m"
+    },
+    "scope": "retained policy; one observed model and three cases; no global medium default earned"
+  }
+}

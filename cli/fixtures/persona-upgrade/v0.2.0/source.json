@@ -1,0 +1,18 @@
+{
+  "ref": "v0.2.0",
+  "commit": "78a30817a62d745307acedea6aae4fed6833d83c",
+  "files": {
+    "agents/implementer.md": {
+      "sha256": "1fcb6bf5ec08d9172e884b8e1a4119978470833fe16c12ab5b6b19c4d4202c23",
+      "blob": "633f3f8b667a3198153dccfe2977c2b8edeb3832"
+    },
+    "agents/reviewer.md": {
+      "sha256": "7b0028dab3ebd932b7caeba3726bed7218814bfe7c442121a823bf94b70b08b2",
+      "blob": "389caa1918ab2fa4ea71ac9abe944337792e6b9e"
+    },
+    "agents/librarian.md": {
+      "sha256": "4ebb5b0a67ec0b647abfc3f06ce4c4e0aa79086c426fda57972f99c6aeb9f128",
+      "blob": "5dc2583a362f349ed604f5ba29c2d4a0a50176a3"
+    }
+  }
+}

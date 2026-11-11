@@ -420,6 +420,6 @@ for (const kind of ["instructions-first", "equal-depth", "unscoped-first", "scop
         }
     }
     const found = await interview(root); assert.equal(found.code, 0, found.lines.join("\n")); oracle(root, manifest(root));
-    const checked = spawnSync(process.execPath, [new URL("./doctor.mjs", import.meta.url).pathname, "--static", path.join(root, ".portulan")], { encoding: "utf8", timeout: 10000 });
+    const checked = spawnSync(process.execPath, [fileURLToPath(new URL("./doctor.mjs", import.meta.url)), "--static", path.join(root, ".portulan")], { encoding: "utf8", timeout: 10000 });
     assert.equal(checked.status, 0, checked.stdout + checked.stderr);
 });

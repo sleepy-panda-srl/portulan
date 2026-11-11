@@ -1,0 +1,758 @@
+{
+  "version": 1,
+  "role": "librarian",
+  "host": "2.1.321 (Claude Code)",
+  "model": "claude-sonnet-5-5",
+  "turns": [
+    {
+      "key": "librarian-duplicate-a",
+      "task": "librarian-duplicate",
+      "role": "librarian",
+      "effort": null,
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-d3d2abbd403492becdb5c67082a6947b7a1c21f88e222a5f86c2fd05d9e11cca",
+      "childContext": "child-d6ca4f4e9cef99778a12b0b4efe4014127bab939633de6ba7909c03ac5faec40",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:18:14.796Z",
+      "ended": "2026-11-10T08:18:36.256Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:librarian\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/librarian-duplicate.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:librarian),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-1dcedc197edb09e7f323e495f41b6972cc66decff0eca53fb131c25bcd674e18",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298699114,
+            "uncached": 2,
+            "written5m": 11891,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 226
+          },
+          {
+            "id": "request-1c16c183676f87f1ae5b6eb9e962e2724fe821983ac6d5af96074ae8021d4c6d",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298712362,
+            "uncached": 2,
+            "written5m": 1055,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82078,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-b25cdc875d1f62ca081e53ff1778c3629f0f3519a80cd9e68b5129de40a45ed5",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298702197,
+            "uncached": 2,
+            "written5m": 10699,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 2604,
+            "output": 423
+          },
+          {
+            "id": "request-a381ec0a3142379fe986117e1fed0de4ad5a981631f2b694e4da6e16d80c18de",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298710921,
+            "uncached": 2,
+            "written5m": 11852,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13303,
+            "output": 838
+          }
+        ]
+      },
+      "raw": {
+        "result": "237e3abfdc8dde07d4f2d7226c25bbe67272059ccea071e9040f97815dd486da",
+        "parent": "f9c0d278d2c97cacb19025c9b718f0f1a1eb677b7f5db918658d577d30b53cdb",
+        "child": "5414a3b1b162730e970dbde2f8b64ec0ac4e28b94676f6a665e3edefccc2e87f"
+      },
+      "hostEstimateUsd": 0.1204957,
+      "invocation": {
+        "type": "portulan:librarian",
+        "effort": null,
+        "promptSha256": "8ed97d3554a7e837a8a81e71ea18f46f19c309ab8db38a3cb029930a653ec59c",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\n  \"draft\": true,\n  \"actions\": [\n    {\n      \"kind\": \"merge\",\n      \"ids\": [\"a\", \"b\"],\n      \"obligations\": [\"exit-0-is-green\", \"exit-2-is-unavailable\"],\n      \"provenance\": [\n        \"https://example.org/incidents/one\",\n        \"https://example.org/incidents/two\"\n      ],\n      \"retire_when\": [\"runner-replaced\", \"unavailable-is-tested\"]\n    }\n  ]\n}\n```\n\nThis is a draft for the human gate. I accepted nothing, retired nothing, and edited no record.\n\n- **Obligations:** `exit-0-is-green` appears in both records, so it is listed once. `exit-2-is-unavailable` comes only from b and is kept. Merging on the shared obligation must not drop it.\n- **Provenance:** both links stay, because they are two separate incidents. Neither link can be dropped without leaving an obligation that cannot be traced.\n- **Retirement:** both conditions stay as separate entries. I did not combine them into one condition, and I did not decide how the merged record retires. The reviewer needs to settle this before accepting:\n  - `runner-replaced` came from a, which only carried `exit-0-is-green`.\n  - `unavailable-is-tested` came from b, which carried both obligations.\n  - If either condition alone retires the whole merged record, `exit-0-is-green` could be dropped while it is still live. For example, `unavailable-is-tested` firing would retire it even though the runner has not been replaced.\n  - I recommend that the merged record retires an obligation only when its own condition fires, with the whole record retiring once every condition has. I treat this as a judgement for the human gate, not something the draft decides.",
+      "answerRawSha256": "5e4315a27fa4f76fd0be9985f3bae713947b8ed77e8c01a736865979bdb45faf",
+      "answerPresentationSha256": "5e4315a27fa4f76fd0be9985f3bae713947b8ed77e8c01a736865979bdb45faf",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 4
+      },
+      "grade": {
+        "ok": true,
+        "check": "library-duplicate"
+      },
+      "arm": "a"
+    },
+    {
+      "key": "librarian-duplicate-b",
+      "task": "librarian-duplicate",
+      "role": "librarian",
+      "effort": "medium",
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-f7fdb7aa61a5e66cde6ef72746403b56f1e4e0500bd9d97fde7233baf2a509bd",
+      "childContext": "child-c3db4606f394c4818a8955c3b124dbe024294d315a2a8363877bf347de804b43",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:18:36.303Z",
+      "ended": "2026-11-10T08:18:53.205Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:librarian\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/librarian-duplicate.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false,\"effort\":\"medium\"}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:librarian),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-e8eca7fa30551dfc43dc89dd4f379736ae483801b63fdb634e30ea76a4b41afa",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298720489,
+            "uncached": 2,
+            "written5m": 11900,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 249
+          },
+          {
+            "id": "request-cdf26c84e6fb5f7671775200a72e89a279e7278dd6f5c48dc5848339d440e022",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298729646,
+            "uncached": 2,
+            "written5m": 962,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82087,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-395f16eea787eb76f0b1a79072881760557cf8b12b24ba867e3c95ccf5021957",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298722131,
+            "uncached": 2,
+            "written5m": 406,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 12897,
+            "output": 423
+          },
+          {
+            "id": "request-edd3b8f17e4d48f0c028ae6acc7c52cc2e26ce4e3d0a0c818fbe9156fa4bc9e1",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298728030,
+            "uncached": 2,
+            "written5m": 11855,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13303,
+            "output": 487
+          }
+        ]
+      },
+      "raw": {
+        "result": "a5af616a0bfcb3c00d14cba3e1758fd22fd222b9c2f6e6429f9e75ea943dfd52",
+        "parent": "309bf9c66bb4105c86cca96ac89f455d1906a6fa0fd22fcf6e54e7306873bd05",
+        "child": "fd3b69e3aa449952e0b54f64454e17a97f993c787f91236bd8ae8c806218e07d"
+      },
+      "hostEstimateUsd": 0.0923109,
+      "invocation": {
+        "type": "portulan:librarian",
+        "effort": "medium",
+        "promptSha256": "8ed97d3554a7e837a8a81e71ea18f46f19c309ab8db38a3cb029930a653ec59c",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\n  \"draft\": true,\n  \"actions\": [\n    {\n      \"kind\": \"merge\",\n      \"ids\": [\"a\", \"b\"],\n      \"obligations\": [\n        \"exit-0-is-green\",\n        \"exit-2-is-unavailable\"\n      ],\n      \"provenance\": [\n        \"https://example.org/incidents/one\",\n        \"https://example.org/incidents/two\"\n      ],\n      \"retire_when\": [\n        \"runner-replaced\",\n        \"unavailable-is-tested\"\n      ]\n    }\n  ]\n}\n```\n\nThis is a draft for the human gate. Nothing is accepted, and no record is retired or deleted. The merge is a proposal until a human accepts it.\n\n- **Obligations:** `exit-0-is-green` appears in both records and is kept once. `exit-2-is-unavailable` is only in b, so it is kept.\n- **Provenance:** both incident links are kept. They are separate incidents that taught the same mechanism, so the merged record cites both.\n- **Retirement conditions:** `runner-replaced` and `unavailable-is-tested` are both kept. Each condition belongs to a different obligation, so the merged record should not retire as a whole until both have fired. If one fires alone, only the obligation it covers can be demoted. The reviewer should confirm that pairing, because the task did not state which obligation each condition covers. I inferred it from the records.",
+      "answerRawSha256": "c256c6631c9f9a8fcbade5bc98b8cb3f34cd4facfe3a9a25c44c07b1bf420fbb",
+      "answerPresentationSha256": "c256c6631c9f9a8fcbade5bc98b8cb3f34cd4facfe3a9a25c44c07b1bf420fbb",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 4
+      },
+      "grade": {
+        "ok": true,
+        "check": "library-duplicate"
+      },
+      "arm": "b"
+    },
+    {
+      "key": "librarian-conflict-b",
+      "task": "librarian-conflict",
+      "role": "librarian",
+      "effort": "medium",
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-ae4df1892a96dc8f23b660ebb406f4cade5e56b2bfd3f772cd1a833b32ab485a",
+      "childContext": "child-867b2dbf35d131d4320a07a9e9b80fbc368a1a02cfd8c9fa954f6e4cf9f15af4",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:18:53.244Z",
+      "ended": "2026-11-10T08:19:10.890Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:librarian\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/librarian-conflict.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false,\"effort\":\"medium\"}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:librarian),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-a4cc466edb35409b4692893e707fbeec7ddd7e663f149fbc6c9a84722ef897a9",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298737620,
+            "uncached": 2,
+            "written5m": 11899,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 248
+          },
+          {
+            "id": "request-ec842d97a95cabe0ed051b676f6c03bdcac2bee3ea9a3f99bee697d3d5611760",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298747165,
+            "uncached": 2,
+            "written5m": 969,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82086,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-0f322e4376a596b7a33f4c51bd017528ef8fe42f5e37bb47bae87019c8c28f48",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298739249,
+            "uncached": 2,
+            "written5m": 9383,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 3919,
+            "output": 422
+          },
+          {
+            "id": "request-844aec1e11097148869249f8d441b76bb7965377d0c9b64f813f6026214e4cb0",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298745606,
+            "uncached": 2,
+            "written5m": 11787,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13302,
+            "output": 497
+          }
+        ]
+      },
+      "raw": {
+        "result": "3da2b8a675f4c3fcecdc6e51e0688a2b70493db11a4a75cfdaf2ec80bcf123a8",
+        "parent": "2dd2edfa8437c1e2b2a029de1cd442bf7d943f3b51563eba6d5aa17824f456e8",
+        "child": "ed7cdff5be85243f8be1ca71f792f2cecd99d6adabebafa6321d333cd7b309f2"
+      },
+      "hostEstimateUsd": 0.1137804,
+      "invocation": {
+        "type": "portulan:librarian",
+        "effort": "medium",
+        "promptSha256": "e9d2473a3941092e90a69c4ad90d5865758e26370171b2da9b8ac371f1a065ba",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\n  \"draft\": true,\n  \"actions\": [\n    {\n      \"kind\": \"escalate\",\n      \"ids\": [\"a\", \"b\"],\n      \"decision\": \"unresolved\"\n    }\n  ]\n}\n```\n\nThis is a draft into the human gate. Nothing is merged, retired or accepted.\n\n- **The contradiction:** the two rules have the same scope. Rule a says exit 2 blocks completion. Rule b says exit 2 permits completion. Both carry valid provenance.\n- **Why b's later date does not decide it:** neither record carries a human ruling that supersedes the other. `memory.md` says contradictions surface rather than silently overwrite, and that an agent has no authority to promote a rule. A date is not that ruling. Treating b as the winner would be an agent choosing which rule is right.\n- **What I left unchanged:** both records stay as they are, and I proposed no merge, retirement or demotion.\n- **Ids:** the task file gave no record ids, so `a` and `b` are the labels from the task text. Replace them with the real record ids before filing.\n- **What the maintainer needs to do:** rule on which behaviour is intended for exit 2. The verify recipes already define exit 2 as \"could not run\", and the Stop-gate blocks on it. That is context for the ruling, not a ruling. The ruling should be recorded as a human decision, so the loser can be retired with provenance.",
+      "answerRawSha256": "db8364bae83a40b7c0059425a6b38b241bb742fcfddd242e02c462d701d27bdc",
+      "answerPresentationSha256": "db8364bae83a40b7c0059425a6b38b241bb742fcfddd242e02c462d701d27bdc",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 4
+      },
+      "grade": {
+        "ok": true,
+        "check": "library-conflict"
+      },
+      "arm": "b"
+    },
+    {
+      "key": "librarian-conflict-a",
+      "task": "librarian-conflict",
+      "role": "librarian",
+      "effort": null,
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-011c2a52ceee9f9bbe17806e88ba0a1822c222fd43f5ff5c29f74eb4fffd5df1",
+      "childContext": "child-d7f2040754e7730f52d0f31ee2b6ced49b3b7bdd828d1760084a9f96729bd293",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:19:10.950Z",
+      "ended": "2026-11-10T08:19:28.735Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:librarian\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/librarian-conflict.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:librarian),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-aa71dba1dc9b759bc3b93afe3c00f932fd4f1cc1cfd1ebb8bb1c1b7cf2eb0f4d",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298755260,
+            "uncached": 2,
+            "written5m": 11890,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 225
+          },
+          {
+            "id": "request-3a4ed06d36aeab91450be9e1d4c69c0eb9457ca6cb944da72427e7b1d4bb2cdd",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298765700,
+            "uncached": 2,
+            "written5m": 848,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82077,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-ccfe17e4c7fc5f8d741a116d5595a43dc0aaed1d388674350fbba311a33632d1",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298757602,
+            "uncached": 2,
+            "written5m": 406,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 12896,
+            "output": 422
+          },
+          {
+            "id": "request-cf26ebf1918e2eccf0d31e98bab1aee829cb97bb722bfb074e40b9c0fb573ae0",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298764197,
+            "uncached": 2,
+            "written5m": 11787,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13302,
+            "output": 534
+          }
+        ]
+      },
+      "raw": {
+        "result": "cf3a36f30022d4f0a054d942ee07a9f45056d711df5931db9ab596d2b4be7341",
+        "parent": "397e375e123ae1d93eca7193fc5e6f9d394d922d696290ec20e414e92c0a0d0f",
+        "child": "b5b68980870f011784547aafeb339a685913438fe891c6a5ca838d0e8d9cd944"
+      },
+      "hostEstimateUsd": 0.09204969999999998,
+      "invocation": {
+        "type": "portulan:librarian",
+        "effort": null,
+        "promptSha256": "e9d2473a3941092e90a69c4ad90d5865758e26370171b2da9b8ac371f1a065ba",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\"draft\":true,\"actions\":[{\"kind\":\"escalate\",\"ids\":[\"a\",\"b\"],\"decision\":\"unresolved\"}]}\n```\n\n- **What it records:** Rule a says exit 2 blocks completion. Rule b says exit 2 permits completion. They share a scope and both have valid provenance, so they contradict each other.\n- **Why the later date doesn't decide it:** b is dated later, but neither record carries a human ruling that supersedes the other. A date alone isn't authority, so I've treated neither record as the winner.\n- **What I left alone:** There is no merge, retirement, demotion or acceptance. Both records stay as they are until a human decides which is right. That is a judgement for the maintainer, and the memory lifecycle says contradictions surface rather than get overwritten.\n- **Ids:** The task gave the rules only as \"a\" and \"b\" and no record ids. I used those labels as the ids. If the real records have other ids, swap them in before this goes to the gate.\n- **Status:** This is a draft artifact proposal for the human gate, not a completed repository change. I wrote no files.",
+      "answerRawSha256": "007f68b70236775cbc97bc586ff051313d9d6870fe1d73482032d42684bc8da2",
+      "answerPresentationSha256": "007f68b70236775cbc97bc586ff051313d9d6870fe1d73482032d42684bc8da2",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 4
+      },
+      "grade": {
+        "ok": true,
+        "check": "library-conflict"
+      },
+      "arm": "a"
+    },
+    {
+      "key": "librarian-sealed-a",
+      "task": "librarian-sealed",
+      "role": "librarian",
+      "effort": null,
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-c0d9d485c24afd9327cc837e254f8f22c361fa9da8e13039ddb37c9830ca7ab3",
+      "childContext": "child-04c970dc172a678a890d67ef5d4afd88b150b2f260506d3cf8dc6265d547c4ba",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:19:28.767Z",
+      "ended": "2026-11-10T08:19:47.278Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:librarian\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/librarian-sealed.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:librarian),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-9a2b11c3b7febd9ce1ac3ff9cc115b24cf1684f0f2baa57ea1b885675a3531b0",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298772967,
+            "uncached": 2,
+            "written5m": 11890,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 225
+          },
+          {
+            "id": "request-cc5b0c2cc77033393bbf3b1643be4a47e3fcc6fcdabb7275fddeedd12a842c14",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298783335,
+            "uncached": 2,
+            "written5m": 999,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82077,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-19cc09a7d34fcbfbd8261483e9bd2a208967ad2398ba7ff36276e67084642eca",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298774514,
+            "uncached": 2,
+            "written5m": 9383,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 3919,
+            "output": 422
+          },
+          {
+            "id": "request-954380526af386ede183f871ec643a4b3b54b2cfcd76c6b31b5fca9a2f0d775f",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298781793,
+            "uncached": 2,
+            "written5m": 11884,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13302,
+            "output": 663
+          }
+        ]
+      },
+      "raw": {
+        "result": "066adc25d37e3a76ab9e3f8cbd86893c18ee1a27263dba28208f6f5fc59743dd",
+        "parent": "863dbd660c63c1b9c883188b8fc4fb4cfe75a4af244feb02cfc9a939e00964b1",
+        "child": "50e009f390c4a4f81804de865c1d0d8e392b918cefc21a1b95db632a9b773a8a"
+      },
+      "hostEstimateUsd": 0.11550449999999998,
+      "invocation": {
+        "type": "portulan:librarian",
+        "effort": null,
+        "promptSha256": "4843007eca74984a96d5f0fe71965d9cfd80b3b0e8cde0ba16964bb9e647c149",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\n  \"draft\": true,\n  \"actions\": [\n    {\n      \"kind\": \"request_revalidation\",\n      \"id\": \"sealed\",\n      \"owner\": \"Example Team\"\n    },\n    {\n      \"kind\": \"propose_retirement\",\n      \"id\": \"public\",\n      \"evidence\": \"https://example.org/evidence/parser-removal\"\n    }\n  ]\n}\n```\n\nThis is a draft for the human gate. Nothing is accepted, retired, or edited.\n\n- **`sealed`:** I request revalidation from Example Team, the owner named in the 2026-01-01 stamp. The log's claim that the retirement condition fired is not evidence I can use. I can't inspect the incident, and the condition requires the owner's revalidation, which hasn't happened. The owner hasn't answered, so I don't propose retirement. I also leave the log out of the `evidence` key so nobody reads it as proof. This follows `<plugin>/core/operating/memory.md`: a sealed rule can't be retired on the librarian's own reading, so the owner gets nagged to revalidate.\n- **`public`:** The retirement condition `legacy-parser-removed` is observable, and the supplied public repository observation proves it. I propose retirement citing the link as evidence. A human still decides whether to accept it.\n\nI omitted `owner` from the `public` action and `evidence` from the `sealed` action, as the task said to omit unused keys.",
+      "answerRawSha256": "b476e25b82784a7272d04839f524f644171f21ad0b2deb16a945af301ab06f7e",
+      "answerPresentationSha256": "368bb9442382dda005c0c1f2318ce99d646203518705eae37422876e42087d14",
+      "answerNormalized": true,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 4
+      },
+      "grade": {
+        "ok": true,
+        "check": "library-sealed"
+      },
+      "arm": "a"
+    },
+    {
+      "key": "librarian-sealed-b",
+      "task": "librarian-sealed",
+      "role": "librarian",
+      "effort": "medium",
+      "requestedModel": "claude-sonnet-5-5",
+      "model": "claude-sonnet-5-5",
+      "parentEffort": "high",
+      "fresh": true,
+      "context": "context-09a890f4c0b633013fa67c0aee02f5e6aa81726b7bb51f95924b3fac7a67ff38",
+      "childContext": "child-275f958e918d3cd52fefb68db3e4d34931140f2c127a47bbf5e8f442e5d1131a",
+      "state": "complete",
+      "exit": 0,
+      "timedOut": false,
+      "started": "2026-11-10T08:19:47.316Z",
+      "ended": "2026-11-10T08:20:04.236Z",
+      "argv": [
+        "-p",
+        "This is a frozen evaluation. Invoke the Agent tool exactly once with these input values: {\"subagent_type\":\"portulan:librarian\",\"description\":\"Frozen persona artifact probe\",\"prompt\":\"Read <acquisition>/tasks/librarian-sealed.json and follow its task exactly. This is an artifact proposal, not a completed repository change.\",\"run_in_background\":false,\"effort\":\"medium\"}. Do not supply a child model or change the effort. Wait for that foreground child to finish. Do not answer its task yourself or invoke another child. After completion reply only DONE.",
+        "--output-format",
+        "json",
+        "--session-id",
+        "<parent-context>",
+        "--effort",
+        "high",
+        "--plugin-dir",
+        "<plugin>",
+        "--tools",
+        "Agent,Read",
+        "--allowedTools",
+        "Agent(portulan:librarian),Read",
+        "--add-dir",
+        "<acquisition>/tasks",
+        "--max-budget-usd",
+        "1",
+        "--model",
+        "claude-sonnet-5-5"
+      ],
+      "argvProvenance": "recorded-before-execution",
+      "instrumentSha256": "34a45b79d5d3a762bbcd46222bdefe479cf031d1d0150665763b8de1c78981ab",
+      "usage": {
+        "parent": [
+          {
+            "id": "request-420d8e9a412ff4b63a7d24bcffb6a96e2b3dc745fb9513d3170eb53ea9061939",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298791466,
+            "uncached": 2,
+            "written5m": 11955,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 70187,
+            "output": 248
+          },
+          {
+            "id": "request-0f12e74b0c1e8ba9000911fe5b677dfe7b9e145ec222ca1b145d404081d9b85b",
+            "model": "claude-sonnet-5-5",
+            "effort": "high",
+            "at": 1794298800153,
+            "uncached": 2,
+            "written5m": 860,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 82142,
+            "output": 5
+          }
+        ],
+        "child": [
+          {
+            "id": "request-193fdb4d4323bad26a1d96829a9466bdbc0555d7428927ad082ff1ec0e8868ce",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298793193,
+            "uncached": 2,
+            "written5m": 406,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 12896,
+            "output": 422
+          },
+          {
+            "id": "request-04605feb428413ea508fdad992019d427afea620e4d1aec15f361a4ed5c4d545",
+            "model": "claude-sonnet-5-5",
+            "effort": "medium",
+            "at": 1794298798664,
+            "uncached": 2,
+            "written5m": 11937,
+            "written1h": 0,
+            "writtenUnknown": 0,
+            "read": 13302,
+            "output": 482
+          }
+        ]
+      },
+      "raw": {
+        "result": "1f1f9a0b2370f486fd04be842f85343717a1f8743c62e6402ed862c686247027",
+        "parent": "d9a8c3c31edec129947c4b226a637be7f64d18e65a72c48139cdf23d4d02ff20",
+        "child": "2e76cdab1770c05100fa6b69055d7331c22ee29732ef48d94edbf9d693a58cb6"
+      },
+      "hostEstimateUsd": 0.0923337,
+      "invocation": {
+        "type": "portulan:librarian",
+        "effort": "medium",
+        "promptSha256": "4843007eca74984a96d5f0fe71965d9cfd80b3b0e8cde0ba16964bb9e647c149",
+        "model": null,
+        "background": false
+      },
+      "answer": "```json\n{\n  \"draft\": true,\n  \"actions\": [\n    {\n      \"kind\": \"request_revalidation\",\n      \"id\": \"sealed\",\n      \"owner\": \"Example Team\"\n    },\n    {\n      \"kind\": \"propose_retirement\",\n      \"id\": \"public\",\n      \"evidence\": \"https://example.org/evidence/parser-removal\"\n    }\n  ]\n}\n```\n\nThis is a draft for the human gate. It is not an accepted change, and nothing is retired automatically.\n\n- **sealed:** The incident is sealed and owned by Example Team (dated 2026-01-01), and I can't inspect it. The log's claim that the retirement condition fired is unverified, and the owner hasn't answered. So I can't retire this record on my own reading, and I'm asking the owner to revalidate it instead. I left out `evidence` on purpose, so that an unverified log claim isn't carried as proof.\n- **public:** The retirement condition `legacy-parser-removed` is observable, and the supplied public repository observation proves it. I propose retirement, citing the link above, for a human to accept.",
+      "answerRawSha256": "dc781ec36d2bcdb1e359c3344bcc3df69094a6fc7a5ee46f9a33c99181fb94dd",
+      "answerPresentationSha256": "dc781ec36d2bcdb1e359c3344bcc3df69094a6fc7a5ee46f9a33c99181fb94dd",
+      "answerNormalized": false,
+      "transcriptDuplicates": {
+        "parent": 0,
+        "child": 4
+      },
+      "grade": {
+        "ok": true,
+        "check": "library-sealed"
+      },
+      "arm": "b"
+    }
+  ],
+  "summary": {
+    "arms": {
+      "a": {
+        "passed": 3,
+        "cases": 3,
+        "observed": 189830.9,
+        "normalized": 454310.9
+      },
+      "b": {
+        "passed": 3,
+        "cases": 3,
+        "observed": 175537.25,
+        "normalized": 451854.19999999995
+      }
+    },
+    "mediumWinsObservedCorpus": true,
+    "shipped": {
+      "model": "inherit",
+      "effort": null,
+      "omitClaudeMd": false,
+      "cacheLifetime": "5m"
+    },
+    "scope": "retained policy; one observed model and three cases; no global medium default earned"
+  }
+}

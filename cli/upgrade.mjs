@@ -19,10 +19,10 @@ const MIGRATIONS = path.join(BUNDLE, "spec", "migrations");
 
 let stagingSeq = 0;
 
-/** Everything that means `upgrade` could not run. Carries no verdict about a workspace. */
+/** Unavailable, without a verdict about the workspace. */
 export class UpgradeError extends Error {}
 
-/** The Workspace Definition version this bundle implements, read from its schema's `$id`. */
+/** This bundle's Workspace Definition version from the schema `$id`. */
 export function bundleSpec({ schemaPath } = {}) {
     const file = schemaPath ?? path.join(BUNDLE, "spec", "workspace.schema.json");
     let text;
@@ -68,7 +68,7 @@ export async function loadSteps({ dir = MIGRATIONS } = {}) {
     return steps;
 }
 
-/** Read a workspace into the view a step is given, as `spec/migrations/README.md` defines it. */
+/** The step's workspace view; contract: `spec/migrations/README.md`. */
 export function readWorkspace(dir) {
     const root = path.resolve(dir);
     const file = path.join(root, "workspace.json");
@@ -120,7 +120,7 @@ export function readWorkspace(dir) {
     };
 }
 
-/** The repository the manifest's `tree` names, as a step reads it; `null` where it names no directory. */
+/** The step's declared repository view, or null without a tree. */
 export function repositoryView(root, manifest) {
     if (typeof manifest?.tree !== "string") return null;
     const dir = path.resolve(root, manifest.tree);
@@ -223,7 +223,7 @@ export async function planFor(ws, ctx, steps) {
         } catch (error) {
             answer = { owed: null, because: `${step.id} threw while deciding whether it is owed — ${error.message}` };
         }
-        // `hand`: owed, and placed by a person rather than by the step, so `--write` reports it and runs on.
+        // `hand` requires a person; report it and continue.
         entries.push({ step, owed: answer.owed, because: answer.because, hand: answer.owed === true && answer.hand === true });
         if (answer.owed === null) unknown += 1;
         else if (answer.owed === true) owed += 1;
@@ -231,14 +231,14 @@ export async function planFor(ws, ctx, steps) {
     return { entries, owed, unknown };
 }
 
-/** `rel` resolved inside `root`, or `null` if it escapes: `path.join` would pass an absolute `rel` as inside. */
+/** Resolve inside root, rejecting escapes. */
 export function inside(root, rel) {
     const resolved = path.resolve(root, rel);
     if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) return null;
     return resolved;
 }
 
-/** A reason to refuse, or `null`; `root` itself is not checked, since macOS's `os.tmpdir()` runs through `/var`. */
+/** Refusal or null; root may itself follow macOS's `/var` alias. */
 function linkOnPath(root, resolved) {
     const rel = path.relative(root, resolved);
     if (rel === "") return null;
@@ -257,7 +257,7 @@ function linkOnPath(root, resolved) {
     return null;
 }
 
-/** `dirs` as created, shallowest first; one that will not go is not empty, and neither are its parents. */
+/** Remove created directories deepest first, stopping at a nonempty one. */
 function unwindDirs(dirs) {
     for (const made of [...dirs].reverse()) {
         try {
@@ -316,7 +316,7 @@ export function applyEdits(dir, edits, options = {}) {
             continue;
         }
 
-        // `lstat`, not `existsSync`, which follows links and answers `false` for a path it could not read.
+        // lstat distinguishes links and unreadable paths from absence.
         const wanted = [];
         for (let at = path.dirname(file); at.startsWith(root) && at !== root; at = path.dirname(at)) {
             try {
@@ -330,7 +330,7 @@ export function applyEdits(dir, edits, options = {}) {
             }
         }
 
-        // No snapshot owns these until the rename lands, so every failure before it unwinds them.
+        // Before rename, failures must unwind these unowned directories.
         const created = [];
         try {
             for (const dir of wanted) {
@@ -338,7 +338,7 @@ export function applyEdits(dir, edits, options = {}) {
                     fs.mkdirSync(dir);
                     created.push(dir);
                 } catch (error) {
-                    // Made by another since the probe: fine if a directory, and not this run's to remove.
+                    // A concurrently created directory is not ours to remove.
                     if (error.code !== "EEXIST" || !fs.lstatSync(dir).isDirectory()) throw error;
                 }
             }
@@ -347,17 +347,17 @@ export function applyEdits(dir, edits, options = {}) {
             return { ok: false, snapshots, reason: `${path.dirname(file)} could not be created — ${error.code ?? error.message}` };
         }
 
-        // Unique per process and edit, and beside its file so the rename stays atomic.
+        // Unique staging beside the target keeps rename atomic.
         const staging = `${file}.portulan-upgrade.${process.pid}.${stagingSeq++}`;
         try {
-            // `wx`: anything already at the staging path, a planted symlink included, fails rather than being followed.
+            // Exclusive creation refuses existing files and symlinks.
             write(staging, edit.next, { flag: "wx" });
             const keep = mode ?? edit.mode ?? null;
             if (keep !== null) fs.chmodSync(staging, keep);
             fs.renameSync(staging, file);
         } catch (error) {
             try {
-                fs.rmSync(staging, { force: true });
+                if (error.code !== "EEXIST") fs.rmSync(staging, { force: true });
             } catch {
                 /* the staging file is the lesser problem; the write failure is what gets reported */
             }
@@ -374,9 +374,9 @@ export function restore(dir, snapshots, options = {}) {
     const treeRoot = typeof options.treeDir === "string" ? path.resolve(options.treeDir) : null;
     const restored = [];
     const failed = [];
-    // Last edit first: a directory two edits share is recorded on the first, and empties only after the second.
+    // Reverse order empties shared directories before their owner removes them.
     for (const snapshot of [...snapshots].reverse()) {
-        // Contained again, as `restore` is exported and a snapshot may come from any caller.
+        // Exported restore must recheck containment of caller-supplied snapshots.
         const root = snapshot.root === "tree" ? treeRoot : workspaceRoot;
         const file = root === null ? null : inside(root, snapshot.file);
         if (file === null || linkOnPath(root, file) !== null) {
@@ -497,7 +497,7 @@ export async function run(argv = [], options = {}) {
         return 2;
     }
 
-    // ---- which workspace, and in which residence
+    // Resolve target and residence.
     const target = await resolveTarget(positional[0], { env });
     if (target.state === "could-not-look") {
         warn(`upgrade: ${target.sentence}`);
@@ -533,7 +533,7 @@ export async function run(argv = [], options = {}) {
         for (const line of offerLines()) say(`upgrade: ${line}`);
     };
 
-    // ---- which direction is this workspace off in
+    // Classify version drift.
     const declared = /^([0-9]+)\.([0-9]+)$/.exec(ws.manifest?.portulan?.spec ?? "");
     if (!declared) {
         warn(`upgrade: ${shown} declares no readable \`portulan.spec\` — refusing to guess which contract it was written against`);
@@ -551,7 +551,7 @@ export async function run(argv = [], options = {}) {
         return 2;
     }
 
-    // ---- the pre-state gate, which can only ever apply to a gradeable workspace
+    // Pre-state gate requires a gradeable workspace.
     if (!behindByMajor) {
         let pre;
         try {
@@ -572,7 +572,7 @@ export async function run(argv = [], options = {}) {
         }
     }
 
-    // ---- the plan
+    // Plan.
     const ctx = { bundle: BUNDLE, spec, tree, today: options.today ?? new Date().toISOString().slice(0, 10) };
     const plan = await planFor(ws, ctx, steps);
 
@@ -622,10 +622,10 @@ export async function run(argv = [], options = {}) {
         return 0;
     }
 
-    // ---- apply, one step at a time, re-reading between them
+    // Apply and reread after each step.
     let snapshots = [];
     let current = ws;
-    // A step may declare the tree but none moves it, so every snapshot was made in the latest one.
+    // Steps can declare a tree, but never move it.
     let treeDir = ws.repository?.dir ?? null;
     const undo = () => {
         const result = restore(current.dir, snapshots, { treeDir });
@@ -640,7 +640,7 @@ export async function run(argv = [], options = {}) {
     const byHand = new Map();
     const apply = async (entry) => {
         applied.add(entry.step.id);
-        // A step's `plan` is foreign code: a throw becomes a refusal, so the rollback still runs.
+        // Foreign plan failures must reach rollback.
         let planned;
         try {
             planned = await entry.step.plan(current, ctx);
@@ -677,7 +677,7 @@ export async function run(argv = [], options = {}) {
         treeDir = current.repository?.dir ?? treeDir;
         return null;
     };
-    // A step can make an earlier one owed, so the chain is asked again until a pass applies nothing.
+    // Revisit earlier steps until a pass applies nothing.
     for (let pass = 0; ; pass++) {
         let appliedNow = 0;
         for (const entry of plan.entries) {
@@ -712,7 +712,7 @@ export async function run(argv = [], options = {}) {
         }
     }
 
-    // ---- and grade what it produced, with the real validator
+    // Grade with the real validator.
     let post;
     try {
         post = await inspect(current.dir);

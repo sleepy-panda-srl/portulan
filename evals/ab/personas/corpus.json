@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "seed": "portulan-m13-personas-20261110",
+  "prices": {
+    "uncached": 1,
+    "written5m": 1.25,
+    "written1h": 2,
+    "writtenUnknown": 1.25,
+    "read": 0.1,
+    "output": 5,
+    "coldFirstInput": 1.25
+  },
+  "cases": [
+    {
+      "id": "implementer-lower-bound",
+      "role": "implementer",
+      "grader": "lower-bound",
+      "task": "Propose an artifact, not a completed repository change. Return JSON with a code string containing one plain JavaScript function expression, no imports or exports. Implement lowerBound(sorted, value): return the index of the first array entry >= value, or sorted.length if none. Inputs are finite numbers sorted nondecreasingly. Handle empty arrays, duplicates, values below the first and above the last. Do not mutate inputs. The old implementation incorrectly initialized hi to sorted.length - 1. No tools beyond reading your charter are needed."
+    },
+    {
+      "id": "implementer-dedup",
+      "role": "implementer",
+      "grader": "dedup",
+      "task": "Propose an artifact, not a completed repository change. Return JSON with a code string containing one plain JavaScript function expression, no imports or exports. Implement sumUnique(rows): for each nonempty string id, count the maximum nonnegative safe-integer tokens across duplicate rows, then sum those maxima. Ignore malformed rows, including null, arrays, empty ids, non-string ids, negative/fractional/non-number counts. Treat __proto__ and constructor as ordinary ids. Do not mutate inputs. No tools beyond reading your charter are needed."
+    },
+    {
+      "id": "implementer-containment",
+      "role": "implementer",
+      "grader": "containment",
+      "task": "Propose an artifact, not a completed repository change. Return JSON with a code string containing one plain JavaScript function expression, no imports or exports. Implement inside(root, target) for absolute POSIX path strings: lexically normalize . and .. segments and repeated slashes, then accept the root itself and descendants separated by /. Reject non-string or non-absolute arguments and sibling prefixes such as /work/pkg-other under /work/pkg. Root / contains every absolute path. This is lexical only; make no filesystem/symlink claim. Do not mutate inputs. No tools beyond reading your charter are needed."
+    },
+    {
+      "id": "reviewer-verdict",
+      "role": "reviewer",
+      "grader": "review-verdict",
+      "task": "Review this proposed artifact against its contract. Return JSON {findings:[{line:number,input:object}]} with one executable counterexample per defect and no speculative findings. Contract: status 0 means green; 1 means red; every other status means could-not-run. The line number is the erroneous expression. Numbered proposed code: 1 function verdict(status) { 2 return status === 0 ? 'green' : 'red'; 3 }. Use input {status:...}. Do not edit anything or claim a repository verification."
+    },
+    {
+      "id": "reviewer-clean",
+      "role": "reviewer",
+      "grader": "review-clean",
+      "task": "Review this proposed artifact against its contract. Return JSON {findings:[{line:number,input:object}]} with executable counterexamples only; an empty list is correct when no defect exists. Contract: lowerBound returns the first index whose finite sorted array entry is >= value, or length, without mutation. Numbered proposed code: 1 function lowerBound(a,x) { 2 let lo=0, hi=a.length; 3 while(lo<hi) { const mid=lo+Math.floor((hi-lo)/2); if(a[mid]<x) lo=mid+1; else hi=mid; } 4 return lo; 5 }. Inputs are finite numbers, sorted nondecreasingly. Do not edit anything or claim a repository verification."
+    },
+    {
+      "id": "reviewer-boundaries",
+      "role": "reviewer",
+      "grader": "review-boundaries",
+      "task": "Review two proposed helpers. Return JSON {findings:[{line:number,input:object}]} with one executable counterexample per defect, no duplicate or speculative findings. Contract: inside accepts root itself or descendants separated by / for already normalized absolute POSIX paths; mayKeep accepts only status 0. Numbered proposed code: 1 function inside(root,target) { 2 return target.startsWith(root); 3 } 4 function mayKeep(status) { 5 return status !== 1; 6 }. For line 2 use input {root:...,target:...}; for line 5 use input {status:...}. Do not edit anything or claim a repository verification."
+    },
+    {
+      "id": "librarian-duplicate",
+      "role": "librarian",
+      "grader": "library-duplicate",
+      "task": "Draft a memory maintenance decision; accept no rule and retire nothing automatically. Return JSON {draft:true,actions:[{kind:'merge',ids:['a','b'],obligations:[...],provenance:[...],retire_when:[...]}]}. Records a and b are the same incident and scope. a carries obligation exit-0-is-green, provenance https://example.org/incidents/one, retirement condition runner-replaced. b carries exit-2-is-unavailable as well as exit-0-is-green, provenance https://example.org/incidents/two, retirement condition unavailable-is-tested. One merged draft must preserve every distinct obligation, provenance link and retirement condition. There are no other records."
+    },
+    {
+      "id": "librarian-conflict",
+      "role": "librarian",
+      "grader": "library-conflict",
+      "task": "Draft a memory maintenance decision. Return JSON {draft:true,actions:[{kind:...,ids:[...],decision:...}]}. Same-scope rule a says exit 2 blocks completion; rule b says exit 2 permits completion. Both have valid provenance. b is dated later, but neither record carries a human ruling superseding the other. The date alone is not authority. Preserve the contradiction for a human: use kind escalate and decision unresolved, with both ids; no merge, retirement or acceptance."
+    },
+    {
+      "id": "librarian-sealed",
+      "role": "librarian",
+      "grader": "library-sealed",
+      "task": "Draft a memory maintenance decision; accept or retire nothing automatically. Return JSON {draft:true,actions:[{kind:...,id:...,owner:...?,evidence:...?}]}. Record sealed has a sealed incident owned by Example Team, dated 2026-01-01; its retirement condition requires that owner's revalidation. A log claims the condition fired, but the owner has not answered and you cannot inspect the incident. Request revalidation from Example Team. Record public has an observable retirement condition: legacy-parser-removed. The supplied public repository observation proves that condition and links https://example.org/evidence/parser-removal; propose retirement of public citing that link. No other records or owners exist. Use kind request_revalidation for sealed and propose_retirement for public; omit unused keys."
+    }
+  ]
+}

@@ -2064,6 +2064,18 @@ export function guidanceEdits(named) {
     return { root: path.resolve(workspaceRoot), edits, left: stray.filter((s) => !s.removable).map((s) => s.path) };
 }
 
+export function personaEdits(named, options = {}) {
+    const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
+    const packs = packContributions(workspaceRoot, workspaceDir, { discovery: () => discoverPackRoots(), ...options });
+    if (packs.unresolved.length) throw new CompileError("persona binding sources are unresolved; refusing a partial refresh");
+    const planned = planPersonas(packs.contributions, workspaceRoot, workspaceDir);
+    return {
+        root: path.resolve(workspaceRoot), compared: planned.compared,
+        edits: planned.files.map(file => ({ file: file.path, next: file.text })),
+        notes: [...planned.lines, ...planned.degraded.map(value => value.line)],
+    };
+}
+
 // ---------------------------------------------------------------- the manifest's declarations
 
 /** `{ file, why }` for a manifest that is there and will not parse as an object; null when it reads or is absent. */

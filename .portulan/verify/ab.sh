@@ -14,7 +14,7 @@ done
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd) || exit 2
 cd -- "$root" || exit 2
 
-for required in cli/ab.mjs evals/ab/arm.md evals/ab/corpus.md evals/ab/register.md .portulan/workspace.json; do
+for required in cli/ab.mjs cli/persona-routing.mjs evals/ab/arm.md evals/ab/corpus.md evals/ab/register.md .portulan/workspace.json; do
     if [ ! -f "$required" ]; then
         printf 'verify: %s is missing — cannot check the A/B arm construction\n' "$required" >&2
         exit 2
@@ -32,5 +32,13 @@ case "$status" in
         status=2
         ;;
 esac
+
+node cli/persona-routing.mjs --repo-root .
+persona_status=$?
+case "$persona_status" in
+    0 | 1 | 2) ;;
+    *) persona_status=2 ;;
+esac
+if [ "$persona_status" -gt "$status" ]; then status=$persona_status; fi
 
 exit "$status"

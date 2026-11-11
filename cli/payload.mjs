@@ -33,6 +33,8 @@ export const EXCLUDED = {
     "ab-run.mjs": "the A/B runner; its `SNAPSHOT` is one baseline, of one arm, on one date (#382)",
     "ab-grade.mjs": "the A/B graders, and a register of this repository's own stimuli (#382)",
     "local-routing.mjs": "this repository's earned-routing policy check against its own acquired capture; workshop tooling like the A/B instruments, with runtime support metadata embedded in the pack",
+    "acquire-personas.mjs": "the frozen core-persona acquisition instrument; starts authenticated host sessions and is never an adopter command or verification recipe (#520)",
+    "normalize-personas.mjs": "the publisher of this repository's retained private acquisition; the whitelisted records and offline checker ship instead (#520)",
     "warm.mjs":
         "the warm-start A/B runner: it starts real sessions on this repository's own tasks, and whether an " +
         "adopter's A/B ships with the adopter path is that change's to rule, not this one's",
@@ -47,6 +49,7 @@ export const EXCLUDED = {
 
 /** Shipped modules nothing the package exposes reaches, ruled to ship anyway, each with its ground. */
 export const PRODUCT = {
+    "persona-routing.mjs": "the offline checker for the acquired core-persona evidence shipped with it under #520; the artifact carries both its routing claim and the tool that regrades it, following the release-eval precedent",
     "recipe-output.mjs": "the agent executor reached by commands rendered from recipe-set --agent; the subprocess edge is outside the static import graph",
     "release-eval.mjs":
         "the eval result a release carries, written at publish by `--tagged`. Ruled product by the " +

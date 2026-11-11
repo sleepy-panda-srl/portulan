@@ -245,7 +245,10 @@ policy or guidance; missing adopter bindings remain unbound. Nonregular and unre
 not treated as absence. The two composed product roles have real plugin bindings. The committed
 four-tier fixture includes an on-invoke skill; the compile recipe checks it and its companion rules
 without writing. These are file/discovery contracts, not evidence of host enablement, field honoring
-or runtime savings. The core declarations choose
+or runtime savings. The acquired [native-child comparisons](../../evals/ab/personas/README.md)
+observe the three named core roles, matching inherited parent/child models and
+effective high/medium child effort. They do not isolate every compiled field or
+host precedence rule. The core declarations choose
 `model: inherit`, `omitClaudeMd: false` and `cacheLifetime: 5m`, subject to the host precedence described in
 [`../personas/README.md`](../personas/README.md). **The librarian reports project always-tier headroom**
 against a declared budget and puts conditional demotion drafts in its standing report
@@ -363,8 +366,12 @@ without lost quality, and the shipped routing must be the routing its record sup
 context that cannot do its role costs rework; a reviewer keeps the conventions it grades against.
 Session switches retain their [specific guards](sessions.md#a-switch-that-changes-the-prefix-is-earned),
 and local routing retains its screen-versus-comparison distinction below.
-The A/B demonstrations for all three fresh-context personas remain row 13's work, separate from the
-existing warm-start and local-worker records.
+The three [core-persona records](../../evals/ab/personas/README.md) compare shipped
+inheritance with a native medium-effort override on one concrete model. Both arms
+pass the nine frozen cases; the shipped policy retains inheritance and undeclared
+effort. Other parent models remain unmeasured. Plugin updates carry the baked
+bindings; `upgrade` refreshes existing eligible bindings through the compiler's
+ownership planner without creating foreign core adapters or changing settings.
 
 ### Budget what returns to the model
 
