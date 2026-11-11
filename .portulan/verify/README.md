@@ -720,3 +720,10 @@ receipt offline; the tests recipe forces incorrect settings, overlap, admission,
 network-guard and ledger totals red. Acquisition is manual and never a recipe.
 The compiler/doctor tests separately exercise Pack Definition 1.1 counts,
 minimum composition, drift/removal, refusal and owned cap-only settings.
+
+The [cache input controls](../../cli/cache-inputs.test.mjs) keep omitted read/write
+usage unpriced in ordinary doctor and cold/warm prompt, tool, status and Stop
+paths. They pair unknown fields with explicit zero/900 completion, derive writes
+only from complete lifetime observations after deduplication, reject a contradictory
+explicit aggregate, exercise cache6 migration and once files, and preserve torn-tail,
+compaction, sidechain and complete-append behavior. Frozen captures are unchanged.

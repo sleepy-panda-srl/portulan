@@ -50,7 +50,7 @@ for (const change of [{ horizon: 40 }, { resume: 400 }, { declared: { read: 0.2,
 }
 
 test("a later explicit lifetime does not rewrite the original crossing", () => trial(({ payload, file, options }) => {
-    const unknown = context => JSON.stringify({ type: "assistant", message: { id: `u${context}`, model: "fixture", usage: { input_tokens: context, output_tokens: 1 } } });
+    const unknown = context => JSON.stringify({ type: "assistant", message: { id: `u${context}`, model: "fixture", usage: { input_tokens: context, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 1 } } });
     const hour = JSON.parse(row("h3", 1500, true));
     hour.message.usage.cache_creation = { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 1499 };
     fs.writeFileSync(file, [unknown(1000), unknown(1700), JSON.stringify(hour)].join("\n") + "\n");

@@ -115,6 +115,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`advisory-host-trace.test.mjs`](advisory-host-trace.test.mjs) | The shipped host trace is evidence data; CI only replays its public counters. |
 | [`advisory.test.mjs`](advisory.test.mjs) | Tests for `advisory` — the restart advisory's one line with a tool result or at the prompt, and its figure in the status line. |
 | [`branch-freshness.test.mjs`](branch-freshness.test.mjs) | Tests for this repository's branch freshness check and trusted workflow. |
+| [`cache-inputs.test.mjs`](cache-inputs.test.mjs) | Missing cache inputs stay unpriced in reports and hooks. |
 | [`cache-risk.test.mjs`](cache-risk.test.mjs) | Project cache warnings are reports; no host state or server is consulted. |
 | [`cache-stability.test.mjs`](cache-stability.test.mjs) | Cache-prefix tests. |
 | [`checkout-refs.live.test.mjs`](checkout-refs.live.test.mjs) | A workflow that checks out MORE THAN ONCE names the ref of every checkout after the first. |

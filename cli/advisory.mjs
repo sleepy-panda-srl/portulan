@@ -12,12 +12,12 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { HORIZON, LedgerError, SPEND_FIGURES, figureOf, foldFigures, overflowingWrite, readLine, readTranscript, restartSaving, sessionFigures } from "./ledger.mjs";
+import { HORIZON, INPUT_USAGE_MASK, inputUnusable, usageOf, contextOf, LedgerError, SPEND_FIGURES, figureOf, foldFigures, overflowingWrite, readLine, readTranscript, restartSaving, sessionFigures } from "./ledger.mjs";
 
 const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const savingWords = (n) => grouped(Number(n.toPrecision(6)));
 
-const STATE_VERSION = 6;
+const STATE_VERSION = 7;
 
 const CHUNK = 1 << 16;
 
@@ -92,7 +92,7 @@ function restore(file, transcriptPath, stat) {
     if (typeof kept.comparison !== "string") return null;
     if (typeof kept.freshUnsafe !== "boolean" || typeof kept.latestUnsafe !== "boolean" || ![kept.freshId, kept.latestId, kept.crossingId].every(id => id === null || typeof id === "string")) return null;
     if (![kept.freshInput, kept.latestInput, kept.crossingInput].every(v => v === null || (Array.isArray(v) && v.length === 5 && v.every(isCount)))) return null;
-    if (!Array.isArray(kept.recentInputs) || kept.recentInputs.length > 16 || !kept.recentInputs.every(v => Array.isArray(v) && v.length === 3 && typeof v[0] === "string" && Array.isArray(v[1]) && v[1].length === 5 && v[1].every(isCount) && (v[2] === 0 || v[2] === 1))) return null;
+    if (!Array.isArray(kept.recentInputs) || kept.recentInputs.length > 16 || !kept.recentInputs.every(v => Array.isArray(v) && v.length === 3 && typeof v[0] === "string" && Array.isArray(v[1]) && v[1].length === 5 && v[1].every(isCount) && (isCount(v[2]) && (v[2] & INPUT_USAGE_MASK) === v[2]))) return null;
     if (kept.crossing !== null && (!wellFormed(kept.crossing) || kept.crossing.pending || kept.crossing.compactions !== kept.figures.compactions || kept.crossing.fresh !== kept.figures.fresh || kept.crossing.requests > kept.figures.requests || kept.crossing.recent.length !== 0)) return null;
     return kept;
 }
@@ -103,7 +103,7 @@ const validity = () => ({ freshUnsafe: false, latestUnsafe: false, freshId: null
 const reset = (kept) => Object.assign(kept, { offset: 0, tail: "", figures: sessionFigures(), crossing: null, recentInputs: [], ...validity() });
 function rememberInput(state, r) {
     if (r.id === null) return;
-    state.recentInputs = [...state.recentInputs.filter(v => v[0] !== r.id), [r.id, inputOf(r), r.usageMissing & 1]].filter(v => state.figures.recent.includes(v[0])).slice(-16);
+    state.recentInputs = [...state.recentInputs.filter(v => v[0] !== r.id), [r.id, inputOf(r), r.usageMissing & INPUT_USAGE_MASK]].filter(v => state.figures.recent.includes(v[0])).slice(-16);
 }
 
 function replayValidity(kept, transcriptPath, spend) {
@@ -114,7 +114,7 @@ function replayValidity(kept, transcriptPath, spend) {
         const fresh = state.figures.fresh === null || state.figures.pending;
         foldFigures(state.figures, { request: r });
         rememberInput(state, r);
-        const unsafe = ((r.usageMissing | r.usageUnsafe) & 1) !== 0;
+        const unsafe = inputUnusable(r);
         if (fresh) { state.freshUnsafe = unsafe; state.freshId = r.id; state.freshInput = inputOf(r); }
         state.latestUnsafe = unsafe; state.latestId = r.id; state.latestInput = inputOf(r);
         if (state.freshUnsafe && !isCount(state.figures.fresh)) state.figures.fresh = 0;
@@ -166,13 +166,13 @@ function advance(kept, transcriptPath, size, spend) {
                     const input = inputOf(r);
                     const tracked = [[kept.freshId, kept.freshInput], [kept.latestId, kept.latestInput], [kept.crossingId, kept.crossingInput]];
                     const recent = kept.recentInputs.find(v => v[0] === r.id);
-                    if (((r.usageMissing | r.usageUnsafe) & 1) || (recent && (JSON.stringify(recent[1]) !== JSON.stringify(input) || recent[2] !== (r.usageMissing & 1))) || (r.id !== null && tracked.some(([id, before]) => id === r.id && (JSON.stringify(before) !== JSON.stringify(input) || kept.freshUnsafe || kept.latestUnsafe)))) replay = true;
+                    if (inputUnusable(r) || (recent && (JSON.stringify(recent[1]) !== JSON.stringify(input) || recent[2] !== (r.usageMissing & INPUT_USAGE_MASK))) || (r.id !== null && tracked.some(([id, before]) => id === r.id && (JSON.stringify(before) !== JSON.stringify(input) || kept.freshUnsafe || kept.latestUnsafe)))) replay = true;
                 }
                 foldFigures(kept.figures, read);
                 if (compactions !== kept.figures.compactions) Object.assign(kept, { crossing: null, ...validity() });
                 if (r && !r.synthetic && !r.sidechain) {
                     rememberInput(kept, r);
-                    const unsafe = ((r.usageMissing | r.usageUnsafe) & 1) !== 0;
+                    const unsafe = inputUnusable(r);
                     if (requests !== kept.figures.requests) {
                         if (fresh) { kept.freshUnsafe = unsafe; kept.freshId = r.id; kept.freshInput = inputOf(r); }
                         kept.latestUnsafe = unsafe; kept.latestId = r.id; kept.latestInput = inputOf(r);
@@ -347,10 +347,11 @@ export function onStatus(payload, { dir = os.tmpdir(), warn = () => {}, declared
     const figure = found.why === undefined ? refresh(found, warn, { declared, horizon, resume }) : found;
     if (figure.why !== undefined) return figure.after !== undefined ? `restart threshold: after ${figure.after}` : `restart threshold: not known, because ${figure.why}`;
     const usage = payload?.context_window?.current_usage;
-    const counts = usage !== null && typeof usage === "object" ? ["input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"].map((k) => usage[k]) : [];
-    if (counts.length === 3 && counts.every((n) => Number.isSafeInteger(n) && n >= 0)) {
-        const context = counts.reduce((a, b) => a + b, 0);
+    if (usage !== undefined && usage !== null) {
+        if (typeof usage !== "object" || Array.isArray(usage)) return "restart threshold: not known, because the current input has missing or invalid counters";
+        const current = usageOf(usage), context = contextOf(current);
         if (!Number.isSafeInteger(context)) return "restart threshold: not known, because the current input sum is unsafe";
+        if (inputUnusable(current)) return "restart threshold: not known, because the current input has missing or invalid counters";
         try {
             figure.saving = restartSaving({ fresh: figure.fresh, context, horizon: figure.horizon, read: figure.multipliers.read, write: figure.multipliers.write, resume: figure.resume ?? 0 });
         } catch (error) {

@@ -85,22 +85,42 @@ export function mayHold(name, root) {
 }
 
 /** null for a record that is not an API response with usage; no content field is ever read. */
+export const INPUT_USAGE_MASK = 1 | 4 | 8;
+export const inputUnusable = r => Boolean((r.usageMissing & INPUT_USAGE_MASK) || (r.usageUnsafe & 1));
+
+export function usageOf(usage) {
+    const lifetimes = usage.cache_creation !== null && typeof usage.cache_creation === "object" ? usage.cache_creation : {};
+    const written1h = count(lifetimes.ephemeral_1h_input_tokens);
+    const written5m = count(lifetimes.ephemeral_5m_input_tokens);
+    const writeParts = (lifetimes.ephemeral_5m_input_tokens === undefined ? 0 : 1) | (lifetimes.ephemeral_1h_input_tokens === undefined ? 0 : 2);
+    const invalid = value => value !== undefined && (!Number.isSafeInteger(value) || value < 0);
+    const inputUnsafe = [usage.input_tokens, usage.cache_creation_input_tokens, usage.cache_read_input_tokens, lifetimes.ephemeral_1h_input_tokens, lifetimes.ephemeral_5m_input_tokens].some(invalid) ||
+        !Number.isSafeInteger(count(usage.input_tokens) + Math.max(count(usage.cache_creation_input_tokens), written1h + written5m) + count(usage.cache_read_input_tokens)) ||
+        (usage.cache_creation_input_tokens !== undefined && count(usage.cache_creation_input_tokens) < written1h + written5m);
+    return {
+        usageMissing: (usage.input_tokens === undefined ? 1 : 0) | (usage.output_tokens === undefined ? 2 : 0) |
+            (usage.cache_read_input_tokens === undefined ? 4 : 0) | (usage.cache_creation_input_tokens === undefined && writeParts !== 3 ? 8 : 0),
+        usageUnsafe: (inputUnsafe ? 1 : 0) | (invalid(usage.output_tokens) ? 2 : 0),
+        writeTotal: Number.isSafeInteger(usage.cache_creation_input_tokens) && usage.cache_creation_input_tokens >= 0 ? usage.cache_creation_input_tokens : null,
+        writeParts,
+        uncached: count(usage.input_tokens),
+        written1h,
+        written5m,
+        writtenUnknown: Math.max(0, count(usage.cache_creation_input_tokens) - written1h - written5m),
+        read: count(usage.cache_read_input_tokens),
+        output: count(usage.output_tokens),
+    };
+}
+
 function requestOf(record) {
     if (record === null || typeof record !== "object" || record.type !== "assistant") return null;
     const message = record.message;
     if (message === null || typeof message !== "object") return null;
     const usage = message.usage;
     if (usage === null || typeof usage !== "object") return null;
-    // The host's own records, an interruption or an API error, with no request behind them.
+    // Synthetic host records have no request behind them.
     if (message.model === "<synthetic>") return { synthetic: true };
-    const lifetimes = usage.cache_creation !== null && typeof usage.cache_creation === "object" ? usage.cache_creation : {};
-    const written1h = count(lifetimes.ephemeral_1h_input_tokens);
-    const written5m = count(lifetimes.ephemeral_5m_input_tokens);
     const at = Date.parse(record.timestamp);
-    const invalid = value => value !== undefined && (!Number.isSafeInteger(value) || value < 0);
-    const inputUnsafe = [usage.input_tokens, usage.cache_creation_input_tokens, usage.cache_read_input_tokens, lifetimes.ephemeral_1h_input_tokens, lifetimes.ephemeral_5m_input_tokens].some(invalid) ||
-        !Number.isSafeInteger(count(usage.input_tokens) + Math.max(count(usage.cache_creation_input_tokens), written1h + written5m) + count(usage.cache_read_input_tokens)) ||
-        (usage.cache_creation_input_tokens !== undefined && count(usage.cache_creation_input_tokens) < written1h + written5m);
     const roleParts = text(record.attributionAgent)?.split(":");
     const role = roleParts?.every(part => /^[a-zA-Z0-9_-]+$/.test(part)) && RECORDED_ROLES.includes(roleParts.at(-1)) ? roleParts.at(-1) : null;
     return {
@@ -108,20 +128,12 @@ function requestOf(record) {
         model: text(message.model),
         effort: text(record.effort),
         role,
-        usageMissing: (usage.input_tokens === undefined ? 1 : 0) | (usage.output_tokens === undefined ? 2 : 0),
-        usageUnsafe: (inputUnsafe ? 1 : 0) | (invalid(usage.output_tokens) ? 2 : 0),
-        writeTotal: Number.isSafeInteger(usage.cache_creation_input_tokens) && usage.cache_creation_input_tokens >= 0 ? usage.cache_creation_input_tokens : null,
+        ...usageOf(usage),
         branch: text(record.gitBranch),
         cwd: text(record.cwd),
         at: Number.isFinite(at) ? at : null,
         sidechain: record.isSidechain === true,
         agent: text(record.agentId),
-        uncached: count(usage.input_tokens),
-        written1h,
-        written5m,
-        writtenUnknown: Math.max(0, count(usage.cache_creation_input_tokens) - written1h - written5m),
-        read: count(usage.cache_read_input_tokens),
-        output: count(usage.output_tokens),
     };
 }
 
@@ -255,8 +267,10 @@ export function readTranscript(file, { end = null } = {}) {
             tally.duplicates += 1;
             for (const c of CLASSES) prior[c] = Math.max(prior[c], request[c]);
             prior.usageMissing &= request.usageMissing;
+            prior.writeParts |= request.writeParts;
             prior.usageUnsafe |= request.usageUnsafe;
             if (request.writeTotal !== null) prior.writeTotal = Math.max(prior.writeTotal ?? 0, request.writeTotal);
+            if (prior.writeTotal !== null || prior.writeParts === 3) prior.usageMissing &= ~8;
             if (prior.writeTotal !== null) prior.writtenUnknown = Math.max(0, prior.writeTotal - prior.written1h - prior.written5m);
             if (!Number.isSafeInteger(contextOf(prior)) || (prior.writeTotal !== null && prior.written1h + prior.written5m > prior.writeTotal)) prior.usageUnsafe |= 1;
             continue;
@@ -432,7 +446,7 @@ export function thresholdFor(transcript, options = {}) {
     const main = transcript.requests?.filter(r => !r.sidechain) ?? [];
     if (!main.length) return figureOf(transcript.figures, options);
     const first = main[Math.max(0, main.findLastIndex(r => r.compacted))], last = main.at(-1);
-    if ([first, last].some(r => ((r.usageMissing | r.usageUnsafe) & 1) !== 0)) return { unavailable: "usage" };
+    if ([first, last].some(inputUnusable)) return { unavailable: "usage" };
     const lifetime = main.findLast(r => lifetimeOf(r) !== null);
     return figureOf({ ...transcript.figures, fresh: contextOf(first), last: contextOf(last), freshLifetime: lifetimeOf(first), lifetime: lifetime ? lifetimeOf(lifetime) : null }, options);
 }
