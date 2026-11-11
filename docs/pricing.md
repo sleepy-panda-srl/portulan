@@ -17,8 +17,8 @@ Panda sells is the labor of applying it and keeping it true.
 ## Free — the method
 
 Everything in this repository, under Apache-2.0, forever: the engine (`core/`), the Workspace
-Definition (`spec/`), all eight CLI subcommands (`init` · `doctor` · `compile` · `vendor` ·
-`index` · `upgrade` · `new` · `feedback`), the Claude Code plugin, the universal packs, and a
+Definition (`spec/`), every CLI subcommand (`init` · `doctor` · `compile` · `vendor` ·
+`index` · `upgrade` · `new` · `feedback` · `finish`), the Claude Code plugin, the universal packs, and a
 complete demo workspace to read. Run it in production. Nothing in the free layer phones home,
 meters seats, or expires — the product is its files, and the files are yours once you have them.
 

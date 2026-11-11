@@ -26,7 +26,7 @@ account of what the release does *not* contain.
 This is pre-release software. The leading `0.` is meant literally: nothing here is stable yet, and
 the surface may change between minor versions. What is authored today is the engine in [`core/`](core/),
 the Workspace Definition in [`spec/`](spec/), two complete workspaces, the CLI in [`cli/`](cli/) with
-all eight subcommands, the enforcement compiler, the memory lifecycle and the plugin packaging. The remaining directories
+every subcommand, the enforcement compiler, the memory lifecycle and the plugin packaging. The remaining directories
 fill in milestone by milestone; [`docs/plan.md`](docs/plan.md) is the living map of that work.
 
 The repository is **public** — reading, cloning, forking and installing the plugin need no account of
@@ -131,8 +131,9 @@ commit, refusing any packed file that differs from its source.
 | [`upgrade`](cli/upgrade.mjs) | Migrate a workspace across Workspace Definition versions |
 | [`new`](cli/new.mjs) | Scaffold a skill, persona, pack, workspace, gate policy or repo card |
 | [`feedback`](cli/feedback.mjs) | File a bug, improvement or feedback issue you previewed first |
+| [`finish`](cli/finish.mjs) | Close a change in one call: commit and push only when every verify recipe passes |
 
-Beside the eight sit tools that are deliberately not subcommands, and the compiled-hook runners, which
+Beside these sit tools that are deliberately not subcommands, and the compiled-hook runners, which
 are not subcommands at all. [`cli/README.md`](cli/README.md), rendered from the code, lists that wider roster.
 
 ## Repository layout

@@ -306,6 +306,15 @@ describe("the drafted card", () => {
         assert.doesNotMatch(draftCard({ ...manifest, slots: rest }, read, { workspace: ".portulan", inTree: inside, repoCards: ["app"] }), /handoff/, "no handoff series declared, none named");
     });
 
+    test("the card closes a change with `portulan finish`, and names `npx` where that is not on the path", () => {
+        const card = draftCard(manifest, read, { workspace: ".portulan", inTree: inside });
+        const records = /\n## Records\n\n([\s\S]*?)\n\n## /.exec(card)?.[1];
+        assert.ok(records, "the card carries no Records section");
+        assert.match(records, /^Close a change with `git add <new files> && portulan finish -m "<subject>" -m "<why>"` after writing its changelog entry/);
+        assert.match(records, /Where `portulan` is not on the path, run `npx @sleepy_panda_srl\/portulan finish` instead, and do not search the disk for it\./);
+        assert.doesNotMatch(card, /finish\.mjs/, "a path no session can resolve sent an agent searching the disk for it");
+    });
+
     test("the card opens with the engine's rules on reading and the cache, which `compile` writes out", () => {
         const card = draftCard(manifest, read, { workspace: ".portulan", inTree: inside });
         assert.match(card, new RegExp(`^> import is here in full\\.\n\n## ${READING_TITLE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\n\n${READING_LINE}\n\n## Identity`, "m"));

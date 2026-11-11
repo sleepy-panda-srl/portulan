@@ -59,8 +59,9 @@ clearance opinion sought.
   scan → drafted workspace) · `doctor` · `compile` · `vendor` (into any host, and out of a repository
   into a feed-side workspace that names it) · `index` · `upgrade` · `new` (from a core template,
   never into `core/`) · `feedback` (an issue from a report you previewed, seam-scanned before it
-  leaves the machine, under the Gated tier); (3) vendored standards mode, a self-contained AGENTS.md +
-  .portulan/, for cloud/CI/non-Claude hosts.
+  leaves the machine, under the Gated tier) · `finish` (one call that closes a change, committing and
+  pushing only when every verify recipe passes); (3) vendored standards mode, a self-contained
+  AGENTS.md + .portulan/, for cloud/CI/non-Claude hosts.
 - **LLM-agnostic by construction.** Standards first (AGENTS.md + SKILL.md), host adapters second,
   repo-side enforcement always. ~80% of value ships identically on every host; the enforcement
   backends are per-host with an honest degradation report, which `doctor` gives. The **platform
