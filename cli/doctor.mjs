@@ -33,6 +33,7 @@ import { handoffPolicy } from "./handoff-policy.mjs";
 import { movableSections } from "./instructions.mjs";
 import { formLine } from "./form.mjs";
 import { sessionsLine } from "./sessions.mjs";
+import { cacheRiskLines } from "./cache-risk.mjs";
 import { hostPaths, ledger, print, readSpend, restartSaving, worktrees, linesChanged, GENERAL_READ, HORIZON } from "./ledger.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1948,6 +1949,10 @@ export async function inspect(workspaceDir, options = {}) {
         sessions = `not read — ${error.message}`;
     }
     report("sessions", sessions);
+    try {
+        const root = treeOf(dir, workspace);
+        if (root !== null) for (const line of cacheRiskLines(root)) report("cache-risk", line);
+    } catch { report("cache-risk", "project configuration unassessed — the declared tree could not be read."); }
     report("lever", `Claude Code project domain: ${biggestLeverLine(dir, workspace)}`);
 
     return { dir, workspace, findings, stats };
