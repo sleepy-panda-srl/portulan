@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Portulan workspace — verify recipe: the compiled enforcement matches the policy.
+# Compare repository settings/bindings and portable guidance.
 # Exit 0 green · 1 red · 2 could not run.
 
 set -uo pipefail
@@ -21,12 +21,16 @@ for required in cli/compile.mjs .portulan/gates.json; do
     fi
 done
 
-printf 'compile: checking repository enforcement/bindings and committed four-tier guidance exemplar\n'
+printf 'compile: checking repository settings/bindings and portable guidance exemplars\n'
 
-# The pack root is pinned so the verdict is about this tree, never the host's plugin cache.
+# Pin root enforcement; compare exemplars through guidance-only compilation.
 worst=0
 for workspace in . cli/fixtures/guidance cli/fixtures/nested-guidance; do
-    node cli/compile.mjs --workspace "$workspace" --pack-root packs --check
+    if [ "$workspace" = . ]; then
+        node cli/compile.mjs --workspace "$workspace" --pack-root packs --check
+    else
+        node -e 'import("./cli/compile.mjs").then(({compileGuidance}) => { const r = compileGuidance(process.argv[1], {check:true}); process.exitCode = r.declared ? (r.drifted ? 1 : 0) : 2; }).catch(e => { console.error(e.message); process.exitCode = 2; });' "$workspace"
+    fi
     status=$?
     case "$status" in
         0) ;;

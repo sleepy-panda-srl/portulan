@@ -707,7 +707,7 @@ describe("the cache lifetime's offer, printed after each closing line and never 
         assert.deepEqual(after(h, /owes nothing/), OFFER);
     });
 
-    test("a workspace that is no repository is not offered: it has no settings of its own for `compile` to write", async () => {
+    test("the cache-lifetime upgrade offer is scoped to repositories, excluding demo and portfolio workspaces", async () => {
         for (const kind of ["demo", "portfolio"]) {
             const h = harness();
             assert.equal(await run([current({ kind })], h.options), 0, h.text());

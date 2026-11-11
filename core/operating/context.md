@@ -403,6 +403,13 @@ crossing under those assumptions. A controlled Claude Code trace and delayed
 batch checks live in [`cli/fixtures/advisory-crossing/`](../../cli/fixtures/advisory-crossing/);
 they do not promise a universal host transcript latency bound.
 
+Full compilation emits Claude prompt/tool restart advice and a status line for every authored
+repository, demo or portfolio workspace, independently of a gate policy. Declared session switches
+and ritual caps compose into that settings artifact; only explicit `spend.restart: "block"` adds
+advisory Stop. Permissions and verification Stop still require a gate policy. Other adapters do not
+compile this advice. A missing manifest or pointer does not adopt native settings.
+
+
 ### Keep the prefix stable
 
 `doctor` reports potential Claude Code cache risks from the declared tree's

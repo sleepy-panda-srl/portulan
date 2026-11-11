@@ -199,7 +199,7 @@ names.)_
 | [`doctor.sh`](doctor.sh) | Numeric branch/recent class analysis and supported restart counterfactuals are exercised in [`../../cli/spend-analysis.test.mjs`](../../cli/spend-analysis.test.mjs): class-to-lever pairs, normalized-index assumptions, unknown-TTL bounds, recent/branch ownership, closed role/effort labels, unsafe arithmetic, production missing/invalid counters and static/agent controls. Advisory validity persistence, historical-crossing revalidation and bounded replay controls are in [`../../cli/advisory-crossing.test.mjs`](../../cli/advisory-crossing.test.mjs).  Project cache-risk reports are exercised by [`../../cli/cache-risk.test.mjs`](../../cli/cache-risk.test.mjs) through the tests recipe: paired ordinary/static warnings, project precedence, sanitized malformed/ownership controls and green agent output. They inspect project configuration, never connect to servers or resolve live activation.  both workspaces validate with `--static` (no usage-record discovery): schema, paths, cross-references, claims against the tree, provenance — plus the memory store's growth report (count, size, records stating no retirement condition; notes, never failures) | `bash`, `git`, `node` |
 | [`tests.sh`](tests.sh) | every `*.test.mjs` under [`../../cli/`](../../cli/) passes — counted by `find` first, then run by a recursive glob over that same set; a red run ends with each failing test, where it is and its name | `bash`, `node`; optional `python3` for the actual terminal interview control |
 | [`plugin.sh`](plugin.sh) | the packaging: both manifests parse and agree, component paths resolve, declared skills and agents are real | `bash`, `git`, `node` |
-| [`compile.sh`](compile.sh) | repository enforcement and persona fields match their sources, and the committed four-tier and nested-instruction exemplars match their units and ownership; all three checks are read-only and any failure propagates, with could-not-run outranking red | `bash`, `node` |
+| [`compile.sh`](compile.sh) | full repository settings and persona bindings match their sources; guidance-only compilation checks the portable four-tier and nested-instruction exemplars against their units and ownership; all three comparisons are read-only, and could-not-run outranks red | `bash`, `node` |
 | [`workflow-filters.sh`](workflow-filters.sh) | every jq **and awk** program the workflows run, lifted out of the parsed `run:` scalars and executed against null-bearing and real-body fixtures — exact stdout, exact exit status | `awk`, `bash`, `jq`, `node` |
 | [`index.sh`](index.sh) | kept indexes match their render; memory budgets hold; handoff dates and declared new-record caps hold; a handoff index renders its complete budgeted window, or the full series without a budget (this repository keeps no copy) | `bash`, `git`, `node` |
 | [`context.sh`](context.sh) | what a boot reads and what the host loads into every context, measured for both workspaces by [`../../cli/context.mjs`](../../cli/context.mjs) — each file with its size and why it counts, and what is left out — and **Portulan's own footprint railed**: this workspace's boot read-set, the demo's, the boot skill, its steps and the kernel, which every adopter's boot reads where no boot card is loaded, the skill's step files, which a boot reads where its manifest is a pointer or names a pack, and the plugin's skill and agent descriptions, each at its figure on the day it landed plus 2%. A boot whose card is loaded reads the skill and the always tier, card included, and nothing else. A demotion lowers its line in the recipe; a raise carries its reason on its line and in that change's commit. Proposal [`0036`](../proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md), items 3 and 6. Its workspace list is audited against the tree, as `index.sh`'s is | `bash`, `git`, `node` |
@@ -311,7 +311,10 @@ that repairs what it is checking always passes, which is a fail-open dressed as 
 is the recipe most tempting to write that way, because the repair is one function call away.
 
 It also checks [`../../cli/fixtures/guidance/.claude/skills/release/SKILL.md`](../../cli/fixtures/guidance/.claude/skills/release/SKILL.md)
-and the companion fixture rules from their committed four-tier sources. The required control asserts
+and the companion fixture rules from their committed four-tier sources, using `compileGuidance` so
+the examples never acquire machine-local native settings. Full temporary CLI tests cover default
+advice for all three governing workspace kinds. Separate forced reds cover root settings, root
+persona bindings and each exemplar. The required control asserts
 tracked output exists before any write, forces on-invoke and scoped-rule drift independently, observes
 read-only red, and regenerates the original bytes. A source edit changes the derived output. Separate
 exit controls prove either workspace's red survives a later green and exit 2 outranks both.
@@ -719,7 +722,7 @@ isolated native Agent admission controls. The ledger recipe checks its numeric
 receipt offline; the tests recipe forces incorrect settings, overlap, admission,
 network-guard and ledger totals red. Acquisition is manual and never a recipe.
 The compiler/doctor tests separately exercise Pack Definition 1.1 counts,
-minimum composition, drift/removal, refusal and owned cap-only settings.
+minimum composition, drift/removal, refusal and owned native settings.
 
 The [cache input controls](../../cli/cache-inputs.test.mjs) keep omitted read/write
 usage unpriced in ordinary doctor and cold/warm prompt, tool, status and Stop
