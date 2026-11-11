@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "workspace": ".",
+  "files": [
+    {
+      "target": "api/CLAUDE.md",
+      "sources": [
+        "context/api.md"
+      ],
+      "pending": false
+    }
+  ]
+}

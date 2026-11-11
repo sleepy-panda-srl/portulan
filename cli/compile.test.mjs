@@ -3084,7 +3084,7 @@ test("committed on-invoke and companion outputs exist before a read-only clean-c
     assert.equal(said(t, [...scratchArgs, "--check"]).code, 0);
 });
 
-test("the repository compile recipe preserves either workspace's red and unavailable verdicts", () => {
+test("the repository compile recipe preserves each workspace's red and unavailable verdicts", () => {
     const dir = scratch(), bin = path.join(dir, "bin");
     fs.mkdirSync(path.join(dir, ".portulan/verify"), { recursive: true });
     fs.mkdirSync(path.join(dir, "cli"));
@@ -3093,12 +3093,12 @@ test("the repository compile recipe preserves either workspace's red and unavail
     fs.writeFileSync(path.join(dir, ".portulan/gates.json"), "{}");
     fs.writeFileSync(path.join(dir, "cli/compile.mjs"), "");
     const calls = path.join(dir, "calls");
-    fs.writeFileSync(path.join(bin, "node"), '#!/bin/sh\nprintf "%s\\n" "$3" >>"$RECIPE_CALLS"\nif [ "$3" = "." ]; then exit "$FIRST_RESULT"; else exit "$SECOND_RESULT"; fi\n', { mode: 0o755 });
-    for (const [first, second, expected] of [[0,0,0], [1,0,1], [0,1,1], [2,0,2], [0,2,2], [1,2,2], [2,1,2], [7,0,2]]) {
+    fs.writeFileSync(path.join(bin, "node"), '#!/bin/sh\nprintf "%s\\n" "$3" >>"$RECIPE_CALLS"\nif [ "$3" = "." ]; then exit "$FIRST_RESULT"; elif [ "$3" = "cli/fixtures/guidance" ]; then exit "$SECOND_RESULT"; else exit "$THIRD_RESULT"; fi\n', { mode: 0o755 });
+    for (const [first, second, third, expected] of [[0,0,0,0], [1,0,0,1], [0,1,0,1], [0,0,1,1], [2,0,0,2], [0,2,0,2], [0,0,2,2], [1,2,0,2], [0,1,2,2], [2,1,0,2], [7,0,0,2], [0,7,0,2], [0,0,7,2]]) {
         fs.writeFileSync(calls, "");
-        const run = spawnSync("bash", [".portulan/verify/compile.sh"], { cwd: dir, env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, RECIPE_CALLS: calls, FIRST_RESULT: String(first), SECOND_RESULT: String(second) }, encoding: "utf8" });
+        const run = spawnSync("bash", [".portulan/verify/compile.sh"], { cwd: dir, env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, RECIPE_CALLS: calls, FIRST_RESULT: String(first), SECOND_RESULT: String(second), THIRD_RESULT: String(third) }, encoding: "utf8" });
         assert.equal(run.status, expected, `${first}/${second}: ${run.stderr}`);
-        assert.equal(fs.readFileSync(calls, "utf8"), first === 7 ? ".\n" : ".\ncli/fixtures/guidance\n");
+        assert.equal(fs.readFileSync(calls, "utf8"), first === 7 ? ".\n" : second === 7 ? ".\ncli/fixtures/guidance\n" : ".\ncli/fixtures/guidance\ncli/fixtures/nested-guidance\n");
     }
 });
 
@@ -4157,7 +4157,7 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         const engine = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-engine-"));
         SCRATCH.push(engine);
         fs.mkdirSync(path.join(engine, "cli"));
-        for (const file of ["compile.mjs", "discover.mjs", "inside.mjs", "frontmatter.mjs", "symbols.mjs", "html-entities.mjs", "ledger.mjs", "stop-policy.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
+        for (const file of ["compile.mjs", "import-files.mjs", "guidance-files.mjs", "instructions-journal.mjs", "init-preview.mjs", "discover.mjs", "inside.mjs", "frontmatter.mjs", "symbols.mjs", "html-entities.mjs", "ledger.mjs", "stop-policy.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
         fs.mkdirSync(path.join(engine, "core"));
         const leads = "# Leads\n\n- **A lead.**\n";
         fs.writeFileSync(path.join(engine, "core", "inside.md"), leads);

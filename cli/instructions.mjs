@@ -11,10 +11,13 @@
 
 import { createHash } from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { BOOT_CARD_UNIT, CompileError, GUIDANCE_RULES_DIR, ON_READ_INDEX, claudeCodeGuidance, guidanceEdits, importPath, importSpans, parseUnit } from "./compile.mjs";
+import { BOOT_CARD_UNIT, CompileError, GUIDANCE_RULES_DIR, ON_READ_INDEX, claudeCodeGuidance, guidanceEdits, importPath, importSpans, importTargetIsFile, parseUnit } from "./compile.mjs";
+import { preflightNestedEdits } from "./guidance-files.mjs";
+import { InstructionJournal, loadInstructionJournal, assertJournalScope } from "./instructions-journal.mjs";
 import { isInside } from "./inside.mjs";
 import { outlineMd } from "./symbols.mjs";
 
@@ -149,7 +152,7 @@ function importLines(text, from) {
     for (const { target, index } of importSpans(text)) {
         const bare = importPath(target);
         if (bare === null) continue;
-        if (!bare.startsWith("~") && !fs.statSync(path.resolve(path.dirname(from), bare), { throwIfNoEntry: false })?.isFile()) continue;
+        if (!bare.startsWith("~") && !importTargetIsFile(path.resolve(path.dirname(from), bare))) continue;
         const line = starts.findLastIndex((start) => start <= index);
         out.set(line, [...(out.get(line) ?? []), `@${target}`]);
     }
@@ -164,7 +167,7 @@ function strayImports(body, unitFile) {
     for (const { target } of importSpans(body)) {
         const bare = importPath(target);
         if (bare === null || bare.startsWith("~") || path.isAbsolute(bare)) continue;
-        if (fs.statSync(path.resolve(path.dirname(unitFile), bare), { throwIfNoEntry: false })?.isFile()) out.push(`@${target}`);
+        if (importTargetIsFile(path.resolve(path.dirname(unitFile), bare))) out.push(`@${target}`);
     }
     return out;
 }
@@ -481,7 +484,7 @@ export function planJoin({ tree, context, read }) {
                 continue;
             }
             const bytes = Buffer.byteLength(body.join("\n"), "utf8") + (line < lines.length - 1 ? 1 : 0);
-            back.set(source, { source, body, edited: unitDigest(unitText) !== digest, description: unit.description, bytes });
+            back.set(source, { source, text:unitText, body, edited: unitDigest(unitText) !== digest, description: unit.description, bytes });
         }
         if (refusals.length > refused) continue;
         const next = [];
@@ -717,6 +720,262 @@ function locate(workspaceDir) {
     return { manifest, tree, context, taken };
 }
 
+function sourceEdits(plan,join,modeOf){
+    return join?[
+        ...plan.files.map(f=>({root:"tree",file:f.rel,before:f.before,next:f.after,mode:modeOf(f.rel)})),
+        ...plan.units.map(u=>({root:"tree",file:u.source,before:u.text,next:null,mode:modeOf(u.source)})),
+    ]:[
+        ...plan.units.map(u=>({root:"tree",file:u.source,before:null,next:u.text,mode:modeOf(u.from)})),
+        ...plan.files.map(f=>({root:"tree",file:f.rel,before:f.before,next:f.after,mode:modeOf(f.rel)})),
+    ];
+}
+function planningReader(tree){
+    const raw=treeReader(tree),reads=new Map();
+    const read=rel=>{const file=path.join(tree,...rel.split("/")),before=fs.lstatSync(file,{throwIfNoEntry:false}),text=raw(rel),after=fs.lstatSync(file,{throwIfNoEntry:false});if(Boolean(before)!==Boolean(after)||(before&&(before.dev!==after.dev||before.ino!==after.ino||before.mode!==after.mode)))throw new InstructionsError(`${rel} changed during planning`);const value={text,identity:after?{dev:after.dev,ino:after.ino,mode:after.mode}:null};const old=reads.get(rel);if(old&&JSON.stringify(old)!==JSON.stringify(value))throw new InstructionsError(`${rel} changed between planning reads`);reads.set(rel,value);return text;};
+    return {read,reads};
+}
+function verifySavedPlan(where,journal){
+    const o=journal.owner,reads=new Map(o.reads.map(row=>[row.file,row])),read=rel=>reads.get(rel)?.text??null;
+    const plan=o.operation==="join"?planJoin({tree:where.tree,context:where.context,read}):planSplit({tree:where.tree,context:where.context,taken:o.taken,read});
+    if(plan.refusals.length)throw new InstructionsError(`saved migration no longer proves its operation: ${plan.refusals.join("; ")}`);
+    const edits=sourceEdits(plan,o.operation==="join",rel=>reads.get(rel)?.identity?.mode);
+    const expected=edits.map(({file,before,next,mode})=>({file,before,next,mode})),saved=o.inputs.map(({file,before,next,mode})=>({file,before,next,mode}));
+    if(JSON.stringify(expected)!==JSON.stringify(saved))throw new InstructionsError("saved edits are not the proved split or join of their original sources; retained journal for review");
+    for(const input of o.inputs)if(input.before!==null&&(read(input.file)!==input.before||JSON.stringify(reads.get(input.file)?.identity)!==JSON.stringify(input.original)))throw new InstructionsError("saved source does not match its planning snapshot");
+}
+function preflightSources(where, workspaceDir, edits, planning) {
+    assertJournalScope(where.tree, workspaceDir);
+    for (const root of INSTRUCTION_FILES) {
+        const file = path.join(where.tree, ...root.split("/")),
+            at = fs.lstatSync(file, { throwIfNoEntry: false });
+        if (at && (!at.isFile() || at.isSymbolicLink() || at.nlink !== 1))
+            throw new InstructionsError(`${root} is not an ordinary singly linked root; nothing was written`);
+        planning.read(root);
+    }
+    for (const edit of edits) {
+        const file = path.join(where.tree, ...edit.file.split("/")),
+            at = fs.lstatSync(file, { throwIfNoEntry: false });
+        if (edit.before === null) {
+            if (at) throw new InstructionsError(`${edit.file} arrived after planning`);
+            continue;
+        }
+        const held = planning.reads.get(edit.file);
+        if (
+            !at?.isFile() ||
+            at.isSymbolicLink() ||
+            at.nlink !== 1 ||
+            !held?.identity ||
+            at.dev !== held.identity.dev ||
+            at.ino !== held.identity.ino ||
+            at.mode !== held.identity.mode ||
+            planning.read(edit.file) !== edit.before
+        )
+            throw new InstructionsError(`${edit.file} changed identity, mode or bytes after planning`);
+    }
+}
+function referenceKey(tree, file) {
+    const root = fs.realpathSync(tree);
+    let full = path.resolve(file);
+    const seen = new Set();
+    for (let depth = 0; depth < 32; depth++) {
+        let real;
+        try {
+            real = fs.realpathSync(full);
+        } catch {
+            try {
+                const at = fs.lstatSync(full, { throwIfNoEntry: false });
+                if (at?.isSymbolicLink()) {
+                    if (seen.has(full)) return null;
+                    seen.add(full);
+                    full = path.resolve(fs.realpathSync(path.dirname(full)), fs.readlinkSync(full));
+                    continue;
+                }
+                real = path.join(fs.realpathSync(path.dirname(full)), path.basename(full));
+            } catch {
+                return null;
+            }
+        }
+        return isInside(root, real) ? posix(path.relative(root, real)).normalize("NFC").toLowerCase() : null;
+    }
+    return null;
+}
+function referencesOfRoots(tree, read) {
+    const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }),
+        found = new Set();
+    const add = (file) => {
+        const key = referenceKey(tree, file);
+        if (key !== null) found.add(key);
+    };
+    for (const file of INSTRUCTION_FILES) {
+        const current = read(file);
+        if (current === null) continue;
+        const text = typeof current === "string" ? current : decoder.decode(current);
+        for (const marker of marksOf(text).moved) add(path.resolve(tree, ...marker.source.split("/")));
+        for (const span of importSpans(text)) {
+            const target = importPath(span.target);
+            if (target === null) continue;
+            add(
+                target.startsWith("~/")
+                    ? path.resolve(os.homedir(), target.slice(2))
+                    : path.resolve(tree, path.dirname(file), target),
+            );
+        }
+    }
+    return found;
+}
+function currentReferences(journal) {
+    return referencesOfRoots(journal.root, (file) => journal.source({ file })?.bytes ?? null);
+}
+function assertProjectedReferences(where, edits, planning) {
+    const roots = new Map(
+        edits.filter((edit) => INSTRUCTION_FILES.includes(edit.file)).map((edit) => [edit.file, edit.next]),
+    );
+    const references = referencesOfRoots(where.tree, (file) =>
+        roots.has(file) ? roots.get(file) : planning.read(file),
+    );
+    for (const edit of edits)
+        if (edit.next === null && references.has(edit.file.normalize("NFC").toLowerCase()))
+            throw new InstructionsError(`a resulting root still references ${edit.file}; its unit was preserved`);
+}
+async function writeSourceOperation({
+    journal,
+    where,
+    workspaceDir,
+    options,
+    say,
+    write,
+    applyEdits,
+    restore,
+    context,
+    declared,
+    ratio,
+    tokens,
+    alwaysBytes,
+    recovered = false,
+}) {
+    let undoing = false;
+    const forwardGuard = (edit) => {
+        journal.guard();
+        const retiring =
+            journal.owner.operation === "join" &&
+            edit?.next === null &&
+            journal.owner.inputs.some((input) => input.file === edit.file);
+        journal.assertRootImages(retiring);
+        if (retiring && currentReferences(journal).has(edit.file.normalize("NFC").toLowerCase()))
+            throw new InstructionsError(`a live root still references ${edit.file}; its unit was preserved`);
+    };
+    const hook = (edit, phase, data) => {
+        journal.guard();
+        if (!undoing && phase !== "retired") forwardGuard(edit);
+        if (journal.owner.inputs.some((input) => input.file === edit.file)) journal.observe(edit, phase, data);
+    };
+    let applied = { ok: true, snapshots: [] };
+    const undo = (why) => {
+        let back;
+        undoing = true;
+        try {
+            back = restore(workspaceDir, applied.snapshots, {
+                treeDir: where.tree,
+                beforeMutation: (snapshot) => {
+                    journal.guard();
+                    if (
+                        snapshot.previous === null &&
+                        journal.owner.inputs.some((input) => input.file === snapshot.file) &&
+                        currentReferences(journal).has(snapshot.file.normalize("NFC").toLowerCase())
+                    )
+                        throw new InstructionsError(
+                            `a live root still references ${snapshot.file}; its unit was preserved`,
+                        );
+                },
+                journal: hook,
+                stopOnFailure: true,
+            });
+        } catch (error) {
+            back = { ok: false };
+            why += `; ${error.message}`;
+        } finally {
+            undoing = false;
+        }
+        let complete = false;
+        try {
+            complete = back.ok && journal.originalsRestored();
+            if (complete) {
+                journal.cleanupSources();
+                journal.mark("aborted");
+                journal.clean();
+            }
+        } catch (error) {
+            complete = false;
+            why += `; ${error.message}`;
+        }
+        say(
+            `instructions: ${why}; ${complete ? "rolled back, nothing is changed" : `the rollback was INCOMPLETE — retained ${journal.dir}; resume the recorded migration after reviewing changed sources`}`,
+        );
+        return 2;
+    };
+    try {
+        const remaining = journal.remaining();
+        applied = applyEdits(workspaceDir, remaining, {
+            treeDir: where.tree,
+            write,
+            beforeMutation: forwardGuard,
+            journal: hook,
+        });
+        if (!applied.ok) return undo(`the write failed — ${applied.reason}`);
+        let compiled;
+        try {
+            compiled = guidanceEdits(workspaceDir).edits.map((edit) => ({ ...edit, root: "tree" }));
+            preflightNestedEdits(
+                where.tree,
+                compiled.filter((edit) => edit.nested),
+            );
+        } catch (error) {
+            return undo(`\`compile\` refused the guidance — ${error.message}`);
+        }
+        const indexed = applyEdits(workspaceDir, compiled, {
+            treeDir: where.tree,
+            write,
+            beforeMutation: forwardGuard,
+        });
+        applied.snapshots.push(...indexed.snapshots);
+        if (!indexed.ok) return undo(`the index could not be written — ${indexed.reason}`);
+        const checked = await import("./compile.mjs");
+        if (checked.compileGuidance(workspaceDir, { check: true }).drifted)
+            throw new InstructionsError("the completed source set did not regenerate clean guidance");
+        journal.cleanupSources();
+        journal.mark("committed");
+        journal.clean();
+        let now;
+        try {
+            now = alwaysBytes();
+        } catch (error) {
+            if (!(error instanceof context.ContextError)) throw error;
+            say(
+                `instructions: written, and the index compiled; the always tier could not be measured after it — ${error.message}`,
+            );
+            return 0;
+        }
+        const offer =
+            options.join || declared.budget !== null
+                ? ""
+                : `. A budget is yours to declare: 0036 offers the larger of ${grouped(context.OFFER_FLOOR_TOKENS)} tokens and that, ${grouped(Math.max(context.OFFER_FLOOR_TOKENS, context.tokensOf(now, ratio)))}, as \`context.always.budget.tokens\``;
+        say(
+            `instructions: ${recovered ? "recovered the interrupted migration; " : ""}written, and the index compiled: the always tier is ${grouped(now)} B (${tokens(now)})${offer}`,
+        );
+        return 0;
+    } catch (error) {
+        if (!journal.terminal && applied.snapshots.length) return undo(error.message);
+        say(`instructions: ${error.message}; recovery record retained at ${journal.dir}`);
+        return 2;
+    } finally {
+        try {
+            journal.release();
+        } catch (error) {
+            say(`instructions: recovery lease retained at ${journal.dir} — ${error.message}`);
+        }
+    }
+}
+
 // `write` is the suite's, as `applyEdits` takes it: a write failing partway cannot be staged on a real disk.
 export async function run(argv, say = (line) => process.stdout.write(`${line}\n`), { cwd = process.cwd(), write } = {}) {
     let options;
@@ -730,7 +989,7 @@ export async function run(argv, say = (line) => process.stdout.write(`${line}\n`
         return 2;
     }
     const workspaceDir = path.resolve(cwd, options.workspace);
-    const read = treeReader(where.tree);
+    const planning=planningReader(where.tree),read=planning.read;
     // Loaded here, not at the top: `./context.mjs` and `./upgrade.mjs` reach this module, so a static edge would close a cycle.
     const context = await import("./context.mjs");
     const { applyEdits, restore } = await import("./upgrade.mjs");
@@ -746,6 +1005,16 @@ export async function run(argv, say = (line) => process.stdout.write(`${line}\n`
     const tokens = (bytes) => `~${grouped(context.tokensOf(bytes, ratio))} tokens`;
     const alwaysBytes = () => context.alwaysTier(where.tree).entries.reduce((n, e) => n + e.bytes, 0);
 
+    try{
+        const pending=loadInstructionJournal(where.tree,workspaceDir,where.context);
+        if(pending){
+            if(!options.write){say(`instructions: interrupted migration at ${pending.dir}; resume with --write (${pending.owner?.operation??"cleanup"})`);return 2;}
+            if(pending.terminal){pending.clean();say("instructions: completed interrupted journal cleanup; source files were preserved");return 0;}
+            pending.acquire();try{pending.recoverClaims();if(pending.owner.operation!==(options.join?"join":"split"))throw new InstructionsError(`pending ${pending.owner.operation} must be resumed with its original command`);verifySavedPlan(where,pending);pending.restoreRetiredUnits(currentReferences(pending));}catch(error){try{pending.release();}catch{}throw error;}
+            return writeSourceOperation({journal:pending,where,workspaceDir,options,say,write,applyEdits,restore,context,declared,ratio,tokens,alwaysBytes,recovered:true});
+        }
+    }catch(error){say(`instructions: ${error.message}`);return 2;}
+
     let edits;
     try {
         if (options.join) {
@@ -756,31 +1025,56 @@ export async function run(argv, say = (line) => process.stdout.write(`${line}\n`
                 say("instructions: no section of CLAUDE.md or .claude/CLAUDE.md is moved, so there is nothing to join");
                 return 0;
             }
+            preflightNestedEdits(
+                where.tree,
+                guidanceEdits(workspaceDir).edits.filter((edit) => edit.nested),
+            );
             for (const f of joined.files) {
                 for (const unit of f.units) say(`instructions: ${joinLine(unit, f.rel)}`);
                 const n = f.units.length;
-                say(`instructions: ${f.rel} takes back ${n} section${n === 1 ? "" : "s"}, and each of the ${grouped(f.clauses.clauses)} clauses lands once, none missing and none doubled`);
+                say(
+                    `instructions: ${f.rel} takes back ${n} section${n === 1 ? "" : "s"}, and each of the ${grouped(f.clauses.clauses)} clauses lands once, none missing and none doubled`,
+                );
             }
-            edits = [
-                ...joined.files.map((f) => ({ root: "tree", file: f.rel, next: f.after })),
-                ...joined.units.map((u) => ({ root: "tree", file: u.source, next: null })),
-            ];
+            edits = sourceEdits(joined, true, (rel) => planning.reads.get(rel)?.identity?.mode);
         } else {
             const split = planSplit({ tree: where.tree, context: where.context, taken: where.taken, read });
             for (const r of split.refusals) say(`instructions: refused — ${r}`);
             if (split.refusals.length) return 2;
             if (split.marked === 0) {
-                say(`instructions: no section of CLAUDE.md or .claude/CLAUDE.md is marked — a line \`${ON_READ_MARK}\` under a heading marks its section`);
+                say(
+                    `instructions: no section of CLAUDE.md or .claude/CLAUDE.md is marked — a line \`${ON_READ_MARK}\` under a heading marks its section`,
+                );
                 return 0;
             }
             for (const line of splitLines(split)) say(`instructions: ${line}`);
-            const before = alwaysBytes();
-            const after = before - split.files.reduce((n, f) => n + f.removed, 0) + split.index;
-            say(`instructions: the always tier goes from ${grouped(before)} B (${tokens(before)}) to ${grouped(after)} B (${tokens(after)}) at ${ratio} bytes per token, markers counted, which the host drops`);
-            edits = [
-                ...split.files.map((f) => ({ root: "tree", file: f.rel, next: f.after })),
-                ...split.units.map((u) => ({ root: "tree", file: u.source, next: u.text })),
-            ];
+            const guidance = guidanceEdits(workspaceDir);
+            preflightNestedEdits(
+                where.tree,
+                guidance.edits.filter((edit) => edit.nested),
+            );
+            edits = sourceEdits(split, false, (rel) => planning.reads.get(rel)?.identity?.mode);
+        }
+        preflightSources(where, workspaceDir, edits, planning);
+        if (options.join) assertProjectedReferences(where, edits, planning);
+        const { previewMigration } = await import("./init-preview.mjs");
+        let projected;
+        try {
+            projected = previewMigration(where.tree, workspaceDir, edits);
+        } catch (error) {
+            throw new InstructionsError(`prospective guidance refuses — ${error.message}`);
+        }
+        if (!options.join) {
+            const before = projected.before[0],
+                after = projected.after?.[0];
+            if (after === undefined)
+                say(
+                    `instructions: the always tier is currently ${grouped(before)} B (${tokens(before)}); its after forecast is unavailable because native imports cannot be projected exactly. --write remeasures the emitted result.`,
+                );
+            else
+                say(
+                    `instructions: the always tier goes from ${grouped(before)} B (${tokens(before)}) to ${grouped(after)} B (${tokens(after)}) at ${ratio} bytes per token, markers counted, which the host drops`,
+                );
         }
     } catch (error) {
         if (!(error instanceof InstructionsError || error instanceof context.ContextError || error instanceof CompileError)) throw error;
@@ -792,37 +1086,8 @@ export async function run(argv, say = (line) => process.stdout.write(`${line}\n`
         return 0;
     }
 
-    const applied = applyEdits(workspaceDir, edits, { treeDir: where.tree, write });
-    const undo = (why) => {
-        const back = restore(workspaceDir, applied.snapshots, { treeDir: where.tree });
-        say(`instructions: ${why}; ${back.ok ? "rolled back, nothing is changed" : `the rollback was INCOMPLETE — not put back: ${back.failed.join(", ")}`}`);
-        return 2;
-    };
-    if (!applied.ok) return undo(`the write failed — ${applied.reason}`);
-    let compiled;
-    try {
-        compiled = guidanceEdits(workspaceDir).edits.map((edit) => ({ root: "tree", file: edit.file, next: edit.next }));
-    } catch (error) {
-        return undo(`\`compile\` refused the guidance — ${error.message}`);
-    }
-    const indexed = applyEdits(workspaceDir, compiled, { treeDir: where.tree, write });
-    applied.snapshots.push(...indexed.snapshots);
-    if (!indexed.ok) return undo(`the index could not be written — ${indexed.reason}`);
-    let now;
-    try {
-        now = alwaysBytes();
-    } catch (error) {
-        if (!(error instanceof context.ContextError)) throw error;
-        say(`instructions: written, and the index compiled; the always tier could not be measured after it — ${error.message}`);
-        return 0;
-    }
-    const offer =
-        options.join || declared.budget !== null
-            ? ""
-            : `. A budget is yours to declare: 0036 offers the larger of ${grouped(context.OFFER_FLOOR_TOKENS)} tokens and that, ` +
-              `${grouped(Math.max(context.OFFER_FLOOR_TOKENS, context.tokensOf(now, ratio)))}, as \`context.always.budget.tokens\``;
-    say(`instructions: written, and the index compiled: the always tier is ${grouped(now)} B (${tokens(now)})${offer}`);
-    return 0;
+    try{preflightSources(where,workspaceDir,edits,planning);const journal=InstructionJournal.create(where.tree,workspaceDir,where.context,options.join?"join":"split",edits,planning.reads,where.taken);return writeSourceOperation({journal,where,workspaceDir,options,say,write,applyEdits,restore,context,declared,ratio,tokens,alwaysBytes});}
+    catch(error){say(`instructions: ${error.message}`);return 2;}
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

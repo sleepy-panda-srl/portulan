@@ -31,7 +31,8 @@ function snapshot(root) {
             const file = path.join(rel, item.name);
             if (item.isSymbolicLink()) files.push([file, "link", fs.readlinkSync(path.join(root, file))]);
             else if (item.isDirectory()) { files.push([file, "directory"]); walk(file); }
-            else files.push([file, fs.readFileSync(path.join(root, file)).toString("base64")]);
+            else if(item.isFile())files.push([file,fs.readFileSync(path.join(root,file)).toString("base64")]);
+            else files.push([file,"special",fs.lstatSync(path.join(root,file)).mode]);
         }
     }; walk(""); return files;
 }
@@ -422,4 +423,42 @@ for (const kind of ["instructions-first", "equal-depth", "unscoped-first", "scop
     const found = await interview(root); assert.equal(found.code, 0, found.lines.join("\n")); oracle(root, manifest(root));
     const checked = spawnSync(process.execPath, [fileURLToPath(new URL("./doctor.mjs", import.meta.url)), "--static", path.join(root, ".portulan")], { encoding: "utf8", timeout: 10000 });
     assert.equal(checked.status, 0, checked.stdout + checked.stderr);
+});
+for (const state of ["new", "owned", "move", "human", "parent-alias"]) test(`nested instruction projection preserves ${state} state`, async () => {
+    const source = '---\ntier: on-path\ntarget: api/CLAUDE.md\ndescription: API guidance.\n---\n\nNested API guidance.\n';
+    const root = fixture({"CLAUDE.md":"@api/CLAUDE.md\n"+"x".repeat(40000),".portulan/context/api.md":source});
+    if(state==="owned"||state==="move") {
+        fs.writeFileSync(path.join(root,".portulan/workspace.json"),JSON.stringify({portulan:{spec:"2.15"},name:"fixture",kind:"repository",tree:"../",slots:{context:"context/"}}));
+        const {compileGuidance}=await import("./compile.mjs");compileGuidance(root);fs.rmSync(path.join(root,".portulan/workspace.json"));
+        if(state==="move") fs.writeFileSync(path.join(root,".portulan/context/api.md"),source.replace("api/CLAUDE.md","service/CLAUDE.md"));
+    }
+    if(state==="human") {fs.mkdirSync(path.join(root,"api"));fs.writeFileSync(path.join(root,"api/CLAUDE.md"),"Human.\n");}
+    if(state==="parent-alias") {fs.mkdirSync(path.join(root,"backing"));fs.symlinkSync("backing",path.join(root,"api"));}
+    const found=await interview(root);assert.equal(found.code,0,found.lines.join("\n"));
+    if(state==="human"||state==="parent-alias") {assert.equal(manifest(root).context,undefined);assert.match(found.lines.join("\n"),/offer unavailable/);}
+    else oracle(root,manifest(root));
+});
+
+for(const permission of ["file","directory"]) test(`nested init offer agrees with atomic-emitter ${permission} permissions`,async()=>{
+    const source='---\ntier: on-path\ntarget: api/CLAUDE.md\ndescription: API guidance.\n---\n\nOriginal.\n';
+    const root=fixture({"CLAUDE.md":"@api/CLAUDE.md\n"+"x".repeat(40000),".portulan/context/api.md":source});
+    fs.writeFileSync(path.join(root,".portulan/workspace.json"),JSON.stringify({portulan:{spec:"2.15"},name:"fixture",kind:"repository",tree:"../",slots:{context:"context/"}}));
+    const {compileGuidance}=await import("./compile.mjs");compileGuidance(root);fs.rmSync(path.join(root,".portulan/workspace.json"));
+    fs.writeFileSync(path.join(root,".portulan/context/api.md"),source+"Fresh guidance.\n");
+    const at=path.join(root,permission==="file"?"api/CLAUDE.md":"api"),saved=fs.statSync(at).mode;fs.chmodSync(at,permission==="file"?0o444:0o555);
+    try {
+        const found=await interview(root);assert.equal(found.code,0,found.lines.join("\n"));
+        if(permission==="file"){oracle(root,manifest(root));assert.match(fs.readFileSync(path.join(root,"api/CLAUDE.md"),"utf8"),/Fresh guidance/);}
+        else {assert.equal(manifest(root).context,undefined);assert.match(found.lines.join("\n"),/offer unavailable/);}
+    } finally {fs.chmodSync(at,saved);}
+});
+
+test("interactive init withholds a cap for an unsupported special guidance source",async()=>{
+    const source='---\ntier: on-path\ntarget: api/CLAUDE.md\ndescription: API.\n---\n\nOriginal.\n',root=fixture({"CLAUDE.md":"@api/CLAUDE.md\n"+"x".repeat(40000),".portulan/context/api.md":source});
+    fs.writeFileSync(path.join(root,".portulan/workspace.json"),JSON.stringify({portulan:{spec:"2.15"},name:"fixture",kind:"repository",tree:"../",slots:{context:"context/"}}));const {compileGuidance}=await import("./compile.mjs");compileGuidance(root);fs.rmSync(path.join(root,".portulan/workspace.json"));fs.writeFileSync(path.join(root,".portulan/context/api.md"),source+"Fresh source.\n");assert.equal(spawnSync("mkfifo",[path.join(root,".portulan/context/future.md")]).status,0);
+    const found=await interview(root);assert.equal(found.code,0,found.lines.join("\n"));assert.equal(manifest(root).context,undefined);assert.match(found.lines.join("\n"),/offer unavailable/);assert.doesNotMatch(fs.readFileSync(path.join(root,"api/CLAUDE.md"),"utf8"),/Fresh source/);
+});
+test("interactive init ignores ordinary child directories in the context slot",async()=>{
+    const source='---\ntier: on-path\ntarget: api/CLAUDE.md\ndescription: API.\n---\n\nOriginal.\n',root=fixture({"CLAUDE.md":"@api/CLAUDE.md\n"+"x".repeat(40000),".portulan/context/api.md":source});
+    fs.writeFileSync(path.join(root,".portulan/workspace.json"),JSON.stringify({portulan:{spec:"2.15"},name:"fixture",kind:"repository",tree:"../",slots:{context:"context/"}}));const {compileGuidance}=await import("./compile.mjs");compileGuidance(root);fs.rmSync(path.join(root,".portulan/workspace.json"));fs.mkdirSync(path.join(root,".portulan/context/future.md"));fs.writeFileSync(path.join(root,".portulan/context/api.md"),source+"Fresh source.\n");const found=await interview(root);assert.equal(found.code,0,found.lines.join("\n"));assert.ok(manifest(root).context,found.lines.join("\n"));oracle(root,manifest(root));assert.match(fs.readFileSync(path.join(root,"api/CLAUDE.md"),"utf8"),/Fresh source/);
 });

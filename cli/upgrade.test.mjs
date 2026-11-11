@@ -1040,16 +1040,28 @@ describe("the apply loop refuses a plan a step did not describe", () => {
 });
 
 describe("the staging path is a path the containment guard never saw", () => {
-    test("it is created EXCLUSIVELY, so a symlink there cannot be followed", () => {
+    test("it is claimed exclusively before the custom writer receives it", (t) => {
         const dir = scratch();
-        const seen = [];
+        const seen = [], open=fs.openSync;
+        t.mock.method(fs,"openSync",(file,flags,...args)=>{if(String(file).includes(".portulan-upgrade."))seen.push(flags);return open(file,flags,...args);});
         applyEdits(dir, [{ file: "a.md", next: "x\n" }], {
             write: (target, data, options) => {
-                seen.push(options);
+                assert.equal(seen[0],"wx");
+                assert.equal(fs.statSync(target).size,0);
                 fs.writeFileSync(target, data, options);
             },
         });
-        assert.deepEqual(seen, [{ flag: "wx" }], "the staging write did not demand exclusive creation");
+        assert.equal(seen[0],"wx");assert.equal(seen.filter(flags=>flags==="wx").length,1);
+        assert.equal(fs.readFileSync(path.join(dir,"a.md"),"utf8"),"x\n");
+    });
+
+    test("an actual staging collision leaves its foreign symlink and referent intact", (t) => {
+        const dir=scratch(),open=fs.openSync,foreign=path.join(dir,"foreign.md");
+        fs.writeFileSync(foreign,"Human recovery data.\n");let collided;
+        t.mock.method(fs,"openSync",(file,flags,...args)=>{if(flags==="wx"&&String(file).includes(".portulan-upgrade.")){collided=file;fs.symlinkSync(foreign,file);}return open(file,flags,...args);});
+        const applied=applyEdits(dir,[{file:"a.md",next:"New.\n"}]);
+        assert.equal(applied.ok,false);assert.ok(collided);assert.ok(fs.lstatSync(collided).isSymbolicLink());
+        assert.equal(fs.readFileSync(foreign,"utf8"),"Human recovery data.\n");assert.equal(fs.existsSync(path.join(dir,"a.md")),false);
     });
 
     test("an EEXIST at the staging path is a refusal that unwinds, not a clobber", () => {
@@ -1439,6 +1451,93 @@ describe("0009 — a section a team marks in its instruction file moves to an on
         assert.equal(entry.owed, false);
         assert.match(entry.because, /no section of CLAUDE\.md or \.claude\/CLAUDE\.md is marked `<!-- portulan: on-read -->`/);
     });
+    test("the shared prospective forecast includes an already imported future unit", async () => {
+        const { repo, ws } = marked(
+            FILE.replace(
+                "The desk lends books to every member.",
+                "The desk lends books to every member.\n@.portulan/context/loans.md",
+            ),
+        );
+        const h = harness();
+        assert.equal(await run([ws], { ...h.options, today: TODAY }), 0, h.text());
+        const match = h.text().match(/always tier goes from ~[\d,]+ to ~([\d,]+) tokens/);
+        assert.ok(match, h.text());
+        const w = harness();
+        assert.equal(await run([ws, "--write"], { ...w.options, today: TODAY }), 0, w.text());
+        const { alwaysTier, tokensOf } = await import("./context.mjs");
+        assert.equal(
+            Number(match[1].replaceAll(",", "")),
+            tokensOf(
+                alwaysTier(repo).entries.reduce((n, e) => n + e.bytes, 0),
+                2.99,
+            ),
+        );
+    });
+
+    for (const kind of ["late-case", "optional-directory", "long-on-read", "outside-directory", "outside-reentry", "lexical-relative", "lexical-absolute", "lexical-after"])
+        test(`the actual form shares ${kind} prospective handling`, async () => {
+            const { repo, ws } = marked(FILE);
+            if (kind === "late-case") {
+                const api = path.join(ws, "context/api.md");
+                fs.writeFileSync(
+                    api,
+                    '---\ntier: on-path\ntarget: "api/CLAUDE.md"\ndescription: API guidance\n---\n\nA generated nested body.\n',
+                );
+                compileGuidance(ws);
+                fs.writeFileSync(api, fs.readFileSync(api, "utf8").replace("api/CLAUDE.md", "next/CLAUDE.md"));
+                fs.writeFileSync(
+                    path.join(ws, "context/history.md"),
+                    '---\ntier: on-read\ndescription: "History @../../../API/CLAUDE.md"\n---\n\nRetained history.\n',
+                );
+            } else if (kind.startsWith("lexical-")) {
+                const outer = scratch();
+                fs.mkdirSync(path.join(repo, "inside"));
+                fs.writeFileSync(path.join(repo, "inside/policy.md"), "Count this project-owned source.\n");
+                fs.symlinkSync(path.join(repo, "inside"), path.join(outer, "alias"), "dir");
+                const from = kind === "lexical-after" ? path.join(repo, ".claude/rules/portulan") : repo;
+                const operand = kind === "lexical-absolute" ? path.join(outer, "alias/policy.md") : path.relative(from, path.join(outer, "alias/policy.md"));
+                if (kind === "lexical-after")
+                    fs.writeFileSync(path.join(ws, "context/history.md"), '---\ntier: on-read\ndescription: "History @' + operand + '"\n---\n\nRetained history.\n');
+                else fs.writeFileSync(path.join(repo, "CLAUDE.md"), FILE.replace("The desk lends books to every member.", "The desk lends books to every member.\n@" + operand));
+            } else if (kind === "long-on-read") {
+                fs.writeFileSync(path.join(ws, "context/history.md"), "---\ntier: on-read\ndescription: Optional probe\n---\n\n@" + "a".repeat(400) + ".md\n");
+            } else if (kind.startsWith("outside-")) {
+                const outer = scratch();
+                fs.writeFileSync(path.join(outer, "read.md"), "Outside source is excluded.\n");
+                fs.mkdirSync(path.join(repo, "inside"));
+                fs.writeFileSync(path.join(repo, "inside/read.md"), "Inside source is counted.\n");
+                fs.symlinkSync(path.join(repo, "inside"), path.join(outer, "back"), "dir");
+                fs.symlinkSync(outer, path.join(repo, "via"), "dir");
+                fs.writeFileSync(path.join(repo, "CLAUDE.md"), FILE.replace("The desk lends books to every member.", "The desk lends books to every member.\n@via/" + (kind === "outside-reentry" ? "back/" : "") + "read.md"));
+            } else {
+                fs.mkdirSync(path.join(repo, "bucket"));
+                fs.symlinkSync("bucket", path.join(repo, "input.md"), "dir");
+                fs.writeFileSync(
+                    path.join(repo, "CLAUDE.md"),
+                    FILE.replace(
+                        "The desk lends books to every member.",
+                        "The desk lends books to every member.\n@input.md",
+                    ),
+                );
+            }
+            git(repo, "add", "-A");
+            git(repo, "commit", "-qm", "invented prospective input");
+            const h = harness();
+            assert.equal(await run([ws], { ...h.options, today: TODAY }), 0, h.text());
+            const predicted = h.text().match(/always tier goes from ~[\d,]+ to ~([\d,]+) tokens/);
+            if (kind === "lexical-absolute") assert.match(h.text(), /after forecast is unavailable/);
+            else assert.ok(predicted, h.text());
+            const w = harness();
+            assert.equal(await run([ws, "--write"], { ...w.options, today: TODAY }), 0, w.text());
+            const { alwaysTier, tokensOf } = await import("./context.mjs");
+            if (predicted) assert.equal(
+                Number(predicted[1].replaceAll(",", "")),
+                tokensOf(
+                    alwaysTier(repo).entries.reduce((n, e) => n + e.bytes, 0),
+                    2.99,
+                ),
+            );
+        });
 });
 
 describe("0010 — a `comments` recipe, offered where `init` drafted none", () => {

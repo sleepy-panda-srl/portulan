@@ -5,6 +5,7 @@
 // Exit 0 wrote · 2 refused, declined or could not run; never 1, since it renders no verdict on a workspace.
 
 import fs from "node:fs";
+import { assertNoSourceJournal } from "./instructions-journal.mjs";
 import path from "node:path";
 import { isInside } from "./inside.mjs";
 import { outsideTempParents, previewAlways } from "./init-preview.mjs";
@@ -1402,6 +1403,7 @@ export async function run(argv, options = {}) {
             );
         }
         if (!stat.isDirectory()) throw new InitError(`\`${parsed.target}\` is not a directory`);
+        try{assertNoSourceJournal(target);}catch(error){throw new InitError(error.message);}
 
         const answers = resolveAnswers(parsed.flags);
         const derivedName = slugify(path.basename(target));

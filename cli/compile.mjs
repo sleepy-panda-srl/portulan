@@ -11,18 +11,16 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { AUTO, discoverPackRoots, namedWithAuto, resolutionRoots } from "./discover.mjs";
 import { isInside } from "./inside.mjs";
+import { importTargetIsFile } from "./import-files.mjs";
+export { importTargetIsFile } from "./import-files.mjs";
 import { parseFrontmatter } from "./frontmatter.mjs";
 import { CannotOutline, sectionOf } from "./symbols.mjs";
 import { HORIZON, LedgerError, readSpend } from "./ledger.mjs";
 import { readStopPolicy, STOP_HOOK_MARGIN } from "./stop-policy.mjs";
+import { assertSourceJournalReady } from "./instructions-journal.mjs";
 
-/** Raised when `compile` cannot run, or cannot compile honestly. Always exit 2, never 1. */
-export class CompileError extends Error {
-    constructor(message) {
-        super(message);
-        this.name = "CompileError";
-    }
-}
+import { CompileError, readOwnedBytes, readOwnedText, sameContent, nestedTarget, nestedMark, validateNestedTargets, workspaceProtection, nestedPlan, applyNestedEdits, preflightNestedEdits, NESTED_REGISTRY, readNestedState, ownedNestedFiles } from "./guidance-files.mjs";
+export { CompileError, readOwnedBytes, readOwnedText, NESTED_REGISTRY, readNestedState, ownedNestedFiles };
 
 /** The `portulan.spec` versions of `gates.json`: a train separate from the Workspace Definition's, though the numbers overlap. */
 export const KNOWN_GATE_POLICY_SPECS = new Set(["2.1", "2.2", "2.3"]);
@@ -1004,7 +1002,7 @@ export const GUIDANCE_HOSTS = {
     "claude-code": {
         label: "Claude Code",
         always: `an unscoped rule in \`${GUIDANCE_RULES_DIR}/\``,
-        "on-path": "a rule scoped by `paths:`",
+        "on-path": "a paths-scoped rule or a declared nested CLAUDE.md",
         "on-invoke": `a project skill in \`${SKILLS_DIR}/\``,
         "on-read": `a line in \`${GUIDANCE_RULES_DIR}/${ON_READ_INDEX}\``,
     },
@@ -1407,7 +1405,7 @@ function gatesOf(file, where, packs = []) {
 }
 
 /** The unit's body with each leads, engine and gates line written out; a leads path may end `#<heading>`. */
-export function expandedBody(unit, dir, root, packs = []) {
+export function expandedBody(unit, dir, root, packs = [], { originRoot = root } = {}) {
     unit.leadSources = [];
     unit.written = new Set();
     return unit.body
@@ -1417,11 +1415,13 @@ export function expandedBody(unit, dir, root, packs = []) {
             const engine = leads ? null : ENGINE_LINE.exec(line);
             const gates = leads || engine ? null : GATES_LINE.exec(line);
             if (!leads && !engine && !gates) return [line];
-            if (engine) return engineLeads(unit, engine[1], root);
+            if (engine) return engineLeads(unit, engine[1], originRoot);
             const [what, spelled] = leads ? ["leads", leads[1]] : ["gates", gates[1]];
             const hash = leads ? spelled.indexOf("#") : -1;
             const [named, fragment] = hash === -1 ? [spelled, null] : [spelled.slice(0, hash), spelled.slice(hash + 1)];
-            const file = path.resolve(dir, named);
+            const file = path.isAbsolute(named) && originRoot !== root && isInside(originRoot, named)
+                ? path.resolve(root, path.relative(originRoot, named))
+                : path.resolve(dir, named);
             if (!isInside(root, file)) throw new CompileError(`${unit.source}: the ${what} of ${named} were asked for, and it lies outside the tree compiled here`);
             let real;
             try {
@@ -1462,7 +1462,7 @@ function engineLeads(unit, spelled, root) {
     return leadsOf(real, unit.source, fragment, shown).map((lead) => (own ? lead.replaceAll(PLUGIN_ROOT, "") : lead));
 }
 
-const UNIT_KEYS = new Set(["tier", "paths", "description"]);
+const UNIT_KEYS = new Set(["tier", "paths", "description", "target"]);
 
 /** A line break, by any spelling a host might honour, or another control character. */
 const CONTROL = /[\u0000-\u001f\u007f\u0085\u2028\u2029]/;
@@ -1495,7 +1495,7 @@ function unitFrontmatter(lines, where) {
         if (!match) throw new CompileError(`${where}: frontmatter line ${i + 2} is not \`key: value\` — ${JSON.stringify(line)}`);
         const [, key, rest = ""] = match;
         if (!UNIT_KEYS.has(key)) {
-            throw new CompileError(`${where}: \`${key}\` is not a key a unit takes — only \`tier\`, \`paths\` and \`description\` (spec/slots.md)`);
+            throw new CompileError(`${where}: \`${key}\` is not a key a unit takes — only \`tier\`, \`paths\`, \`target\` and \`description\` (spec/slots.md)`);
         }
         if (Object.hasOwn(fields, key)) throw new CompileError(`${where}: \`${key}\` is declared twice`);
         if (key !== "paths") {
@@ -1544,8 +1544,14 @@ export function parseUnit(name, text, source = `${name}.md`) {
     if (!LOAD_TIERS.includes(tier)) {
         throw new CompileError(`${where}: \`tier\` is ${tier === undefined ? "missing" : JSON.stringify(tier)}, and it must be one of ${LOAD_TIERS.map((t) => `\`${t}\``).join(", ")}`);
     }
-    let paths = null;
-    if (tier === "on-path") {
+    let paths = null, target = null;
+    if (fields.target !== undefined) {
+        if (tier !== "on-path") throw new CompileError(`${where}: target is valid only on-path`);
+        if (fields.paths !== undefined) throw new CompileError(`${where}: select one of paths or target, never both`);
+        target = nestedTarget(fields.target,where);
+        paths = [`${path.posix.dirname(target)}/**`];
+    }
+    if (tier === "on-path" && target === null) {
         if (fields.paths === undefined || fields.paths.length === 0) {
             throw new CompileError(`${where}: an on-path unit names the \`paths\` that load it, and this one names none`);
         }
@@ -1558,7 +1564,7 @@ export function parseUnit(name, text, source = `${name}.md`) {
             }
         }
         paths = fields.paths;
-    } else if (fields.paths !== undefined) {
+    } else if (tier !== "on-path" && fields.paths !== undefined) {
         throw new CompileError(`${where}: \`paths\` scopes an on-path unit, and this one is \`${tier}\` — a key that loads nothing is one its author believes is in force`);
     }
     let description = null;
@@ -1591,12 +1597,13 @@ export function parseUnit(name, text, source = `${name}.md`) {
     } else if (rest[0] === BOOT_CARD_LINE) {
         throw new CompileError(`${where}: \`${BOOT_CARD_LINE}\` opens the boot card, and only the unit named \`${BOOT_CARD_UNIT}\` is one — the boot skill would take this unit for the card`);
     }
+    if (target !== null && importSpans(rest.join("\n")).some(({target: spelled}) => importPath(spelled) !== null)) throw new CompileError(`${where}: nested instruction imports are not supported; put literal examples in code`);
     const written = [["leads", LEADS_LINE], ["engine", ENGINE_LINE], ["gates", GATES_LINE]].find(([, line]) => rest.some((text) => line.test(text)));
     if (tier !== "always" && written) {
         const [which] = written;
         throw new CompileError(`${where}: a \`<!-- ${which}: … -->\` line is written out only in an always unit, and this one is \`${tier}\``);
     }
-    return { name, tier, paths, description, body: `${rest.join("\n")}\n`, source, bytes: Buffer.byteLength(text, "utf8") };
+    return { name, tier, paths, ...(target === null ? {} : {target}), description, body: `${rest.join("\n")}\n`, source, bytes: Buffer.byteLength(text, "utf8") };
 }
 
 /** The declared `slots.context`, or null where none is declared or there is no manifest; one that will not parse throws. */
@@ -1632,11 +1639,12 @@ export function guidanceDeclaration(workspaceRoot, workspaceDir = ".portulan") {
                 `a unit there would be overwritten by what it compiles to, and \`vendor\` carries neither directory. Keep guidance in a directory of its own, such as \`context/\``,
         );
     }
-    return { dir, rel: `${rel}/`, packs: Array.isArray(manifest.packs) ? manifest.packs.filter((p) => typeof p === "string") : [] };
+    const workspace = path.relative(fs.realpathSync(workspaceRoot),fs.realpathSync(base)).split(path.sep).join("/") || ".";
+    return { dir, rel: `${rel}/`, workspace, packs: Array.isArray(manifest.packs) ? manifest.packs.filter((p) => typeof p === "string") : [] };
 }
 
 /** Every unit, read and checked, or null where no `slots.context` is declared. */
-export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
+export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan", { originRoot = workspaceRoot } = {}) {
     const declared = guidanceDeclaration(workspaceRoot, workspaceDir);
     if (declared === null) return null;
     let entries;
@@ -1660,6 +1668,7 @@ export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
         }
     });
     const units = [];
+    for(const entry of entries) if(entry.name.endsWith(".md") && !entry.isDirectory() && !entry.isFile() && !entry.isSymbolicLink()) throw new CompileError(`${declared.rel}${entry.name} is not a regular guidance source`);
     const names = entries
         .filter((e) => e.name.endsWith(".md") && (e.isFile() || e.isSymbolicLink()))
         .map((e) => e.name)
@@ -1680,20 +1689,21 @@ export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
         let text;
         try {
             if (!fs.statSync(full).isFile()) throw new CompileError(`${source} is not a regular guidance unit`);
-            text = fs.readFileSync(full, "utf8");
+            text = readOwnedText(full,realBase);
         } catch (cause) {
             throw new CompileError(`${source} could not be read — ${cause.code ?? cause.message}`);
         }
         const unit = parseUnit(path.basename(file, ".md"), text, source);
+        unit.ownedSource = path.relative(fs.realpathSync(workspaceRoot),real).split(path.sep).join("/");
         if (unit.tier === "always") {
             unit.dir = path.dirname(full);
-            unit.text = expandedBody(unit, unit.dir, path.resolve(workspaceRoot), declared.packs);
+            unit.text = expandedBody(unit, unit.dir, path.resolve(workspaceRoot), declared.packs, { originRoot });
             unit.imports = checkedImports(unit.text, unit.dir, path.resolve(workspaceRoot), source);
         } else {
             for (const { target } of importSpans(unit.body)) {
                 const bare = importPath(target);
                 if (bare === null || bare.startsWith("~") || path.isAbsolute(bare)) continue;
-                if (fs.statSync(path.resolve(path.dirname(full), bare), { throwIfNoEntry: false })?.isFile()) {
+                if (importTargetIsFile(path.resolve(path.dirname(full), bare))) {
                     throw new CompileError(
                         `${source}: \`@${target}\` names a file, and only an always unit may import one — ${STRAY_IMPORT[unit.tier]}. ` +
                             `Name the file to open instead, in a code span`,
@@ -1703,7 +1713,12 @@ export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
         }
         units.push(unit);
     }
-    return { source: declared.rel, units, root: path.resolve(workspaceRoot) };
+    validateNestedTargets(units.filter(unit=>unit.target).map(unit=>unit.target));
+    for (const unit of units.filter(unit=>unit.target)) {
+        const at=path.resolve(workspaceRoot,unit.target);
+        if (units.some(other=>path.resolve(workspaceRoot,other.ownedSource)===at)) throw new CompileError(`${unit.target} would overwrite a guidance source`);
+    }
+    return { source: declared.rel, units, root: path.resolve(workspaceRoot), workspace:declared.workspace, protected:units.some(unit=>unit.target) ? workspaceProtection(workspaceRoot,workspaceDir) : undefined };
 }
 
 function rebasedText(unit, root, to) {
@@ -1732,6 +1747,8 @@ export function claudeCodeGuidance(guidance) {
         if (unit.tier === "always") {
             const at = `${GUIDANCE_RULES_DIR}/${unit.name}.md`;
             files.push({ unit, path: at, text: unit.text === undefined ? unit.body : rebasedText(unit, guidance.root, at) });
+        } else if (unit.tier === "on-path" && unit.target) {
+            files.push({unit,path:unit.target,text:`${nestedMark(guidance.workspace ?? ".",unit.ownedSource ?? unit.source,unit.target)}\n${unit.body}`,nested:true});
         } else if (unit.tier === "on-path") {
             const header = ["---", "paths:", ...unit.paths.map((glob) => `  - ${quoted(glob)}`), "---", ""].join("\n");
             files.push({ unit, path: `${GUIDANCE_RULES_DIR}/${unit.name}.md`, text: `${header}\n${unit.body}` });
@@ -1818,12 +1835,15 @@ function listReal(workspaceRoot, rel) {
 }
 
 /** Judged before either half writes, so a refusal leaves no gate artifact written beside it. */
-export function planGuidance(guidance, workspaceRoot) {
+export function planGuidance(guidance, workspaceRoot, workspaceDir = ".portulan") {
+    assertSourceJournalReady(workspaceRoot,workspaceDir);
     const files = guidance ? claudeCodeGuidance(guidance).files : [];
+    const nested = nestedPlan(workspaceRoot,guidance,files,guidance?.workspace ?? workspaceDir);
     const rules = files.filter((f) => f.path.startsWith(`${GUIDANCE_RULES_DIR}/`));
     const owedFiles = rules.length
         ? [{ unit: null, marker: true, path: `${GUIDANCE_RULES_DIR}/${RULES_MARKER}`, text: markerText(rules.map((f) => path.posix.basename(f.path))) }, ...files]
         : files;
+    if (nested.control) owedFiles.push(nested.control);
     const owed = new Set(owedFiles.map((f) => f.path));
 
     for (const file of owedFiles) {
@@ -1865,11 +1885,11 @@ export function planGuidance(guidance, workspaceRoot) {
                 // A run stopped before its marker leaves exactly its unit's output; anything else was written by hand.
                 let current;
                 try {
-                    current = fs.readFileSync(path.join(rulesDir, name), "utf8");
+                    current = fs.readFileSync(path.join(rulesDir, name));
                 } catch (cause) {
                     throw new CompileError(`${file.path} could not be read — ${cause.code ?? cause.message}`);
                 }
-                if (current !== file.text) {
+                if (!sameContent(current,file.text)) {
                     throw new CompileError(`${file.path} exists and was not compiled here — ${file.unit ? file.unit.source : `the on-read units in ${guidance.source}`} would replace a rule written by hand. Rename the unit or the rule`);
                 }
             }
@@ -1898,7 +1918,7 @@ export function planGuidance(guidance, workspaceRoot) {
     if (listed instanceof Set || rules.length) {
         for (const entry of entries) {
             const rel = `${GUIDANCE_RULES_DIR}/${entry.name}`;
-            if (owed.has(rel)) continue;
+            if (owed.has(rel) || nested.claimed.has(rel)) continue;
             const ours = listed instanceof Set && entry.isFile() && (listed.has(entry.name) || entry.name === RULES_MARKER);
             stray.push({ path: rel, removable: ours });
         }
@@ -1922,7 +1942,20 @@ export function planGuidance(guidance, workspaceRoot) {
     const kept = listed instanceof Set || rules.length
         ? rules.map((f) => path.posix.basename(f.path)).filter((name) => listed instanceof Set && listed.has(name) && present.has(name))
         : null;
-    return { owedFiles, stray, kept };
+    stray.push(...nested.stale.map(edit=>({path:edit.file,removable:true,nested:true})));
+    return { owedFiles, stray, kept, nested };
+}
+
+function preflightGuidanceWrites(plan, workspaceRoot) {
+    preflightNestedEdits(workspaceRoot, plan.nested.edits);
+    const outputs = new Set(plan.owedFiles.filter((file) => !file.nested && !file.control).map((file) => file.path));
+    if (plan.kept !== null) outputs.add(`${GUIDANCE_RULES_DIR}/${RULES_MARKER}`);
+    for (const rel of outputs) {
+        const target = path.join(workspaceRoot, ...rel.split("/"));
+        const at = fs.lstatSync(target, { throwIfNoEntry: false });
+        if (at?.isFile() && at.nlink !== 1)
+            throw new CompileError(`${target} is a multiply linked guidance output; refusing publication`);
+    }
 }
 
 function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
@@ -1930,7 +1963,7 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
     if (guidance === null && stray.length === 0) return 0;
 
     if (guidance) {
-        const files = owedFiles.filter((f) => !f.marker);
+        const files = owedFiles.filter((f) => !f.marker && !f.control);
         const counts = LOAD_TIERS.map((tier) => `${guidance.units.filter((u) => u.tier === tier).length} ${tier}`).join(", ");
         say(`guidance: ${guidance.units.length} unit(s) in ${guidance.source} — ${counts}`);
         for (const [id, host] of Object.entries(GUIDANCE_HOSTS)) {
@@ -1958,17 +1991,19 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
             const target = path.join(workspaceRoot, ...file.path.split("/"));
             let current = null;
             try {
-                current = fs.readFileSync(target, "utf8");
+                current = fs.readFileSync(target);
             } catch {
                 say(file.marker
                     ? `RED — ${target} does not exist; it is the marker that lists the rules this compiler wrote. Recompile to write it.`
+                    : file.control ? `RED — ${target} is missing its nested instruction ownership registry. Recompile to write it.`
                     : `RED — ${target} does not exist; ${file.unit ? file.unit.source : "an on-read unit"} compiles to it`);
                 drifted += 1;
                 continue;
             }
-            if (current !== file.text) {
+            if (!sameContent(current,file.text)) {
                 say(file.marker
                     ? `RED — ${target} does not list the rules the units compile to now. Recompile to rewrite it.`
+                    : file.control ? `RED — ${target} has drifted from nested instruction ownership. Recompile to rewrite it.`
                     : file.unit?.leadSources?.length
                       ? `RED — ${target} has drifted from ${file.unit.source}, whose ${[...file.unit.written].sort().join(" and ")} are written from ${file.unit.leadSources.join(" and ")}. Edit the unit or those files, then recompile.`
                       : `RED — ${target} has drifted from ${file.unit ? file.unit.source : `the on-read units in ${guidance.source}`}. Edit the unit, then recompile.`);
@@ -1985,6 +2020,8 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
         return drifted;
     }
 
+    preflightGuidanceWrites(plan, workspaceRoot);
+    applyNestedEdits(workspaceRoot,plan.nested.edits);
     // Listed only once written, unlisted before removal: an interrupted run never lists a file it did not write.
     const markerPath = path.join(workspaceRoot, ...GUIDANCE_RULES_DIR.split("/"), RULES_MARKER);
     if (kept !== null) {
@@ -1993,7 +2030,7 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
     }
     for (const s of stray) {
         const target = path.join(workspaceRoot, ...s.path.split("/"));
-        if (target === markerPath) continue;
+        if (target === markerPath || s.nested) continue;
         if (!s.removable) {
             say(`left ${target} — it is not a file this compiler wrote, so it is not this compiler's to remove`);
             continue;
@@ -2009,7 +2046,7 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
         }
     }
     for (const file of owedFiles) {
-        if (file.marker) continue;
+        if (file.marker || file.nested || file.control) continue;
         const target = path.join(workspaceRoot, ...file.path.split("/"));
         fs.mkdirSync(path.dirname(target), { recursive: true });
         fs.writeFileSync(target, file.text);
@@ -2034,10 +2071,11 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
 }
 
 /** The guidance half alone: the gate policy is not read, so host settings stay the output of a `compile` a human runs. */
-export function compileGuidance(named, { check = false, say = () => {} } = {}) {
+export function compileGuidance(named, { check = false, say = () => {}, originRoot } = {}) {
     const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
-    const guidance = guidanceUnits(workspaceRoot, workspaceDir);
-    const plan = planGuidance(guidance, workspaceRoot);
+    const guidance = guidanceUnits(workspaceRoot, workspaceDir, { originRoot });
+    const plan = planGuidance(guidance, workspaceRoot, workspaceDir);
+    if (!check) preflightGuidanceWrites(plan, workspaceRoot);
     return { declared: guidance !== null, drifted: emitGuidance(guidance, plan, { workspaceRoot, check, say }) };
 }
 
@@ -2045,21 +2083,21 @@ export function compileGuidance(named, { check = false, say = () => {} } = {}) {
 export function guidanceEdits(named) {
     const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
     const guidance = guidanceUnits(workspaceRoot, workspaceDir);
-    const { owedFiles, stray, kept } = planGuidance(guidance, workspaceRoot);
+    const { owedFiles, stray, kept, nested } = planGuidance(guidance, workspaceRoot, workspaceDir);
     const markerRel = `${GUIDANCE_RULES_DIR}/${RULES_MARKER}`;
     const current = (rel) => {
         try {
-            return fs.readFileSync(path.join(workspaceRoot, ...rel.split("/")), "utf8");
+            return fs.readFileSync(path.join(workspaceRoot, ...rel.split("/")));
         } catch (cause) {
             if (cause.code === "ENOENT") return null;
             throw new CompileError(`${rel} could not be read — ${cause.code ?? cause.message}`);
         }
     };
-    const edits = [];
-    for (const s of stray) if (s.removable && s.path !== markerRel) edits.push({ file: s.path, next: null });
-    for (const file of owedFiles) if (!file.marker && current(file.path) !== file.text) edits.push({ file: file.path, next: file.text });
+    const edits = [...nested.edits];
+    for (const s of stray) if (s.removable && !s.nested && s.path !== markerRel) edits.push({ file: s.path, next: null });
+    for (const file of owedFiles) if (!file.marker && !file.nested && !file.control && !sameContent(current(file.path),file.text)) edits.push({ file: file.path, next: file.text });
     const marker = owedFiles.find((f) => f.marker);
-    if (marker && current(markerRel) !== marker.text) edits.push({ file: markerRel, next: marker.text });
+    if (marker && !sameContent(current(markerRel),marker.text)) edits.push({ file: markerRel, next: marker.text });
     else if (!marker && kept !== null && current(markerRel) !== null) edits.push({ file: markerRel, next: null });
     return { root: path.resolve(workspaceRoot), edits, left: stray.filter((s) => !s.removable).map((s) => s.path) };
 }
@@ -2527,20 +2565,6 @@ export function composeFragments(policy, contributions) {
     return { policy: { ...policy, rules }, added, tightened };
 }
 
-export function readOwnedBytes(file, scope) {
-    fs.lstatSync(file);
-    let owner, real;
-    try { owner = fs.realpathSync(scope); real = fs.realpathSync(file); }
-    catch (error) { throw new CompileError(`${file} could not be resolved — ${error.code ?? error.message}`); }
-    if (!isInside(owner, real)) throw new CompileError(`${file} resolves outside its owner ${scope}`);
-    if (!fs.statSync(real).isFile()) throw new CompileError(`${file} is not a regular source file`);
-    return fs.readFileSync(real);
-}
-
-export function readOwnedText(file, scope) {
-    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(readOwnedBytes(file, scope));
-}
-
 function readWorkspaceText(workspaceRoot, workspaceDir) {
     const base = path.join(workspaceRoot, workspaceDir);
     fs.lstatSync(path.join(base, "workspace.json"));
@@ -3005,6 +3029,7 @@ export function resolveWorkspace(named) {
     if (typeof manifest?.tree === "string" && manifest.tree.trim()) {
         const root = path.resolve(dir, manifest.tree);
         const inside = path.relative(root, dir);
+        if(inside === "") return {workspaceRoot:root,workspaceDir:"."};
         // A `tree` that does not contain its workspace cannot be trusted, so the answer is the one that changes nothing.
         if (inside && !inside.startsWith("..") && !path.isAbsolute(inside)) {
             return { workspaceRoot: root, workspaceDir: inside.split(path.sep).join("/") };
@@ -3105,7 +3130,8 @@ export function run(argv, options = {}) {
             );
         }
         const guidance = guidanceUnits(workspaceRoot, workspaceDir);
-        const guidancePlan = showMatrix ? null : planGuidance(guidance, workspaceRoot);
+        const guidancePlan = showMatrix ? null : planGuidance(guidance, workspaceRoot, workspaceDir);
+        if (!check && guidancePlan) preflightGuidanceWrites(guidancePlan, workspaceRoot);
         const sessions = sessionsDeclaration(workspaceRoot, workspaceDir);
         const spend = spendDeclaration(workspaceRoot, workspaceDir);
         const stopPolicy = stopDeclaration(workspaceRoot, workspaceDir);

@@ -5,10 +5,14 @@
 // Exit 0 done · 1 `doctor` red at an end · 2 could not run.
 
 import fs from "node:fs";
+import {createHash,randomUUID} from "node:crypto";
+import {isInside} from "./inside.mjs";
+import {atomicWrite,guardedRemove} from "./guidance-files.mjs";
+import {assertNoSourceJournal,SOURCE_JOURNAL} from "./instructions-journal.mjs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { agentsMdGuidance, BOOT_CARD_UNIT, CompileError, compileGuidance, GENERATED_DIRS, guidanceUnits } from "./compile.mjs";
+import { agentsMdGuidance, BOOT_CARD_UNIT, CompileError, compileGuidance, GENERATED_DIRS, guidanceUnits, ownedNestedFiles } from "./compile.mjs";
 import { changesReadme, CHANGES_README, handoffIndexIgnore, withIgnoreLines } from "./form.mjs";
 import { inspect } from "./doctor.mjs";
 import { AUTO, namedWithAuto } from "./discover.mjs";
@@ -692,9 +696,10 @@ export async function run(argv, options = {}) {
         if (sourceStat.isSymbolicLink()) throw new VendorError(`\`${parsed.source}\` is a symlink, and this refuses to read a workspace through one — a manifest reached that way describes some other directory`);
         if (!sourceStat.isDirectory()) throw new VendorError(`\`${parsed.source}\` is not a directory — the source is a workspace directory, the same shape \`doctor\` takes`);
 
-        let manifest;
+        let manifest,manifestBytes;
         try {
-            manifest = JSON.parse(fs.readFileSync(path.join(source, "workspace.json"), "utf8"));
+            manifestBytes=fs.readFileSync(path.join(source,"workspace.json"));
+            manifest = JSON.parse(manifestBytes);
         } catch (cause) {
             throw new VendorError(
                 cause.code === "ENOENT"
@@ -714,6 +719,8 @@ export async function run(argv, options = {}) {
         }
 
         const sourceResidence = residenceOf(manifest);
+        const checkSourceRecovery=()=>{try{assertNoSourceJournal(source);if(typeof manifest.tree==="string")assertNoSourceJournal(path.resolve(source,manifest.tree));}catch(error){throw new VendorError(error.message);}};
+        checkSourceRecovery();
         const dest = path.resolve(parsed.into);
 
         if (parsed.residence === "in-repo" && path.basename(dest) !== ".portulan") {
@@ -736,13 +743,11 @@ export async function run(argv, options = {}) {
         }
 
         let guidance = null;
-        if (parsed.host !== null) {
-            try {
-                guidance = guidanceUnits(source, ".");
-            } catch (error) {
-                if (error instanceof CompileError) throw new VendorError(error.message);
-                throw error;
-            }
+        try {
+            guidance = guidanceUnits(source, ".");
+        } catch (error) {
+            if (error instanceof CompileError) throw new VendorError(error.message);
+            throw error;
         }
 
         // ---- the scope bound, refused in both its shapes
@@ -779,10 +784,28 @@ export async function run(argv, options = {}) {
         // ---- the destination
 
         const carve = parsed.switching ? carveOut(dest, manifest.name) : { allow: new Set(), pointer: null };
+        const preserved=new Map(),priorStamps=new Map();
+        const priorRoot=fs.existsSync(dest)?{real:fs.realpathSync(dest),stat:fs.statSync(dest)}:null;
+        for(const rel of carve.allow){const stamp=fileStamp(dest,rel,priorRoot.real);if(!stamp)throw new VendorError(`${rel} changed during destination snapshot, or is a symlink or nonregular file`);const bytes=readStamped(dest,rel,stamp);priorStamps.set(rel,stamp);preserved.set(rel,bytes);}
+        if(carve.pointer&&JSON.stringify(JSON.parse(preserved.get("workspace.json").toString("utf8")))!==JSON.stringify(carve.pointer))throw new VendorError("the destination pointer changed while its replacement was being authorized");
         const walked = walk(source);
-        const sourceDirs = directories(source);
-        const files = walked.filter((f) => !isGenerated(f.rel));
-        const generated = walked.filter((f) => isGenerated(f.rel)).map((f) => f.rel);
+        const sourceDirs = directories(source).map(entry=>{const at=fs.lstatSync(path.join(source,entry.rel));return {...entry,identity:{dev:at.dev,ino:at.ino}};});
+        const journals=[...walked,...sourceDirs].filter(file=>file.rel.split("/").some(part=>part.toLowerCase()===SOURCE_JOURNAL));
+        if(journals.length)throw new VendorError(`reserved source journal was inventoried: ${journals.map(file=>file.rel).join(", ")}; resume or review the source migration before vendoring`);
+        checkSourceRecovery();
+        const sourceReal=fs.realpathSync(source),sourceDirectory=fs.statSync(source),observed=new Map();
+        if(parsed.switching)for(const file of walked) {
+            const stamp=fileStamp(source,file.rel,sourceReal);
+            if(stamp===null)throw new VendorError(`${file.rel} could not be inventoried safely before switching`);
+            observed.set(file.rel,stamp);
+        }
+        if(parsed.switching && observed.get("workspace.json")?.at(-1)!==createHash("sha256").update(manifestBytes).digest("hex"))throw new VendorError("the source manifest changed while its inventory was being prepared");
+        let nestedOwned;
+        try { nestedOwned=ownedNestedFiles(source,"."); } catch(error) { if(error instanceof CompileError) throw new VendorError(error.message); throw error; }
+        const files = walked.filter((f) => !isGenerated(f.rel) && !nestedOwned.has(f.rel));
+        const unfinished=files.filter(f=>/\.portulan-(?:guidance(?:-claim)?|upgrade|retire)\./.test(path.basename(f.rel)));
+        if(unfinished.length)throw new VendorError(`source recovery artifacts were retained: ${unfinished.map(f=>f.rel).join(", ")}; finish or review the source migration before vendoring`);
+        const generated = walked.filter((f) => isGenerated(f.rel) || nestedOwned.has(f.rel)).map((f) => f.rel);
         const rels = files.map((f) => f.rel);
         const hostFile = parsed.host === null ? null : path.join(path.dirname(dest), "AGENTS.md");
 
@@ -816,7 +839,8 @@ export async function run(argv, options = {}) {
 
         const retargeted = retarget(manifest, parsed.residence, parsed.kindOf);
         const oldResidence = source;
-        const repoDir = parsed.residence === "in-repo" ? path.dirname(dest) : path.dirname(source);
+        const oldTree=typeof manifest.tree==="string" && manifest.tree.trim() ? path.resolve(source,manifest.tree) : source;
+        const repoDir = parsed.residence === "in-repo" ? path.dirname(dest) : oldTree;
 
         if (parsed.dryRun) {
             say(`vendor: ${parsed.switching ? "switch" : "vendor"} \`${manifest.name}\` — ${sourceResidence} → ${parsed.residence}`);
@@ -852,26 +876,34 @@ export async function run(argv, options = {}) {
             }
         }
         fs.mkdirSync(staging, { recursive: true });
-        undo.push(() => fs.rmSync(staging, { recursive: true, force: true }));
+        const stagingRoot={real:fs.realpathSync(staging),stat:fs.statSync(staging)},stagedOwned=new Map(),stagedDirs=new Map();
+        undo.push(()=>cleanupPublications(staging,stagedOwned,new Map(),stagingRoot,true,stagedDirs));
+        const stageWrite=(rel,bytes,mode=null)=>{
+            const full=path.join(staging,rel);makeOwnedDirectories(staging,path.dirname(rel),stagedDirs);const fd=fs.openSync(full,"wx"),wanted=Buffer.from(bytes),at=fs.fstatSync(fd);
+            stagedOwned.set(rel,[at.dev,at.ino,at.mode,createHash("sha256").update(Buffer.alloc(0)).digest("hex")]);
+            try{fs.writeFileSync(fd,bytes);if(mode!==null)fs.fchmodSync(fd,mode);const done=fs.fstatSync(fd);stagedOwned.set(rel,[done.dev,done.ino,done.mode,createHash("sha256").update(wanted).digest("hex")]);}
+            catch(error){const partial=fs.fstatSync(fd);stagedOwned.set(rel,[partial.dev,partial.ino,partial.mode,createHash("sha256").update(wanted.subarray(0,partial.size)).digest("hex")]);throw error;}
+            finally{fs.closeSync(fd);}
+        };
 
         for (const entry of sourceDirs) {
             if (isGenerated(entry.rel)) continue;
             const full = path.join(staging, entry.rel);
-            fs.mkdirSync(full, { recursive: true });
-            fs.chmodSync(full, entry.mode);
+            makeOwnedDirectories(staging,entry.rel,stagedDirs);
+            fs.chmodSync(full, entry.mode|0o700);
         }
         // Copied byte for byte: `# portulan:bundle-fallback` lines are not rewritten here; `portulan upgrade` re-derives them.
         for (const file of files) {
             if (file.rel === "workspace.json") continue;
             const full = path.join(staging, file.rel);
-            fs.mkdirSync(path.dirname(full), { recursive: true });
-            fs.writeFileSync(full, fs.readFileSync(path.join(source, file.rel)));
-            fs.chmodSync(full, file.mode);
+            stageWrite(file.rel,fs.readFileSync(path.join(source,file.rel)),file.mode);
         }
         if (parsed.switching && carve.pointer && !rels.includes("README.md")) {
-            fs.writeFileSync(path.join(staging, "README.md"), arrivedReadme(manifest.name));
+            stageWrite("README.md",arrivedReadme(manifest.name));
         }
-        fs.writeFileSync(path.join(staging, "workspace.json"), `${JSON.stringify(retargeted, null, 2)}\n`);
+        stageWrite("workspace.json",`${JSON.stringify(retargeted,null,2)}\n`);
+        const inputTimes=new Map([...stagedOwned.keys()].map(rel=>[rel,fs.lstatSync(path.join(staging,rel),{bigint:true}).ctimeNs]));
+        try{guidance=guidanceUnits(staging,".");}catch(error){if(error instanceof CompileError)throw new VendorError(error.message);throw error;}
         if (hostFile !== null) {
             // Not required: a missing kernel is said in the file rather than refusing the run.
             let kernel = null;
@@ -880,9 +912,13 @@ export async function run(argv, options = {}) {
             } catch {
                 kernel = null;
             }
-            fs.writeFileSync(path.join(staging, "..AGENTS.md.vendoring"), agentsMd(retargeted, parsed.host, kernel, guidance));
+            stageWrite("..AGENTS.md.vendoring",agentsMd(retargeted,parsed.host,kernel,guidance));
         }
+        for(const entry of [...sourceDirs].reverse())if(!isGenerated(entry.rel))fs.chmodSync(path.join(staging,entry.rel),entry.mode);
         fault("materialise:files");
+        const stagedNow=walk(staging);
+        if(stagedNow.length!==stagedOwned.size||stagedNow.some(file=>!sameStamp(fileStamp(staging,file.rel,stagingRoot.real,stagedOwned.get(file.rel)),stagedOwned.get(file.rel))))throw new VendorError("staged material changed before publication; retained files need review");
+        if([...inputTimes].some(([rel,time])=>fs.lstatSync(path.join(staging,rel),{bigint:true}).ctimeNs!==time))throw new VendorError("staged source changed while guidance was being validated");
 
         // ---- doctor the new residence, BEFORE it is one
 
@@ -898,9 +934,12 @@ export async function run(argv, options = {}) {
             say(`vendor: RED at the new residence — nothing was moved, and \`${manifest.name}\` still resides ${sourceResidence === "in-repo" ? "in its repository" : "feed-side"}.`);
             for (const f of staged) say(`vendor:   ${f.check} ${f.message}`);
             say("vendor: the switch was refused before it began, which is the point of validating a copy before it is a residence.");
-            await unwind(undo);
+            const incomplete=await unwind(undo);if(incomplete.length)warn(`vendor: rollback incomplete; retained ${incomplete.join(", ")}`);
             return 1;
         }
+        if([...inputTimes].some(([rel,time])=>fs.lstatSync(path.join(staging,rel),{bigint:true}).ctimeNs!==time))throw new VendorError("staged source changed after guidance validation");
+
+        checkSourceRecovery();
 
         // ---- the one rename, and the sentence that precedes it
 
@@ -915,48 +954,42 @@ export async function run(argv, options = {}) {
             say("vendor: wrote — and the window closes. If it reports none, the window never opened: delete nothing.");
         }
 
-        const preserved = new Map();
-        for (const rel of carve.allow) preserved.set(rel, fs.readFileSync(path.join(dest, rel)));
-
-        // Registered before the first byte moves; it reads `written` by reference, so it undoes exactly what happened.
-        const written = [];
-        const destWasAbsent = carve.allow.size === 0 && !fs.existsSync(dest);
-        undo.push(() => {
-            // The manifest first: removing it closes the window, so cleanup that throws after it leaves no governor.
-            fs.rmSync(path.join(dest, "workspace.json"), { force: true });
-            if (hostFile !== null) fs.rmSync(hostFile, { force: true });
-            if (destWasAbsent) {
-                fs.rmSync(dest, { recursive: true, force: true });
-            } else {
-                for (const rel of written) if (!preserved.has(rel)) fs.rmSync(path.join(dest, rel), { force: true });
-                for (const [rel, bytes] of preserved) fs.writeFileSync(path.join(dest, rel), bytes);
-                // Emptied directories too: one left behind makes the retry's `carveOut` refuse the destination.
-                pruneEmpty(dest);
-            }
+        if(priorRoot && (fs.statSync(dest).dev!==priorRoot.stat.dev||fs.statSync(dest).ino!==priorRoot.stat.ino||[...priorStamps].some(([rel,stamp])=>!sameStamp(fileStamp(dest,rel,priorRoot.real,stamp),stamp))))throw new VendorError("the destination pointer changed during staging");
+        const destWasAbsent=priorRoot===null,destOwned=new Map(),hostOwned=new Map(),hostPrevious=new Map(),destDirs=new Map(),hostDirs=new Map();
+        const hostRoot=hostFile===null?null:path.dirname(hostFile),hostIdentity=hostRoot===null?null:{real:fs.realpathSync(hostRoot),stat:fs.statSync(hostRoot)};
+        let destRoot=priorRoot;
+        const oldBytes=new Map([...preserved].map(([rel,bytes])=>[rel,{bytes,mode:priorStamps.get(rel)[2]}]));
+        undo.push(()=>{
+            const failures=[];
+            if(hostFile!==null && hostOwned.size)failures.push(...cleanupPublications(hostRoot,hostOwned,hostPrevious,hostIdentity,false,hostDirs));
+            if(destRoot)failures.push(...cleanupPublications(dest,destOwned,oldBytes,destRoot,destWasAbsent,destDirs));
+            return failures;
         });
-
-        if (destWasAbsent) {
-            fs.mkdirSync(path.dirname(dest), { recursive: true });
-            if (hostFile !== null) fs.renameSync(path.join(staging, "..AGENTS.md.vendoring"), hostFile);
-            fs.renameSync(staging, dest);
+        const publishHost=()=>{
+            if(hostFile===null)return;
+            const stamp=stagedOwned.get("..AGENTS.md.vendoring"),bytes=readStamped(staging,"..AGENTS.md.vendoring",stamp);
+            atomicWrite(hostFile,bytes,{exclusive:true,mode:stamp[2],onPublish:id=>hostOwned.set(path.basename(hostFile),[id.dev,id.ino,stamp[2],stamp[3]])});
+            guardedRemove(path.join(staging,"..AGENTS.md.vendoring"),{beforeDigest:stamp[3],identity:{dev:stamp[0],ino:stamp[1],mode:stamp[2]}});
+            stagedOwned.delete("..AGENTS.md.vendoring");
+        };
+        if(destWasAbsent) {
+            fs.mkdirSync(path.dirname(dest),{recursive:true});publishHost();
+            destRoot={real:path.join(fs.realpathSync(path.dirname(dest)),path.basename(dest)),stat:stagingRoot.stat};
+            for(const [rel,stamp]of stagedOwned)destOwned.set(rel,stamp);
+            for(const [rel,stamp]of stagedDirs)destDirs.set(rel,stamp);
+            fs.renameSync(staging,dest);
         } else {
-            // Files first, manifest last: until the manifest lands, a directory of files is not a residence.
-            for (const entry of directories(staging)) {
-                fs.mkdirSync(path.join(dest, entry.rel), { recursive: true });
-                fs.chmodSync(path.join(dest, entry.rel), entry.mode);
-            }
-            for (const file of walk(staging)) {
-                if (file.rel === "workspace.json" || file.rel === "..AGENTS.md.vendoring") continue;
-                const full = path.join(dest, file.rel);
-                fs.mkdirSync(path.dirname(full), { recursive: true });
-                fs.writeFileSync(full, fs.readFileSync(path.join(staging, file.rel)));
-                fs.chmodSync(full, file.mode);
-                written.push(file.rel);
-            }
-            if (hostFile !== null) fs.renameSync(path.join(staging, "..AGENTS.md.vendoring"), hostFile);
-            fs.renameSync(path.join(staging, "workspace.json"), path.join(dest, "workspace.json"));
+            for(const entry of directories(staging)){makeOwnedDirectories(dest,entry.rel,destDirs);if(destDirs.has(entry.rel))fs.chmodSync(path.join(dest,entry.rel),entry.mode|0o700);}
+            const publish=rel=>{
+                const stamp=stagedOwned.get(rel),prior=priorStamps.get(rel),bytes=readStamped(staging,rel,stamp);
+                atomicWrite(path.join(dest,rel),bytes,{exclusive:!prior,beforeDigest:prior?.[3],identity:prior?{dev:prior[0],ino:prior[1],mode:prior[2]}:undefined,mode:stamp[2],onPublish:id=>destOwned.set(rel,[id.dev,id.ino,stamp[2],stamp[3]])});
+            };
+            for(const rel of stagedOwned.keys())if(rel!=="workspace.json"&&rel!=="..AGENTS.md.vendoring")publish(rel);
+            publishHost();publish("workspace.json");
+            for(const entry of directories(staging).reverse())if(destDirs.has(entry.rel))fs.chmodSync(path.join(dest,entry.rel),entry.mode);
+            const retained=cleanupPublications(staging,stagedOwned,new Map(),stagingRoot,true,stagedDirs);
+            if(retained.length)throw new VendorError(`staging cleanup incomplete: ${retained.join(", ")}`);
         }
-        fs.rmSync(staging, { recursive: true, force: true });
         fault("materialise:manifest");
 
         const records = [];
@@ -968,12 +1001,9 @@ export async function run(argv, options = {}) {
             if (readmeBlocked.length) {
                 recordsLeft.push(`\`${CHANGES_README}\` ${readmeBlocked[0].why === "already exists" ? "is the tree's own" : readmeBlocked[0].why}`);
             } else {
-                const made = fs.mkdirSync(path.dirname(readme), { recursive: true });
-                undo.push(() => {
-                    fs.rmSync(readme, { force: true });
-                    if (made !== undefined) fs.rmSync(made, { recursive: true, force: true });
-                });
-                fs.writeFileSync(readme, changesReadme(), { flag: "wx" });
+                makeOwnedDirectories(hostRoot,path.dirname(CHANGES_README),hostDirs);
+                const bytes=changesReadme();
+                atomicWrite(readme,bytes,{exclusive:true,onPublish:id=>hostOwned.set(CHANGES_README,[id.dev,id.ino,id.mode,createHash("sha256").update(bytes).digest("hex")])});
                 records.push(CHANGES_README);
             }
             const index = retargeted.handoffs?.index?.path;
@@ -982,21 +1012,20 @@ export async function run(argv, options = {}) {
             if (typeof index === "string" && blocked.length) recordsLeft.push(`\`.gitignore\` ${blocked[0].why}`);
             if (typeof index === "string" && blocked.length === 0) {
                 const rel = path.relative(hostRoot, path.resolve(dest, index)).split(path.sep).join("/");
-                let before = null;
-                try {
-                    before = fs.readFileSync(ignore, "utf8");
-                } catch (cause) {
-                    if (cause.code !== "ENOENT") throw cause;
-                }
+                const prior=fileStamp(hostRoot,".gitignore",hostIdentity.real);
+                let before=null;
+                try {fs.lstatSync(ignore);if(!prior)throw new VendorError(".gitignore changed or is not an ordinary file");before=readStamped(hostRoot,".gitignore",prior);}
+                catch(cause){if(cause.code!=="ENOENT")throw cause;}
                 const next = withIgnoreLines(before, handoffIndexIgnore(rel, path.relative(hostRoot, dest).split(path.sep).join("/")));
                 if (next !== (before ?? "")) {
-                    undo.push(() => (before === null ? fs.rmSync(ignore, { force: true }) : fs.writeFileSync(ignore, before)));
-                    fs.writeFileSync(ignore, next);
+                    if(prior)hostPrevious.set(".gitignore",{bytes:before,mode:prior[2]});
+                    atomicWrite(ignore,next,{exclusive:!prior,beforeDigest:prior?.[3],identity:prior?{dev:prior[0],ino:prior[1],mode:prior[2]}:undefined,mode:prior?.[2],onPublish:id=>hostOwned.set(".gitignore",[id.dev,id.ino,id.mode,createHash("sha256").update(next).digest("hex")])});
                     records.push(".gitignore");
                 }
             }
         }
 
+        checkSourceRecovery();
         if (!parsed.switching) {
             say(`vendor: wrote ${files.length + (hostFile ? 1 : 0)} file(s) — the \`${manifest.name}\` workspace at ${display(dest)}${hostFile ? `, and ${display(hostFile)}` : ""}.`);
             if (records.length) say(`vendor: and the records the new form keeps, beside it: ${records.map((r) => `\`${r}\``).join(", ")}.`);
@@ -1009,15 +1038,16 @@ export async function run(argv, options = {}) {
         // ---- retire the old residence's MANIFEST, which is the act that transfers governance
 
         // Before the material: retiring the files first would leave a governing manifest over a workspace with holes.
+        checkSourceRecovery();
         const oldManifest = path.join(oldResidence, "workspace.json");
+        if(!sameStamp(fileStamp(source,"workspace.json",sourceReal,observed.get("workspace.json")),observed.get("workspace.json")))throw new VendorError("the source manifest changed during staging; the switch is refused");
         if (leave === "pointer") {
             const staged2 = `${oldManifest}.vendoring`;
-            // Registered before the write: a temp file left in the old residence would block a later run's cleanup.
-            undo.push(() => fs.rmSync(staged2, { force: true }));
-            fs.writeFileSync(staged2, `${JSON.stringify(pointerManifest(oldResidence, manifest.name, parsed.feed), null, 2)}\n`);
-            fs.renameSync(staged2, oldManifest);
+            const stamp=observed.get("workspace.json");
+            atomicWrite(oldManifest,`${JSON.stringify(pointerManifest(oldResidence,manifest.name,parsed.feed),null,2)}\n`,{stagingPath:staged2,beforeDigest:stamp[3],identity:{dev:stamp[0],ino:stamp[1],mode:stamp[2]},mode:stamp[2],onPublish:()=>{pastTheFlip=true;}});
         } else {
-            fs.rmSync(oldManifest, { force: true });
+            const stamp=observed.get("workspace.json");
+            guardedRemove(oldManifest,{beforeDigest:stamp[3],identity:{dev:stamp[0],ino:stamp[1],mode:stamp[2]},onRemove:()=>{pastTheFlip=true;}});
         }
         pastTheFlip = true;
         undo.length = 0;
@@ -1037,18 +1067,23 @@ export async function run(argv, options = {}) {
             say(`vendor: governance has moved to ${display(dest)}, and \`doctor\` is RED at ${newEnd.length ? "the new" : "the old"} end.`);
             for (const f of [...newEnd, ...oldEnd]) say(`vendor:   ${f.check} ${f.message}`);
             say(`vendor: the old residence's files were NOT removed — green at both ends comes before retirement, and it was not green.`);
-            say(`vendor: exactly one workspace governs ${path.basename(repoDir)}. Fix what is named above, then re-run \`doctor\` at both ends.`);
+            say(`vendor: the transfer completed, but validation failed. Preserve both ends and re-run \`doctor\` after fixing what is named above.`);
             return 1;
         }
 
         // ---- retire the old residence's material — only what this run can account for
 
-        // Compile's output is deleted though never copied: it is reproducible, and left here it would enforce beside a pointer.
+        // Retire only unchanged files from the initial inventory, including compiled outputs.
         const moved = new Set([...rels, ...generated]);
         const leftovers = [];
+        const retiredGenerated=[],generatedSet=new Set(generated);
+        const retain=rel=>{if(!leftovers.includes(rel))leftovers.push(rel);};
+        let keptResidence=false,retiredCount=0;
         let remaining = [];
         let unscannable = null;
+        const sameResidence=()=>{try{const at=fs.statSync(source);return fs.realpathSync(source)===sourceReal && at.dev===sourceDirectory.dev && at.ino===sourceDirectory.ino;}catch{return false;}};
         try {
+            if(!sameResidence())throw new VendorError("the old residence changed identity during switching");
             remaining = walk(oldResidence);
         } catch (cause) {
             // A failed scan is not an empty residence: under `--leave nothing` it would delete files this run cannot account for.
@@ -1056,18 +1091,31 @@ export async function run(argv, options = {}) {
         }
         for (const file of remaining) {
             if (file.rel === "workspace.json") continue;
-            if (leave === "pointer" && file.rel === "README.md" && !moved.has("README.md")) continue;
             if (!moved.has(file.rel)) {
-                leftovers.push(file.rel);
+                retain(file.rel);
                 continue;
             }
-            fs.rmSync(path.join(oldResidence, file.rel), { force: true });
+            if(!retireObserved(oldResidence,file.rel,observed.get(file.rel),sourceReal)) {retain(file.rel);continue;}
+            retiredCount++;if(generatedSet.has(file.rel))retiredGenerated.push(file.rel);
         }
-        if (unscannable === null) pruneEmpty(oldResidence);
+        if(unscannable===null) {
+            try {for(const file of walk(oldResidence))if(file.rel!=="workspace.json")retain(file.rel);}
+            catch(cause){unscannable=cause;}
+        }
+        if(unscannable===null && !sameResidence())unscannable=new VendorError("the old residence changed identity during retirement");
+        if (unscannable === null) pruneObservedDirectories(oldResidence,sourceDirs);
         if (leave === "pointer") {
-            fs.writeFileSync(path.join(oldResidence, "README.md"), pointerReadme(manifest.name, parsed.feed, display(dest)));
+            try {fs.writeFileSync(path.join(oldResidence,"README.md"),pointerReadme(manifest.name,parsed.feed,display(dest)),{flag:"wx"});}
+            catch(cause){if(cause.code!=="EEXIST")throw cause;retain("README.md");}
         } else if (leftovers.length === 0 && unscannable === null) {
-            fs.rmSync(oldResidence, { recursive: true, force: true });
+            try {fs.rmdirSync(oldResidence);}
+            catch(cause) {
+                if(cause.code!=="ENOENT") {
+                    keptResidence=true;
+                    try {for(const file of walk(oldResidence))retain(file.rel);}
+                    catch(error){unscannable=error;}
+                }
+            }
         }
         fault("retire:material");
 
@@ -1075,12 +1123,12 @@ export async function run(argv, options = {}) {
         say(`vendor:   resides at ${display(dest)}, green.`);
         if (unscannable !== null) {
             say(`vendor:   the old residence at ${display(oldResidence)} could NOT be scanned — ${unscannable.message}`);
-            say("vendor:   so nothing there was removed. It no longer governs (its manifest is gone or is a pointer),");
+            say(retiredCount===0 ? "vendor:   so nothing there was removed. Its original manifest is retired or is a pointer," : "vendor:   cleanup stopped after some accounted-for files were retired; retained content needs review,");
             say("vendor:   and nothing here deletes files it could not account for. Clear it by hand when you can read it.");
         } else if (leave === "pointer") {
             say(`vendor:   a pointer at ${display(oldResidence)}, green.`);
-        } else if (leftovers.length) {
-            say(`vendor:   no workspace at ${display(oldResidence)} — its manifest is retired and it governs nothing.`);
+        } else if (leftovers.length || keptResidence) {
+            say(`vendor:   the original manifest at ${display(oldResidence)} is retired; remaining content was preserved for review.`);
         } else {
             say(`vendor:   nothing left at ${display(oldResidence)}.`);
         }
@@ -1088,12 +1136,12 @@ export async function run(argv, options = {}) {
             say(`vendor: ${leftovers.length} file(s) at the old residence were not moved by this run and were left alone: ${leftovers.join(", ")}.`);
             say("vendor: nothing here deletes a file it cannot account for — they are yours to keep or remove.");
         }
-        if (generated.length) {
-            say(`vendor: ${generated.length} compiled artifact(s) did not travel and were retired with the old residence: ${generated.join(", ")}.`);
+        if (retiredGenerated.length) {
+            say(`vendor: ${retiredGenerated.length} compiled artifact(s) did not travel and were retired with the old residence: ${retiredGenerated.join(", ")}.`);
             say("vendor: enforcement is keyed to the residence — where a settings file lands differs between the two — so a copy would name paths for the residence it left.");
         }
-        if (sourceResidence === "in-repo") {
-            say(`vendor: \`${display(path.join(path.dirname(source), ".claude", "settings.json"))}\` and \`${display(path.join(path.dirname(source), ".claude", "rules", "portulan"))}\` — where they exist — were compiled from the workspace that has just moved, and nothing here writes outside ${display(source)}. They are yours to remove.`);
+        if (sourceResidence === "in-repo" && !isInside(source,oldTree)) {
+            say(`vendor: \`${display(path.join(oldTree,".claude","settings.json"))}\` and \`${display(path.join(oldTree,".claude","rules","portulan"))}\` — where they exist — lie outside the retired workspace. This switch left those paths and their recorded nested targets for you to review.`);
         }
         if (!parsed.repoRoots.length && cards.length) {
             say(`vendor: no --repo-root was given, so the cross-repository half of "green at both ends" reported rather than checked.`);
@@ -1117,15 +1165,70 @@ export async function run(argv, options = {}) {
         }
         return 0;
     } catch (error) {
-        if (!pastTheFlip) await unwind(undo);
+        if (!pastTheFlip) {const incomplete=await unwind(undo);if(incomplete.length)warn(`vendor: rollback incomplete; retained ${incomplete.join(", ")}`);}
         const message = error instanceof VendorError ? error.message : `could not run — ${error.code === "EIO" ? error.message : (error.stack ?? error)}`;
         warn(`vendor: ${message}`);
         if (pastTheFlip) {
             warn("vendor: governance had already moved when this failed, so nothing was rolled back — undoing it would re-open the window in the other direction.");
-            warn("vendor: exactly one workspace governs. Run `doctor` at both ends to see where it stands.");
+            warn("vendor: run `doctor` at both ends to check the current governance and retained files.");
         }
         return 2;
     }
+}
+
+function makeOwnedDirectories(root,rel,created) {
+    if(rel==="."||rel==="")return;
+    let current="";
+    for(const part of rel.split(path.sep)){current=path.join(current,part);const full=path.join(root,current);try{fs.mkdirSync(full);const at=fs.lstatSync(full);created.set(current,{dev:at.dev,ino:at.ino});}catch(error){if(error.code!=="EEXIST"||!fs.lstatSync(full).isDirectory()||fs.lstatSync(full).isSymbolicLink())throw error;}}
+}
+function cleanupPublications(root,published,previous,expectedRoot,removeRoot,created=new Map()) {
+    if(!fs.existsSync(root))return [];
+    if(expectedRoot){const at=fs.statSync(root);if(at.dev!==expectedRoot.stat.dev||at.ino!==expectedRoot.stat.ino||fs.realpathSync(root)!==expectedRoot.real)return [root];}
+    const real=fs.realpathSync(root),failed=[],directoryModes=[];
+    for(const [rel,id]of created){const full=path.join(root,rel);try{const at=fs.lstatSync(full);if(at.isDirectory()&&!at.isSymbolicLink()&&at.dev===id.dev&&at.ino===id.ino){directoryModes.push({full,id,mode:at.mode});if((at.mode&0o700)!==0o700)fs.chmodSync(full,at.mode|0o700);}}catch(error){if(error.code!=="ENOENT")failed.push(full);}}
+    const order=[...published.keys()].sort((a,b)=>a==="workspace.json"?-1:b==="workspace.json"?1:0);
+    for(const rel of order) {
+        const stamp=published.get(rel),full=path.join(root,rel),prior=previous.get(rel);
+        try {
+            if(!sameStamp(fileStamp(root,rel,real,stamp),stamp)){failed.push(full);continue;}
+            const options={beforeDigest:stamp[3],identity:{dev:stamp[0],ino:stamp[1],mode:stamp[2]}};
+            if(prior)atomicWrite(full,prior.bytes,{...options,mode:prior.mode});else guardedRemove(full,options);
+        }catch{failed.push(full);}
+    }
+    for(const [rel,id]of [...created].reverse()){const full=path.join(root,rel);try{const at=fs.lstatSync(full);if(!at.isDirectory()||at.isSymbolicLink()||at.dev!==id.dev||at.ino!==id.ino){failed.push(full);continue;}fs.rmdirSync(full);}catch(error){if(error.code!=="ENOENT")failed.push(full);}}
+    for(const {full,id,mode}of directoryModes)try{const at=fs.lstatSync(full);if(at.isDirectory()&&!at.isSymbolicLink()&&at.dev===id.dev&&at.ino===id.ino)fs.chmodSync(full,mode);}catch(error){if(error.code!=="ENOENT")failed.push(full);}
+    if(removeRoot){try{fs.rmdirSync(root);}catch(error){if(error.code!=="ENOENT")failed.push(root);}}
+    return failed;
+}
+
+function fileStamp(root,rel,realRoot,expected=null) {
+    try {
+        const file=path.join(root,rel),at=fs.lstatSync(file);
+        if(!at.isFile() || (expected && (at.dev!==expected[0] || at.ino!==expected[1] || at.mode!==expected[2])) || fs.realpathSync(file)!==path.join(realRoot,rel))return null;
+        return [at.dev,at.ino,at.mode,createHash("sha256").update(fs.readFileSync(file)).digest("hex")];
+    } catch {return null;}
+}
+function readStamped(root,rel,stamp) {
+    const full=path.join(root,rel),fd=fs.openSync(full,fs.constants.O_RDONLY|(fs.constants.O_NOFOLLOW??0)|fs.constants.O_NONBLOCK);
+    try {const at=fs.fstatSync(fd),bytes=fs.readFileSync(fd);if(!at.isFile()||!sameStamp([at.dev,at.ino,at.mode,createHash("sha256").update(bytes).digest("hex")],stamp))throw new VendorError(`${rel} changed before publication`);return bytes;}
+    finally{fs.closeSync(fd);}
+}
+const sameStamp=(left,right)=>Boolean(left && right && left.every((value,index)=>value===right[index]));
+function retireObserved(root,rel,expected,realRoot) {
+    if(!sameStamp(fileStamp(root,rel,realRoot,expected),expected))return false;
+    const file=path.join(root,rel),claim=path.join(path.dirname(file),`.${path.basename(file)}.portulan-retire.${process.pid}.${randomUUID()}`);
+    let made=false,moved=false,placeholder;
+    try {
+        const fd=fs.openSync(claim,"wx");made=true;const at=fs.fstatSync(fd);placeholder={dev:at.dev,ino:at.ino};fs.closeSync(fd);
+        try{fs.renameSync(file,claim);moved=true;}catch(error){const held=fs.lstatSync(claim,{throwIfNoEntry:false});if(held&&(held.dev!==placeholder.dev||held.ino!==placeholder.ino)){moved=true;try{fs.linkSync(claim,file);fs.unlinkSync(claim);moved=false;made=false;}catch{throw new VendorError(`${rel} had an uncertain retirement; its data is preserved at ${claim}. Review both paths before cleanup`);}}throw error;}
+        if(!sameStamp(fileStamp(root,path.relative(root,claim),realRoot,expected),expected)) {
+            try {fs.linkSync(claim,file);fs.unlinkSync(claim);moved=false;made=false;}
+            catch {throw new VendorError(`${rel} changed during retirement; its data is preserved at ${claim}. Review both paths before cleanup`);}
+            return false;
+        }
+        fs.unlinkSync(claim);moved=false;made=false;return true;
+    } catch(error){if(!moved&&["EACCES","EPERM","EROFS"].includes(error.code))return false;throw error;}
+    finally {if(made&&!moved){const at=fs.lstatSync(claim,{throwIfNoEntry:false});if(at?.isFile()&&at.dev===placeholder.dev&&at.ino===placeholder.ino&&at.size===0)guardedRemove(claim,{before:Buffer.alloc(0),identity:placeholder});else if(at)throw new VendorError(`${rel} retirement staging changed; retained ${claim} for review`);}}
 }
 
 async function verdict(dir, roots) {
@@ -1138,34 +1241,13 @@ async function verdict(dir, roots) {
 }
 
 async function unwind(undo) {
-    while (undo.length) {
-        const step = undo.pop();
-        try {
-            step();
-        } catch {
-            /* best effort: the message about the original failure is worth more than this one */
-        }
-    }
+    const failed=[];
+    while(undo.length){try{const result=await undo.pop()();if(Array.isArray(result))failed.push(...result);}catch(error){failed.push(error.message);}}
+    return failed;
 }
 
-function pruneEmpty(root) {
-    const walkDown = (dir) => {
-        let entries;
-        try {
-            entries = fs.readdirSync(dir, { withFileTypes: true });
-        } catch {
-            return;
-        }
-        for (const entry of entries) if (entry.isDirectory()) walkDown(path.join(dir, entry.name));
-        if (dir !== root) {
-            try {
-                if (fs.readdirSync(dir).length === 0) fs.rmdirSync(dir);
-            } catch {
-                /* a directory that will not go is one somebody still has something in */
-            }
-        }
-    };
-    walkDown(path.resolve(root));
+function pruneObservedDirectories(root,observed) {
+    for(const entry of [...observed].reverse())try{const full=path.join(root,entry.rel),at=fs.lstatSync(full);if(at.isDirectory()&&!at.isSymbolicLink()&&at.dev===entry.identity.dev&&at.ino===entry.identity.ino)fs.rmdirSync(full);}catch{}
 }
 
 // `?? ""`: `process.argv[1]` is absent when a non-script imports this, and `pathToFileURL(undefined)` throws.

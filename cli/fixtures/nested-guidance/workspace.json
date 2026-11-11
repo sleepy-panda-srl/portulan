@@ -1,0 +1,23 @@
+{
+  "portulan": {
+    "spec": "2.10"
+  },
+  "name": "nested-guidance",
+  "summary": "An invented workspace compiling a native child-directory instruction file beside always and on-read controls.",
+  "kind": "demo",
+  "slots": {
+    "identity": "identity.md",
+    "principles": "principles.md",
+    "gates": "gate-map.md",
+    "context": "context/"
+  },
+  "verify": {
+    "default": "check",
+    "recipes": [
+      {
+        "id": "check",
+        "run": "./verify.sh"
+      }
+    ]
+  }
+}

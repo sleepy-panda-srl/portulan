@@ -924,14 +924,15 @@ The guidance itself, which is what the host loads.
 | Key | What it is |
 |---|---|
 | `tier` | `always`, `on-path`, `on-invoke` or `on-read`: `0036`'s four tiers, spelled as that proposal spells them. |
-| `paths` | On-path only, and required there: globs, relative to the repository the workspace governs, that load the unit when the agent first touches a match. A list, in flow form as above or as a block list of `- ` items. |
+| `paths` | On-path only, as an alternative to `target`: globs, relative to the repository the workspace governs, that load the unit when the agent first touches a match. A list, in flow form as above or as a block list of `- ` items. |
+| `target` | On-path only, as an alternative to `paths`: a literal child-directory `CLAUDE.md`, such as `api/CLAUDE.md`. Added within the existing 2.10 unit contract to complete accepted `0036`; older compilers reject this new unit field, so upgrade the compiler before using it. |
 | `description` | Every tier but `always`, and one line: what an agent reads to decide whether to open the unit. It is a skill's description on a host that lists skills, and the pointer line wherever the unit degrades to one. |
 
 **The tier is declared, never inferred**, and a unit sits in one tier, so what a unit costs is what its
 tier costs and nothing has to read the file to find out where it belongs.
 
 **`compile` emits it, per host.** For Claude Code, an `always` unit is an unscoped rule, loaded into every
-context; an `on-path` unit is a rule scoped by `paths:`; an `on-invoke` unit is a project skill, whose
+context; an `on-path` unit is either a rule scoped by `paths:` or the nested instruction file declared by `target`; an `on-invoke` unit is a project skill, whose
 description is always loaded and whose body loads when it is invoked; and an `on-read` unit is one line in
 an unscoped index of pointers, naming its file, its size in whole KB and its description (the size since
 2026-09-24, so a session knows what it passes over), while its file stays where it is for the agent to
@@ -944,8 +945,54 @@ each rule it wrote: it rewrites or removes only a rule the marker lists, stops w
 replace one it does not list, and stops too where the directory holds Markdown files and no marker in its
 form. It writes and removes nothing through a link.
 
+**Nested targets use two portable ownership records.** The first-line HTML mark binds the workspace,
+source and canonical target relative to the project; `.claude/rules/portulan/.instructions` pairs that source with its
+target. Both are committed, so clones can regenerate and check the same files. A missing owned file or
+changed body is repairable drift (`--check` exits 1). A human file, missing/torn/foreign mark or registry,
+link, nonregular output or ambiguous case-only move refuses before compilation writes anything.
+Complete atomic writes and exclusive new claims prevent a pending target from replacing a human file
+that arrives after planning. Intermediate registry rows retain old and new ownership until publication
+and stale cleanup finish, so a later run can recover an interrupted move. Only proved-owned files are
+retired when a target, tier or unit changes. Split/join rollback checks post-write bytes and file
+identity, recreates a deleted file exclusively, and preserves later human changes while reporting
+incomplete recovery. Complete prepared temporary files are recognized only by their reserved names
+and validated ownership records or destination-bound marks, and removed on retry. Malformed or
+unproved debris is preserved for manual review. Impossible stable multi-source records are refused.
+When a target is absent after interruption, agreeing proved artifacts retain its observed mode.
+Those witnesses and their source ownership survive until replacement publication, including a
+source rename and another interruption. Disagreeing modes refuse. A new target without an observed
+entry or proved permission witness uses ordinary creation permissions.
+Existing physical path spelling must match the declared target; distinct case-sensitive paths remain
+independent. Owned target sets use one spelling for every shared directory prefix, including pending
+and retired rows. Init projects the atomic writer's parent-directory permissions, not a file-write check.
+Read-only checking requires no mutation permission, and stable nested output
+produces no registry transition. Source slots and compiler control directories are reserved.
+
+A target has 1–32 child directories, each at most 128 ASCII characters, starting with a letter or digit,
+then letters, digits, dots, underscores, spaces or hyphens; no trailing dot/space, device names, globs,
+backslashes, traversal or a directory named `CLAUDE.md` (case-insensitive). That last exclusion
+prevents a target from becoming another target's ancestor file. The full path is at most 1,024 characters and ends exactly `CLAUDE.md`.
+This bounded portable subset avoids platform-dependent ownership aliases. Two units cannot claim one
+target, including a spelling differing only in case. `target` and `paths` are mutually exclusive.
+Nested bodies refuse actionable at-sign imports using the shared lexer, including absent, absolute,
+home and target-relative paths, without probing them. Supported code spans and fences remain literal.
+The body therefore cannot acquire a new import by moving beside a different file.
+
+The on-path claim assumes Claude starts at the project root. A session started inside the subtree may
+load its ancestor `CLAUDE.md` at startup; an explicit root import can load it eagerly too. Project-root
+budget accounting excludes unimported nested files and includes files explicitly imported by its roots.
+See [Claude's loading contract](https://code.claude.com/docs/en/memory#how-claude-md-files-load).
+Prospective compilation includes pending pre-existing guidance and measures its after corpus when
+representable. Native absolute imports may withhold that optional figure; a successful write measures
+the actual emitted result. An explicitly imported nested body can change that domain.
+Vendor switches recheck observed identities and bytes before retiring material, preserve changed or
+newly arrived files, and never recursively remove the old residence. Their residue advice uses the
+manifest's actual governed tree.
+The nested file's pure body is emitted once; its derived subtree scope is used for hosts' pointer
+fallbacks. The compiler does not emit a second scoped rule for it.
+
 **Checked by `compile`, not by the schema or `doctor`.** The subset cannot see inside a file, so the
-frontmatter is its consumer's to refuse: an unknown key, a tier outside the four, `paths` on a unit that is
+frontmatter is its consumer's to refuse: an unknown key, a tier outside the four, `paths` or `target` on a unit that is
 not on-path or reaching outside the repository, a missing `description` or one on an `always` unit, a unit
 with no guidance under its frontmatter, a link out of the workspace or into a directory `compile` writes into,
 a slot in one of those (`.claude/`, or the workspace's `compile/`, neither of which `vendor` carries), a name
@@ -971,6 +1018,73 @@ in it still reads from the repository root, as it did in `CLAUDE.md`.
 [`../cli/instructions.mjs`](../cli/instructions.mjs) is the same split on the command line, and `--join`
 puts every section back as it stands, saying which one the digest shows edited since, and refusing a unit
 re-tiered since, or a file not at the top of this slot, rather than undo its tier or remove it.
+
+**The CLI split and join can resume an interrupted source migration.** Before claiming a source,
+`instructions --write` records the exact original operation in the reserved project-root directory
+`.portulan-instructions-journal` (mode 0700, metadata 0600). A retry with the original split or join
+command restores held originals and proves the saved operation again with the same planner before
+continuing. Units precede split roots; join roots precede unit retirement. Exact bytes, modes and
+recorded identities distinguish the operation's own publications from an independent save, even an
+identical replacement. A conflict preserves both entries and names the retained journal or claim.
+The intended whole source set and regenerated guidance must agree before commit is recorded.
+An unchanged or absent second root remains a dependency of the proof, rechecked before source edits
+and completion. Initial observations of both roots and original operands must be ordinary singly
+linked entries before a journal is created; an unsupported alias refuses without leaving a journal.
+A newly arrived reference cannot authorize retirement of the unit it names. Live references include
+moved markers and actionable native `@` imports, resolved relative to each root with the import lexer;
+inline and fenced examples stay literal. Normalized in-project paths and file or directory aliases
+are compared with direct operands even when the unit is absent. Reference discovery reads the two
+roots, without traversing imported bodies. Read-only split/join runs the structural source checks
+before offering a write; join checks both prospective root images for references to units it would
+retire. Write-time checks still revalidate those inputs. Split, join and upgrade form `0009` validate
+prospective source edits through the shared isolated
+guidance view before offering a write. The view applies creations and deletions together, recompiles
+all guidance and measures the resulting Claude corpus, including generated leads and index imports.
+Its compiler projection origin preserves engine/adopter identity and maps contained absolute lead
+and gate dependencies into the view. Aliases retain their directory entries and resolve to the same
+projected bytes, including dangling links after retirement. The view checks its emitted result again,
+retains retirements as absence through aliases, including case spellings first seen after emission,
+and distinguishes separate hard-link entries. Optional native directory aliases use the final file's
+project membership, including operands spelled outside and routes returning from outside. Their
+original lexical directory remains the base for later imports; outside bodies are not copied.
+Optional native non-files and missing imports follow
+the corpus reader; denied reads and required inputs remain checked. Linked ordinary outputs refuse
+a migration that would change or retire them; native compilation refuses to rewrite such an output,
+including a retiring marker's transitional write, before gate or persona publication. It derives
+the actual workspace, context slot, ownership and packs without reading another host's
+unrelated root. Unchanged read-only files retain their permissions. A deleted input cannot be copied
+back from the original tree by a later dependency lookup. Unrepresentable native absolute imports
+withhold only the optional numerical after forecast; successful writes measure the actual result.
+Publication snapshots retain their modes through rollback. If a changed root cannot be restored,
+rollback retains its dependent units and reports the pending operation instead of removing their text.
+Before unlinking a unit, the journal confirms its acquired public entry and pairs that fact with the
+exact claim intent, distinguished from preparation aliases. After interruption, a proved retired unit
+still referenced by either root is recreated exclusively when its path is absent, before the retry
+refuses an independently edited root. Handled failures restore the current attempt's safe images;
+the journal remains until the whole original operation has reached a proved terminal state.
+The saved proof contains only the two root observations and directly involved units; unrelated
+context bodies used to forecast index growth are not copied into the bounded journal.
+
+This is a local process-interruption protocol, demonstrated with SIGKILL, rather than
+a power-loss durability guarantee. Exclusive immutable lease children permit one live writer or
+recoverer in the same verified boot/PID namespace; a live, inaccessible or reused PID prevents
+takeover. Another namespace refuses. A cut after a source claim converges automatically. Unproved
+partial metadata, an unrecorded preparation file (including a retry killed before its first durable
+record), an ownerless initializer or an empty directory left after final cleanup can require
+manual review of the exact reported file or directory: preserve any source or claim bodies, then remove only
+the reviewed residue and rerun the original command. At initialization the source set is original;
+at final cleanup it is fully committed. Do not delete a pending journal merely to bypass its refusal.
+
+Read-only `instructions` reports a pending migration without changing it. Guidance compilation/check
+refuses a partial source set; a complete source set may still report stale generated guidance until
+the retry compiles it. `init`, `vendor` and `upgrade` refuse a pending journal; vendor also refuses
+instruction claim/staging residue rather than copying complete source bodies into another residence.
+The journal cannot overlap a current declared slot, checked again during recovery and terminal cleanup.
+Vendor refuses reserved journal paths found in its inventory and rechecks pending operations before
+publication and governance retirement. This recovery promise covers the CLI split/join only;
+upgrade form `0009` shares the source plan and guarded writes but has no process-restart journal.
+The distinction keeps the recovery record confined to this operation instead of creating a general
+workspace transaction format. Provenance: #629's independent source-interruption review.
 
 **An `always` unit may import whole files and write out another file's lead sentences or a gate policy's
 gates**, so a card carries a fact without holding a second copy of it:

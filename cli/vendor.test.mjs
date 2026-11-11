@@ -741,7 +741,8 @@ describe("the switch, in-repo → feed-side", () => {
         assert.equal(exists(path.join(src, ".claude")), false);
         assert.equal(exists(path.join(src, "compile")), false);
         assert.match(text(h), /compiled artifact/);
-        assert.match(text(h), /nothing here writes outside/);
+        assert.match(text(h), /lie outside the retired workspace/);
+        assert.ok(text(h).includes(path.join(path.dirname(src), ".claude", "settings.json")));
     });
 
     test("`--leave nothing` does NOT delete an old residence it could not scan", async (t) => {
@@ -932,6 +933,8 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
 
         const h = harness();
         const original = fs.renameSync;
+        const link=fs.linkSync;
+        t.mock.method(fs,"linkSync",(from,to,...rest)=>{if(String(from)===path.join(src,"workspace.json.vendoring")&&String(to)===path.join(src,"workspace.json"))throw Object.assign(new Error("cross-device link not permitted"),{code:"EXDEV"});return link(from,to,...rest);});
         t.mock.method(fs, "renameSync", (from, to, ...rest) => {
             if (String(to) === path.join(src, "workspace.json")) {
                 const error = new Error("cross-device link not permitted");
