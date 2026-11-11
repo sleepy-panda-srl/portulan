@@ -322,6 +322,14 @@ For valid complete observations, raw class totals remain exact integers. Missing
 or invalid counters retain closed validity metadata through per-block deduplication;
 affected totals are partial and class analysis remains unassessed. Missing fields
 can be completed by another block; a provided invalid counter remains unassessed.
+Cache-read and total cache-write counts are observations too: absence is unknown,
+while an explicit zero is known. Without an aggregate, both explicitly observed
+lifetime buckets may supply the write sum; one bucket alone may not. Duplicate
+bucket maxima are combined before deriving that sum; a derived sum never becomes
+an observed aggregate ceiling. This follows the [provider's write-total definition](https://platform.claude.com/docs/en/build-with-claude/prompt-caching),
+checked 2026-11-11. Explicit partial live input remains unpriced; null or absent
+live usage retains the transcript fallback. Output uncertainty remains separate
+from valid input-only restart arithmetic.
 Beside valid totals, a normalized class index
 uses uncached input at 1×, declared or general read/write multipliers and output
 at an explicitly assumed 5×. It assumes uniform input rates across models and is
