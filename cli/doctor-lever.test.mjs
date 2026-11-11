@@ -22,7 +22,7 @@ function fixture(files = {}) {
     }
     return { root, dir: path.join(root, ".portulan"), workspace: { kind: "repository", tree: "../" } };
 }
-const restart = (context) => ({ fresh: 100, context, horizon: 20, multipliers: { read: 0.1, write: 1.25 } });
+const restart = (context) => ({ fresh: 100, context, horizon: 20, horizonDeclared: true, resume: 0, multipliers: { read: 0.1, write: 1.25 } });
 
 test("the larger measured demotion wins and its routing overhead is subtracted", () => {
     const f = fixture({ ".claude/rules/a.md": "a".repeat(300), ".claude/rules/b.md": "b".repeat(900) });
@@ -92,4 +92,21 @@ test("a manual-only skill's omitted description does not hide measured levers", 
         ".claude/skills/manual/SKILL.md": "---\nname: manual\ndescription: Run by a person.\ndisable-model-invocation: true\n---\n\n# Manual\n",
     });
     assert.match(biggestLeverLine(f.dir, f.workspace, { restart: restart(1000), malformed: 0 }), /review restarting.*1,675/);
+});
+
+
+test("unpriced restarts are not ranked, and priced recovery expense is deducted", () => {
+    const f = fixture({ ".claude/rules/a.md": "a".repeat(300) });
+    for (const change of [{ resume: null }, { horizonDeclared: false }]) {
+        assert.doesNotMatch(biggestLeverLine(f.dir, f.workspace, { restart: { ...restart(1000), ...change } }), /biggest lever: review restarting/);
+    }
+    assert.match(biggestLeverLine(f.dir, f.workspace, { restart: { ...restart(1000), resume: 100 } }), /review restarting.*1,575/);
+    assert.doesNotMatch(biggestLeverLine(f.dir, f.workspace, { restart: { ...restart(1000), resume: 2000 } }), /biggest lever: review restarting/);
+});
+
+test("doctor shares the decimal-equality guard and preserves fractional estimates", () => {
+    const f = fixture();
+    const r = { ...restart(500), horizon: 3, multipliers: { read: 0.1, write: 1.2 } };
+    assert.match(biggestLeverLine(f.dir, f.workspace, { restart: r }), /no positive measured lever/);
+    assert.match(biggestLeverLine(f.dir, f.workspace, { restart: { ...r, multipliers: { read: 0.1, write: 1.1999 } } }), /review restarting.*0\.01 estimated/);
 });

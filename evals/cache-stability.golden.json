@@ -94,7 +94,7 @@
     },
     {
       "id": "hook:cli/advisory.mjs",
-      "sha256": "faaf2b0fffe44d31502bc95c1d832cf2da125a765eb25ae288548aef2b6d8237",
+      "sha256": "e88a448e97477bd37bc5df3270353916948de707c9e1de0403538ffe6d56239a",
       "volatile": []
     },
     {

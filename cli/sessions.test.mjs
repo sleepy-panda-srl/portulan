@@ -130,7 +130,7 @@ describe("doctor's one line on the session switches", () => {
     test("a declared block is said after the figures, and an advice, the default, is not", () => {
         assert.equal(
             sessionsLine({ kind: "repository", sessions: { cache_lifetime: "5m" }, spend: { horizon: { requests: 30 }, restart: "block" } }),
-            "cache lifetime 5m, compiled as `promptCacheTtl`; git instructions the host's default; multipliers the general ones; a horizon of 30 requests; a turn's end held once at the restart threshold",
+            "cache lifetime 5m, compiled as `promptCacheTtl`; git instructions the host's default; multipliers the general ones; a horizon of 30 requests; a turn's end held once only with explicit horizon, resume expense and positive estimated savings",
         );
         assert.equal(sessionsLine({ kind: "repository", spend: { restart: "advise" } }), sessionsLine({ kind: "repository" }));
         assert.equal(sessionsLine({ kind: "repository", spend: { restart: ["block"] } }), sessionsLine({ kind: "repository" }), "a value it cannot read is none");
@@ -157,6 +157,6 @@ describe("doctor's one line on the session switches", () => {
         };
         const line = sessionsLine(everything);
         assert.ok(!line.includes("\n"));
-        assert.match(line, /; multipliers declared, read 0\.025× and writes 1\.25×\/2×; a horizon of 20 requests; a turn's end held once at the restart threshold; `portulan upgrade`/);
+        assert.match(line, /; multipliers declared, read 0\.025× and writes 1\.25×\/2×; a horizon of 20 requests; a turn's end held once only with explicit horizon, resume expense and positive estimated savings; `portulan upgrade`/);
     });
 });

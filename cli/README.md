@@ -38,7 +38,7 @@ Run by the hooks `compile` writes into a host's settings, never by a person.
 |---|---|
 | [`gate.mjs`](gate.mjs) | The PreToolUse gate runner — the *explanation* half of the enforcement compiler. |
 | [`stop-gate.mjs`](stop-gate.mjs) | Stop-gate: bounded recipe and work checks. Hook failures need a verdict, since a crashed hook fails open. |
-| [`advisory.mjs`](advisory.mjs) | The restart advisory — one line, once, where the agent is, and the same figure for the human. |
+| [`advisory.mjs`](advisory.mjs) | Restart comparison with explicit horizon and resume expense; unknown recovery cost stays conditional. |
 
 ### Tools and modules
 
@@ -155,6 +155,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`recipe-set.live.test.mjs`](recipe-set.live.test.mjs) | The composed recipe set, against THIS repository rather than against fixtures. |
 | [`recipe-set.test.mjs`](recipe-set.test.mjs) | The recipe set — one carrier, and every reader reaches it. |
 | [`release-eval.test.mjs`](release-eval.test.mjs) | The release-eval suite, on the record layer only: `--capture` spawns every other rail, the tests that run this suite included. |
+| [`restart-resume.test.mjs`](restart-resume.test.mjs) | Bounded-run restart comparisons, recovery expense, profitability and Stop refusal controls. |
 | [`review-meter.test.mjs`](review-meter.test.mjs) | Tests for `review-meter` — the review-loop meter: arithmetic, snapshot contract, register rail, window and shaping. |
 | [`rule-carriers.test.mjs`](rule-carriers.test.mjs) | Tests for `rule-carriers` — the rail that keeps a reduced rule reduced. |
 | [`sessions.test.mjs`](sessions.test.mjs) | `sessions` — the cache lifetime's offer, and `doctor`'s one line on the session switches. |

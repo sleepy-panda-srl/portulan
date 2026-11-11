@@ -228,14 +228,22 @@ number governing both would make a bump in either mean a change in the other:
 
 | Schema | Manifest key | Current | What it governs |
 |---|---|---|---|
-| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.15** | the Workspace Definition — the manifest at a workspace root |
+| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.16** | the Workspace Definition — the manifest at a workspace root |
 | [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.0** | the Pack Definition — the manifest at a pack root. |
 
 The rules below apply to each train independently. `portulan.spec` is `MAJOR.MINOR`, and the current
-Workspace Definition version is **2.15**. It did **not** move when the Pack Definition arrived, because
+Workspace Definition version is **2.16**. It did **not** move when the Pack Definition arrived, because
 `workspace.schema.json` was byte-identical across that change: `packs` already existed as an array of
 strings and was deliberately left that way, since tightening its items to the canonical `category/name`
 form would be a constraint an existing manifest could newly fail, which is a MAJOR.
+
+**2.16 adds optional `spend.resume.tokens`**, from [#503](https://github.com/sleepy-panda-srl/portulan/issues/503).
+It prices additional restart expense in uncached-input-token equivalents. Doctor
+checks its finite nonnegative bound by hand and gates it to 2.16; compile refuses
+older declarations before writing. Index and librarian recognize the new minor.
+Existing manifests need no change: unknown resume cost or a default horizon now
+permits a conditional report only, including for an existing `restart: "block"`.
+No estimate is installed automatically, and init gains no question.
 
 **2.15 adds optional handoff budgets**, accepted proposal 0037: a per-record token cap with a required
 cutoff, and a generated index window with a token budget. Existing manifests need no changes. Both

@@ -816,6 +816,7 @@ workspace computes it at, and what a crossed threshold does.
 | `multipliers.write["5m"]` | What a five-minute cache write costs, as the same multiple. At least 1. |
 | `multipliers.write["1h"]` | What a one-hour cache write costs, as the same multiple. At least 1. |
 | `horizon.requests` | The requests still to go at which the restart threshold is judged. A positive integer. |
+| `resume.tokens` | Additional restart expense in uncached-input-token equivalents, finite and nonnegative; absent means unknown. Added in 2.16. |
 | `restart` | `"advise"` or `"block"`: what a crossed threshold does. Undeclared, `"advise"`. |
 
 ```json
@@ -826,37 +827,39 @@ workspace computes it at, and what a crossed threshold does.
 }
 ```
 
-**What reads it.** A session is told to end into a handoff once its context passes
-`C* ≈ F × (1 + m_w / (n × m_r))`: `F` the fresh context, `m_r` the read multiplier, `m_w` the write multiplier
-at the lifetime the host recorded for the session's writes (the five-minute one where the records do not say),
-and `n` the horizon. [`../cli/ledger.mjs`](../cli/ledger.mjs) reads the key from `<dir>/workspace.json` when
-run with `--workspace <dir>`, and computes every threshold its report states at it. The restart advisory,
-[`../cli/advisory.mjs`](../cli/advisory.mjs), is handed its command and the host's payload and nothing else,
-so `compile` writes the figures onto each of its commands, the `PostToolUse` and `UserPromptSubmit` hooks, the
-status line and, where `restart` declares it, the block, as `--read`, `--write-5m`, `--write-1h` and
-`--horizon`, and its drift check holds them to the manifest: an edit to `spend` is drift until recompiled. A
-workspace with no gate policy has no settings for them to ride, and `compile` says that it compiled nothing.
-Every threshold the ledger or the advisory prints says whether its multipliers are declared, and so does a
-ledger report with no threshold to judge.
+**What reads it.** `cli/ledger.mjs --workspace <dir>` and the compiled advisory
+commands compute `C* = F + (F × m_w + R) / (n × m_r)`. Here `F` is the first
+recorded context after startup or compaction, `n` requests remaining, and `R` is
+`spend.resume.tokens` (optional since **2.16**). `R` is additional restart expense
+in uncached-input-token equivalents, excluding the existing fresh-context write
+and baseline reads. Include handoff output, boot/state recovery and additional
+rereads over the selected horizon. These are weighted cost units: 2,000 output
+tokens at 5× contribute 10,000 equivalents. A finite nonnegative number, including
+explicit zero, is priced; absent is unknown and the reported threshold is only a
+lower bound. No automatic predictor fills it.
 
-**Declared, not defaulted.** Undeclared, both price at the general multipliers, a read at a tenth and writes
-at 1.25× and 2×, over a horizon of 20 requests, and say `undeclared`. That is ruling 2's answer to a spread no
-one figure fits: a model's cache reads cost between a fortieth and a tenth of an uncached input token. The
-general tenth puts the restart line early, which is the cheaper way to err, since a restart that comes too
-soon costs a fresh write and a handoff, and erring the other way, where reads cost a tenth, costs about four
-times more in excess reads over 20 requests. A declaration makes a team's contracted rates and its host's real
-prices one value. Either half may be declared alone, and the other keeps its general figures. The three
-multipliers are one set, because a threshold priced by one declared figure and two general ones would be
-priced by nobody's.
+`compile` writes `--read`, `--write-5m`, `--write-1h`, `--horizon` and
+`--resume-tokens` on all advisory commands where declared, with drift checked.
+A harness may supply its task's estimates on these commands; no task-file resolver
+exists. A horizon is requests **remaining**, does not decrement automatically and
+must be revised by the caller. For example, `spend.horizon: {"requests": 3}` and
+`spend.resume: {"tokens": 10000}` price a short task's expected remainder.
+
+**Declared, not defaulted.** Undeclared multipliers remain read 0.1× and writes
+1.25×/2×, with a default horizon of 20. Advisory, status and ledger name the horizon
+and its origin, the multipliers and priced/unknown resume cost. Unknown cost or a
+default horizon produces conditional advice, never a claim that restarting must
+cost less. The caller supplies estimates; no configuration is silently installed.
 
 **`restart`: a block, only where declared.** `"advise"` is the advisory every workspace has: the line once,
 with a tool result or at a prompt. `"block"` keeps that line and adds a block at the end of a turn: at the
-first stop whose last recorded request is at or past the threshold and that no block provoked, the advisory's
-own `stop` command, which `compile` writes as a second `Stop` command beside the Stop-gate's, holds the turn's
-end with the line as its reason, once in a session and again after each compaction, and the turn goes on. A
-stop that a block provoked is never held, since a host that gives that retry a new session id would find no
-record of the hold and hold it again. This relies on the `stop_hook_active` marker supplied by Claude Code,
-the host `compile` targets: a harness that omits it and rotates session IDs can receive a hold at every stop.
+first stop with an explicit horizon and resume expense, finite strictly positive
+estimated savings `n × read × (C − F) − write × F − R`, and no preceding hook
+block. Equality never holds, and comparison uses unrounded arithmetic rather than
+the displayed whole-token threshold. Without both estimates an existing block
+declaration reports conditionally without holding. Retry protection uses the
+host's `stop_hook_active` marker; omitting it while rotating session identities
+can repeat holds. A hold is once per session and again after each compaction.
 It is the advisory's command rather than a reason inside the Stop-gate,
 so the gate's counters and caps stay about the recipe and the handoff; and nothing ends the session, which
 stays the agent's or the human's act. `0038`'s *Enforcement* says the block comes *instead* of the line, and
@@ -878,7 +881,7 @@ limits. No network request is made. Nothing checks a declaration against a bill 
 keeping it true is the declaring workspace's work.
 
 **Checked by the schema and by `doctor`, and refused by every reader.** The schema holds the shape: both
-halves of `multipliers`, both lifetimes of `write`, and no key it does not name. The subset types the four
+halves of `multipliers`, both lifetimes of `write`, and no key it does not name. The subset types the numeric
 figures only as `number`, so `doctor` holds the read above 0 and at most 1, each write at least 1 and the
 horizon to a positive integer by hand: a token read from cache costs something and never more than the same
 token sent uncached, and writing one costs at least what sending it uncached does. Figures each in range can
@@ -886,10 +889,10 @@ still give no threshold, since it divides each write by the read, so `doctor` al
 divides past the largest number, which would put the restart line at Infinity, where no session reaches it.
 The ledger, `compile` and the advisory hold the same ranges themselves rather than trusting that `doctor` ran.
 The first two stop with exit 2; the advisory, whose exit 2 would erase the person's prompt, says once on
-stderr what it could not use and prices that half at the general figures. A threshold that a session's fresh
+stderr what it could not use and reports conditionally with fallback figures; any invalid flag prevents a Stop hold. An invalid resume estimate stays unknown. A threshold that a session's fresh
 context still carries past the largest number is none: the ledger stops with exit 2, and the advisory says it
 is not known. `doctor` refuses the key in a manifest declaring a version before 2.12, gated from birth as
-`sessions` was, and `restart` in one before 2.13. `compile` refuses `restart` there too, with exit 2 and
+`sessions` was, `restart` in one before 2.13, and `resume` before 2.16. Doctor and compile check the finite nonnegative resume bound independently. `compile` refuses `restart` there too, with exit 2 and
 nothing written, so that no block is compiled from a declaration its own version's validator refuses.
 For declared `restart`, the compiler requires a string `MAJOR.MINOR` on major 2, minor at least 13;
 missing or malformed versions and other majors stop with exit 2 before artifacts change. The compiler

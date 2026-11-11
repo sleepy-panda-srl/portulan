@@ -304,22 +304,30 @@ records for verification.
 
 ### Restart at a computed threshold
 
-**At the computed restart threshold, a session is told to finish its current step, write its handoff
-and end.** The advisory speaks once in the session; after each compaction it can speak again when the
-new threshold is crossed. The comparison is `C* ≈ F × (1 + m_w / (n × m_r))`: the fresh context `F`, the write and
-read price multipliers `m_w` and `m_r`, and a horizon of `n` more requests. The threshold is computed from
-those inputs, never written down as a token limit. A workspace declares the multipliers and horizon in
-`spend`; undeclared, the general multipliers and horizon apply and the advisory says so.
+**A restart comparison states its assumptions before advising a handoff.** Its
+break-even context is `C* = F + (F × m_w + R) / (n × m_r)`: fresh context `F`,
+write/read multipliers `m_w` and `m_r`, requests remaining `n`, and additional
+resume expense `R` in uncached-input-token equivalents. The workspace declares
+these in `spend`; undeclared multipliers and horizon use the stated general
+figures. The horizon does not decrement automatically.
 
-The horizon is an assumption, and the fresh context must be sufficient to resume the work: the handoff
-carries what the restart needs. The current advisory uses the first recorded context after startup or
-compaction as `F`; later re-orientation reads are not added to that figure. A restart whose prefix is
-still cached can cost less than the comparison assumes.
+`spend.resume.tokens` includes handoff output, boot/state recovery and additional
+rereads over that horizon, excluding the formula's existing fresh-context write
+and baseline reads. These are weighted cost units: 2,000 output tokens at 5× cost
+contribute 10,000 equivalents. The estimate is supplied, not predicted. An absent
+estimate is unknown, distinct from an explicit zero. Its threshold is then only
+a lower bound, and the report says to finish bounded work when that costs less.
 
-[`cli/advisory.mjs`](../../cli/advisory.mjs) reports where the agent is, with a tool result or at a
-prompt, and gives the human the same figure in the status line. A block at a turn's end is added only
-where the workspace declares it. The [slot reference](../../spec/slots.md#spend--the-figures-the-restart-threshold-is-computed-at)
-gives that declaration's contract; it is separate from the Stop-gate's recipe and record checks.
+[`cli/advisory.mjs`](../../cli/advisory.mjs) speaks once with a tool result or at
+a prompt, again after a compaction, and shows the same assumptions on the status
+line. A declared `restart: "block"` holds once only with an explicit horizon and
+resume expense and finite, strictly positive estimated savings
+`n × m_r × (C − F) − m_w × F − R`. Equality never holds. Existing block declarations
+without both estimates become conditional reports without a hold. Nothing ends
+the session automatically. [`spec/slots.md`](../../spec/slots.md#spend--the-figures-the-restart-threshold-is-computed-at)
+gives the declaration contract. This refinement follows the bounded-run evidence
+in [#503](https://github.com/sleepy-panda-srl/portulan/issues/503); proposal 0038 is
+preserved as its dated decision record.
 
 ### Keep the prefix stable
 

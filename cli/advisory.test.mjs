@@ -8,10 +8,12 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { adviceLine, compact, heldFile, main, onPrompt, onStatus, onStop, onTool, spendFlags, stateFile, statusLine, toldFile } from "./advisory.mjs";
+import { adviceLine, compact, heldFile, main, onPrompt, onStatus, onStop as pricedStop, onTool, spendFlags, stateFile, statusLine, toldFile } from "./advisory.mjs";
 import { readTranscript } from "./ledger.mjs";
 
 // This suite imports `./ledger.mjs`, which can read the host's configuration home: point it at an empty one.
+const onStop = (payload, options) => pricedStop(payload, { horizon: 20, resume: 0, ...options });
+
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
@@ -64,8 +66,8 @@ describe("the line at the prompt", () => {
             const out = onPrompt({ session_id: "s", transcript_path: file }, { dir: state });
             const parsed = JSON.parse(out);
             assert.equal(parsed.hookSpecificOutput.hookEventName, "UserPromptSubmit");
-            assert.match(parsed.hookSpecificOutput.additionalContext, /context, 80,000 tokens, has reached its restart threshold of 80,000 = fresh context 40,000 × \(1 \+ write 2× \/ \(20 more requests × read 0\.1×\)\)/);
-            assert.match(parsed.hookSpecificOutput.additionalContext, /multipliers undeclared, so the general read multiplier and the one-hour writes the host recorded/);
+            assert.match(parsed.hookSpecificOutput.additionalContext, /context 80,000 tokens, threshold 80,000; assumes 20 more requests \(default\), read 0\.1×, write 2× \(undeclared\)/);
+            assert.match(parsed.hookSpecificOutput.additionalContext, /resume cost unknown; threshold is a lower bound/);
             grow(file, record({ read: 80000, w1h: 39999 }));
             assert.equal(onPrompt({ session_id: "s", transcript_path: file }, { dir: state }), null, "said once");
         });
@@ -80,7 +82,7 @@ describe("the line at the prompt", () => {
             // After the compaction the fresh context is 20,000 written for an hour: its threshold 40,000.
             grow(file, [boundary, ...record({ w1h: 19999 }), ...record({ read: 20000, w1h: 20000 })]);
             const out = onPrompt({ session_id: "s", transcript_path: file }, { dir: state });
-            assert.match(JSON.parse(out).hookSpecificOutput.additionalContext, /40,001 tokens, has reached its restart threshold of 40,000/);
+            assert.match(JSON.parse(out).hookSpecificOutput.additionalContext, /40,001 tokens, threshold 40,000/);
             assert.match(JSON.parse(out).hookSpecificOutput.additionalContext, /^Portulan restart advisory: after 4 requests,/, "the session's requests, the compaction's included");
             assert.equal(onPrompt({ session_id: "s", transcript_path: file }, { dir: state }), null);
         });
@@ -133,8 +135,8 @@ describe("the line with a tool result", () => {
             const parsed = JSON.parse(onTool({ session_id: "s", transcript_path: file }, { dir: state }));
             assert.equal(parsed.hookSpecificOutput.hookEventName, "PostToolUse");
             // Each request is written once per content block; four requests, eight records, counted once each.
-            assert.match(parsed.hookSpecificOutput.additionalContext, /^Portulan restart advisory: after 4 requests, each re-reading it, this session's context, 80,000 tokens, has reached/);
-            assert.match(parsed.hookSpecificOutput.additionalContext, /: finish the current step, then write the handoff and end the session\. Said once\.$/);
+            assert.match(parsed.hookSpecificOutput.additionalContext, /^Portulan restart advisory: after 4 requests, context 80,000 tokens, threshold 80,000/);
+            assert.match(parsed.hookSpecificOutput.additionalContext, /finish bounded work when that costs less\. Said once\.$/);
             grow(file, record({ read: 80000, w1h: 10 }));
             assert.equal(onTool({ session_id: "s", transcript_path: file }, { dir: state }), null, "said once");
             assert.equal(onPrompt({ session_id: "s", transcript_path: file }, { dir: state }), null, "and the prompt does not say it again");
@@ -144,7 +146,7 @@ describe("the line with a tool result", () => {
     test("said at the prompt first, the tool results after it stay silent: one line between the two halves", () => {
         withTemp((dir) => {
             const file = session(dir, [90000]);
-            assert.match(JSON.parse(onPrompt({ session_id: "s", transcript_path: file }, { dir })).hookSpecificOutput.additionalContext, /finish what this prompt asks/);
+            assert.match(JSON.parse(onPrompt({ session_id: "s", transcript_path: file }, { dir })).hookSpecificOutput.additionalContext, /finish bounded work/);
             assert.equal(onTool({ session_id: "s", transcript_path: file }, { dir }), null);
         });
     });
@@ -169,12 +171,12 @@ describe("the block at a stop, where a workspace declares it", () => {
             fs.mkdirSync(state);
             const file = session(dir, [60000, 79999]);
             assert.equal(onStop({ session_id: "s", transcript_path: file }, { dir: state }), null);
-            grow(file, record({ read: 79999 }));
+            grow(file, record({ read: 80000 }));
             const parsed = JSON.parse(onStop({ session_id: "s", transcript_path: file }, { dir: state }));
             assert.deepEqual(Object.keys(parsed), ["decision", "reason"]);
             assert.equal(parsed.decision, "block");
-            assert.match(parsed.reason, /^Portulan restart advisory: after 4 requests, each re-reading it, this session's context, 80,000 tokens, has reached its restart threshold of 80,000/);
-            assert.match(parsed.reason, /restarting: write the handoff and end the session\. Said once\.$/, "the turn is ending, so there is no step left to finish");
+            assert.match(parsed.reason, /^Portulan restart advisory: after 4 requests, context 80,001 tokens, threshold 80,000/);
+            assert.match(parsed.reason, /consider a handoff and restart if these estimates still fit the task\. Said once\.$/, "the turn is ending, so there is no step left to finish");
             assert.equal(onStop({ session_id: "s", transcript_path: file }, { dir: state }), null, "held once");
             grow(file, record({ read: 80000, w1h: 10 }));
             assert.equal(onStop({ session_id: "s", transcript_path: file }, { dir: state }), null, "and not again at a later stop");
@@ -208,7 +210,7 @@ describe("the block at a stop, where a workspace declares it", () => {
             assert.notEqual(onTool({ session_id: "s", transcript_path: file }, { dir }), null);
             assert.equal(JSON.parse(onStop({ session_id: "s", transcript_path: file }, { dir })).decision, "block");
             grow(file, [boundary, ...record({ w1h: 19999 }), ...record({ read: 20000, w1h: 20000 })]);
-            assert.match(JSON.parse(onStop({ session_id: "s", transcript_path: file }, { dir })).reason, /40,001 tokens, has reached its restart threshold of 40,000/);
+            assert.match(JSON.parse(onStop({ session_id: "s", transcript_path: file }, { dir })).reason, /40,001 tokens, threshold 40,000/);
             assert.equal(onStop({ session_id: "s", transcript_path: file }, { dir }), null);
             assert.equal(onTool({ session_id: "s", transcript_path: file }, { dir }), null);
         });
@@ -254,7 +256,7 @@ describe("what a call reads", () => {
             assert.equal(edited.length, source.length);
             fs.writeFileSync(file, `${edited}${record({ read: 60000, w1h: 19999 }).join("\n")}\n`);
             const out = onPrompt({ session_id: "s", transcript_path: file }, { dir: state });
-            assert.match(JSON.parse(out).hookSpecificOutput.additionalContext, /80,000 tokens, has reached its restart threshold of 80,000 = fresh context 40,000/);
+            assert.match(JSON.parse(out).hookSpecificOutput.additionalContext, /80,000 tokens, threshold 80,000/);
         });
     });
 
@@ -323,7 +325,7 @@ describe("what a call reads", () => {
                 const state = fs.mkdtempSync(path.join(dir, "state-"));
                 fs.writeFileSync(stateFile("s", state), typeof kept === "string" ? kept : JSON.stringify(kept));
                 const out = onPrompt({ session_id: "s", transcript_path: file }, { dir: state });
-                assert.match(JSON.parse(out ?? "null")?.hookSpecificOutput.additionalContext ?? "", /90,000 tokens, has reached its restart threshold of 80,000/, what);
+                assert.match(JSON.parse(out ?? "null")?.hookSpecificOutput.additionalContext ?? "", /90,000 tokens, threshold 80,000/, what);
             }
         });
     });
@@ -362,7 +364,7 @@ describe("what a call reads", () => {
     test("the status line keeps the figures it read, so the next call has nothing to read again", () => {
         withTemp((dir) => {
             const file = session(dir, [50000]);
-            assert.equal(onStatus({ session_id: "s", transcript_path: file }, { dir }), "2 requests · context 50k of a 80k restart threshold · multipliers undeclared: read 0.1×, write 2×");
+            assert.equal(onStatus({ session_id: "s", transcript_path: file }, { dir }), "2 requests · context 50k / restart 80k · 20 remaining (default) · resume cost unknown: lower bound · multipliers undeclared: read 0.1×, write 2×");
             const kept = JSON.parse(fs.readFileSync(stateFile("s", dir), "utf8"));
             assert.equal(kept.offset, fs.statSync(file).size);
             assert.deepEqual([kept.figures.fresh, kept.figures.last], [40000, 50000]);
@@ -380,7 +382,7 @@ describe("what a call reads", () => {
             grow(file, [boundary, ...record({ w1h: 29999 }), ...record({ read: 30000, w1h: 9999 })]);
             onStatus(call, { dir: state });
             fs.writeFileSync(stateFile("race", state), older);
-            assert.equal(onStatus(call, { dir: state }), "4 requests · context 40k of a 60k restart threshold · multipliers undeclared: read 0.1×, write 2×");
+            assert.equal(onStatus(call, { dir: state }), "4 requests · context 40k / restart 60k · 20 remaining (default) · resume cost unknown: lower bound · multipliers undeclared: read 0.1×, write 2×");
             const kept = JSON.parse(fs.readFileSync(stateFile("race", state), "utf8")).figures;
             assert.deepEqual(kept, readTranscript(file).figures);
             assert.equal(kept.compactions, 1, "the compaction the older snapshot had not read is counted once");
@@ -393,8 +395,8 @@ describe("the status line", () => {
         withTemp((dir) => {
             const file = session(dir, [50000]);
             const current_usage = { input_tokens: 3, cache_creation_input_tokens: 997, cache_read_input_tokens: 90000 };
-            assert.equal(onStatus({ transcript_path: file, context_window: { current_usage } }), "2 requests · context 91k has reached its 80k restart threshold: write the handoff and restart · multipliers undeclared: read 0.1×, write 2×");
-            assert.equal(onStatus({ transcript_path: file, context_window: { current_usage: null } }), "2 requests · context 50k of a 80k restart threshold · multipliers undeclared: read 0.1×, write 2×");
+            assert.equal(onStatus({ transcript_path: file, context_window: { current_usage } }), "2 requests · context 91k / restart 80k · 20 remaining (default) · resume cost unknown: lower bound · multipliers undeclared: read 0.1×, write 2×");
+            assert.equal(onStatus({ transcript_path: file, context_window: { current_usage: null } }), "2 requests · context 50k / restart 80k · 20 remaining (default) · resume cost unknown: lower bound · multipliers undeclared: read 0.1×, write 2×");
         });
     });
 
@@ -415,7 +417,7 @@ describe("the status line", () => {
     test("declared multipliers are named as declared", () => {
         const figure = { context: 10, threshold: 20, fresh: 5, horizon: 20, multipliers: { read: 0.05, write: 2, source: "declared" } };
         assert.match(statusLine(figure), /multipliers declared: read 0\.05×, write 2×/);
-        assert.match(adviceLine(figure), /; multipliers declared\./);
+        assert.match(adviceLine(figure), /write 2× \(declared\)/);
     });
 });
 
@@ -430,9 +432,9 @@ describe("the declared figures on the command", () => {
     };
 
     test("they are read as compile writes them, and nothing looser", () => {
-        assert.deepEqual(spendFlags(FLAGS), { declared, horizon: 30, fault: null });
-        assert.deepEqual(spendFlags([]), { declared: null, horizon: null, fault: null });
-        assert.deepEqual(spendFlags(["--horizon", "30"]), { declared: null, horizon: 30, fault: null }, "the horizon stands alone");
+        assert.deepEqual(spendFlags(FLAGS), { declared, horizon: 30, resume: null, fault: null });
+        assert.deepEqual(spendFlags([]), { declared: null, horizon: null, resume: null, fault: null });
+        assert.deepEqual(spendFlags(["--horizon", "30"]), { declared: null, horizon: 30, resume: null, fault: null }, "the horizon stands alone");
         for (const [args, said] of [
             [["--read", "0x1", "--write-5m", "1.25", "--write-1h", "2"], /^--read 0x1 is not a number above 0 and at most 1, so the multipliers are undeclared$/],
             [["--read", "0.05", "--write-5m", "0.5", "--write-1h", "2"], /^--write-5m 0\.5 is not a number of at least 1/],
@@ -452,15 +454,15 @@ describe("the declared figures on the command", () => {
         withTemp((dir) => {
             const state = path.join(dir, "state");
             fs.mkdirSync(state);
-            // Past 80,000, the threshold at the general multipliers; short of 93,333 = 40,000 × (1 + 2 / (30 × 0.05)).
+            // Past the general lower bound of 80,000, short of the declared-horizon lower bound of 93,334.
             const file = session(dir, [90000]);
             const at = { dir: state, declared, horizon: 30 };
             assert.equal(onTool({ session_id: "s", transcript_path: file }, at), null);
             assert.equal(onPrompt({ session_id: "s", transcript_path: file }, at), null);
-            assert.equal(onStatus({ session_id: "s", transcript_path: file }, at), "2 requests · context 90k of a 93k restart threshold · multipliers declared: read 0.05×, write 2×");
+            assert.equal(onStatus({ session_id: "s", transcript_path: file }, at), "2 requests · context 90k / restart 93k · 30 remaining (declared) · resume cost unknown: lower bound · multipliers declared: read 0.05×, write 2×");
             grow(file, record({ read: 90000, w1h: 3333 }));
             const line = JSON.parse(onTool({ session_id: "s", transcript_path: file }, at)).hookSpecificOutput.additionalContext;
-            assert.match(line, /93,334 tokens, has reached its restart threshold of 93,333 = fresh context 40,000 × \(1 \+ write 2× \/ \(30 more requests × read 0\.05×\)\); multipliers declared\./);
+            assert.match(line, /93,334 tokens, threshold 93,334; assumes 30 more requests \(declared\), read 0\.05×, write 2× \(declared\)/);
         });
     });
 
@@ -472,8 +474,8 @@ describe("the declared figures on the command", () => {
             const warned = [];
             const at = { dir: state, declared: { read: 1, write: { "5m": Number.MAX_VALUE, "1h": Number.MAX_VALUE } }, horizon: 1, warn: (w) => warned.push(w) };
             assert.equal(onTool({ session_id: "s", transcript_path: file }, at), null);
-            assert.match(onStatus({ session_id: "s", transcript_path: file }, at), /^restart threshold: not known, because the restart threshold .* overflows, so these multipliers give none$/);
-            assert.ok(warned.some((w) => /overflows, so these multipliers give none$/.test(w)), warned.join("\n"));
+            assert.match(onStatus({ session_id: "s", transcript_path: file }, at), /^restart threshold: not known, because the restart threshold .* overflows, so these figures give none$/);
+            assert.ok(warned.some((w) => /overflows, so these figures give none$/.test(w)), warned.join("\n"));
         });
     });
 
@@ -484,9 +486,10 @@ describe("the declared figures on the command", () => {
             for (const mode of ["tool", "prompt", "stop"]) {
                 const quiet = call([mode, ...FLAGS], at(`declared-${mode}`), dir);
                 assert.deepEqual([quiet.code, quiet.out, quiet.err], [0, "", ""], `${mode}: below the declared threshold, and nothing to warn of`);
-                assert.match(call([mode], at(`general-${mode}`), dir).out, /has reached its restart threshold of 80,000/, mode);
+                if (mode === "stop") assert.equal(call([mode], at(`general-${mode}`), dir).out, "");
+                else assert.match(call([mode], at(`general-${mode}`), dir).out, /threshold 80,000/, mode);
             }
-            assert.equal(call(["status", ...FLAGS], at("status"), dir).out, "2 requests · context 90k of a 93k restart threshold · multipliers declared: read 0.05×, write 2×\n");
+            assert.equal(call(["status", ...FLAGS], at("status"), dir).out, "2 requests · context 90k / restart 93k · 30 remaining (declared) · resume cost unknown: lower bound · multipliers declared: read 0.05×, write 2×\n");
         });
     });
 
@@ -499,13 +502,13 @@ describe("the declared figures on the command", () => {
             assert.equal(partial.code, 0);
             assert.equal(partial.err.trimEnd().split("\n").length, 1, "said once");
             assert.match(partial.err, /^portulan advisory: the figures after status are not all usable — --write-1h is missing from the set of three, so the multipliers are undeclared\n$/);
-            assert.equal(partial.out, "2 requests · context 90k has reached its 67k restart threshold: write the handoff and restart · multipliers undeclared: read 0.1×, write 2×\n");
+            assert.equal(partial.out, "2 requests · context 90k / restart 67k · 30 remaining (declared) · resume cost unknown: lower bound · multipliers undeclared: read 0.1×, write 2×\n");
             // A horizon out of its range and a flag it does not take: the multipliers stand, the horizon is 20.
             const bad = call(["status", ...FLAGS.slice(0, 6), "--horizon", "0", "--block", "1"], at("b"), dir);
             assert.equal(bad.code, 0);
             assert.equal(bad.err.trimEnd().split("\n").length, 1, "said once");
             assert.match(bad.err, /--horizon 0 is not a positive integer, so the horizon is undeclared, and 20 requests; --block is no flag it takes/);
-            assert.equal(bad.out, "2 requests · context 90k of a 120k restart threshold · multipliers declared: read 0.05×, write 2×\n");
+            assert.equal(bad.out, "2 requests · context 90k / restart 120k · 20 remaining (default) · resume cost unknown: lower bound · multipliers declared: read 0.05×, write 2×\n");
         });
     });
 });
@@ -551,7 +554,7 @@ describe("the runner", () => {
     test("the block is one JSON line the host reads as a Stop hook's decision, with the line as its reason", () => {
         withTemp((dir) => {
             const file = session(dir, [90000]);
-            const result = spawnSync(process.execPath, [TOOL, "stop"], { input: JSON.stringify({ session_id: "runner", transcript_path: file, hook_event_name: "Stop", stop_hook_active: false }), encoding: "utf8", env: { ...process.env, TMPDIR: dir } });
+            const result = spawnSync(process.execPath, [TOOL, "stop", "--horizon", "20", "--resume-tokens", "0"], { input: JSON.stringify({ session_id: "runner", transcript_path: file, hook_event_name: "Stop", stop_hook_active: false }), encoding: "utf8", env: { ...process.env, TMPDIR: dir } });
             assert.equal(result.status, 0, result.stderr);
             const lines = result.stdout.trimEnd().split("\n");
             assert.equal(lines.length, 1);
