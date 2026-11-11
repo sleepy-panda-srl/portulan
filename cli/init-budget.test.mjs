@@ -8,6 +8,7 @@ import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { run } from "./init.mjs";
 import { alwaysTier, tokensOf } from "./context.mjs";
+import { run as index } from "./index.mjs";
 
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
@@ -139,10 +140,8 @@ test("the actual unattended CLI leaves the always cap undeclared", () => {
     assert.equal(manifest(root).context, undefined);
     assert.doesNotMatch(result.stdout, /exact count measured/);
 });
-test("the actual terminal CLI accepts the offer before any target write", async t => {
-    const available = spawnSync("python3", ["--version"], { encoding: "utf8" });
-    if (available.error?.code === "ENOENT") { t.skip("python3 is unavailable for the terminal control"); return; }
-    const root = fixture({ "AGENTS.md": "x".repeat(40000) }), before = snapshot(root);
+async function terminalBudget(root, { mutate, final = "y" } = {}) {
+    let before = snapshot(root);
     const command = [process.execPath, CLI, ...flags, "--handoff-budget", "none", root];
     const bridge = `import os, pty, select, sys
 pid, fd = pty.fork()
@@ -169,13 +168,14 @@ sys.exit(os.waitstatus_to_exitcode(status))
         const child = spawn("python3", ["-u", "-c", bridge, ...command], { stdio: ["pipe", "pipe", "pipe"] });
         const deadline = setTimeout(() => { child.kill(); reject(new Error(`terminal stalled at ${step}: ${transcript}`)); }, 15000);
         const prompts = ["Declare an always-tier budget? [y/N]: ", "Measured ratio JSON {bytes_per_token, calibrated_by}: ", /Accept [\d,]+ tokens at 4 B\/token \(fixture-4\)\? \[y\/N\]: /, "Write these files? [y/N]: "];
-        const answers = ["y", JSON.stringify(ratio), "y", "y"];
+        const answers = ["y", JSON.stringify(ratio), "y", final];
         const receive = data => {
             transcript += data.toString();
             const prompt = prompts[step];
             if (step < prompts.length && (typeof prompt === "string" ? transcript.includes(prompt) : prompt.test(transcript))) {
                 try { assert.deepEqual(snapshot(root), before); }
                 catch (error) { child.kill(); clearTimeout(deadline); reject(error); return; }
+                if (step === 3 && mutate) { mutate(); before = snapshot(root); }
                 child.stdin.write(answers[step++] + "\n");
             }
         };
@@ -183,8 +183,25 @@ sys.exit(os.waitstatus_to_exitcode(status))
         child.on("error", error => { clearTimeout(deadline); reject(error); });
         child.on("exit", code => { clearTimeout(deadline); resolve(code); });
     });
-    assert.equal(status, 0, transcript); assert.equal(step, 4, transcript);
-    oracle(root, manifest(root));
+    assert.equal(step, 4, transcript);
+    return { status, transcript, before };
+}
+test("the actual terminal CLI accepts fresh offers, refuses late growth and preserves cancellation", async t => {
+    const available = spawnSync("python3", ["--version"], { encoding: "utf8" });
+    if (available.error?.code === "ENOENT") { t.skip("python3 is unavailable for the terminal control"); return; }
+    const stable = fixture({ "AGENTS.md": "x".repeat(40000) }), initial = await terminalBudget(stable);
+    assert.equal(initial.status, 0, initial.transcript); oracle(stable, manifest(stable));
+    for (const final of ["y", "n"]) {
+        const root = fixture(), changed = await terminalBudget(root, { final, mutate: () => fs.writeFileSync(path.join(root, "AGENTS.md"), "x".repeat(48000)) });
+        assert.equal(changed.status, 2, changed.transcript);
+        assert.deepEqual(snapshot(root), changed.before);
+        assert.equal(fs.existsSync(path.join(root, ".portulan")), false);
+        if (final === "y") assert.match(changed.transcript, /8000.*12000/);
+        const retried = await terminalBudget(root);
+        assert.equal(retried.status, 0, retried.transcript);
+        assert.match(retried.transcript, /Accept 12,000 tokens/);
+        oracle(root, manifest(root));
+    }
 });
 
 test("declining the final budget confirmation does not retain its proposed ratio", async () => {
@@ -461,4 +478,154 @@ test("interactive init withholds a cap for an unsupported special guidance sourc
 test("interactive init ignores ordinary child directories in the context slot",async()=>{
     const source='---\ntier: on-path\ntarget: api/CLAUDE.md\ndescription: API.\n---\n\nOriginal.\n',root=fixture({"CLAUDE.md":"@api/CLAUDE.md\n"+"x".repeat(40000),".portulan/context/api.md":source});
     fs.writeFileSync(path.join(root,".portulan/workspace.json"),JSON.stringify({portulan:{spec:"2.15"},name:"fixture",kind:"repository",tree:"../",slots:{context:"context/"}}));const {compileGuidance}=await import("./compile.mjs");compileGuidance(root);fs.rmSync(path.join(root,".portulan/workspace.json"));fs.mkdirSync(path.join(root,".portulan/context/future.md"));fs.writeFileSync(path.join(root,".portulan/context/api.md"),source+"Fresh source.\n");const found=await interview(root);assert.equal(found.code,0,found.lines.join("\n"));assert.ok(manifest(root).context,found.lines.join("\n"));oracle(root,manifest(root));assert.match(fs.readFileSync(path.join(root,"api/CLAUDE.md"),"utf8"),/Fresh source/);
+});
+
+async function changedInterview(root, { mutate = () => {}, at = "Write these files?", decision = "y", final = "y", handoffs = { record_tokens: 100, index_tokens: 3000, ratio } } = {}) {
+    const lines = [], questions = [], accepted = [];
+    let expected = snapshot(root), changed = false, current;
+    const code = await run([...flags, "--handoff-budget", typeof handoffs === "string" ? handoffs : JSON.stringify(handoffs), root], {
+        say: line => lines.push(line), warn: line => lines.push(line),
+        io: { interactive: true, say: line => lines.push(line), ask: async question => {
+            assert.deepEqual(snapshot(root), expected, `init wrote before consent: ${question}`);
+            questions.push(question);
+            if (!changed && question.startsWith(at)) {
+                mutate(); changed = true; expected = snapshot(root);
+                current = ["claude-code", "agents-md"].map(host => {
+                    try { return alwaysTier(root, { host }).entries.reduce((sum, entry) => sum + entry.bytes, 0); }
+                    catch { return null; }
+                });
+            }
+            if (question.startsWith("Declare an always-tier")) return decision;
+            if (question.startsWith("Measured ratio JSON")) return JSON.stringify(ratio);
+            if (question.startsWith("Accept ")) { accepted.push(Number(question.match(/Accept ([\d,]+)/)[1].replaceAll(",", ""))); return "y"; }
+            if (question.startsWith("Write these files?")) return final;
+            assert.fail(`unexpected prompt: ${question}`);
+        } },
+    });
+    return { code, lines, questions, accepted, expected, current };
+}
+function refusedUnchanged(root, found) {
+    assert.equal(found.code, 2, found.lines.join("\n"));
+    assert.deepEqual(snapshot(root), found.expected);
+    assert.equal(fs.existsSync(path.join(root, ".portulan/workspace.json")), false);
+    assert.match(found.lines.join("\n"), /changed|unavailable|could not|retry|again|journal/i);
+}
+function checkAdoption(root, found) {
+    assert.equal(found.code, 0, found.lines.join("\n"));
+    const policy = manifest(root);
+    if (found.accepted.length) {
+        assert.equal(policy.context.always.budget.tokens, found.accepted.at(-1));
+        assert.deepEqual(policy.context.ratio, ratio);
+        for (const bytes of found.current?.filter(value => value !== null) ?? [])
+            assert.ok(tokensOf(bytes, ratio.bytes_per_token) <= policy.context.always.budget.tokens);
+        for (const host of ["claude-code", "agents-md"])
+            assert.ok(tokensOf(alwaysTier(root, { host }).entries.reduce((sum, entry) => sum + entry.bytes, 0), ratio.bytes_per_token) <= policy.context.always.budget.tokens, host);
+    }
+    const out = [], workspace = path.join(root, ".portulan");
+    assert.equal(index([workspace], line => out.push(line)), 0, out.join("\n"));
+    const checked = spawnSync(process.execPath, [fileURLToPath(new URL("./doctor.mjs", import.meta.url)), "--static", "--pack-root", path.resolve(path.dirname(CLI), "../packs"), workspace], { encoding: "utf8", timeout: 10000 });
+    assert.equal(checked.status, 0, checked.stdout + checked.stderr);
+}
+for (const at of ["Accept ", "Write these files?"]) for (const source of ["AGENTS.md", "CLAUDE.md", "description", "projected", "before-only"]) {
+    test(`confirmation revalidates ${source} growth at ${at}`, async () => {
+        const root = fixture();
+        const mutate = () => {
+            let rel = source, contents = "x".repeat(48000);
+            if (source === "description") { rel = ".claude/agents/new.md"; contents = `---\nname: new\ndescription: ${contents}\ntools: Read\n---\n`; }
+            if (source === "projected") { rel = ".portulan/context/new.md"; contents = `---\ntier: always\n---\n\n${contents}`; }
+            if (source === "before-only") {
+                rel = ".claude/rules/portulan/old.md";
+                fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+                fs.writeFileSync(path.join(root, ".claude/rules/portulan/.compiled"), marker);
+            }
+            fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+            fs.writeFileSync(path.join(root, rel), contents);
+        };
+        const found = await changedInterview(root, { at, mutate });
+        refusedUnchanged(root, found);
+        const retried = await changedInterview(root);
+        checkAdoption(root, retried);
+        assert.ok(retried.accepted[0] >= 12000);
+    });
+}
+test("a domain becoming unmeasurable after acceptance refuses without a fabricated cap", async () => {
+    const root = fixture(), found = await changedInterview(root, { mutate: () => fs.writeFileSync(path.join(root, "AGENTS.md"), Buffer.from([255])) });
+    refusedUnchanged(root, found);
+    const retry = await changedInterview(root);
+    checkAdoption(root, retry);
+    assert.equal(manifest(root).context.always, undefined);
+});
+for (const kind of ["within-headroom", "shrink", "preserved-file"]) test(`accepted cap survives ${kind} during final confirmation`, async () => {
+    const root = fixture(kind === "shrink" ? { "AGENTS.md": "x".repeat(48000) } : kind === "preserved-file" ? { "changes/README.md": "old\n" } : {});
+    const found = await changedInterview(root, { mutate: () => {
+        if (kind === "shrink") fs.rmSync(path.join(root, "AGENTS.md"));
+        else fs.writeFileSync(path.join(root, kind === "preserved-file" ? "changes/README.md" : "AGENTS.md"), "still within the accepted cap\n");
+    } });
+    checkAdoption(root, found);
+    assert.equal(manifest(root).context.always.budget.tokens, kind === "shrink" ? 12000 : 8000);
+});
+for (const final of ["n", "", null]) test(`external guidance edits remain intact on final ${JSON.stringify(final)}`, async () => {
+    const root = fixture(), found = await changedInterview(root, { final, mutate: () => fs.writeFileSync(path.join(root, "AGENTS.md"), "x".repeat(48000)) });
+    assert.equal(found.code, 2); assert.deepEqual(snapshot(root), found.expected);
+});
+test("creating an empty append source does not erase the confirmed absence", async () => {
+    const root = fixture(), found = await changedInterview(root, { mutate: () => fs.writeFileSync(path.join(root, ".gitignore"), "") });
+    refusedUnchanged(root, found);
+});
+test("an initially unavailable offer stays undeclared when its input becomes measurable", async () => {
+    const root = fixture({ "AGENTS.md": Buffer.from([255]) });
+    const found = await changedInterview(root, { mutate: () => fs.writeFileSync(path.join(root, "AGENTS.md"), "x".repeat(48000)) });
+    checkAdoption(root, found);
+    assert.equal(manifest(root).context.always, undefined);
+});
+for (const decision of ["y", "n"]) for (const unavailable of [false, true]) test(`a migration journal arriving at final consent blocks always ${decision}, unavailable ${unavailable}`, async () => {
+    const root = fixture(unavailable ? { "AGENTS.md": Buffer.from([255]) } : {});
+    const found = await changedInterview(root, { decision, mutate: () => {
+        fs.mkdirSync(path.join(root, ".portulan-instructions-journal"));
+        fs.writeFileSync(path.join(root, ".portulan-instructions-journal/resume.txt"), "Preserve this pending migration.\n", { mode: 0o640 });
+    } });
+    refusedUnchanged(root, found);
+    assert.match(found.lines.join("\n"), /pending journal/);
+    assert.equal(fs.statSync(path.join(root, ".portulan-instructions-journal/resume.txt")).mode & 0o777, 0o640);
+});
+test("a journal arriving while the budget is accepted blocks the later final write", async () => {
+    const root = fixture(), found = await changedInterview(root, { at: "Accept ", mutate: () => fs.mkdirSync(path.join(root, ".portulan-instructions-journal")) });
+    refusedUnchanged(root, found);
+    fs.rmSync(path.join(root, ".portulan-instructions-journal"), { recursive: true });
+    checkAdoption(root, await changedInterview(root));
+});
+for (const unavailable of [false, true]) for (const decision of ["y", "n"]) test(`new handoff invalidates final cutoff with always ${decision}, unavailable ${unavailable}`, async () => {
+    const root = fixture(unavailable ? { "AGENTS.md": Buffer.from([255]) } : {});
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const found = await changedInterview(root, { decision, mutate: () => {
+        fs.mkdirSync(path.join(root, ".portulan/handoffs"), { recursive: true });
+        fs.writeFileSync(path.join(root, `.portulan/handoffs/${tomorrow}-decision.md`), "# Preserve a decision\n\n" + "x".repeat(2800));
+    } });
+    refusedUnchanged(root, found);
+    const retried = await changedInterview(root, { decision });
+    checkAdoption(root, retried);
+    assert.equal(manifest(root).handoffs.series.budget.cutoff, tomorrow);
+    assert.match(retried.lines.find(line => /^  handoffs/.test(line)), new RegExp(tomorrow));
+});
+test("UTC rollover only invalidates a changed effective cutoff", async () => {
+    const RealDate = Date; let day = "2026-11-11";
+    globalThis.Date = class extends RealDate {
+        constructor(...args) { super(...(args.length ? args : [`${day}T12:00:00Z`])); }
+        static now() { return new RealDate(`${day}T12:00:00Z`).valueOf(); }
+    };
+    try {
+        for (const kind of ["record", "declined", "unavailable", "window", "already-newer", "none"]) {
+            day = "2026-11-11";
+            const root = fixture(kind === "already-newer" ? { ".portulan/handoffs/2026-11-12-existing.md": "# Existing\n" } : kind === "unavailable" ? { "AGENTS.md": Buffer.from([255]) } : {});
+            const handoffs = kind === "none" ? "none" : kind === "window" ? { index_tokens: 3000, ratio } : { record_tokens: 100, ratio };
+            const found = await changedInterview(root, { handoffs, decision: kind === "declined" ? "n" : "y", mutate: () => { day = "2026-11-12"; } });
+            if (["record", "declined", "unavailable"].includes(kind)) {
+                refusedUnchanged(root, found);
+                const retried = await changedInterview(root, { handoffs });
+                checkAdoption(root, retried);
+                assert.equal(manifest(root).handoffs.series.budget.cutoff, day);
+                assert.match(retried.lines.find(line => /^  handoffs/.test(line)), new RegExp(day));
+            } else checkAdoption(root, found);
+        }
+    } finally { globalThis.Date = RealDate; }
 });

@@ -1151,6 +1151,44 @@ function preparedFiles(target, answers, preparation) {
     return files;
 }
 
+function checkAppendBaseline(target, files) {
+    for (const [rel, file] of files) {
+        if (!file.append) continue;
+        let current = null;
+        try { current = readOwnedBytes(path.join(target, rel), target); }
+        catch (error) { if (error.code !== "ENOENT") throw error; }
+        if (current === null ? file.appendBefore !== null : file.appendBefore === null || !current.equals(file.appendBefore)) {
+            throw new InitError(`${rel} changed during confirmation; nothing written — run init again to prepare a fresh draft`);
+        }
+    }
+}
+
+function cutoffAt(answers, preparation) {
+    return handoffOffer(answers.handoffBudget, { today: preparation?.handoffToday, newest: preparation?.handoffNewest })?.handoffs.series?.budget.cutoff ?? null;
+}
+
+function checkConfirmedCutoff(answers, preparation) {
+    if (answers.confirmedCutoff !== cutoffAt(answers, preparation)) {
+        throw new InitError("the handoff cutoff changed during confirmation; nothing written — run init again to review the current cutoff");
+    }
+}
+
+function checkAcceptedBudget(target, answers, files) {
+    if (!answers.alwaysBudget) return;
+    const { tokens, ratio } = answers.alwaysBudget;
+    let measured;
+    try {
+        measured = previewAlways(target, files);
+        if (measured.after === null) throw new Error("projected guidance could not be measured");
+    } catch (error) {
+        throw new InitError(`the accepted always-tier budget can no longer be checked: ${error.message}; nothing written — run init again`);
+    }
+    const required = Math.max(...[...measured.before, ...measured.after].map(bytes => tokensOf(bytes, ratio.bytes_per_token)));
+    if (required > tokens) {
+        throw new InitError(`project guidance changed: the accepted ${tokens} tokens no longer cover ${required} tokens; nothing written — run init again to review a fresh offer`);
+    }
+}
+
 function projectedAlways(target, answers, ratio) {
     if (!answers.preparation) answers.preparation = prepareDraft(target, answers, true);
     let tokens = OFFER_FLOOR_TOKENS;
@@ -1315,7 +1353,9 @@ export async function interview(answers, { io, target, derivedName, offer }) {
         io.say(`  feed        ${answers.feed ?? "(none)"}`);
     } else {
         io.say(`  cycle       ${answers.cycle ? answers.checkpoints : "(none — composing no packs)"}`);
-        const offered = handoffOffer(answers.handoffBudget);
+        if (answers.preparation) answers.preparedFiles ??= preparedFiles(target, answers, answers.preparation);
+        const offered = handoffOffer(answers.handoffBudget, { today: answers.preparation?.handoffToday, newest: answers.preparation?.handoffNewest });
+        answers.confirmedCutoff = offered?.handoffs.series?.budget.cutoff ?? null;
         io.say(`  handoffs    ${offered ? JSON.stringify(offered) : "(none — no handoff budgets declared)"}`);
         io.say(`  always      ${answers.alwaysBudget ? JSON.stringify(answers.alwaysBudget) : "(none — no always cap declared)"}`);
         io.say(`  spend       ${answers.spend ? JSON.stringify(answers.spend) : "(none — undeclared general figures)"}`);
@@ -1427,6 +1467,7 @@ export async function run(argv, options = {}) {
         validateAnswers(answers);
 
         refuseIfGoverned(residenceAt(target), parsed.target);
+        try{assertNoSourceJournal(target);}catch(error){throw new InitError(error.message);}
 
         let packAdvice = null;
         if (answers.residence === "in-repo" && answers.cycle) {
@@ -1454,9 +1495,10 @@ export async function run(argv, options = {}) {
             packAdvice = { resolved, why: expanded.why, inTree: resolvedAt !== null && resolvedAt === path.join(target, "packs") };
         }
 
-        const preparation = answers.preparation ?? prepareDraft(target, answers);
+        if (answers.preparedFiles) checkAppendBaseline(target, answers.preparedFiles);
+        const preparation = prepareDraft(target, answers);
         const observed = preparation.observed;
-        const files = answers.preparedFiles ?? preparedFiles(target, answers, preparation);
+        const files = preparedFiles(target, answers, preparation);
 
         const clash = collisions(target, files);
         if (clash.length) {
@@ -1477,14 +1519,11 @@ export async function run(argv, options = {}) {
             );
         }
 
-        for (const [rel, file] of files) {
-            if (!file.append) continue;
-            let current = null;
-            try { current = readOwnedBytes(path.join(target, rel), target); }
-            catch (error) { if (error.code !== "ENOENT") throw error; }
-            if (current === null ? file.appendBefore !== null : file.appendBefore === null || !current.equals(file.appendBefore)) {
-                throw new InitError(`${rel} changed during confirmation; run init again to prepare a fresh draft`);
-            }
+        checkAppendBaseline(target, files);
+        if (interviewing && answers.residence === "in-repo") {
+            checkConfirmedCutoff(answers, preparation);
+            checkAcceptedBudget(target, answers, files);
+            checkConfirmedCutoff(answers, { ...preparation, handoffToday: new Date().toISOString().slice(0, 10) });
         }
 
         // The manifest last: a run failing midway leaves no torso that `residenceAt` would read as a governed repository.
