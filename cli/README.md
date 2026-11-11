@@ -112,6 +112,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`ab-run.test.mjs`](ab-run.test.mjs) | Tests for `ab-run` — the A/B runner: isolation, the matrix, the journal, the register and the checks behind it. |
 | [`ab.test.mjs`](ab.test.mjs) | Tests for `ab` — the A/B arm builder: its disposition table, rule-2 matcher, nonces, isolation and stop probe. |
 | [`advisory-crossing.test.mjs`](advisory-crossing.test.mjs) | First recorded crossings survive delayed batches without stale Stop holds. |
+| [`advisory-dedup.test.mjs`](advisory-dedup.test.mjs) | Delayed repeats cannot replace the latest distinct request. |
 | [`advisory-host-trace.test.mjs`](advisory-host-trace.test.mjs) | The shipped host trace is evidence data; CI only replays its public counters. |
 | [`advisory.test.mjs`](advisory.test.mjs) | Tests for `advisory` — the restart advisory's one line with a tool result or at the prompt, and its figure in the status line. |
 | [`branch-freshness.test.mjs`](branch-freshness.test.mjs) | Tests for this repository's branch freshness check and trusted workflow. |

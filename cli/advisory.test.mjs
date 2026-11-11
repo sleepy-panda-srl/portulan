@@ -343,7 +343,7 @@ describe("what a call reads", () => {
             assert.ok(!text.includes("advisory may hold"));
             assert.ok(!text.includes(bytes.subarray(bytes.length - 64).toString("base64")), "the bytes before the offset, encoded");
             const kept = JSON.parse(text);
-            assert.deepEqual(Object.keys(kept).sort(), ["comparison", "crossing", "crossingId", "crossingInput", "figures", "freshId", "freshInput", "freshUnsafe", "ino", "latestId", "latestInput", "latestUnsafe", "offset", "recentInputs", "tail", "transcript", "v"]);
+            assert.deepEqual(Object.keys(kept).sort(), ["comparison", "crossing", "crossingId", "crossingInput", "figures", "freshId", "freshInput", "freshUnsafe", "ino", "latestId", "latestInput", "latestUnsafe", "offset", "recentInputs", "seen", "tail", "transcript", "v"]);
             assert.deepEqual(kept.crossing.recent, []);
             assert.match(kept.tail, /^[0-9a-z]{1,7}$/);
             if (process.platform !== "win32") {

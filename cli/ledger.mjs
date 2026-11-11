@@ -226,7 +226,7 @@ export function readTranscript(file, { end = null } = {}) {
     const byId = new Map();
     const requests = [];
     const tally = { records: 0, duplicates: 0, malformed: 0, synthetic: 0, compactions: 0 };
-    const figures = sessionFigures();
+    let parentCompactions = 0;
     const calls = new Set();
     const receipts = [];
     // Compacted contexts awaiting their next request, by chain, so a subagent's compaction is never the session's.
@@ -248,8 +248,8 @@ export function readTranscript(file, { end = null } = {}) {
             }
             continue;
         }
-        foldFigures(figures, read);
         if (read.boundary) {
+            if (!read.sidechain) parentCompactions += 1;
             tally.compactions += 1;
             awaiting.add(chainOf(read));
             continue;
@@ -279,6 +279,10 @@ export function readTranscript(file, { end = null } = {}) {
         request.compacted = awaiting.delete(chainOf(request));
         requests.push(request);
     }
+    const figures = sessionFigures();
+    for (const r of requests) foldCanonical(figures, r);
+    figures.compactions = parentCompactions;
+    figures.pending = awaiting.has("session");
     return { requests, receipts, figures, ...tally };
 }
 
@@ -314,7 +318,7 @@ export function markRebuilds(requests) {
     return requests;
 }
 
-/** Latest request ids remembered to pass over repeats: the host writes a request's blocks back to back. */
+/** Hot IDs only; raw streams need canonical confirmation. */
 const RECENT = 16;
 
 /** Every field JSON-safe: `./advisory.mjs` keeps these between calls and folds in only the lines since. */
@@ -331,8 +335,12 @@ export function foldFigures(figures, read) {
     }
     const r = read.request;
     if (r === undefined || r.synthetic || r.sidechain) return figures;
+    if (r.id !== null && figures.recent.includes(r.id)) return figures;
+    return foldUniqueRequest(figures, r);
+}
+
+function foldUniqueRequest(figures, r) {
     if (r.id !== null) {
-        if (figures.recent.includes(r.id)) return figures;
         figures.recent.push(r.id);
         if (figures.recent.length > RECENT) figures.recent.shift();
     }
@@ -347,6 +355,12 @@ export function foldFigures(figures, read) {
     figures.last = context;
     if (lifetime !== null) figures.lifetime = lifetime;
     return figures;
+}
+
+export function foldCanonical(figures, r) {
+    if (r.synthetic || r.sidechain) return figures;
+    if (r.compacted) { figures.compactions += 1; figures.pending = true; }
+    return foldUniqueRequest(figures, r);
 }
 
 /** Each test is the one `./doctor.mjs` applies to the same key, so a manifest `doctor` passes is one these take. */

@@ -11,13 +11,27 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { createHash } from "node:crypto";
 
-import { HORIZON, INPUT_USAGE_MASK, inputUnusable, usageOf, contextOf, LedgerError, SPEND_FIGURES, figureOf, foldFigures, overflowingWrite, readLine, readTranscript, restartSaving, sessionFigures } from "./ledger.mjs";
+import { HORIZON, INPUT_USAGE_MASK, inputUnusable, usageOf, contextOf, LedgerError, SPEND_FIGURES, figureOf, foldFigures, foldCanonical, overflowingWrite, readLine, readTranscript, restartSaving, sessionFigures } from "./ledger.mjs";
 
 const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const savingWords = (n) => grouped(Number(n.toPrecision(6)));
 
-const STATE_VERSION = 7;
+const STATE_VERSION = 8;
+const SEEN_BYTES = 1024;
+const emptySeen = () => Buffer.alloc(SEEN_BYTES).toString("hex");
+// Membership selects exact replay; collisions never establish identity.
+function membership(bits, id, remember = false) {
+    const hash = createHash("sha256").update(id).digest();
+    let hit = true;
+    for (const at of [0, 4, 8]) {
+        const bit = hash.readUInt32LE(at) % (SEEN_BYTES * 8), mask = 1 << (bit & 7);
+        hit = Boolean(bits[bit >> 3] & mask) && hit;
+        if (remember) bits[bit >> 3] |= mask;
+    }
+    return hit;
+}
 
 const CHUNK = 1 << 16;
 
@@ -89,18 +103,20 @@ function restore(file, transcriptPath, stat) {
     }
     if (kept === null || typeof kept !== "object" || kept.v !== STATE_VERSION || kept.transcript !== transcriptPath) return null;
     if (kept.ino !== stat.ino || !isCount(kept.offset) || kept.offset > stat.size || typeof kept.tail !== "string" || !wellFormed(kept.figures)) return null;
-    if (typeof kept.comparison !== "string") return null;
+    if (typeof kept.comparison !== "string" || typeof kept.seen !== "string" || kept.seen.length !== SEEN_BYTES * 2 || !/^[0-9a-f]+$/.test(kept.seen)) return null;
     if (typeof kept.freshUnsafe !== "boolean" || typeof kept.latestUnsafe !== "boolean" || ![kept.freshId, kept.latestId, kept.crossingId].every(id => id === null || typeof id === "string")) return null;
     if (![kept.freshInput, kept.latestInput, kept.crossingInput].every(v => v === null || (Array.isArray(v) && v.length === 5 && v.every(isCount)))) return null;
     if (!Array.isArray(kept.recentInputs) || kept.recentInputs.length > 16 || !kept.recentInputs.every(v => Array.isArray(v) && v.length === 3 && typeof v[0] === "string" && Array.isArray(v[1]) && v[1].length === 5 && v[1].every(isCount) && (isCount(v[2]) && (v[2] & INPUT_USAGE_MASK) === v[2]))) return null;
     if (kept.crossing !== null && (!wellFormed(kept.crossing) || kept.crossing.pending || kept.crossing.compactions !== kept.figures.compactions || kept.crossing.fresh !== kept.figures.fresh || kept.crossing.requests > kept.figures.requests || kept.crossing.recent.length !== 0)) return null;
+    const seen = Buffer.from(kept.seen, "hex");
+    if ([...kept.figures.recent, kept.freshId, kept.latestId, kept.crossingId].some(id => id !== null && !membership(seen, id))) return null;
     return kept;
 }
 
 const comparisonKey = ({ declared, horizon, resume }) => JSON.stringify([declared?.read ?? null, declared?.write?.["5m"] ?? null, declared?.write?.["1h"] ?? null, horizon, resume]);
 const inputOf = r => [r.uncached, r.written1h, r.written5m, r.writtenUnknown, r.read];
 const validity = () => ({ freshUnsafe: false, latestUnsafe: false, freshId: null, latestId: null, crossingId: null, freshInput: null, latestInput: null, crossingInput: null });
-const reset = (kept) => Object.assign(kept, { offset: 0, tail: "", figures: sessionFigures(), crossing: null, recentInputs: [], ...validity() });
+const reset = (kept) => Object.assign(kept, { offset: 0, tail: "", seen: emptySeen(), figures: sessionFigures(), crossing: null, recentInputs: [], ...validity() });
 function rememberInput(state, r) {
     if (r.id === null) return;
     state.recentInputs = [...state.recentInputs.filter(v => v[0] !== r.id), [r.id, inputOf(r), r.usageMissing & INPUT_USAGE_MASK]].filter(v => state.figures.recent.includes(v[0])).slice(-16);
@@ -108,11 +124,13 @@ function rememberInput(state, r) {
 
 function replayValidity(kept, transcriptPath, spend) {
     const transcript = readTranscript(transcriptPath, { end: kept.offset });
-    const state = { figures: sessionFigures(), crossing: null, recentInputs: [], ...validity() };
-    for (const r of transcript.requests.filter(r => !r.sidechain)) {
-        if (r.compacted) { foldFigures(state.figures, { boundary: true }); Object.assign(state, { crossing: null, ...validity() }); }
-        const fresh = state.figures.fresh === null || state.figures.pending;
-        foldFigures(state.figures, { request: r });
+    const state = { figures: sessionFigures(), crossing: null, recentInputs: [], ...validity() }, seen = Buffer.alloc(SEEN_BYTES);
+    for (const r of transcript.requests) {
+        if (r.id !== null) membership(seen, r.id, true);
+        if (r.sidechain) continue;
+        if (r.compacted) Object.assign(state, { crossing: null, ...validity() });
+        const fresh = state.figures.fresh === null || state.figures.pending || r.compacted;
+        foldCanonical(state.figures, r);
         rememberInput(state, r);
         const unsafe = inputUnusable(r);
         if (fresh) { state.freshUnsafe = unsafe; state.freshId = r.id; state.freshInput = inputOf(r); }
@@ -129,7 +147,7 @@ function replayValidity(kept, transcriptPath, spend) {
     state.figures.pending = transcript.figures.pending;
     if (state.figures.pending) Object.assign(state, { crossing: null, ...validity() });
     else if (state.crossing) state.crossing.compactions = state.figures.compactions;
-    Object.assign(kept, state);
+    Object.assign(kept, state, { seen: seen.toString("hex") });
 }
 
 function advance(kept, transcriptPath, size, spend) {
@@ -139,6 +157,7 @@ function advance(kept, transcriptPath, size, spend) {
         if (kept.offset > 0 && tailBefore(fd, kept.offset) !== kept.tail) {
             reset(kept);
         }
+        const seen = Buffer.from(kept.seen, "hex");
         const start = kept.offset;
         let position = kept.offset;
         let replay = false;
@@ -162,11 +181,15 @@ function advance(kept, transcriptPath, size, spend) {
                 const { requests, compactions } = kept.figures;
                 const fresh = kept.figures.fresh === null || kept.figures.pending;
                 const r = read.request;
-                if (r && !r.synthetic && !r.sidechain) {
-                    const input = inputOf(r);
-                    const tracked = [[kept.freshId, kept.freshInput], [kept.latestId, kept.latestInput], [kept.crossingId, kept.crossingInput]];
-                    const recent = kept.recentInputs.find(v => v[0] === r.id);
-                    if (inputUnusable(r) || (recent && (JSON.stringify(recent[1]) !== JSON.stringify(input) || recent[2] !== (r.usageMissing & INPUT_USAGE_MASK))) || (r.id !== null && tracked.some(([id, before]) => id === r.id && (JSON.stringify(before) !== JSON.stringify(input) || kept.freshUnsafe || kept.latestUnsafe)))) replay = true;
+                if (r && !r.synthetic) {
+                    const repeated = r.id !== null && membership(seen, r.id, true);
+                    if (repeated && !kept.figures.recent.includes(r.id)) replay = true;
+                    if (!r.sidechain || repeated) {
+                        const input = inputOf(r);
+                        const tracked = [[kept.freshId, kept.freshInput], [kept.latestId, kept.latestInput], [kept.crossingId, kept.crossingInput]];
+                        const recent = kept.recentInputs.find(v => v[0] === r.id);
+                        if (inputUnusable(r) || (recent && (JSON.stringify(recent[1]) !== JSON.stringify(input) || recent[2] !== (r.usageMissing & INPUT_USAGE_MASK))) || (r.id !== null && tracked.some(([id, before]) => id === r.id && (JSON.stringify(before) !== JSON.stringify(input) || kept.freshUnsafe || kept.latestUnsafe)))) replay = true;
+                    }
                 }
                 foldFigures(kept.figures, read);
                 if (compactions !== kept.figures.compactions) Object.assign(kept, { crossing: null, ...validity() });
@@ -194,6 +217,7 @@ function advance(kept, transcriptPath, size, spend) {
             kept.offset = position - (got - end - 1);
         }
         if (kept.offset !== start) kept.tail = tailBefore(fd, kept.offset);
+        kept.seen = seen.toString("hex");
         if (replay) replayValidity(kept, transcriptPath, spend);
         return kept.offset !== start;
     } finally {
@@ -229,7 +253,7 @@ function locate(payload, dir) {
     if (!stat.isFile()) return { why: "the transcript could not be read — it is not a file" };
     const sessionId = sessionOf(payload);
     const file = sessionId === null ? null : stateFile(sessionId, dir);
-    const kept = (file === null ? null : restore(file, transcriptPath, stat)) ?? { v: STATE_VERSION, transcript: transcriptPath, ino: stat.ino, offset: 0, tail: "", figures: sessionFigures(), comparison: "", crossing: null, recentInputs: [], ...validity() };
+    const kept = (file === null ? null : restore(file, transcriptPath, stat)) ?? { v: STATE_VERSION, transcript: transcriptPath, ino: stat.ino, offset: 0, tail: "", seen: emptySeen(), figures: sessionFigures(), comparison: "", crossing: null, recentInputs: [], ...validity() };
     return { transcriptPath, sessionId, stat, file, kept };
 }
 

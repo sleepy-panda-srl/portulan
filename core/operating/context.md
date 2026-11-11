@@ -403,6 +403,15 @@ crossing under those assumptions. A controlled Claude Code trace and delayed
 batch checks live in [`cli/fixtures/advisory-crossing/`](../../cli/fixtures/advisory-crossing/);
 they do not promise a universal host transcript latency bound.
 
+Message IDs retain their first-seen order and parent/child ownership across the
+transcript. Repeated observations merge counters and validity into that request;
+only a new distinct parent request consumes a pending parent compaction. The
+public ledger figures and hook replay use the canonical request fold. Hooks keep
+16 hot identities and a fixed membership bitmap. Possible older IDs, including
+bitmap collisions, trigger exact completed-prefix replay before a decision.
+Saturation can increase replay work and transient memory with transcript size;
+the bitmap bounds retained identity metadata, not total replay work.
+
 Full compilation emits Claude prompt/tool restart advice and a status line for every authored
 repository, demo or portfolio workspace, independently of a gate policy. Declared session switches
 and ritual caps compose into that settings artifact; only explicit `spend.restart: "block"` adds
