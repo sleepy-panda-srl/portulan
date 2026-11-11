@@ -301,5 +301,7 @@ test("advisory footprint fixtures supply valid pricing fields to both formatter 
     assert.notEqual(guarded, source);
     fs.writeFileSync(file, guarded);
     const result = await measure(root);
-    assert.equal(result.hooks.entries.filter(entry => entry.runner === "advisory.mjs").length, 12);
+    const profiles = result.hooks.entries.filter(entry => entry.runner === "advisory.mjs");
+    assert.equal(profiles.length, 14);
+    assert.equal(profiles.filter(entry => entry.profile.endsWith("-retrospective")).length, 2);
 });

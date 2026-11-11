@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "host": "2.1.321 (Claude Code)",
+  "sources": {
+    "capture.mjs": "1f8beb70b6b00e5c6c3f59152a8b71e305193505de36f2721332f5429d603e76",
+    "observe.mjs": "d862cf1b37d758fe52c1c2344ead8e8f22a7e215aec660dd9dc4c0dbf2531f37",
+    "../../advisory.mjs": "7edeaffa92285fef2ee3529d50bdd71767b8ab13e11235e696829487b225ae71",
+    "../../ledger.mjs": "658eb3f1a184a05f0620bbcd834d49efe5783c3eb00ff13bc93f37428ac67af0"
+  },
+  "runs": [
+    {
+      "name": "below",
+      "guard": [
+        "loopback allowed",
+        "egress denied"
+      ],
+      "code": 0,
+      "completed": true,
+      "contexts": [
+        1000,
+        1500,
+        1500,
+        1500
+      ],
+      "trace": [
+        {
+          "kind": "hook",
+          "event": "UserPromptSubmit",
+          "visible": [],
+          "output": null
+        },
+        {
+          "kind": "response",
+          "id": "trace_below_1",
+          "context": 1000
+        },
+        {
+          "kind": "hook",
+          "event": "PostToolUse",
+          "visible": [
+            "trace_below_1"
+          ],
+          "output": null
+        },
+        {
+          "kind": "response",
+          "id": "trace_below_2",
+          "context": 1500
+        },
+        {
+          "kind": "hook",
+          "event": "PostToolUse",
+          "visible": [
+            "trace_below_1",
+            "trace_below_2"
+          ],
+          "output": null
+        },
+        {
+          "kind": "response",
+          "id": "trace_below_3",
+          "context": 1500
+        },
+        {
+          "kind": "hook",
+          "event": "PostToolUse",
+          "visible": [
+            "trace_below_1",
+            "trace_below_2",
+            "trace_below_3"
+          ],
+          "output": null
+        },
+        {
+          "kind": "response",
+          "id": "trace_below_4",
+          "context": 1500
+        },
+        {
+          "kind": "hook",
+          "event": "Stop",
+          "visible": [
+            "trace_below_1",
+            "trace_below_2",
+            "trace_below_3",
+            "trace_below_4"
+          ],
+          "output": null
+        }
+      ]
+    },
+    {
+      "name": "crossing",
+      "guard": [
+        "loopback allowed",
+        "egress denied"
+      ],
+      "code": 0,
+      "completed": true,
+      "contexts": [
+        1000,
+        1700,
+        1500,
+        1500
+      ],
+      "trace": [
+        {
+          "kind": "hook",
+          "event": "UserPromptSubmit",
+          "visible": [],
+          "output": null
+        },
+        {
+          "kind": "response",
+          "id": "trace_crossing_1",
+          "context": 1000
+        },
+        {
+          "kind": "hook",
+          "event": "PostToolUse",
+          "visible": [
+            "trace_crossing_1"
+          ],
+          "output": null
+        },
+        {
+          "kind": "response",
+          "id": "trace_crossing_2",
+          "context": 1700
+        },
+        {
+          "kind": "hook",
+          "event": "PostToolUse",
+          "visible": [
+            "trace_crossing_1",
+            "trace_crossing_2"
+          ],
+          "output": {
+            "hookSpecificOutput": {
+              "hookEventName": "PostToolUse",
+              "additionalContext": "Portulan restart advisory: after 2 requests, context 1,700 tokens, threshold 1,625; 20 remaining (declared), read 0.1×, write 1.25× (undeclared); resume 0 input equivalents. Estimated savings 150 input equivalents; consider a handoff and restart if these estimates still fit the task. Said once."
+            }
+          }
+        },
+        {
+          "kind": "response",
+          "id": "trace_crossing_3",
+          "context": 1500
+        },
+        {
+          "kind": "hook",
+          "event": "PostToolUse",
+          "visible": [
+            "trace_crossing_1",
+            "trace_crossing_2",
+            "trace_crossing_3"
+          ],
+          "output": null
+        },
+        {
+          "kind": "response",
+          "id": "trace_crossing_4",
+          "context": 1500
+        },
+        {
+          "kind": "hook",
+          "event": "Stop",
+          "visible": [
+            "trace_crossing_1",
+            "trace_crossing_2",
+            "trace_crossing_3",
+            "trace_crossing_4"
+          ],
+          "output": null
+        }
+      ]
+    }
+  ]
+}

@@ -4,7 +4,7 @@
 // node cli/advisory.mjs tool|prompt|status|stop [--read m --write-5m m --write-1h m] [--horizon n] [--resume-tokens cost]
 // Undeclared prices/horizon use general figures; unknown resume cost permits conditional reports only.
 // Tool/prompt output reaches the agent; a declared Stop holds only with explicit profitable estimates.
-// Transcripts may lag one request. Exit 0 always: hook failure must not erase a prompt or hold every Stop.
+// Retain the first crossing in a delayed batch; Stop uses the latest estimate. Hook failures exit 0.
 // Unusable figures are named on stderr.
 
 import fs from "node:fs";
@@ -17,7 +17,7 @@ import { HORIZON, LedgerError, SPEND_FIGURES, figureOf, foldFigures, overflowing
 const grouped = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const savingWords = (n) => grouped(Number(n.toPrecision(6)));
 
-const STATE_VERSION = 2;
+const STATE_VERSION = 3;
 
 const CHUNK = 1 << 16;
 
@@ -89,15 +89,20 @@ function restore(file, transcriptPath, stat) {
     }
     if (kept === null || typeof kept !== "object" || kept.v !== STATE_VERSION || kept.transcript !== transcriptPath) return null;
     if (kept.ino !== stat.ino || !isCount(kept.offset) || kept.offset > stat.size || typeof kept.tail !== "string" || !wellFormed(kept.figures)) return null;
+    if (typeof kept.comparison !== "string") return null;
+    if (kept.crossing !== null && (!wellFormed(kept.crossing) || kept.crossing.pending || kept.crossing.compactions !== kept.figures.compactions || kept.crossing.fresh !== kept.figures.fresh || kept.crossing.requests > kept.figures.requests || kept.crossing.recent.length !== 0)) return null;
     return kept;
 }
 
-function advance(kept, transcriptPath, size) {
+const comparisonKey = ({ declared, horizon, resume }) => JSON.stringify([declared?.read ?? null, declared?.write?.["5m"] ?? null, declared?.write?.["1h"] ?? null, horizon, resume]);
+const reset = (kept) => Object.assign(kept, { offset: 0, tail: "", figures: sessionFigures(), crossing: null });
+
+function advance(kept, transcriptPath, size, spend) {
     if (size === kept.offset) return false;
     const fd = fs.openSync(transcriptPath, "r");
     try {
         if (kept.offset > 0 && tailBefore(fd, kept.offset) !== kept.tail) {
-            Object.assign(kept, { offset: 0, tail: "", figures: sessionFigures() });
+            reset(kept);
         }
         const start = kept.offset;
         let position = kept.offset;
@@ -117,7 +122,17 @@ function advance(kept, transcriptPath, size) {
             const complete = waiting.length === 0 ? bytes.subarray(0, end) : Buffer.concat([...waiting, bytes.subarray(0, end)]);
             for (const line of complete.toString("utf8").split("\n")) {
                 const read = readLine(line);
-                if (read !== null && !read.malformed) foldFigures(kept.figures, read);
+                if (read === null || read.malformed) continue;
+                const { requests, compactions } = kept.figures;
+                foldFigures(kept.figures, read);
+                if (compactions !== kept.figures.compactions) kept.crossing = null;
+                if (requests === kept.figures.requests || kept.crossing !== null) continue;
+                try {
+                    const figure = figureOf(kept.figures, spend);
+                    if (figure !== null && figure.saving >= 0) kept.crossing = { ...kept.figures, recent: [] };
+                } catch (error) {
+                    if (!(error instanceof LedgerError)) throw error;
+                }
             }
             waiting = end + 1 < got ? [bytes.subarray(end + 1)] : [];
             kept.offset = position - (got - end - 1);
@@ -157,19 +172,23 @@ function locate(payload, dir) {
     if (!stat.isFile()) return { why: "the transcript could not be read — it is not a file" };
     const sessionId = sessionOf(payload);
     const file = sessionId === null ? null : stateFile(sessionId, dir);
-    const kept = (file === null ? null : restore(file, transcriptPath, stat)) ?? { v: STATE_VERSION, transcript: transcriptPath, ino: stat.ino, offset: 0, tail: "", figures: sessionFigures() };
+    const kept = (file === null ? null : restore(file, transcriptPath, stat)) ?? { v: STATE_VERSION, transcript: transcriptPath, ino: stat.ino, offset: 0, tail: "", figures: sessionFigures(), comparison: "", crossing: null };
     return { transcriptPath, sessionId, stat, file, kept };
 }
 
 function refresh(found, warn, spend) {
     try {
-        if (advance(found.kept, found.transcriptPath, found.stat.size) && found.file !== null) keep(found.file, found.kept, warn);
+        const key = comparisonKey(spend);
+        const changed = found.kept.comparison !== key;
+        if (changed) { reset(found.kept); found.kept.comparison = key; }
+        if ((advance(found.kept, found.transcriptPath, found.stat.size, spend) || changed) && found.file !== null) keep(found.file, found.kept, warn);
     } catch (error) {
         return { why: `the transcript could not be read — ${error.code ?? error.message}` };
     }
     let figure;
     try {
         figure = figureOf(found.kept.figures, spend);
+        if (figure !== null) figure.crossing = found.kept.crossing === null ? null : figureOf(found.kept.crossing, spend);
     } catch (error) {
         if (!(error instanceof LedgerError)) throw error;
         return { why: error.message };
@@ -182,12 +201,17 @@ function refresh(found, warn, spend) {
 
 export function adviceLine(figure, event = "UserPromptSubmit") {
     const m = figure.multipliers;
-    const horizon = `${figure.horizon} more requests (${figure.horizonDeclared ? "declared" : "default"})`;
-    const resume = figure.resume == null ? "resume cost unknown; threshold is a lower bound" : `resume expense ${grouped(figure.resume)} input-equivalent tokens`;
-    const comparison = figure.resume != null && figure.horizonDeclared
-        ? `Estimated savings ${savingWords(figure.saving)} input-equivalent tokens: consider a handoff and restart if these estimates still fit the task.`
-        : "Consider restarting only if the remaining work and handoff/reload cost make it cheaper; finish bounded work when that costs less.";
-    return `Portulan restart advisory: after ${grouped(figure.requests)} requests, context ${grouped(figure.context)} tokens, threshold ${grouped(figure.threshold)}; assumes ${horizon}, read ${m.read}×, write ${m.write}× (${m.source}); ${resume}. ${comparison} Said once.`;
+    const horizon = `${figure.horizon} remaining (${figure.horizonDeclared ? "declared" : "default"})`;
+    const resume = figure.resume == null ? "resume cost unknown; threshold is a lower bound" : `resume ${grouped(figure.resume)} input equivalents`;
+    const comparison = figure.saving < 0 ? "Latest estimate does not favor restarting."
+        : figure.resume != null && figure.horizonDeclared
+        ? `Estimated savings ${savingWords(figure.saving)} input equivalents; consider a handoff and restart if these estimates still fit the task.`
+        : "Restart only if remaining work and recovery cost make it cheaper; finish bounded work when that costs less.";
+    const first = figure.crossing;
+    const history = first && first.requests !== figure.requests
+        ? ` First crossing: request ${grouped(first.requests)}, context ${grouped(first.context)} / threshold ${grouped(first.threshold)} (fresh ${grouped(first.fresh)}, read ${first.multipliers.read}×, write ${first.multipliers.write}×, ${first.multipliers.recorded ? "recorded" : "assumed"} ${first.multipliers.lifetime}).`
+        : "";
+    return `Portulan restart advisory: after ${grouped(figure.requests)} requests, context ${grouped(figure.context)} tokens, threshold ${grouped(figure.threshold)}; ${horizon}, read ${m.read}×, write ${m.write}× (${m.source}); ${resume}.${history} ${comparison} Said once.`;
 }
 
 export function statusLine(figure) {
@@ -228,7 +252,7 @@ function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = n
         warn(figure.why);
         return null;
     }
-    if (figure.saving < 0) return null;
+    if (figure.crossing === null) return null;
     if (event === "Stop" && (!figure.horizonDeclared || figure.resume === null || !(figure.saving > 0))) return null;
     const mark = (file) => fs.writeFileSync(file, `${figure.context} ${figure.threshold}\n`, { flag: "wx", mode: 0o600 });
     try {

@@ -66,7 +66,7 @@ describe("the line at the prompt", () => {
             const out = onPrompt({ session_id: "s", transcript_path: file }, { dir: state });
             const parsed = JSON.parse(out);
             assert.equal(parsed.hookSpecificOutput.hookEventName, "UserPromptSubmit");
-            assert.match(parsed.hookSpecificOutput.additionalContext, /context 80,000 tokens, threshold 80,000; assumes 20 more requests \(default\), read 0\.1×, write 2× \(undeclared\)/);
+            assert.match(parsed.hookSpecificOutput.additionalContext, /context 80,000 tokens, threshold 80,000; 20 remaining \(default\), read 0\.1×, write 2× \(undeclared\)/);
             assert.match(parsed.hookSpecificOutput.additionalContext, /resume cost unknown; threshold is a lower bound/);
             grow(file, record({ read: 80000, w1h: 39999 }));
             assert.equal(onPrompt({ session_id: "s", transcript_path: file }, { dir: state }), null, "said once");
@@ -343,7 +343,8 @@ describe("what a call reads", () => {
             assert.ok(!text.includes("advisory may hold"));
             assert.ok(!text.includes(bytes.subarray(bytes.length - 64).toString("base64")), "the bytes before the offset, encoded");
             const kept = JSON.parse(text);
-            assert.deepEqual(Object.keys(kept).sort(), ["figures", "ino", "offset", "tail", "transcript", "v"]);
+            assert.deepEqual(Object.keys(kept).sort(), ["comparison", "crossing", "figures", "ino", "offset", "tail", "transcript", "v"]);
+            assert.deepEqual(kept.crossing.recent, []);
             assert.match(kept.tail, /^[0-9a-z]{1,7}$/);
             if (process.platform !== "win32") {
                 for (const f of [stateFile("s", state), toldFile("s", 0, state)]) assert.equal(fs.statSync(f).mode & 0o777, 0o600, f);
@@ -462,7 +463,7 @@ describe("the declared figures on the command", () => {
             assert.equal(onStatus({ session_id: "s", transcript_path: file }, at), "2 requests · context 90k / restart 93k · 30 remaining (declared) · resume cost unknown: lower bound · multipliers declared: read 0.05×, write 2×");
             grow(file, record({ read: 90000, w1h: 3333 }));
             const line = JSON.parse(onTool({ session_id: "s", transcript_path: file }, at)).hookSpecificOutput.additionalContext;
-            assert.match(line, /93,334 tokens, threshold 93,334; assumes 30 more requests \(declared\), read 0\.05×, write 2× \(declared\)/);
+            assert.match(line, /93,334 tokens, threshold 93,334; 30 remaining \(declared\), read 0\.05×, write 2× \(declared\)/);
         });
     });
 

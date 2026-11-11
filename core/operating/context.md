@@ -332,6 +332,16 @@ gives the declaration contract. This refinement follows the bounded-run evidence
 in [#503](https://github.com/sleepy-panda-srl/portulan/issues/503); proposal 0038 is
 preserved as its dated decision record.
 
+A delayed transcript batch retains its first usable crossing in the current
+compaction generation, including that request's context, fresh context and price
+assumptions. If later counts fall below threshold, the line identifies that
+historical crossing and says the latest estimate does not favor restarting.
+Status remains current; Stop uses only the latest comparison. Changed declared
+prices, horizon or resume expense replay the transcript before selecting a
+crossing under those assumptions. A controlled Claude Code trace and delayed
+batch checks live in [`cli/fixtures/advisory-crossing/`](../../cli/fixtures/advisory-crossing/);
+they do not promise a universal host transcript latency bound.
+
 ### Keep the prefix stable
 
 **Model and effort are chosen when a context is created**, and tool definitions are deferred wherever
