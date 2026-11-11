@@ -18,8 +18,8 @@ import { alwaysTier, declaredContext, ESTIMATED_BYTES_PER_TOKEN, OFFER_FLOOR_TOK
 import { cardIgnored, gitIn, changesReadme, claudeRulesUnignore, commentsRecipe, commentsRecipeEntry, COMPILED_CARD, draftCard, handoffIndexIgnore, handoffsReadme, withIgnoreLines } from "./form.mjs";
 import { offerText, splitOffers } from "./instructions.mjs";
 import { offerLines } from "./sessions.mjs";
-import { HANDOFF_OFFER, handoffOffer, realHandoffDay } from "./handoff-policy.mjs";
-import { renderHandoffIndex } from "./index.mjs";
+import { HANDOFF_OFFER, handoffOffer } from "./handoff-policy.mjs";
+import { eligibleHandoffDate, handoffEntries, renderHandoffIndex } from "./index.mjs";
 import { readSpend } from "./ledger.mjs";
 import { spendOffer, spendOfferLines } from "./spend-offer.mjs";
 
@@ -27,6 +27,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /** A refusal, thrown only before the first write: `run` exits 2 on it. */
 export class InitError extends Error {}
+class CutoffError extends InitError {}
 
 // The schema's `$defs/slug`; unreadable, it is null for `run` to refuse, since a throw at import leaves only a stack trace.
 let SCHEMA_ERROR = null;
@@ -1120,21 +1121,35 @@ function terminal() {
     };
 }
 
+function prepareHandoffCutoff(target, answers) {
+    const handoffToday = new Date().toISOString().slice(0, 10);
+    let handoffNewest;
+    if (handoffOffer(answers.handoffBudget, { today: handoffToday })?.handoffs.series) {
+        try {
+            let present = true;
+            for (const rel of [".portulan", ".portulan/handoffs"]) {
+                let stat;
+                try { stat = fs.lstatSync(path.join(target, rel)); }
+                catch (error) { if (error.code !== "ENOENT") throw error; present = false; break; }
+                if (!stat.isDirectory()) throw new InitError(`${rel} is not an ordinary owned handoff directory`);
+            }
+            if (present) for (const record of handoffEntries(target, { slots: { handoffs: ".portulan/handoffs" } })) {
+                const date = eligibleHandoffDate(record.file, handoffToday);
+                if (date === null) throw new InitError(`${record.file} must lead with a valid YYYY-MM-DD date no more than a day after ${handoffToday} (UTC); rename the handoff`);
+                if (date > (handoffNewest ?? "")) handoffNewest = date;
+            }
+        } catch (error) { throw new CutoffError(`cannot establish the handoff cutoff: ${error.message}`); }
+    }
+    return { handoffToday, handoffNewest };
+}
+
 function prepareDraft(target, answers, beforeConsent = false) {
+    const handoff = prepareHandoffCutoff(target, answers);
     const parent = outsideTempParents(target)[0];
     if (!parent && beforeConsent) throw new InitError("no external location for bounded pre-consent preparation");
     const env = parent ? { ...process.env, TMPDIR: parent, TMP: parent, TEMP: parent } : process.env;
     const observed = scan(target, { comments: answers.residence !== "pointer", env });
-    const handoffToday = new Date().toISOString().slice(0, 10);
-    let handoffNewest;
-    if (answers.handoffBudget && answers.handoffBudget !== "none") {
-        const dir = path.join(target, ".portulan/handoffs");
-        try {
-            if (!isInside(fs.realpathSync(target), fs.realpathSync(dir)) || !fs.statSync(dir).isDirectory()) throw new InitError("handoff dates cannot be read from an owned directory");
-            handoffNewest = fs.readdirSync(dir).map(name => name.slice(0, 10)).filter(realHandoffDay).sort().at(-1);
-        } catch (error) { if (error.code !== "ENOENT") throw error; }
-    }
-    return { observed, handoffToday, handoffNewest, env, ignoreLines: answers.residence === "pointer" ? [] : claudeRulesUnignore(target, gitIn(target, { env, timeout: 1000, noFsmonitor: true })).lines };
+    return { observed, ...handoff, env, ignoreLines: answers.residence === "pointer" ? [] : claudeRulesUnignore(target, gitIn(target, { env, timeout: 1000, noFsmonitor: true })).lines };
 }
 
 function preparedFiles(target, answers, preparation) {
@@ -1205,7 +1220,10 @@ function projectedAlways(target, answers, ratio) {
 }
 
 async function alwaysInterview(answers, io, target, ask) {
-    const unavailable = error => io.say(`Always-tier offer unavailable: ${error.message}. No always cap will be declared; you may continue or cancel at confirmation.`);
+    const unavailable = error => {
+        if (error instanceof CutoffError) throw error;
+        io.say(`Always-tier offer unavailable: ${error.message}. No always cap will be declared; you may continue or cancel at confirmation.`);
+    };
     const shared = handoffOffer(answers.handoffBudget)?.context.ratio;
     const illustrative = shared ?? { bytes_per_token: ESTIMATED_BYTES_PER_TOKEN, calibrated_by: "illustrative-estimate" };
     let preview;
@@ -1354,7 +1372,8 @@ export async function interview(answers, { io, target, derivedName, offer }) {
     } else {
         io.say(`  cycle       ${answers.cycle ? answers.checkpoints : "(none — composing no packs)"}`);
         if (answers.preparation) answers.preparedFiles ??= preparedFiles(target, answers, answers.preparation);
-        const offered = handoffOffer(answers.handoffBudget, { today: answers.preparation?.handoffToday, newest: answers.preparation?.handoffNewest });
+        const handoff = answers.preparation ?? prepareHandoffCutoff(target, answers);
+        const offered = handoffOffer(answers.handoffBudget, { today: handoff.handoffToday, newest: handoff.handoffNewest });
         answers.confirmedCutoff = offered?.handoffs.series?.budget.cutoff ?? null;
         io.say(`  handoffs    ${offered ? JSON.stringify(offered) : "(none — no handoff budgets declared)"}`);
         io.say(`  always      ${answers.alwaysBudget ? JSON.stringify(answers.alwaysBudget) : "(none — no always cap declared)"}`);

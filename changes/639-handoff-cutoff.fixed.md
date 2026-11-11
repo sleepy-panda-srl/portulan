@@ -1,0 +1,1 @@
+- Derive init's handoff cutoff from the index's eligible records, ignoring unrelated filenames and refusing untrustworthy series before writing a record cap.

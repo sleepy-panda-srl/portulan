@@ -58,6 +58,11 @@ export function dateOf(filename) {
     return m ? realDay(m[1], m[2], m[3]) : null;
 }
 
+export function eligibleHandoffDate(filename, today) {
+    const date = dateOf(filename);
+    return date !== null && date <= nextDay(today) ? date : null;
+}
+
 function realDay(y, mo, d) {
     const at = new Date(0);
     // Not `Date.UTC`, which reads a year from 0 to 99 as 1900 to 1999.
@@ -128,8 +133,20 @@ export function readStore(dir, workspace) {
     return { records, bytes };
 }
 
-/** A workspace's handoff series, `{ records, bytes }`, newest first; a record's `date` or `heading` is null where it has none. */
-export function readHandoffs(dir, workspace) {
+function regularHandoff(seriesDir, slot, file) {
+    try {
+        const stat = fs.lstatSync(path.join(seriesDir, file));
+        if (stat.isSymbolicLink() || !stat.isFile()) {
+            throw new IndexError(`${path.join(slot, file)} is not a regular file: a handoff is a file of its own, never a link or a directory`);
+        }
+    } catch (cause) {
+        if (cause instanceof IndexError) throw cause;
+        throw new IndexError(`cannot read the handoff ${path.join(slot, file)} — ${cause.code ?? cause.message}`);
+    }
+}
+
+/** The series' metadata, newest first; bodies stay with the reader that needs them. */
+export function handoffEntries(dir, workspace) {
     const slot = workspace?.slots?.handoffs;
     if (!slot) {
         throw new IndexError(
@@ -142,16 +159,23 @@ export function readHandoffs(dir, workspace) {
     // `readdirSync` follows a link, so a link on the series path is refused before it is listed.
     refuseLinks(dir, slot, seriesDir, "a handoff series is read where its path says");
     const files = listSeries(seriesDir, slot, "handoff series").reverse();
+    return files.map(file => {
+        regularHandoff(seriesDir, slot, file);
+        return { file, date: dateOf(file) };
+    });
+}
+
+/** A workspace's handoff series, `{ records, bytes }`, newest first; a record's `date` or `heading` is null where it has none. */
+export function readHandoffs(dir, workspace) {
+    const entries = handoffEntries(dir, workspace), slot = workspace.slots.handoffs;
+    const seriesDir = path.resolve(dir, slot);
     const records = [];
     let bytes = 0;
 
-    for (const file of files) {
+    for (const { file, date } of entries) {
         let source;
         try {
-            const stat = fs.lstatSync(path.join(seriesDir, file));
-            if (stat.isSymbolicLink() || !stat.isFile()) {
-                throw new IndexError(`${path.join(slot, file)} is not a regular file: a handoff is a file of its own, never a link or a directory`);
-            }
+            regularHandoff(seriesDir, slot, file);
             source = fs.readFileSync(path.join(seriesDir, file), "utf8");
         } catch (cause) {
             if (cause instanceof IndexError) throw cause;
@@ -159,7 +183,7 @@ export function readHandoffs(dir, workspace) {
         }
         const recordBytes = Buffer.byteLength(source);
         bytes += recordBytes;
-        records.push({ file, date: dateOf(file), heading: headingOf(source), bytes: recordBytes });
+        records.push({ file, date, heading: headingOf(source), bytes: recordBytes });
     }
 
     return { records, bytes };
@@ -590,7 +614,7 @@ function judgeHandoffs(dir, workspace, { write, fail, note, today, remedyFlags =
     let broken = 0;
     for (const r of series.records) {
         const where = path.join(workspace.slots.handoffs, r.file);
-        if (r.date === null || r.date > nextDay(today)) {
+        if (eligibleHandoffDate(r.file, today) === null) {
             broken += 1;
             fail(
                 "handoffs",

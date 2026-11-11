@@ -618,8 +618,11 @@ none are listed. A budget too small even for the header and notice is refused wi
 Neither series nor index is part of a boot or the always tier. Context and doctor report count, total,
 median, the three largest and rendered index bytes/tokens even without a tree, naming estimated or
 declared ratio and bound versus historical overages. Init offers independently optional 3000-token
-budgets, requires a supplied ratio on acceptance and computes the cutoff at write time. Supplied ratio
-provenance is not proof of host calibration. Upgrade adopts neither policy nor ratio automatically.
+budgets, requires a supplied ratio on acceptance and computes the cutoff at write time from the same
+regular Markdown entries and filename-date boundary the index uses. Unrelated files cannot advance it;
+invalid selected dates or file types, or an uninspectable series, stop record-cap adoption before
+writing. Supplied ratio provenance is not proof of host calibration. Upgrade adopts neither policy
+nor ratio automatically.
 
 The librarian still ages the series from git and drafts no staleness demotion against it: retiring
 history is no repair. The session-end gate checks existence and today's date only; the cap is the

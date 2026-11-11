@@ -140,9 +140,9 @@ test("the actual unattended CLI leaves the always cap undeclared", () => {
     assert.equal(manifest(root).context, undefined);
     assert.doesNotMatch(result.stdout, /exact count measured/);
 });
-async function terminalBudget(root, { mutate, final = "y" } = {}) {
+async function terminalBudget(root, { mutate, final = "y", decision = "y", handoffs = "none" } = {}) {
     let before = snapshot(root);
-    const command = [process.execPath, CLI, ...flags, "--handoff-budget", "none", root];
+    const command = [process.execPath, CLI, ...flags, "--handoff-budget", typeof handoffs === "string" ? handoffs : JSON.stringify(handoffs), root];
     const bridge = `import os, pty, select, sys
 pid, fd = pty.fork()
 if pid == 0: os.execv(sys.argv[1], sys.argv[1:])
@@ -167,15 +167,15 @@ sys.exit(os.waitstatus_to_exitcode(status))
     const status = await new Promise((resolve, reject) => {
         const child = spawn("python3", ["-u", "-c", bridge, ...command], { stdio: ["pipe", "pipe", "pipe"] });
         const deadline = setTimeout(() => { child.kill(); reject(new Error(`terminal stalled at ${step}: ${transcript}`)); }, 15000);
-        const prompts = ["Declare an always-tier budget? [y/N]: ", "Measured ratio JSON {bytes_per_token, calibrated_by}: ", /Accept [\d,]+ tokens at 4 B\/token \(fixture-4\)\? \[y\/N\]: /, "Write these files? [y/N]: "];
-        const answers = ["y", JSON.stringify(ratio), "y", final];
+        const prompts = ["Declare an always-tier budget? [y/N]: ", ...(decision === "y" ? [...(handoffs === "none" ? ["Measured ratio JSON {bytes_per_token, calibrated_by}: "] : []), /Accept [\d,]+ tokens at 4 B\/token \(fixture-4\)\? \[y\/N\]: /] : []), "Write these files? [y/N]: "];
+        const answers = [decision, ...(decision === "y" ? [...(handoffs === "none" ? [JSON.stringify(ratio)] : []), "y"] : []), final];
         const receive = data => {
             transcript += data.toString();
             const prompt = prompts[step];
             if (step < prompts.length && (typeof prompt === "string" ? transcript.includes(prompt) : prompt.test(transcript))) {
                 try { assert.deepEqual(snapshot(root), before); }
                 catch (error) { child.kill(); clearTimeout(deadline); reject(error); return; }
-                if (step === 3 && mutate) { mutate(); before = snapshot(root); }
+                if (step === prompts.length - 1 && mutate) { mutate(); before = snapshot(root); }
                 child.stdin.write(answers[step++] + "\n");
             }
         };
@@ -183,7 +183,7 @@ sys.exit(os.waitstatus_to_exitcode(status))
         child.on("error", error => { clearTimeout(deadline); reject(error); });
         child.on("exit", code => { clearTimeout(deadline); resolve(code); });
     });
-    assert.equal(step, 4, transcript);
+    assert.equal(step, decision === "y" ? handoffs === "none" ? 4 : 3 : 2, transcript);
     return { status, transcript, before };
 }
 test("the actual terminal CLI accepts fresh offers, refuses late growth and preserves cancellation", async t => {
@@ -201,6 +201,19 @@ test("the actual terminal CLI accepts fresh offers, refuses late growth and pres
         assert.equal(retried.status, 0, retried.transcript);
         assert.match(retried.transcript, /Accept 12,000 tokens/);
         oracle(root, manifest(root));
+    }
+});
+test("the actual terminal cutoff ignores future nonrecords with an accepted or declined always cap", async t => {
+    if (spawnSync("python3", ["--version"]).error?.code === "ENOENT") { t.skip("python3 is unavailable for the terminal control"); return; }
+    for (const decision of ["y", "n"]) {
+        const rel = ".portulan/handoffs/2099-12-01-unrelated.txt", root = fixture({ [rel]: "Ordinary notes.\n" });
+        const result = await terminalBudget(root, { decision, handoffs: { record_tokens: 100, ratio } });
+        assert.equal(result.status, 0, result.transcript);
+        assert.equal(manifest(root).handoffs.series.budget.cutoff, new Date().toISOString().slice(0, 10));
+        assert.equal(Boolean(manifest(root).context.always), decision === "y");
+        assert.equal(fs.readFileSync(path.join(root, rel), "utf8"), "Ordinary notes.\n");
+        const lines = [];
+        assert.equal(index(["--check", path.join(root, ".portulan")], line => lines.push(line)), 0, lines.join("\n"));
     }
 });
 
@@ -554,6 +567,25 @@ test("a domain becoming unmeasurable after acceptance refuses without a fabricat
     const retry = await changedInterview(root);
     checkAdoption(root, retry);
     assert.equal(manifest(root).context.always, undefined);
+});
+for (const unavailable of [false, true]) test(`an untrustworthy cutoff is not an unavailable always offer: ${unavailable}`, async () => {
+    const root = fixture({ ".portulan/handoffs/2099-12-01-invalid.md": "# Preserve this record\n", ...(unavailable ? { "AGENTS.md": Buffer.from([255]) } : {}) });
+    const before = snapshot(root), found = await changedInterview(root);
+    assert.equal(found.code, 2, found.lines.join("\n"));
+    assert.deepEqual(snapshot(root), before);
+    assert.match(found.lines.join("\n"), /cannot establish.*cutoff/);
+    assert.doesNotMatch(found.lines.join("\n"), /you may continue/);
+    assert.deepEqual(found.questions, []);
+});
+for (const decision of ["y", "n"]) test(`future nonrecords arriving at confirmation do not change cutoff consent: ${decision}`, async () => {
+    const root = fixture(), rel = ".portulan/handoffs/2099-12-01-unrelated.txt";
+    const found = await changedInterview(root, { decision, mutate: () => {
+        fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+        fs.writeFileSync(path.join(root, rel), "Ordinary notes.\n");
+    } });
+    checkAdoption(root, found);
+    assert.equal(manifest(root).handoffs.series.budget.cutoff, new Date().toISOString().slice(0, 10));
+    assert.equal(fs.readFileSync(path.join(root, rel), "utf8"), "Ordinary notes.\n");
 });
 for (const kind of ["within-headroom", "shrink", "preserved-file"]) test(`accepted cap survives ${kind} during final confirmation`, async () => {
     const root = fixture(kind === "shrink" ? { "AGENTS.md": "x".repeat(48000) } : kind === "preserved-file" ? { "changes/README.md": "old\n" } : {});

@@ -105,6 +105,8 @@ The offer covers current and projected guidance in both supported formats at you
 Declining or an initially unavailable projection leaves it undeclared. After final confirmation,
 init checks the accepted cap against fresh project inputs. An insufficient cap, a newly unavailable
 measurement or a changed effective handoff cutoff stops before writing and asks you to run init again.
+The cutoff uses eligible dated Markdown handoffs; unrelated filenames cannot advance it. Invalid
+selected dates or file types, or an uninspectable series, stop record-cap adoption before writing.
 
 ## Command-line interface
 
