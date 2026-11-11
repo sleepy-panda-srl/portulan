@@ -92,6 +92,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`sessions.mjs`](sessions.mjs) | The session switches' texts: the cache-lifetime offer `init` and `upgrade` print, and the one line `doctor` reports on them. |
 | [`skill-goldens.mjs`](skill-goldens.mjs) | The core-skill golden corpus — every mandate a core skill states, bound to the live artifacts it governs, and graded. |
 | [`skills-set.mjs`](skills-set.mjs) | The registrable set: the `skills` paths a plugin manifest must declare so a composed pack's skills register. |
+| [`spend-analysis.mjs`](spend-analysis.mjs) | Class indices compare stated assumptions, never bills or route quality. |
 | [`spend-offer.mjs`](spend-offer.mjs) | Local evidence for init's optional spend declaration. |
 | [`stop-diagnostics.mjs`](stop-diagnostics.mjs) | Bounded streaming failure excerpts for the Stop recipe relay. |
 | [`stop-policy.mjs`](stop-policy.mjs) | Stop recipe deadline policy. |
@@ -180,6 +181,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`skill-goldens.test.mjs`](skill-goldens.test.mjs) | Tests for `skill-goldens`, the core-skill golden corpus: every refusal exercised on a fixture that trips it. |
 | [`skills-set.live.test.mjs`](skills-set.live.test.mjs) | The registrable set, against THIS repository rather than against fixtures. |
 | [`skills-set.test.mjs`](skills-set.test.mjs) | The registrable set — what a plugin manifest must declare so a composed pack's skills register. |
+| [`spend-analysis.test.mjs`](spend-analysis.test.mjs) | Numeric class analysis keeps ownership, recency and unknown metadata explicit. |
 | [`spend-offer.test.mjs`](spend-offer.test.mjs) | Init spend offers. |
 | [`stop-diagnostics.test.mjs`](stop-diagnostics.test.mjs) | Stop recipe diagnostics retain failures across noise and stream boundaries. |
 | [`stop-gate.test.mjs`](stop-gate.test.mjs) | Tests for the Stop-gate runner: its per-reason caps, the handoff date, its verdicts, the did-work signals and the tree it answers about. |

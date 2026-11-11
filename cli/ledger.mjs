@@ -38,6 +38,7 @@ export const KEY_LIMIT = 200;
 
 /** The classes a request is billed in, in the order a report prints them. */
 export const CLASSES = ["uncached", "written1h", "written5m", "writtenUnknown", "read", "output"];
+export const RECORDED_ROLES = ["implementer", "reviewer", "librarian", "supervisor", "local-worker"];
 
 export class LedgerError extends Error {
     constructor(message) {
@@ -96,10 +97,20 @@ function requestOf(record) {
     const written1h = count(lifetimes.ephemeral_1h_input_tokens);
     const written5m = count(lifetimes.ephemeral_5m_input_tokens);
     const at = Date.parse(record.timestamp);
+    const invalid = value => value !== undefined && (!Number.isSafeInteger(value) || value < 0);
+    const inputUnsafe = [usage.input_tokens, usage.cache_creation_input_tokens, usage.cache_read_input_tokens, lifetimes.ephemeral_1h_input_tokens, lifetimes.ephemeral_5m_input_tokens].some(invalid) ||
+        !Number.isSafeInteger(count(usage.input_tokens) + Math.max(count(usage.cache_creation_input_tokens), written1h + written5m) + count(usage.cache_read_input_tokens)) ||
+        (usage.cache_creation_input_tokens !== undefined && count(usage.cache_creation_input_tokens) < written1h + written5m);
+    const roleParts = text(record.attributionAgent)?.split(":");
+    const role = roleParts?.every(part => /^[a-zA-Z0-9_-]+$/.test(part)) && RECORDED_ROLES.includes(roleParts.at(-1)) ? roleParts.at(-1) : null;
     return {
         id: text(message.id) ?? text(record.requestId) ?? text(record.uuid),
         model: text(message.model),
         effort: text(record.effort),
+        role,
+        usageMissing: (usage.input_tokens === undefined ? 1 : 0) | (usage.output_tokens === undefined ? 2 : 0),
+        usageUnsafe: (inputUnsafe ? 1 : 0) | (invalid(usage.output_tokens) ? 2 : 0),
+        writeTotal: Number.isSafeInteger(usage.cache_creation_input_tokens) && usage.cache_creation_input_tokens >= 0 ? usage.cache_creation_input_tokens : null,
         branch: text(record.gitBranch),
         cwd: text(record.cwd),
         at: Number.isFinite(at) ? at : null,
@@ -196,8 +207,10 @@ export function readLine(line) {
 }
 
 /** Claude Code 2.1.280, undocumented: one record per content block, so one request per message id. */
-export function readTranscript(file) {
-    const source = fs.readFileSync(file, "utf8");
+export function readTranscript(file, { end = null } = {}) {
+    const bytes = fs.readFileSync(file, end === null ? "utf8" : undefined);
+    if (end !== null && (!Number.isSafeInteger(end) || end < 0 || end > bytes.length)) throw new LedgerError("the bounded transcript snapshot changed");
+    const source = end === null ? bytes : bytes.subarray(0, end).toString("utf8");
     const byId = new Map();
     const requests = [];
     const tally = { records: 0, duplicates: 0, malformed: 0, synthetic: 0, compactions: 0 };
@@ -238,9 +251,14 @@ export function readTranscript(file) {
         }
         const prior = request.id === null ? undefined : byId.get(request.id);
         if (prior !== undefined) {
-            // The host writes a request again per content block, and its output count may grow: keep each largest.
+            // Merge growing block counters; unclassified writes remain the residual of the reported total.
             tally.duplicates += 1;
             for (const c of CLASSES) prior[c] = Math.max(prior[c], request[c]);
+            prior.usageMissing &= request.usageMissing;
+            prior.usageUnsafe |= request.usageUnsafe;
+            if (request.writeTotal !== null) prior.writeTotal = Math.max(prior.writeTotal ?? 0, request.writeTotal);
+            if (prior.writeTotal !== null) prior.writtenUnknown = Math.max(0, prior.writeTotal - prior.written1h - prior.written5m);
+            if (!Number.isSafeInteger(contextOf(prior)) || (prior.writeTotal !== null && prior.written1h + prior.written5m > prior.writeTotal)) prior.usageUnsafe |= 1;
             continue;
         }
         if (request.id !== null) byId.set(request.id, request);
@@ -411,7 +429,12 @@ export function figureOf(figures, { declared = null, horizon = null, resume = nu
 }
 
 export function thresholdFor(transcript, options = {}) {
-    return figureOf(transcript.figures, options);
+    const main = transcript.requests?.filter(r => !r.sidechain) ?? [];
+    if (!main.length) return figureOf(transcript.figures, options);
+    const first = main[Math.max(0, main.findLastIndex(r => r.compacted))], last = main.at(-1);
+    if ([first, last].some(r => ((r.usageMissing | r.usageUnsafe) & 1) !== 0)) return { unavailable: "usage" };
+    const lifetime = main.findLast(r => lifetimeOf(r) !== null);
+    return figureOf({ ...transcript.figures, fresh: contextOf(first), last: contextOf(last), freshLifetime: lifetimeOf(first), lifetime: lifetime ? lifetimeOf(lifetime) : null }, options);
 }
 
 function listDir(dir) {
@@ -681,7 +704,10 @@ export function ledger({ projects, config, roots, branch, lines = null, spend = 
     const host = config === null ? [] : compareHost(collected.contexts, hostTotals(config, roots));
     const latest = latestSession(collected.contexts, branch);
     const priced = { declared: spend.multipliers, horizon: spend.horizon ?? null, resume: spend.resume ?? null };
-    const restart = latest === null ? null : { session: latest.session, ...thresholdFor(latest.transcript, priced) };
+    const last = latest?.transcript.requests.findLast(r => !r.sidechain);
+    const restart = latest === null ? null : last?.branch !== branch || !latest.requests.includes(last)
+        ? { session: latest.session, unavailable: "branch-scope" }
+        : { session: latest.session, ...thresholdFor(latest.transcript, priced) };
     const local = tallyLocal(collected.receipts, branch);
     return { projects, roots, branch, collected, figures, local, host, restart, lines, priced };
 }
@@ -720,6 +746,8 @@ export function print(report, say) {
             `${grouped(collected.duplicates)} per-block duplicate(s) counted once, ${grouped(collected.synthetic)} host-written record(s) with no request behind them, ` +
             `${grouped(collected.malformed)} line(s) that did not parse`,
     );
+    const uncertain = (collected.contexts ?? []).reduce((n, c) => n + c.requests.filter(r => r.usageMissing || r.usageUnsafe).length, 0);
+    if (uncertain) say(`  usage: ${grouped(uncertain)} owned request(s) have missing or invalid counters; totals are partial, sanitized zeros are not known observations`);
     if (f.main.requests + f.subagents.requests === 0) {
         say(`  no request on ${report.branch} is recorded here`);
         say(localLine(report));
@@ -751,6 +779,14 @@ export function print(report, say) {
     for (const h of host) {
         const parts = ["uncached", "written", "read", "output"].map((k) => `${k} ${grouped(h.ledger[k])} of ${grouped(h.host[k])} (${signed(h.difference[k])})`);
         say(`  host totals, session ${short(h.session)} (the last the host saved for ${h.cwd}, every branch): ${parts.join(", ")}`);
+    }
+    if (restart?.unavailable === "branch-scope") {
+        say("  restart: comparison unavailable — the latest session's main request is outside this branch's owned scope");
+        return;
+    }
+    if (restart?.unavailable === "usage") {
+        say("  restart: comparison unavailable — input usage counters are invalid or incomplete");
+        return;
     }
     if (restart === null || restart.threshold === undefined) {
         say(unjudged(priced));

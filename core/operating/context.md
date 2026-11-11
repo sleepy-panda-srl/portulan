@@ -311,6 +311,53 @@ separate local figures belong to [the local-model rules](#a-local-model-runs-wit
 opens host usage records: `doctor --static` validates without them, and ledger fixtures supply synthetic
 records for verification.
 
+Ordinary `doctor` reports the current branch and the latest five timed owned
+parent sessions across branches and worktrees. A parent's latest valid main or
+child request timestamp ranks it; session-ID order breaks ties. All owned requests
+in a selected session contribute, including undated requests. Wholly undated
+sessions remain in branch totals and are excluded from recency. Branch absence
+does not hide recent-session evidence from other branches.
+
+For valid complete observations, raw class totals remain exact integers. Missing
+or invalid counters retain closed validity metadata through per-block deduplication;
+affected totals are partial and class analysis remains unassessed. Missing fields
+can be completed by another block; a provided invalid counter remains unassessed.
+Beside valid totals, a normalized class index
+uses uncached input at 1×, declared or general read/write multipliers and output
+at an explicitly assumed 5×. It assumes uniform input rates across models and is
+an estimate in input-equivalents, not actual monetary dominance or a bill. The
+output assumption follows proposal 0038 and the [Claude pricing table](https://platform.claude.com/docs/en/about-claude/pricing),
+checked 2026-11-11. Writes with unstated lifetime span the minimum and maximum of
+both write rates; differing endpoint leaders make dominance uncertain. Ties,
+partial records and unsafe arithmetic are named.
+
+| Dominant index class | Lever to review |
+|---|---|
+| Cache reads | Session length and tool output |
+| Cache writes | Fresh contexts, TTL gaps and cache busts, with inferred rebuild causes |
+| Output | Effort and model by recorded role, with A/B evidence before changing a route |
+| Uncached input | Cache engagement, eligibility and uncached tails |
+
+Role labels come only from recognized, optionally namespaced `attributionAgent`
+metadata. Unknown roles, effort and model families remain unknown; UUIDs and
+conversation text do not identify roles. Model/effort alternatives remain
+unpriced without quality evidence. The existing biggest-lever comparison covers
+quantified demotion/restart candidates only. With explicit horizon and resume
+expense, the report compares continuation reads with fresh writes, resumed reads
+and recovery expense. A later main request outside the branch's owned scope makes
+that session's restart comparison unavailable. These are fixed-context
+counterfactuals from caller-supplied estimates, not forecasts.
+Invalid or missing input counters also suppress advisory comparisons, status and
+Stop holds. Invalid fresh input stays unpriced until compaction; missing fields
+can be completed by duplicate observations. Unusable latest input waits for a
+valid next request or completed missing fields. Validity markers and numeric
+input vectors persist in the incremental cache. Changed or contradictory tracked
+observations replay deduplicated records through the last consumed newline,
+including a retained historical crossing; the normal valid append path remains
+incremental. Aggregate input sums are checked after deduplication and in live
+status data. Warm calls cannot turn unknown inputs into known zeros. Recorded
+output uncertainty does not invalidate otherwise usable input-only restart math.
+
 ### Restart at a computed threshold
 
 **A restart comparison states its assumptions before advising a handoff.** Its

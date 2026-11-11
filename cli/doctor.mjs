@@ -34,6 +34,7 @@ import { movableSections } from "./instructions.mjs";
 import { formLine } from "./form.mjs";
 import { sessionsLine } from "./sessions.mjs";
 import { cacheRiskLines } from "./cache-risk.mjs";
+import { spendAnalysis } from "./spend-analysis.mjs";
 import { hostPaths, ledger, print, readSpend, restartSaving, worktrees, linesChanged, GENERAL_READ, HORIZON } from "./ledger.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -2005,9 +2006,9 @@ export function biggestLeverLine(workspaceDir, workspace, evidence = null) {
         });
         const winner = candidates.filter((c) => Number.isFinite(c.saving) && c.saving > 0).sort((a, b) => b.saving - a.saving || (a.action < b.action ? -1 : 1))[0];
         const assumptions = `${horizon} requests at ${read}× read (${spend.multipliers === null ? "general, undeclared" : "declared"}); ` +
-            `${measured && session.resume != null && session.horizonDeclared ? "recorded restart compared" : "session-dependent levers not compared: explicit horizon and resume expense required"}${evidence?.malformed ? "; partial usage data" : ""}; ${limits}`;
+            `${session?.unavailable === "usage" ? "restart not compared: input usage counters are invalid or incomplete" : session?.unavailable === "branch-scope" ? "restart not compared: latest session tail is outside branch-owned scope" : measured && session.resume != null && session.horizonDeclared ? "recorded restart compared" : "session-dependent levers not compared: explicit horizon and resume expense required"}${evidence?.malformed ? "; partial usage data" : ""}; ${limits}`;
         return winner
-            ? `biggest lever: ${winner.action} — up to ~${Number(winner.saving.toPrecision(6)).toLocaleString("en-US", { maximumSignificantDigits: 6 })} estimated input-equivalent tokens; ${winner.basis}; ${assumptions}; review candidates only, not guaranteed session savings`
+            ? `biggest lever: ${winner.action} — up to ~${Number(winner.saving.toPrecision(6)).toLocaleString("en-US", { maximumSignificantDigits: 6 })} estimated input-equivalent tokens; ${winner.basis}; ${assumptions}; quantified demotion/restart candidates only, not an overall winner or guaranteed session savings`
             : `no positive measured lever; ${assumptions}`;
     } catch {
         return `unmeasured — context or spend inputs are invalid, unreadable or incomplete; session-dependent levers not compared; ${limits}`;
@@ -2029,11 +2030,13 @@ export async function workspaceUsageReport(workspaceDir, workspace, options = {}
         const report = ledger({ ...host, roots, branch, lines: linesChanged(repo, branch), spend: readSpend(workspace.spend, "this workspace") });
         options.onLedger?.({ restart: report.restart, malformed: report.collected.malformed });
         const lines = [];
+        const analysis = spendAnalysis(report).map(line => `  note spend      ${line}`);
         if (report.collected.malformed) lines.push(`  note spend      partial data — ${report.collected.malformed} malformed usage line(s) were ignored`);
         if (report.figures.main.requests + report.figures.subagents.requests === 0 && report.local.receipts === 0) {
-            return [...lines, ...unmeasured("no host requests or local receipts on this branch are recorded here")];
+            return [...lines, ...unmeasured("no host requests or local receipts on this branch are recorded here"), ...analysis];
         }
         print(report, (line) => lines.push(line));
+        lines.push(...analysis);
         return lines;
     } catch {
         // Parser messages can quote a private record. Never print them or a raw usage line.
