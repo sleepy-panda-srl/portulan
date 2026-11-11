@@ -2007,7 +2007,7 @@ describe("the packs a workspace declares", () => {
         }
     });
 
-    // A synthetic validator at 1.5: the shipped Pack Definition is 1.0, so no earlier minor exists yet.
+    // A synthetic validator also accepts older minors.
     test("a pack declaring an EARLIER minor on the same major is still graded", async () => {
         const ahead = { ...PACK_SCHEMA, $id: "https://portulan.dev/spec/pack/1.5/pack.schema.json" };
         const dir = tree(scratch(), {
@@ -2034,7 +2034,7 @@ describe("the packs a workspace declares", () => {
     });
 
     test("the two version trains are read by different functions and do not collide", () => {
-        assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
+        assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 1 });
         assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 16 });
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });

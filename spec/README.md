@@ -229,7 +229,7 @@ number governing both would make a bump in either mean a change in the other:
 | Schema | Manifest key | Current | What it governs |
 |---|---|---|---|
 | [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.16** | the Workspace Definition — the manifest at a workspace root |
-| [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.0** | the Pack Definition — the manifest at a pack root. |
+| [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.1** | the Pack Definition — the manifest at a pack root. |
 
 The rules below apply to each train independently. `portulan.spec` is `MAJOR.MINOR`, and the current
 Workspace Definition version is **2.16**. It did **not** move when the Pack Definition arrived, because
@@ -526,3 +526,11 @@ repositories are *not present* is what exposed that the claims lint had no way t
 
 Illustrative fragments in [`slots.md`](slots.md) use `{braces}` for placeholders, the same convention as
 [`../core/templates/`](../core/templates/).
+
+Pack Definition 1.1 adds optional ritual `contributes.contexts` with
+`max_concurrent_subagents`. Doctor and compiler require a positive safe integer
+and the 1.1 contract; the schema subset expresses only its numeric shape.
+Counts compose by minimum and compile to Claude project settings, with the
+[admission scope and exceptions](../packs/rituals/checkpoints/README.md#context-admission)
+stated separately from the ledger's actual lifetime count. Workspace Definition
+is unchanged; rituals remain packs, as recorded in [slots](slots.md).

@@ -6,6 +6,7 @@
 //
 // Exit 0 wrote (or, with --check, agrees) · 1 an artifact has drifted · 2 could not run.
 
+import { readContextCap, contextCaps, contextCapLines, capOnlyPlan, emitCapOnly, CONTEXT_CAP_ENV } from "./ritual-contexts.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -619,6 +620,7 @@ export function claudeCode(parsed, options = {}) {
     const packs = (options.packProvenance ?? [])
         .map((c) => ({ pack: c.pack, origin: c.origin, version: c.version ?? null }))
         .sort((a, b) => a.pack.localeCompare(b.pack));
+    const contexts = options.contexts ?? contextCaps([]);
     const sessions = options.sessions ?? null;
     const switches = {};
     if (sessions?.git_instructions !== undefined) switches.includeGitInstructions = sessions.git_instructions;
@@ -643,7 +645,7 @@ export function claudeCode(parsed, options = {}) {
             readStopPolicy({ portulan: { spec: "2.14" }, verify: { stopTimeout: seconds ?? null } });
         } catch (error) { throw new CompileError(error.message); }
     }
-    const declaredIn = [figuresIn, stopPolicy && `\`verify.stopTimeout\` in ${stopPolicy.manifest}`].filter(Boolean).join(", or ");
+    const declaredIn = [figuresIn, contexts.limit !== null && "ritual contexts in composed pack manifests", stopPolicy && `\`verify.stopTimeout\` in ${stopPolicy.manifest}`].filter(Boolean).join(", or ");
     const value = {
         $portulan: {
             generated: "cli/compile.mjs",
@@ -652,6 +654,7 @@ export function claudeCode(parsed, options = {}) {
             ...(spendFrom ? { spend: spendFrom } : {}),
             ...(stopPolicy ? { verify: stopPolicy.manifest } : {}),
             ...(packs.length ? { packs } : {}),
+            ...(contexts.limit !== null ? { contexts: contexts.sources } : {}),
             warning: declaredIn
                 ? `Generated file. Edit ${source}, or ${declaredIn}, and recompile; \`verify/compile.sh\` fails on drift.`
                 : `Generated file. Edit ${source} and recompile; \`verify/compile.sh\` fails on drift.`,
@@ -677,9 +680,10 @@ export function claudeCode(parsed, options = {}) {
         },
         statusLine: { type: "command", command: `node ${advisoryRunner} status${spendFlags}` },
         ...switches,
+        ...(contexts.limit !== null ? { env: { [CONTEXT_CAP_ENV]: String(contexts.limit) } } : {}),
     };
 
-    const notes = [];
+    const notes = contextCapLines(contexts);
     if (pinned.length) {
         notes.push(
             `${pinned.length} hook(s) are pinned to an ABSOLUTE path on this machine — ` +
@@ -2270,7 +2274,9 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
               : `this workspace declares no gate policy — \`workspace.json\` has no top-level \`gates\` key, ` +
                 `and there is no \`gates.json\` at ${policyFile}.`;
     const outcome =
-        guidanceOnly === "leftover"
+        guidanceOnly === "contexts"
+            ? "No gate policy is compiled; ritual admission settings and any declared guidance/persona bindings compile independently."
+            : guidanceOnly === "leftover"
             ? "No enforcement is compiled, and no guidance is declared: what an earlier run compiled from guidance is this compiler's to remove, and is named below."
             : guidanceOnly === "personas"
               ? "No enforcement or guidance is compiled; existing persona bindings still carry their declared fields."
@@ -2386,6 +2392,7 @@ export function packDifferences(mine, other) {
     const differs = [];
     if (mineV !== otherV) differs.push(`version ${mineV} against the tree's ${otherV}`);
     if (frag(mine) !== frag(other)) differs.push("gate fragments that differ once parsed");
+    if (JSON.stringify(canonical(mine?.contributes?.contexts ?? null)) !== JSON.stringify(canonical(other?.contributes?.contexts ?? null))) differs.push("context caps that differ once parsed");
     return differs;
 }
 
@@ -2474,6 +2481,7 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
         contributions.push({
             pack: found.name,
             dir: found.dir,
+            contextCap: readContextCap(packManifest, found.name),
             fragments: fragments ?? [],
             personas: personas ?? [],
             origin: recordedOrigin(found.root, plan, workspaceRoot),
@@ -3149,12 +3157,15 @@ export function run(argv, options = {}) {
                 if (guidance === null && !leftover) throw new CompileError(`${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason)}\n  Persona planning was unavailable: ${cause.message}`);
                 throw cause;
             }
+            const contexts = contextCaps(packs.contributions, packs.unresolved);
+            const capPlan = capOnlyPlan(workspaceRoot, contexts);
             const personas = planPersonas(packs.contributions, workspaceRoot, workspaceDir);
-            if (guidance === null && !leftover && personas.compared === 0) {
+            if (guidance === null && !leftover && personas.compared === 0 && !capPlan) {
                 printPersonaReport(say, personas);
+                for (const line of contextCapLines(contexts)) say(`note    ${line}`);
                 throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
             }
-            say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, leftover ? "leftover" : guidance === null ? "personas" : true)}`);
+            say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, capPlan ? "contexts" : leftover ? "leftover" : guidance === null ? "personas" : true)}`);
             if (sessions !== null) {
                 say(
                     `note    \`sessions\` in ${sessions.manifest} compiled nothing: its host switches ride the settings a gate ` +
@@ -3171,15 +3182,16 @@ export function run(argv, options = {}) {
             say();
             for (const u of packs.unresolved) say(unresolvedLine(u));
             if (packs.unresolved.length) say();
+            for (const line of contextCapLines(contexts)) say(`note    ${line}`);
             if (showMatrix) {
                 if (guidance) printGuidanceMatrix(say, guidance);
                 printPersonaReport(say, personas);
                 return 0;
             }
-            const drifted = emitPersonas(personas, { check, say }) + emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
+            const drifted = emitCapOnly(capPlan, { check, say }) + emitPersonas(personas, { check, say }) + emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
             if (!check) return 0;
             if (drifted) return 1;
-            say(`GREEN — every compiled guidance file matches its unit${personas.compared ? ", and every persona binding its persona" : ""}`);
+            say(`GREEN — every compiled guidance file matches its unit${personas.compared ? ", and every persona binding its persona" : ""}${capPlan ? ", and ritual admission settings match their declarations" : ""}`);
             return 0;
         }
         const policy = readJson(policyFile, "the gate policy", path.join(workspaceRoot, workspaceDir));
@@ -3203,6 +3215,7 @@ export function run(argv, options = {}) {
             sessions,
             spend,
             stopPolicy,
+            contexts: contextCaps(contributions, unresolved),
         });
 
         for (const a of composed.added) say(`pack    ${a.pack.padEnd(30)} adds \`${a.id}\` (${a.tier})`);
@@ -3214,6 +3227,7 @@ export function run(argv, options = {}) {
 
         if (showMatrix) {
             printMatrix(say, parsed, columns, { source });
+            for (const line of contextCapLines(contextCaps(contributions, unresolved))) say(`note    ${line}`);
             if (guidance) {
                 say();
                 printGuidanceMatrix(say, guidance);

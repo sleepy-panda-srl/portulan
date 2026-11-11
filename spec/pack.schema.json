@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://portulan.dev/spec/pack/1.0/pack.schema.json",
-  "title": "Portulan Pack Definition v1.0",
+  "$id": "https://portulan.dev/spec/pack/1.1/pack.schema.json",
+  "title": "Portulan Pack Definition v1.1",
   "description": "The manifest at the root of a pack. A pack is the cascade's middle layer — core < pack < workspace < repo card < task — and this manifest declares what it contributes to that cascade: skills, personas, verify recipes, and gate-policy fragments. It is an index, not a container, for the same reason the Workspace Definition is: the content lives in the files the paths point at. Written in the same deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset, for what validates this, and for why a pack carries its own version train rather than the Workspace Definition's.",
   "type": "object",
   "additionalProperties": false,
@@ -49,7 +49,7 @@
     },
 
     "contributes": {
-      "description": "What this pack adds to the cascade. Every key is optional and an absent key contributes nothing of that kind — but the object itself is required, because a pack contributing nothing is a plugin, not a pack, and the manifest should say which it is rather than leaving it to be inferred from four absences.",
+      "description": "What this pack adds to the cascade. Every key is optional and an absent key contributes nothing of that kind — but the object itself is required, because a pack contributing nothing is a plugin, not a pack, and the manifest should say which it is rather than leaving it to be inferred from optional absences.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -73,6 +73,15 @@
           "uniqueItems": true,
           "minItems": 1,
           "items": { "$ref": "#/$defs/recipe" }
+        },
+        "contexts": {
+          "description": "Since Pack Definition 1.1, ritual packs only: ordinary fresh native Agent admission within one session. Positive safe integer checked by doctor and compiler; number is the schema subset's numeric type. Multiple packs compose by minimum. Claude env compiles even without a gate policy. Parent, lifetime totals, resumes/forks and independent agent systems are outside the bound; see packs/rituals/checkpoints/README.md.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["max_concurrent_subagents"],
+          "properties": {
+            "max_concurrent_subagents": { "type": "number" }
+          }
         },
         "gates": {
           "description": "Gate-policy fragments — the cascade's missing middle, and the contribution that needs care, because an installed pack reaching the gate map means a dependency can change what an agent is allowed to do. The floor is the maintainer's ruling of 2026-07-27 recorded in .portulan/proposals/0010-prohibited-as-a-fourth-universal-tier.md: a pack may raise a tier or add a prohibition, and may NEVER demote another layer's classification. Enforcement is split between this schema and the merge step, and the split is stated rather than implied — see `$defs/fragment`. READ TODAY, like `personas` and unlike `skills` and `verify`: cli/compile.mjs is the merge step, and it resolves this key when a pack root is given.",

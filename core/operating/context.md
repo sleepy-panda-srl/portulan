@@ -438,8 +438,15 @@ of its own.
 ### Routing is declared and earned
 
 **The spawner states effort and how many contexts it may open, alongside what it loads**, extending
-[the fresh-context declaration](#a-fresh-context-is-priced-where-it-is-created). Context count is a
-declaration obligation; no context-count field is compiled today.
+[the fresh-context declaration](#a-fresh-context-is-priced-where-it-is-created). Ritual packs can declare
+`contributes.contexts.max_concurrent_subagents` under Pack Definition 1.1. Counts
+compose by minimum and compile to Claude's project concurrency env setting even
+without a gate policy. This controls ordinary fresh native Agent admission per
+session, excluding the parent; resumes/forks, independent agent systems, host
+overrides and experimental paths qualify it. It is no lifetime context, request
+or token budget. Other adapters report it as not compiled, and the ledger counts
+actual contexts either way. See [the pack contract](../../packs/rituals/checkpoints/README.md#context-admission)
+and [the dated native trace](../../cli/fixtures/ritual-cap/README.md).
 
 **A cheaper model or a lower effort for a role is earned by an A/B run before it is shipped.** A host
 switch that changes the prefix meets the same evidence gate. The comparison must show reduced spend

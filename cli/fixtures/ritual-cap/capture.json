@@ -1,0 +1,254 @@
+{
+  "schema": 1,
+  "host": "2.1.321 (Claude Code)",
+  "sources": {
+    "capture.mjs": "444d4b9fd6af33080860768a75abfae0b0c57b5a1889c014bb7012b9fa0c7233",
+    "../../ritual-contexts.mjs": "a5e4752e5e490ea8268cb69e5e7261be5405057b6bb49d09349d3c7084a91eb7",
+    "../../compile.mjs": "afd507f5add82572ea65b30c19d80ebb683caeed5f7c37a788a7774b7c2f771a",
+    "../../ledger.mjs": "95c663b54d506d013a3281fb1a16db530731f1cee23a24d91522986dd55a1b8f"
+  },
+  "runs": [
+    {
+      "name": "one",
+      "declared": 1,
+      "effective": 1,
+      "guard": [
+        "loopback allowed",
+        "egress denied"
+      ],
+      "code": 0,
+      "completed": true,
+      "peak": 1,
+      "children": 2,
+      "refusals": 1,
+      "accepted": 2,
+      "parentRequests": 4,
+      "ledger": {
+        "sessions": 1,
+        "children": 2,
+        "requests": 6
+      },
+      "trace": [
+        {
+          "kind": "parent",
+          "step": 1,
+          "refusals": 0
+        },
+        {
+          "kind": "start",
+          "child": 1,
+          "active": 1
+        },
+        {
+          "kind": "parent",
+          "step": 2,
+          "refusals": 1
+        },
+        {
+          "kind": "end",
+          "child": 1,
+          "active": 0
+        },
+        {
+          "kind": "start",
+          "child": 2,
+          "active": 1
+        },
+        {
+          "kind": "parent",
+          "step": 3,
+          "refusals": 1
+        },
+        {
+          "kind": "end",
+          "child": 2,
+          "active": 0
+        },
+        {
+          "kind": "parent",
+          "step": 4,
+          "refusals": 1
+        }
+      ]
+    },
+    {
+      "name": "two",
+      "declared": 2,
+      "effective": 2,
+      "guard": [
+        "loopback allowed",
+        "egress denied"
+      ],
+      "code": 0,
+      "completed": true,
+      "peak": 2,
+      "children": 2,
+      "refusals": 0,
+      "accepted": 2,
+      "parentRequests": 3,
+      "ledger": {
+        "sessions": 1,
+        "children": 2,
+        "requests": 5
+      },
+      "trace": [
+        {
+          "kind": "parent",
+          "step": 1,
+          "refusals": 0
+        },
+        {
+          "kind": "start",
+          "child": 1,
+          "active": 1
+        },
+        {
+          "kind": "start",
+          "child": 2,
+          "active": 2
+        },
+        {
+          "kind": "parent",
+          "step": 2,
+          "refusals": 0
+        },
+        {
+          "kind": "end",
+          "child": 1,
+          "active": 1
+        },
+        {
+          "kind": "end",
+          "child": 2,
+          "active": 0
+        },
+        {
+          "kind": "parent",
+          "step": 3,
+          "refusals": 0
+        }
+      ]
+    },
+    {
+      "name": "removed",
+      "declared": 1,
+      "effective": null,
+      "guard": [
+        "loopback allowed",
+        "egress denied"
+      ],
+      "code": 0,
+      "completed": true,
+      "peak": 2,
+      "children": 2,
+      "refusals": 0,
+      "accepted": 2,
+      "parentRequests": 3,
+      "ledger": {
+        "sessions": 1,
+        "children": 2,
+        "requests": 5
+      },
+      "trace": [
+        {
+          "kind": "parent",
+          "step": 1,
+          "refusals": 0
+        },
+        {
+          "kind": "start",
+          "child": 1,
+          "active": 1
+        },
+        {
+          "kind": "start",
+          "child": 2,
+          "active": 2
+        },
+        {
+          "kind": "parent",
+          "step": 2,
+          "refusals": 0
+        },
+        {
+          "kind": "end",
+          "child": 1,
+          "active": 1
+        },
+        {
+          "kind": "end",
+          "child": 2,
+          "active": 0
+        },
+        {
+          "kind": "parent",
+          "step": 3,
+          "refusals": 0
+        }
+      ]
+    },
+    {
+      "name": "lowered",
+      "declared": 2,
+      "effective": 1,
+      "guard": [
+        "loopback allowed",
+        "egress denied"
+      ],
+      "code": 0,
+      "completed": true,
+      "peak": 1,
+      "children": 2,
+      "refusals": 1,
+      "accepted": 2,
+      "parentRequests": 4,
+      "ledger": {
+        "sessions": 1,
+        "children": 2,
+        "requests": 6
+      },
+      "trace": [
+        {
+          "kind": "parent",
+          "step": 1,
+          "refusals": 0
+        },
+        {
+          "kind": "start",
+          "child": 1,
+          "active": 1
+        },
+        {
+          "kind": "parent",
+          "step": 2,
+          "refusals": 1
+        },
+        {
+          "kind": "end",
+          "child": 1,
+          "active": 0
+        },
+        {
+          "kind": "start",
+          "child": 2,
+          "active": 1
+        },
+        {
+          "kind": "parent",
+          "step": 3,
+          "refusals": 1
+        },
+        {
+          "kind": "end",
+          "child": 2,
+          "active": 0
+        },
+        {
+          "kind": "parent",
+          "step": 4,
+          "refusals": 1
+        }
+      ]
+    }
+  ]
+}

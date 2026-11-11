@@ -154,12 +154,14 @@ fi
 
 node cli/fixtures/advisory-crossing/verify.mjs
 trace=$?
+node cli/fixtures/ritual-cap/verify.mjs
+cap_trace=$?
 
 # Could-not-run outranks red: a run that judged nothing cannot vouch for the one that did.
 worst=$advisory
 [ "$local_line" -eq 1 ] && worst=1
 could_not_run=0
-for status in "$fixture" "$real" "$hybrid" "$trace"; do
+for status in "$fixture" "$real" "$hybrid" "$trace" "$cap_trace"; do
     case "$status" in
         0) ;;
         1) worst=1 ;;

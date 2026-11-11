@@ -1,7 +1,7 @@
 {
   "portulan": {
-    "pack": "1.0",
-    "version": "0.3.0"
+    "pack": "1.1",
+    "version": "0.3.1"
   },
 
   "name": "checkpoints",
@@ -10,6 +10,7 @@
   "doc": "README.md",
 
   "contributes": {
+    "contexts": { "max_concurrent_subagents": 1 },
     "skills": ["skills/"],
 
     "personas": ["personas/supervisor.md"],
