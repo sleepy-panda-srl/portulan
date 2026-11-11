@@ -1,1 +1,0 @@
-- Compile the accepted nested on-path CLAUDE.md target with portable ownership, interrupted-write recovery, consumer parity and a separately verifiable real-host observation, keeping forced-red verification usable with the larger test suite.

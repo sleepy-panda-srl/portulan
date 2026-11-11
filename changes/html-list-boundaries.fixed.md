@@ -1,1 +1,0 @@
-- Compiling a list's leads now recognizes CommonMark type-1 and type-6 HTML block tags immediately below an item, ending the list instead of refusing it as a lazy continuation. The shared import reader uses the same boundary; inline tags and invalid tag delimiters retain their existing treatment.

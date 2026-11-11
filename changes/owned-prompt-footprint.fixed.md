@@ -1,1 +1,0 @@
-- Rail reachable skill bodies, persona charters and bindings, native hook message profiles and vendored AGENTS.md profiles in the repository's context recipe; unavailable coverage refuses judgement.

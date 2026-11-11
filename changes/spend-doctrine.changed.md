@@ -1,1 +1,0 @@
-- Spend and restart doctrine now has one canonical part in `core/operating/context.md`, covering usage-based pricing, the computed restart threshold, stable prefixes, earned routing and output budgets. The session guide links to those rules while retaining startup and cache-setting details.

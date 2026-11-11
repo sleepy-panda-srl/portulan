@@ -1,1 +1,0 @@
-- Restart compilation refuses missing, malformed and unsupported-major spec declarations. The ledger recipe now checks that a provoked Stop consumes no hold, and the slot reference names the repeated-hold limitation for harnesses that omit the retry marker while rotating session IDs.

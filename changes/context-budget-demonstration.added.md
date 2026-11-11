@@ -1,1 +1,0 @@
-- Recorded milestone 12's declared-budget demonstration as an offline fixture: actual context and static-doctor CLI failures become green after guidance is demoted to on-read, with the budget and guidance body preserved. The context suite reproduces the observations and rejects invalid repairs.

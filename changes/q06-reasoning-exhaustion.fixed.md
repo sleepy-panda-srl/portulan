@@ -1,1 +1,0 @@
-- Local-worker receipts distinguish reasoning and cached-input subsets from their parent totals, preserve unknown measurements and historical ledger receipts, and diagnose reasoning-only exhaustion without treating a smaller source slice as a guaranteed remedy ([#578](https://github.com/sleepy-panda-srl/portulan/issues/578)).
