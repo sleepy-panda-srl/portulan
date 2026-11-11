@@ -537,6 +537,8 @@ export const HOOK_RUNNERS = ["gate.mjs", "stop-gate.mjs", "advisory.mjs"];
  * `ask` for gated, a prompt that blocks headless. Two layers, since on Claude Code 2.1.220 a crashing hook fails open.
  */
 export function claudeCode(parsed, options = {}) {
+    const hasPolicy = parsed !== null;
+    const rules = hasPolicy ? parsed.rules : [];
     const source = options.source ?? ".portulan/gates.json";
     const runnerDir = path.dirname(fileURLToPath(import.meta.url));
     const project = options.root ?? process.cwd();
@@ -550,8 +552,8 @@ export function claudeCode(parsed, options = {}) {
         pinned.push({ file, abs });
         return `"${abs}"`;
     };
-    const runner = options.runner ?? spell(HOOK_RUNNERS[0]);
-    const stopRunner = options.stopRunner ?? spell(HOOK_RUNNERS[1]);
+    const runner = options.runner ?? (hasPolicy ? spell(HOOK_RUNNERS[0]) : null);
+    const stopRunner = options.stopRunner ?? (hasPolicy ? spell(HOOK_RUNNERS[1]) : null);
     const advisoryRunner = options.advisoryRunner ?? spell(HOOK_RUNNERS[2]);
 
     const compiled = [];
@@ -562,7 +564,7 @@ export function claudeCode(parsed, options = {}) {
     const shellWriteGates = [];
     const editCoveredGates = [];
 
-    for (const rule of parsed.rules) {
+    for (const rule of rules) {
         if (!HOST_GATE_TIERS.has(rule.tier)) {
             refused.push({ id: rule.id, tier: rule.tier, why: HOST_TIER_NOT_A_GATE[rule.tier] });
             continue;
@@ -610,7 +612,7 @@ export function claudeCode(parsed, options = {}) {
         compiled.push({ id: rule.id, tier: rule.tier, surface: [...emitted, ...hookOnly].join(" · ") });
     }
 
-    if (parsed.rules.some((r) => HOST_GATE_TIERS.has(r.tier)) && compiled.length === 0) {
+    if (rules.some((r) => HOST_GATE_TIERS.has(r.tier)) && compiled.length === 0) {
         throw new CompileError(
             "every gate in this policy refused to compile — refusing to write an artifact that enforces nothing while the policy claims gates",
         );
@@ -638,7 +640,7 @@ export function claudeCode(parsed, options = {}) {
         sessionsFrom && sessionsFrom === spendFrom
             ? `\`sessions\` and \`spend\` in ${sessionsFrom}`
             : [sessionsFrom && `\`sessions\` in ${sessionsFrom}`, spendFrom && `\`spend\` in ${spendFrom}`].filter(Boolean).join(", or ");
-    const stopPolicy = options.stopPolicy ?? null;
+    const stopPolicy = hasPolicy ? options.stopPolicy ?? null : null;
     if (stopPolicy !== null) {
         try {
             const seconds = typeof stopPolicy === "object" && !Array.isArray(stopPolicy) ? stopPolicy.seconds : null;
@@ -659,21 +661,18 @@ export function claudeCode(parsed, options = {}) {
                 ? `Generated file. Edit ${source}, or ${declaredIn}, and recompile; \`verify/compile.sh\` fails on drift.`
                 : `Generated file. Edit ${source} and recompile; \`verify/compile.sh\` fails on drift.`,
         },
-        permissions: { deny, ask, allow: [] },
+        ...(hasPolicy ? { permissions: { deny, ask, allow: [] } } : {}),
         hooks: {
-            // Quote node paths without shell composition to limit quoting fail-opens.
-            PreToolUse: [...matchers].sort().map((matcher) => ({
-                matcher,
-                hooks: [{ type: "command", command: `node ${runner}` }],
-            })),
-            Stop: [
-                {
-                    hooks: [
-                        { type: "command", command: `node ${stopRunner}`, ...(stopPolicy ? { timeout: stopPolicy.seconds + STOP_HOOK_MARGIN } : {}) },
-                        ...(restartBlock ? [{ type: "command", command: `node ${advisoryRunner} stop${spendFlags}` }] : []),
-                    ],
-                },
-            ],
+            ...(hasPolicy ? {
+                PreToolUse: [...matchers].sort().map((matcher) => ({
+                    matcher,
+                    hooks: [{ type: "command", command: `node ${runner}` }],
+                })),
+            } : {}),
+            ...(hasPolicy || restartBlock ? { Stop: [{ hooks: [
+                ...(hasPolicy ? [{ type: "command", command: `node ${stopRunner}`, ...(stopPolicy ? { timeout: stopPolicy.seconds + STOP_HOOK_MARGIN } : {}) }] : []),
+                ...(restartBlock ? [{ type: "command", command: `node ${advisoryRunner} stop${spendFlags}` }] : []),
+            ] }] } : {}),
             // No matcher means every tool; a non-blocking `Stop` hook's output would reach only the host's debug log.
             PostToolUse: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} tool${spendFlags}` }] }],
             UserPromptSubmit: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} prompt${spendFlags}` }] }],
@@ -684,6 +683,10 @@ export function claudeCode(parsed, options = {}) {
     };
 
     const notes = contextCapLines(contexts);
+    if (!hasPolicy) notes.push(
+        "Claude Code: prompt/tool restart advisory and status line compile without a gate policy; declared session switches and ritual caps compose here. GitHub repository ruleset and AGENTS guidance: advisory/session settings not compiled by these adapters.",
+        `Undeclared prices use general read 0.1× and writes 1.25×/2×; horizon ${spend?.horizon ? `${spend.horizon} declared` : `${HORIZON} general`}; resume expense ${spend?.resume != null ? `${spend.resume} declared` : "unknown"}. Unknown resume expense or a general horizon permits conditional advice, never a Stop hold.`,
+    );
     if (pinned.length) {
         notes.push(
             `${pinned.length} hook(s) are pinned to an ABSOLUTE path on this machine — ` +
@@ -2274,7 +2277,9 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
               : `this workspace declares no gate policy — \`workspace.json\` has no top-level \`gates\` key, ` +
                 `and there is no \`gates.json\` at ${policyFile}.`;
     const outcome =
-        guidanceOnly === "contexts"
+        guidanceOnly === "advisory"
+            ? "No gate policy is compiled; restart advice, declared session settings, ritual admission settings and guidance/persona bindings compile independently."
+            : guidanceOnly === "contexts"
             ? "No gate policy is compiled; ritual admission settings and any declared guidance/persona bindings compile independently."
             : guidanceOnly === "leftover"
             ? "No enforcement is compiled, and no guidance is declared: what an earlier run compiled from guidance is this compiler's to remove, and is named below."
@@ -3049,19 +3054,19 @@ export function resolveWorkspace(named) {
 
 function usage() {
     return [
-        "portulan compile — compile a workspace's gate policy into host enforcement",
+        "portulan compile — compile workspace advice, guidance, bindings and declared gates",
         "",
         "  portulan compile [--check] [--matrix] [--workspace <dir>] [--pack-root <dir>|auto]...",
         "",
-        "  (no flag)     compile the policy and the guidance, and write each artifact",
-        "  --check       write nothing; exit 1 if an artifact is out of date against the policy or the guidance",
+        "  (no flag)     compile native advice/settings, guidance, bindings and declared gates",
+        "  --check       write nothing; exit 1 if an artifact differs from its declarations",
         "  --matrix      print every rule against every backend, the gates neither compiles, and every",
-        "                guidance unit against every host",
+        "                guidance unit against every host; report native settings without a policy",
         "  --workspace   the workspace directory to compile; defaults to `.portulan`",
         "  --pack-root   where declared packs are resolved from; `auto` discovers the host's plugin cache.",
         "                A named root REPLACES every other source. A directory actually named `auto` is `./auto`",
         "",
-        "The compiler emits RESTRICTION only: `auto` and `propose` compile to nothing in the Claude Code",
+        "Gate compilation emits RESTRICTION only: `auto` and `propose` compile to nothing in the Claude Code",
         "backend by design, and the partition inverts in the repository ruleset, which is the floor.",
         "",
         "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
@@ -3149,7 +3154,7 @@ export function run(argv, options = {}) {
             throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
         }
         if (!policyDeclared && !fs.existsSync(policyFile)) {
-            // Only a manifest read and naming no policy clears leftovers: one that is missing has not been authored.
+            // Only an authored manifest clears stray guidance.
             const leftover = guidance === null && policyReason === "no-key" && guidancePlan !== null && guidancePlan.stray.length > 0;
             let packs;
             try { packs = packContributions(workspaceRoot, workspaceDir, packOptions); }
@@ -3158,31 +3163,26 @@ export function run(argv, options = {}) {
                 throw cause;
             }
             const contexts = contextCaps(packs.contributions, packs.unresolved);
-            const capPlan = capOnlyPlan(workspaceRoot, contexts);
+            const authored = policyReason === "no-key" && ["repository", "demo", "portfolio"].includes(JSON.parse(readWorkspaceText(workspaceRoot, workspaceDir)).kind);
+            const advice = authored ? claudeCode(null, {
+                source: path.join(workspaceDir, "workspace.json").split(path.sep).join("/"),
+                root: path.resolve(workspaceRoot), sessions, spend, contexts, packProvenance: packs.contributions,
+            }) : null;
+            const capPlan = capOnlyPlan(workspaceRoot, contexts, advice?.artifact.value ?? null);
             const personas = planPersonas(packs.contributions, workspaceRoot, workspaceDir);
             if (guidance === null && !leftover && personas.compared === 0 && !capPlan) {
                 printPersonaReport(say, personas);
                 for (const line of contextCapLines(contexts)) say(`note    ${line}`);
                 throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
             }
-            say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, capPlan ? "contexts" : leftover ? "leftover" : guidance === null ? "personas" : true)}`);
-            if (sessions !== null) {
-                say(
-                    `note    \`sessions\` in ${sessions.manifest} compiled nothing: its host switches ride the settings a gate ` +
-                        `policy compiles to, and this workspace has none`,
-                );
-            }
-            if (spend !== null) {
-                say(
-                    `note    \`spend\` in ${spend.manifest} compiled nothing: what it declares rides the restart advisory's commands ` +
-                        `in the settings a gate policy compiles to, and this workspace has none`,
-                );
-            }
+            say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, advice ? "advisory" : capPlan ? "contexts" : leftover ? "leftover" : guidance === null ? "personas" : true)}`);
+            if (advice) for (const line of advice.notes) say(`note    ${line}`);
+            else if (sessions !== null || spend !== null) say("note    session and spend settings require an authored governing workspace or gate policy");
             if (stopPolicy !== null) say("note    verify.stopTimeout compiled no outer hook timeout: this workspace has no gate policy");
             say();
             for (const u of packs.unresolved) say(unresolvedLine(u));
             if (packs.unresolved.length) say();
-            for (const line of contextCapLines(contexts)) say(`note    ${line}`);
+            if (!advice) for (const line of contextCapLines(contexts)) say(`note    ${line}`);
             if (showMatrix) {
                 if (guidance) printGuidanceMatrix(say, guidance);
                 printPersonaReport(say, personas);
@@ -3191,7 +3191,7 @@ export function run(argv, options = {}) {
             const drifted = emitCapOnly(capPlan, { check, say }) + emitPersonas(personas, { check, say }) + emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
             if (!check) return 0;
             if (drifted) return 1;
-            say(`GREEN — every compiled guidance file matches its unit${personas.compared ? ", and every persona binding its persona" : ""}${capPlan ? ", and ritual admission settings match their declarations" : ""}`);
+            say(`GREEN — every compiled guidance file matches its unit${personas.compared ? ", and every persona binding its persona" : ""}${capPlan ? ", and native settings match their declarations" : ""}`);
             return 0;
         }
         const policy = readJson(policyFile, "the gate policy", path.join(workspaceRoot, workspaceDir));

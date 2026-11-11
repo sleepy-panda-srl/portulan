@@ -41,13 +41,13 @@ test("minimum is order independent with sorted provenance and unresolved honesty
     assert.match(contextCapLines(contextCaps([], [{ name: "missing" }])).join(" "), /unresolved.*unknown/);
     assert.equal(packDifferences(declaration(1), declaration(2)).length, 1);
 });
-test("cap-only emits no unrelated machinery, changes drift, removal cleans only own artifact", () => fixture(({ root, write, compile, settings }) => {
+test("advice composes caps, changes drift, removal keeps advice", () => fixture(({ root, write, compile, settings }) => {
     assert.equal(compile(), 0); const s = settings();
-    assert.deepEqual(Object.keys(s).sort(), ["$portulan", "env"]);
+    assert.deepEqual(Object.keys(s).sort(), ["$portulan", "env", "hooks", "statusLine"]);
     assert.deepEqual(s.env, { CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS: "1" });
     assert.equal(compile("--check"), 0);
     write("packs/rituals/fixture/pack.json", declaration(2)); assert.equal(compile("--check"), 1); assert.equal(compile(), 0); assert.equal(settings().env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS, "2");
-    write("packs/rituals/fixture/pack.json", declaration(1, { contributes: {} })); assert.equal(compile("--check"), 1); assert.equal(compile(), 0); assert.ok(!fs.existsSync(root + "/.claude/settings.json"));
+    write("packs/rituals/fixture/pack.json", declaration(1, { contributes: {} })); assert.equal(compile("--check"), 1); assert.equal(compile(), 0); assert.equal(settings().env, undefined); assert.ok(settings().hooks.PostToolUse);
 }));
 test("foreign, edited, old-policy and symlink settings refuse before other writes", () => fixture(({ root, write, compile }) => {
     for (const s of [{ model: "foreign" }, { $portulan: { generated: "cli/compile.mjs", kind: "ritual-contexts" }, env: { OTHER: "foreign" } }, { $portulan: { generated: "cli/compile.mjs", kind: "ritual-contexts" }, model: "foreign", env: {} }, { $portulan: { generated: "cli/compile.mjs", source: "workspace/gates.json" }, hooks: {} }]) {
@@ -114,14 +114,14 @@ test("multiply linked cap settings cannot overwrite or remove another file", () 
     write("packs/rituals/fixture/pack.json", declaration(1, { contributes: {} })); assert.equal(compile(), 2); assert.equal(fs.readFileSync(root + "/other.json", "utf8"), before);
 }));
 
-test("no-cap guidance preserves unrelated linked settings in write/check/matrix", () => fixture(({ root, write }) => {
+test("full guidance compilation refuses unrelated linked settings in write/check/matrix", () => fixture(({ root, write }) => {
     const guided = root + "/guided";
     fs.cpSync(fileURLToPath(new URL("./fixtures/guidance", import.meta.url)), guided, { recursive: true });
     fs.rmSync(guided + "/.claude", { recursive: true, force: true }); fs.mkdirSync(guided + "/.claude");
     const file = guided + "/.claude/settings.json"; fs.writeFileSync(file, '{"model":"foreign"}'); fs.linkSync(file, root + "/other.json");
     const invoke = (...flags) => run(["--workspace", guided, "--pack-root", root + "/packs", ...flags], { quiet: true });
     for (const mode of [[], ["--check"], ["--matrix"]]) {
-        assert.equal(invoke(...mode), 0);
+        assert.equal(invoke(...mode), 2);
         assert.equal(fs.readFileSync(file, "utf8"), '{"model":"foreign"}'); assert.equal(fs.readFileSync(root + "/other.json", "utf8"), '{"model":"foreign"}');
     }
 }));

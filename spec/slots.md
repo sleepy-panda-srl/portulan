@@ -783,17 +783,19 @@ Added at **2.11**, from `0038`'s rules 3 and 4 and row 12's cache-lifetime compi
 ```
 
 **Nothing is defaulted.** An undeclared switch is the host's own default and `compile` emits nothing for
-it, so a manifest without the key compiles byte for byte as before. A switch is declared once an A/B run
-has shown that it cuts spend with no loss, and [`sessions.md`](../core/operating/sessions.md) says which
+it, so an existing policy-backed manifest without the key keeps the same settings bytes. A switch is
+declared once an A/B run has shown that it cuts spend with no loss, and [`sessions.md`](../core/operating/sessions.md) says which
 sessions keep what a switch removes.
 
 **Two scopes, because the host has two.** `git_instructions` and `cache_lifetime` are project settings on
-Claude Code, so `compile` writes them into the settings it already generates from `gates`, and they reach
+Claude Code, so `compile` writes them into its native settings, independently of a gate policy, and they reach
 every session there, interactive or not. The exclusion is no setting at all: Claude Code 2.1.281 takes it
 only as a command-line flag or an SDK option, so only whatever starts a session can ask for it. `headless`
 is therefore read by Portulan's own runners that start sessions, today [`../cli/warm.mjs`](../cli/warm.mjs),
-which the package does not ship, and never compiled. A workspace with no gate policy has no settings
-for the first two to ride, and `compile` says that it compiled neither.
+which the package does not ship, and never compiled. Full compilation of an authored `repository`,
+`demo` or `portfolio` workspace also emits native restart advice and these declared switches without a gate policy. The settings contain no permissions
+or verification Stop hook; explicit `spend.restart: "block"` adds only the advisory Stop command.
+Missing manifests and pointers do not become governing workspaces.
 
 **Offered to an adopter, and still never defaulted** (2026-09-24). `init` offers `cache_lifetime` `"5m"`
 with what it saves and what a pause costs, asking once at a terminal or taking `--cache-lifetime`, and on
@@ -871,7 +873,7 @@ stop is its last (the coordinator session's delegated call of 2026-09-24); where
 the line, the block costs one request. Ruling 3 makes the block a workspace's own choice, so `init` asks
 nothing about it and `upgrade` offers nothing: the threshold is an estimate, and one priced at the general
 multipliers comes early for a model whose cache reads cost less than a tenth, where a block would hold a turn
-short of its real line. Undeclared or `"advise"`, the settings compile byte for byte as before; where
+short of its real line. In the existing policy-backed path, undeclared or `"advise"` settings retain their bytes; where
 `"block"` writes the command, `compile` says so on every run.
 
 **Offered by `init`, never written without acceptance.** For Claude Code's last recorded main-session

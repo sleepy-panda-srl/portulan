@@ -1874,6 +1874,7 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
     const stderrOf = (t, argv) => {
         const said = [];
         t.mock.method(process.stderr, "write", (chunk) => (said.push(String(chunk)), true));
+        t.mock.method(process.stdout, "write", (chunk) => (said.push(String(chunk)), true));
         const code = run(argv);
         t.mock.restoreAll();
         return { code, said: said.join("") };
@@ -1946,13 +1947,13 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
         assert.equal(policyDeclaration(bare({ gates: "../../../etc/passwd" })).declared, false);
     });
 
-    test("run() names the state instead of reporting ENOENT, and still writes nothing", (t) => {
+    test("run() names the policy-free state and emits advice", (t) => {
         const dir = bare();
         const { code, said } = stderrOf(t, ["--workspace", dir]);
-        assert.equal(code, 2, "nothing was compiled, so this stays a refusal rather than becoming a pass");
+        assert.equal(code, 0, "native advice compiles independently");
         assert.match(said, /declares no gate policy/);
         assert.doesNotMatch(said, /ENOENT/, "the old message sent readers hunting for a file never claimed");
-        assert.ok(!fs.existsSync(path.join(dir, ".claude", "settings.json")), "and it emits no artifact");
+        assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")), "native settings are emitted");
     });
 
     test("a DECLARED policy that is missing still reports the read failure", (t) => {
@@ -1966,7 +1967,7 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
         const root = path.join(dir, "packs");
         packAt(root, "rituals", "checkpoints", [fragment("a", "prohibited"), fragment("b", "prohibited")]);
         const { code, said } = stderrOf(t, ["--workspace", dir, "--pack-root", root]);
-        assert.equal(code, 2);
+        assert.equal(code, 0);
         assert.match(said, /2 pack-contributed gate rule\(s\)/);
         assert.match(said, /checkpoints/, "naming the dependency is what the merge step is for");
     });
@@ -2883,7 +2884,7 @@ describe("--help", () => {
         const code = run(["--help"]);
         t.mock.restoreAll();
         assert.equal(code, 0);
-        assert.match(out.join(""), /^portulan compile — compile a workspace's gate policy into host enforcement/);
+        assert.match(out.join(""), /^portulan compile — compile workspace advice, guidance, bindings and declared gates/);
         assert.match(out.join(""), /Exit codes: 0 succeeded/);
     });
 });
@@ -3060,8 +3061,8 @@ test("committed on-invoke and companion outputs exist before a read-only clean-c
     }
     const original = personaSnapshot(GUIDANCE_FIXTURE);
     const args = ["--workspace", GUIDANCE_FIXTURE, "--pack-root", PACKS];
-    const checked = said(t, [...args, "--check"]);
-    assert.equal(checked.code, 0, checked.out);
+    const checked = compileGuidance(GUIDANCE_FIXTURE, { check: true, say: () => {} });
+    assert.equal(checked.drifted, 0);
     assert.deepEqual(personaSnapshot(GUIDANCE_FIXTURE), original);
     const dir = scratch();
     fs.cpSync(GUIDANCE_FIXTURE, dir, { recursive: true });
@@ -3235,17 +3236,17 @@ describe("guidance: written, then byte-compared", () => {
         const dir = guidanceCopy();
         const { code, out } = said(t, ["--workspace", dir]);
         assert.equal(code, 0);
-        assert.match(out, /declares no gate policy.*No enforcement is compiled; the workspace's guidance still is/);
+        assert.match(out, /declares no gate policy.*No gate policy is compiled; restart advice/);
         assert.match(out, /AGENTS\.md, vendored: expresses always and on-read; on-path and on-invoke degrade to an on-read pointer/);
         for (const rel of ["conventions.md", "api.md", ON_READ_INDEX]) assert.ok(fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR, rel)), rel);
         assert.ok(fs.existsSync(path.join(dir, SKILLS_DIR, "release", "SKILL.md")));
-        assert.ok(!fs.existsSync(path.join(dir, ".claude", "settings.json")), "no policy, so no enforcement artifact");
+        assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")), "advice compiles without policy");
         const check = said(t, ["--workspace", dir, "--check"]);
         assert.equal(check.code, 0, check.out);
         assert.match(check.out, /GREEN — every compiled guidance file matches its unit/);
     });
 
-    test("a declared `spend` beside guidance and no gate policy compiles nothing, and says so", (t) => {
+    test("a declared `spend` beside guidance compiles advisory commands without policy", (t) => {
         const dir = guidanceCopy();
         const file = path.join(dir, "workspace.json");
         const m = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -3254,8 +3255,8 @@ describe("guidance: written, then byte-compared", () => {
         fs.writeFileSync(file, JSON.stringify(m, null, 2));
         const { code, out } = said(t, ["--workspace", dir]);
         assert.equal(code, 0, out);
-        assert.match(out, /note {4}`spend` in workspace\.json compiled nothing: what it declares rides the restart advisory's commands in the settings a gate policy compiles to, and this workspace has none/);
-        assert.ok(!fs.existsSync(path.join(dir, ".claude", "settings.json")), "no policy, so no settings");
+        assert.match(out, /horizon of 30 requests/);
+        assert.match(JSON.parse(fs.readFileSync(path.join(dir, ".claude/settings.json"))).statusLine.command, /--horizon 30/);
         m.spend = { horizon: { requests: -1 } };
         fs.writeFileSync(file, JSON.stringify(m, null, 2));
         assert.equal(said(t, ["--workspace", dir, "--check"]).code, 2);
@@ -3670,7 +3671,7 @@ describe("guidance: written, then byte-compared", () => {
         assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
     });
 
-    test("so does one with no gate policy, and the run after refuses it as declaring neither", (t) => {
+    test("so does one with no gate policy, while default advice remains", (t) => {
         const dir = guidanceCopy();
         assert.equal(said(t, ["--workspace", dir]).code, 0);
         const manifestPath = path.join(dir, "workspace.json");
@@ -3679,12 +3680,11 @@ describe("guidance: written, then byte-compared", () => {
         fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
         const check = said(t, ["--workspace", dir, "--check"]);
         assert.equal(check.code, 1, check.out);
-        assert.match(check.out, /no guidance is declared: what an earlier run compiled from guidance is this compiler's to remove/);
         assert.match(check.out, /on-read\.md is where this compiler writes guidance, and no unit compiles to it/);
         assert.equal(said(t, ["--workspace", dir]).code, 0);
         assert.ok(!fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR)), "the rules and their marker are gone");
         assert.ok(!fs.existsSync(path.join(dir, SKILLS_DIR, "release")), "and the compiled skill");
-        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 2);
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
     });
 
     const claudeTree = (dir) => {
@@ -3713,7 +3713,7 @@ describe("guidance: written, then byte-compared", () => {
                 assert.equal(said(t, ["--workspace", dir]).code, 0);
                 const before = claudeTree(dir);
                 assert.ok(`${GUIDANCE_RULES_DIR}/${RULES_MARKER}` in before, "the marker is among what must survive");
-                assert.equal(`.claude/settings.json` in before, policyBeside);
+                assert.equal(`.claude/settings.json` in before, true);
                 const manifestPath = path.join(dir, ".portulan", "workspace.json");
                 fs.writeFileSync(manifestPath, broken(fs.readFileSync(manifestPath, "utf8")));
                 const why = label === "cut short" ? /it is not valid JSON — \S/ : /it is not a JSON object/;
@@ -4737,7 +4737,7 @@ describe("persona bindings follow the declared tree's host adapter", () => {
         const first = said(t, args);
         assert.equal(first.code, 0, first.out);
         assert.match(fs.readFileSync(binding, "utf8"), /omitClaudeMd: true/);
-        assert.equal(fs.existsSync(path.join(dir, ".claude/settings.json")), false);
+        assert.equal(fs.existsSync(path.join(dir, ".claude/settings.json")), true);
         assert.equal(fs.existsSync(path.join(dir, ".claude/rules")), false);
         fs.writeFileSync(binding, fs.readFileSync(binding, "utf8").replace("effort: low", "effort: high"));
         assert.equal(said(t, [...args, "--check"]).code, 1);
@@ -5033,6 +5033,21 @@ describe("core personas: declared frontmatter in the product's own tree", () => 
                 const checked = productRecipe(root);
                 assert.equal(checked.code, 0, checked.out);
             }
+        }
+    });
+
+    test("the actual recipe independently detects root settings and both portable exemplar edits", () => {
+        const root = productCopy();
+        assert.equal(productRecipe(root).code, 0);
+        for (const rel of [".claude/settings.json", "cli/fixtures/guidance/.claude/rules/portulan/api.md", "cli/fixtures/nested-guidance/.claude/rules/portulan/conventions.md"]) {
+            const file = path.join(root, rel);
+            assert.ok(fs.existsSync(file), rel);
+            const before = fs.readFileSync(file, "utf8");
+            fs.writeFileSync(file, before + "\nDrift.\n");
+            assert.equal(productRecipe(root).code, 1, rel);
+            assert.equal(fs.readFileSync(file, "utf8"), before + "\nDrift.\n");
+            fs.writeFileSync(file, before);
+            assert.equal(productRecipe(root).code, 0, rel);
         }
     });
 

@@ -1830,7 +1830,7 @@ export async function inspect(workspaceDir, options = {}) {
                     : "";
                 report(
                     "enforcement",
-                    `this workspace composes ${fragments} gate rule(s) from the packs that resolved and declares no \`gates\` policy for them to join, so nothing here compiles these gates; guidance, personas or a ritual cap can still compile independently${incomplete}`,
+                    `this workspace composes ${fragments} gate rule(s) from the packs that resolved and declares no \`gates\` policy for them to join, so nothing here compiles these gates; restart advice, session settings, guidance, personas or a ritual cap can still compile independently${incomplete}`,
                 );
             }
         } catch (cause) {

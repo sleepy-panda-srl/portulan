@@ -41,7 +41,7 @@ function fixture(rel = "CLAUDE.md", self = false) {
   m.kind = "repository";
   m.tree = self ? "./" : "../";
   fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify(m));
-  compileGuidance(root);
+  assert.equal(compile(["--workspace", root], { quiet: true }), 0);
   put(root, rel, original);
   return { root, ws, rel, args: ["--workspace", ws, "--write"] };
 }

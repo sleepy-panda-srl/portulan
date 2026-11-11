@@ -87,7 +87,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`recipe-set.mjs`](recipe-set.mjs) | The recipe set: the verify recipes a workspace yields, its own plus each composed pack's, namespaced by pack. |
 | [`release-eval.mjs`](release-eval.mjs) | Portulan — the eval result a release carries. |
 | [`review-meter.mjs`](review-meter.mjs) | The review-loop meter: the historical figures of this repository's Copilot review loop, derived from its reviews. |
-| [`ritual-contexts.mjs`](ritual-contexts.mjs) | Native admission limits do not count lifetime contexts or spend. |
+| [`ritual-contexts.mjs`](ritual-contexts.mjs) | Own native settings without inventing a gate policy. |
 | [`roster.mjs`](roster.mjs) | The cli roster: `cli/README.md`, rendered from the files it lists and never edited by hand. Not shipped. |
 | [`rule-carriers.mjs`](rule-carriers.mjs) | `rule-carriers` — the rail that keeps a reduced rule reduced. |
 | [`sessions.mjs`](sessions.mjs) | The session switches' texts: the cache-lifetime offer `init` and `upgrade` print, and the one line `doctor` reports on them. |
@@ -167,6 +167,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`persona-upgrade.test.mjs`](persona-upgrade.test.mjs) | Exercise historical persona upgrade, ownership and rollback. |
 | [`pinned-roots.live.test.mjs`](pinned-roots.live.test.mjs) | Required checks name their resolution root, and every suite whose imports reach the host's plugin record empties it. |
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Tests for `plugin-lint` — the packaging validator. |
+| [`policyfree-advisory.test.mjs`](policyfree-advisory.test.mjs) | Full compilation wires advice independently of gate policy. |
 | [`portulan.test.mjs`](portulan.test.mjs) | Tests for the `npx` entry point: dispatch through an injected loader, its refusals, and its version. |
 | [`prompt-footprint.test.mjs`](prompt-footprint.test.mjs) | Owned prompt footprint regression checks. |
 | [`recipe-output.test.mjs`](recipe-output.test.mjs) | Agent recipe output controls. |

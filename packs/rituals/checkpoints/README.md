@@ -42,13 +42,18 @@ as not compiled; that is a limit of these adapters, not a claim about their host
 The [native trace](../../../cli/fixtures/ritual-cap/README.md) tests Claude Code
 2.1.321 with synthetic loopback responses. The [current host documentation](https://code.claude.com/docs/en/sub-agents#concurrent-subagent-limit)
 was checked on 2026-11-11. Neither establishes a universal hard ceiling. The
-compiler's cap-only path owns only its dedicated settings file and refuses to
-replace unrelated settings, including additions to a previously generated file.
-Removing declarations removes only that owned file; normal policy compilation
-retains its existing ownership of generated settings. If both policy and cap are
-removed while normal generated settings still carry a cap, every mode refuses
-and preserves those settings for explicit resolution. Uncapped workspaces retain
-unrelated linked settings.
+compiler composes caps with default restart advice in authored governing workspaces,
+independently of a gate policy. It owns this dedicated native settings artifact
+only while its complete payload, internal marker and digest remain intact; this
+is accidental-edit detection, not authentication. Foreign content, additions,
+links and old policy settings refuse before any output write. Formatting and key
+order may normalize. Exact legacy cap-only output can migrate after validating
+its shape and source/count consistency; it has no historical digest to authenticate
+plausible edits. Removing a cap leaves advice settings in place. Missing manifests
+and pointers do not adopt or remove those settings. The legacy internal cap-only
+path removes its own file when its cap disappears. Normal policy compilation
+retains its existing ownership. Removing both policy and cap while normal settings
+still carry a cap refuses in every mode and preserves the file for explicit resolution.
 
 ## The three checkpoints
 
