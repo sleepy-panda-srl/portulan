@@ -730,3 +730,16 @@ paths. They pair unknown fields with explicit zero/900 completion, derive writes
 only from complete lifetime observations after deduplication, reject a contradictory
 explicit aggregate, exercise cache6 migration and once files, and preserve torn-tail,
 compaction, sidechain and complete-append behavior. Frozen captures are unchanged.
+
+The [delayed-duplicate controls](../../cli/advisory-dedup.test.mjs) compare public
+figures and compiled prompt/tool/status/Stop with distinct first-seen request order,
+including shared parent/child IDs, pending/consecutive compactions and null IDs.
+Both old crossing and unrelated repeated IDs retain the literal 22/600/900/−600
+witness result cold and warm. Forced membership saturation admits genuinely new
+IDs through exact replay. Malformed/cache7 state rebuilds without erasing once
+markers. The sample measures a 1,024-byte raw bitmap (2,048 hex characters), a
+3,297-byte serialized cache over 1,000 fixed-length distinct IDs, zero full reads
+for its noncolliding unique appends and one replay for its saturated append.
+These are measured fixtures, not a universal cache-size or latency bound; hot-ID
+lengths and replay/transient-memory costs remain input-dependent. Frozen native
+receipts and provider comparisons are unchanged.
