@@ -616,7 +616,7 @@ export function claudeCode(parsed, options = {}) {
         );
     }
 
-    // Each pack's origin and version, never its root: an absolute path would make the tracked artifact differ per machine.
+    // Portable provenance excludes absolute roots.
     const packs = (options.packProvenance ?? [])
         .map((c) => ({ pack: c.pack, origin: c.origin, version: c.version ?? null }))
         .sort((a, b) => a.pack.localeCompare(b.pack));
@@ -661,7 +661,7 @@ export function claudeCode(parsed, options = {}) {
         },
         permissions: { deny, ask, allow: [] },
         hooks: {
-            // Each command is `node` and a quoted path: no pipe, redirection or separator, where a quoting fail-open would live.
+            // Quote node paths without shell composition to limit quoting fail-opens.
             PreToolUse: [...matchers].sort().map((matcher) => ({
                 matcher,
                 hooks: [{ type: "command", command: `node ${runner}` }],
