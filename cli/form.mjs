@@ -543,7 +543,7 @@ export function draftCard(manifest, read, { workspace, inTree, repoCards = [] })
     }
     section(
         "Records",
-        'Close a change with `git add <new files> && node <plugin root>/cli/finish.mjs -m "<subject>" -m "<why>"` after writing its changelog entry, a one-bullet file `changes/<slug>.<section>.md`: it commits and pushes only when every verify recipe passes.',
+        'Close a change with `git add <new files> && portulan finish -m "<subject>" -m "<why>"` after writing its changelog entry, a one-bullet file `changes/<slug>.<section>.md`: it commits and pushes only when every verify recipe passes. Where `portulan` is not on the path, run `npx @sleepy_panda_srl/portulan finish` instead, and do not search the disk for it.',
         ...(slots.handoffs ? [`A session ending with work not committed and pushed leaves a dated handoff in ${shown(slots.handoffs)}.`] : []),
     );
     section(

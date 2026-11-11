@@ -28,6 +28,7 @@ const GIT_TIMEOUT_MS = 2 * 60 * 1000;
 const USAGE = [
     "usage: node cli/finish.mjs -m <subject> [-m <paragraph>]... [options]",
     "       node cli/finish.mjs -F <file | -> [options]",
+    "       portulan finish <the same arguments>, where the package is installed",
     "",
     "  -m <text>            a paragraph of the commit message, the first its subject, as git takes -m",
     "  -F <file | ->        the whole commit message, from a file or from standard input",

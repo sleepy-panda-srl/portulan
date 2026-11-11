@@ -103,7 +103,7 @@ Close the boot by stating the honest position:
   comparing that file byte for byte gets it held current by a rail rather than by anyone's diligence —
   two separate opt-ins, and the budget is a third. Where none is declared, recall means reading the
   directory. Say which of them you are looking at rather than assuming any.
-- **The CLI is published, so all eight are one `npx` away.**
+- **The CLI is published, so every subcommand is one `npx` away.**
   `npx @sleepy_panda_srl/portulan <subcommand>`.
   `npx @sleepy_panda_srl/portulan doctor --help` is the cheapest thing to run first. They also run
   from a checkout, which is how this repository measures them — `init`, which drafts a workspace for
@@ -111,7 +111,8 @@ Close the boot by stating the honest position:
   scaffolds a skill, persona, pack, workspace, gate policy or repo card into a layer you own; `vendor`,
   which materialises a workspace into a host or moves it between residences; `feedback`, which files an
   issue from a report you previewed, seam-scanned before it leaves the machine; `upgrade`, which applies
-  the migrations and repairs a workspace owes, in either residence; plus `doctor`, `compile`
+  the migrations and repairs a workspace owes, in either residence; `finish`, which
+  closes a change; plus `doctor`, `compile`
   and `index`. What `init`
   and `new` emit is a **draft**: a human curates it, and `init`'s verify recipe exits 2 until they say
   what green means for their repository.

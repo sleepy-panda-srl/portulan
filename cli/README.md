@@ -29,6 +29,7 @@ in [`../.portulan/verify/`](../.portulan/verify/), and its operator tooling in
 | [`upgrade.mjs`](upgrade.mjs) | `portulan upgrade`: migrate a workspace: the Workspace Definition steps it owes, and the repairs a rewriter owes it. |
 | [`new.mjs`](new.mjs) | `portulan new`: scaffold a skill, persona, pack, workspace, gate policy or repo card from a core template. |
 | [`feedback.mjs`](feedback.mjs) | `portulan feedback`: file an issue from a report you previewed, seam-scanned before it leaves the machine. |
+| [`finish.mjs`](finish.mjs) | `portulan finish`: close a change in one call, committing and pushing only when every verify recipe passes. |
 
 ### Hook runners
 
@@ -58,7 +59,6 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`discover.mjs`](discover.mjs) | Host plugin-cache discovery: reads a host's installed-plugin record to resolve a pointer and find pack roots. |
 | [`drills.mjs`](drills.mjs) | The forced-red drill harness — every rail broken on purpose, and required to fire. |
 | [`eval-bundle.mjs`](eval-bundle.mjs) | Cut a named-recipient evaluation bundle of Portulan from a commit. Not shipped. |
-| [`finish.mjs`](finish.mjs) | The finishing command — one call closes a change: its recipes, its changelog fragment, its commit, its push. |
 | [`form.mjs`](form.mjs) | `form` — which form a consumer's records and boot are in, and the files that move them to the new one. |
 | [`frontmatter.mjs`](frontmatter.mjs) | Flat frontmatter for plugin components and host bindings. |
 | [`fuzz-shell.mjs`](fuzz-shell.mjs) | Grammar-aware fuzzing over this repository's two shell segmenters. |

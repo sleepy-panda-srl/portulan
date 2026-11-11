@@ -710,6 +710,7 @@ describe("arguments", () => {
         let out = "";
         assert.equal(await run(["--help"], { stdout: { write: (s) => (out += s) } }), 0);
         assert.match(out, /^usage: node cli\/finish\.mjs -m <subject>/);
+        assert.match(out, /^ {7}portulan finish /m, "the spelling an installed package answers to");
     });
 
     test("an unknown argument exits 2 with the usage on stderr", async () => {

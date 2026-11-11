@@ -540,7 +540,9 @@ export function agentsMd(manifest, host, kernel = null, guidance = null) {
         "- **A resolved pointer.** Nothing here fetches anything.",
         ...(cardText?.includes("<plugin root>")
             ? ["- **The Portulan package.** The card's `<plugin root>` is where it is installed, which this copy is not."]
-            : []),
+            : cardText?.includes("portulan finish")
+              ? ["- **The Portulan package.** The card's `portulan finish` runs from it, and this copy does not carry it."]
+              : []),
         "",
         "Run `portulan doctor .portulan` to see where this stands.",
         "",

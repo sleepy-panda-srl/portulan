@@ -1177,6 +1177,19 @@ describe("the new form, carried by vendor", () => {
         assert.match(md, /^- \*\*The Portulan package\.\*\* The card's `<plugin root>` is where it is installed, which this copy is not\.$/m);
     });
 
+    test("a card that closes a change with `portulan finish` is told the package is not in this copy either", async () => {
+        const root = scratch();
+        const src = carded(root);
+        write(src, "context/boot.md", '---\ntier: always\n---\n\n# Portulan boot card\n\n## Identity\n\n@../identity.md\n\n## Records\n\nClose a change with `portulan finish -m "<subject>"`.\n');
+        const host = path.join(root, "host");
+        fs.mkdirSync(host, { recursive: true });
+        const h = harness();
+        assert.equal(await run([src, "--into", path.join(host, ".portulan"), "--residence", "in-repo", "--host", "generic"], h.options), 0, text(h));
+        const md = fs.readFileSync(path.join(host, "AGENTS.md"), "utf8");
+        assert.doesNotMatch(md, /<plugin root>/);
+        assert.match(md, /^- \*\*The Portulan package\.\*\* The card's `portulan finish` runs from it, and this copy does not carry it\.$/m);
+    });
+
     test("without a card, the slots are read in order, as before", () => {
         const manifest = { portulan: { spec: "2.7" }, name: "acme", kind: "repository", tree: "../", slots: { identity: "identity.md" }, verify: { default: "w", recipes: [] } };
         assert.match(agentsMd(manifest, "generic"), /## Read these, in this order/);

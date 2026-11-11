@@ -29,7 +29,7 @@ its author can adopt in an afternoon.
 needs no authentication. Reach has moved three times and is Gated; measure it rather than reading it
 here. The newest release entry is `0.4.0`. The
 engine, this workspace, the enforcement compiler and the memory lifecycle are authored; the CLI
-milestone 7 describes is **complete on the subcommand list** — all eight dispatch, the last (`upgrade`)
+milestone 7 describes is **complete on the subcommand list** — every one of them dispatches, the last (`upgrade`)
 at session 9, with `init`, `new` and `vendor` at sessions 1, 2 and 3 and `feedback` at session 6. The
 row itself is not thereby closed: three of its six demonstrations are still owed. _(This line said "two
 subcommands short — `upgrade` and `feedback`" and was already wrong by one when milestone 7 session 9

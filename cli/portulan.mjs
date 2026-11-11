@@ -55,6 +55,11 @@ export const SUBCOMMANDS = [
         module: "feedback.mjs",
         summary: "file an issue from a report you previewed, seam-scanned before it leaves the machine",
     },
+    {
+        name: "finish",
+        module: "finish.mjs",
+        summary: "close a change in one call, committing and pushing only when every verify recipe passes",
+    },
 ];
 
 export function find(name) {
@@ -77,8 +82,8 @@ export function usage() {
         "",
         "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
         "",
-        "Other tools live in cli/ and are deliberately not here — docs/vision.md names these eight",
-        "subcommands and is human-owned, so a ninth is the maintainer's call. cli/README.md lists them.",
+        "Other tools live in cli/ and are deliberately not here — docs/vision.md names these subcommands",
+        "and is human-owned, so another is the maintainer's call. cli/README.md lists them.",
     );
     return lines.join("\n");
 }

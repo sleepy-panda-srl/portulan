@@ -41,11 +41,20 @@ test("docs/vision.md's six lead the list, in its order and unaltered", () => {
     );
 });
 
-test("the additions past the constitution's original six are exactly the two the row named", () => {
+test("the additions past the constitution's original six are exactly the three it was amended to name", () => {
     assert.deepEqual(
         SUBCOMMANDS.slice(6).map((entry) => entry.name),
-        ["new", "feedback"],
+        ["new", "feedback", "finish"],
     );
+});
+
+test("docs/vision.md's delivery tiers name every subcommand, in the list's order", () => {
+    const vision = fs.readFileSync(path.join(HERE, "..", "docs", "vision.md"), "utf8");
+    const tier = /\(2\) `npx` CLI:([\s\S]*?)\(3\) vendored standards mode/.exec(vision)?.[1];
+    assert.ok(tier, "docs/vision.md no longer carries the `npx` CLI tier this test reads");
+    const at = SUBCOMMANDS.map((entry) => tier.indexOf(`\`${entry.name}\``));
+    assert.ok(!at.includes(-1), `docs/vision.md does not name ${SUBCOMMANDS.filter((_, i) => at[i] === -1).map((s) => s.name).join(", ")}`);
+    assert.deepEqual(at, [...at].sort((a, b) => a - b));
 });
 
 test("an unbuilt subcommand's refusal names where it is ACTUALLY named", async () => {
@@ -63,7 +72,7 @@ test("an unbuilt subcommand's refusal names where it is ACTUALLY named", async (
 
 test("the tools that are not subcommands stay out — anything unnamed is the maintainer's call", () => {
     for (const name of ["plugin-lint", "librarian", "discover", "control-chars"]) {
-        assert.equal(find(name), null, `${name} is a tool in cli/, not one of the eight`);
+        assert.equal(find(name), null, `${name} is a tool in cli/, not a subcommand`);
     }
     for (const name of ["gate", "stop-gate"]) {
         assert.equal(find(name), null, `${name} is a compiled-hook runner, not a subcommand`);
@@ -129,12 +138,12 @@ test("every unbuilt subcommand names where it arrives, per dod.md condition 4", 
     }
 });
 
-test("an unknown subcommand exits 2 and lists all eight", async () => {
+test("an unknown subcommand exits 2 and lists every one", async () => {
     const h = harness();
     const code = await run(["lint"], h.options);
     assert.equal(code, 2);
     assert.match(h.warned.join("\n"), /unknown subcommand `lint`/);
-    assert.match(h.warned.join("\n"), /init, doctor, compile, vendor, index, upgrade/);
+    assert.match(h.warned.join("\n"), /the 9 subcommands are init, doctor, compile, vendor, index, upgrade, new, feedback, finish\./);
 });
 
 test("no subcommand at all prints usage and exits 2", async () => {
@@ -173,7 +182,7 @@ test("a module without a run export is refused rather than crashed into", async 
     assert.match(h.warned.join("\n"), /does not export a `run` function/);
 });
 
-test("the usage screen lists all eight and marks the unbuilt ones", () => {
+test("the usage screen lists every subcommand and marks the unbuilt ones", () => {
     const text = usage();
     for (const entry of SUBCOMMANDS) {
         assert.match(text, new RegExp(`\\b${entry.name}\\b`), `usage must list ${entry.name}`);
@@ -186,7 +195,8 @@ test("the usage screen lists all eight and marks the unbuilt ones", () => {
         assert.ok(line, `usage lists no line for the built subcommand \`${entry.name}\``);
         assert.doesNotMatch(line, /not built/, `${entry.name} is built and must not be marked otherwise`);
     }
-    assert.match(text, /docs\/vision\.md names these eight/);
+    assert.match(text, /docs\/vision\.md names these subcommands/);
+    assert.doesNotMatch(text, /\beight\b|\bninth\b/, "a count written into the help goes stale when the list moves");
 });
 
 test("`init` really dispatches through the entry point, with the real loader", async () => {
@@ -194,14 +204,37 @@ test("`init` really dispatches through the entry point, with the real loader", a
     const { execFileSync } = await import("node:child_process");
     const text = execFileSync(process.execPath, [path.join(HERE, "portulan.mjs"), "init", "--help"], { encoding: "utf8" });
     assert.match(text, /--residence/, "the text must be init's own, not the entry point's usage screen");
-    assert.doesNotMatch(text, /docs\/vision\.md names these eight/, "that line belongs to the entry point's own help, which is not what was asked for");
+    assert.doesNotMatch(text, /docs\/vision\.md names these subcommands/, "that line belongs to the entry point's own help, which is not what was asked for");
 });
 
 test("`feedback` really dispatches through the entry point, with the real loader", async () => {
     const { execFileSync } = await import("node:child_process");
     const text = execFileSync(process.execPath, [path.join(HERE, "portulan.mjs"), "feedback", "--help"], { encoding: "utf8" });
     assert.match(text, /--seam-terms/, "the text must be feedback's own, not the entry point's usage screen");
-    assert.doesNotMatch(text, /docs\/vision\.md names these eight/);
+    assert.doesNotMatch(text, /docs\/vision\.md names these subcommands/);
+});
+
+test("`finish` reaches finish.mjs with its arguments unchanged, and its exit code comes back", async () => {
+    for (const code of [0, 1, 2]) {
+        const h = harness({ code });
+        assert.equal(await run(["finish", "-m", "Subject", "--no-fragment", "why"], h.options), code);
+        assert.deepEqual(h.loaded, ["finish.mjs"]);
+        assert.deepEqual(h.argv(), ["-m", "Subject", "--no-fragment", "why"]);
+    }
+});
+
+test("`finish` really dispatches through the entry point, with the real loader", () => {
+    const entry = path.join(HERE, "portulan.mjs");
+    const help = spawnSync(process.execPath, [entry, "finish", "--help"], { encoding: "utf8" });
+    assert.equal(help.status, 0, help.stderr);
+    assert.match(help.stdout, /--no-fragment/, "the text must be finish's own, not the entry point's usage screen");
+    assert.match(help.stdout, /portulan finish/, "the usage names the spelling an installed package answers to");
+    assert.doesNotMatch(help.stdout, /docs\/vision\.md names these subcommands/);
+    const direct = spawnSync(process.execPath, [path.join(HERE, "finish.mjs"), "--help"], { encoding: "utf8" });
+    assert.equal(help.stdout, direct.stdout, "both spellings print the same usage");
+    const refused = spawnSync(process.execPath, [entry, "finish", "--amend"], { encoding: "utf8" });
+    assert.equal(refused.status, 2);
+    assert.match(refused.stderr, /^finish: unknown argument "--amend"/);
 });
 
 test("the real modules the manifest points at all export a run function", async () => {
