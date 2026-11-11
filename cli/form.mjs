@@ -122,12 +122,14 @@ export function handoffIndexIgnore(rel, workspaceRel) {
 }
 
 export function withIgnoreLines(text, lines) {
-    const have = new Set((text ?? "").split(/\r?\n/).map((l) => l.trim()));
-    const patterns = lines.filter((l) => !l.startsWith("#"));
-    if (patterns.every((l) => have.has(l))) return text ?? "";
-    const base = text ?? "";
-    const sep = base === "" ? "" : base.endsWith("\n\n") ? "" : base.endsWith("\n") ? "\n" : "\n\n";
-    return `${base}${sep}${lines.join("\n")}\n`;
+    const bytes = Buffer.isBuffer(text), base = text ?? "";
+    const existing = bytes ? base.toString("latin1") : base;
+    const have = new Set(existing.split(/\r?\n/).map(l => bytes ? l.replace(/^[ \t\r]+|[ \t\r]+$/g, "") : l.trim()));
+    const patterns = lines.filter(l => !l.startsWith("#"));
+    if (patterns.every(l => have.has(bytes ? Buffer.from(l).toString("latin1") : l))) return base;
+    const sep = existing === "" || existing.endsWith("\n\n") ? "" : existing.endsWith("\n") ? "\n" : "\n\n";
+    const addition = `${sep}${lines.join("\n")}\n`;
+    return bytes ? Buffer.concat([base, Buffer.from(addition)]) : base + addition;
 }
 
 export const COMMENTS_RECIPE = "comments";
@@ -195,9 +197,9 @@ exit 2
 
 // ------------------------------------------------------------------------- git
 
-export function gitIn(root) {
+export function gitIn(root, { env, timeout, noFsmonitor = false } = {}) {
     const run = (...args) => {
-        const out = spawnSync("git", ["-C", root, ...args], { encoding: "utf8" });
+        const out = spawnSync("git", [...(noFsmonitor ? ["-c", "core.fsmonitor=false"] : []), "-C", root, ...args], { encoding: "utf8", timeout, killSignal: "SIGKILL", env });
         if (out.error) return { status: null, stdout: "", stderr: String(out.error.code ?? out.error.message) };
         return { status: out.status, stdout: out.stdout, stderr: out.stderr };
     };

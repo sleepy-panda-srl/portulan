@@ -266,6 +266,7 @@ test("all four closure mutations trip their named fixed rail and restore green",
     const cases = [
         ["skills", "core/skills/clarify/SKILL.md", text => text + "\n" + "Extra guidance. ".repeat(2600) + "\n"],
         ["personas", "agents/reviewer.md", text => text + "\n" + "Extra guidance. ".repeat(2600) + "\n"],
+        ["hooks", "cli/advisory.mjs", text => text.replace("Estimated savings ${savingWords(figure.saving)}", "Estimated savings ${savingWords(figure.saving)}" + " Pricing probe. ".repeat(3000))],
         ["hooks", "cli/stop-gate.mjs", text => text.replace("RED (exit ${clipDiagnostic(result.code, 64)})", "RED (exit ${clipDiagnostic(result.code, 64)})" + " Sizing probe. ".repeat(3000))],
         ["vendor", "cli/vendor.mjs", text => text.replace("this team's way.", "this team's way." + " Sizing probe. ".repeat(3000))],
     ];
@@ -289,4 +290,16 @@ test("all four closure mutations trip their named fixed rail and restore green",
     fs.rmSync(path.join(root, "packs/tools/local-llm/personas/local-worker.md"));
     const run = spawnSync(process.execPath, [path.join(root, ".portulan/verify/prompt-footprint.mjs"), "--json"], { cwd: root, encoding: "utf8" });
     assert.equal(run.status, 2, run.stderr);
+});
+
+
+test("advisory footprint fixtures supply valid pricing fields to both formatter branches", async () => {
+    const root = copy();
+    const file = path.join(root, "cli/advisory.mjs");
+    const source = fs.readFileSync(file, "utf8");
+    const guarded = source.replace("const m = figure.multipliers;", "const m = figure.multipliers; if (typeof figure.horizonDeclared !== 'boolean' || figure.resume === undefined || !Number.isFinite(figure.saving) || !['declared', 'undeclared'].includes(m.source)) throw Error('invalid advisory fixture');");
+    assert.notEqual(guarded, source);
+    fs.writeFileSync(file, guarded);
+    const result = await measure(root);
+    assert.equal(result.hooks.entries.filter(entry => entry.runner === "advisory.mjs").length, 12);
 });

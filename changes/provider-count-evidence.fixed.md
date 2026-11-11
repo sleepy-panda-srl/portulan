@@ -1,0 +1,1 @@
+- Record the successful explicit provider-token estimate on invented input and align M12’s count criterion with the accepted provider limit.

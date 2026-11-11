@@ -100,7 +100,9 @@ node cli/doctor.mjs examples
 
 To adopt Portulan in your own repository, `portulan init` interviews you, scans the codebase and
 drafts a workspace; `portulan doctor` validates it; `portulan compile` turns your gate policy into
-host enforcement.
+host enforcement. At a terminal, an in-repo draft offers an optional always-tier budget before writing.
+The offer covers current and projected guidance in both supported formats at your explicit ratio.
+Declining or an unavailable projection leaves it undeclared.
 
 ## Command-line interface
 

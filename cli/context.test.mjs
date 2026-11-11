@@ -633,11 +633,11 @@ describe("the plugin's descriptions", () => {
 describe("a budget is a rail only where it is declared", () => {
     const context = (tokens, ratio = 3) => ({ context: { always: { budget: { tokens } }, ratio: { bytes_per_token: ratio, calibrated_by: "a-host" } } });
 
-    test("undeclared, it is a report with the offer init would make", () => {
+    test("undeclared, it reports its estimate and qualifies the prospective init policy", () => {
         const { code, out } = measured(repository({ files: { "CLAUDE.md": "x".repeat(30_000) } }));
         assert.equal(code, 0);
-        const offer = Math.max(OFFER_FLOOR_TOKENS, tokensOf(30_000, ESTIMATED_BYTES_PER_TOKEN));
-        assert.match(out, new RegExp(`budget: undeclared .* ${offer.toLocaleString("en-US")} tokens`));
+        assert.match(out, /budget: undeclared .*init offers a projected budget for both guidance formats/);
+        assert.match(out, /8,000-token floor/);
         assert.match(out, /proposal 0036's estimate/);
     });
 
@@ -829,7 +829,7 @@ describe("--brief: the line `doctor` reports and the boot closes with", () => {
         assert.match(out, /; the largest: CLAUDE\.md ~1,008 \(instructions\), docs\/a\.md ~200 \(import, depth 1\), \.claude\/rules\/style\.md ~100 \(rule\), of 4 files; /);
         assert.match(out, /; 1 path-scoped rule sits on-path; 1 import or link out of the repository loads and is not counted; /);
         assert.match(out, /; the Portulan plugin's descriptions add ~\d+ tokens wherever it is enabled/);
-        assert.match(out, /; budget: undeclared \(context\.always\.budget\.tokens\) — a report, not a rail; init would offer the larger of 8,000 tokens and today's load: 8,000 tokens$/);
+        assert.match(out, /; budget: undeclared \(context\.always\.budget\.tokens\) — a report, not a rail; init offers a projected budget for both guidance formats at your accepted ratio, with an 8,000-token floor$/);
     });
 
     test("an empty tier is said, not left blank, and so is none on-path and none out of the repository", () => {

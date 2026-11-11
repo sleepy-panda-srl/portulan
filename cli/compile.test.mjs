@@ -666,9 +666,29 @@ function advisoryCommands(settings) {
     ];
 }
 
-const DECLARED = { manifest: ".portulan/workspace.json", multipliers: { read: 0.05, write: { "5m": 1.5, "1h": 2.5 } }, horizon: 30, restart: null };
+const DECLARED = { manifest: ".portulan/workspace.json", multipliers: { read: 0.05, write: { "5m": 1.5, "1h": 2.5 } }, horizon: 30, restart: null, resume: null };
 
 describe("the declared figures", () => {
+    test("resume expense reaches every hook and unsupported declarations preserve artifacts", () => {
+        const dir = workspaceWithSpend({ horizon: { requests: 3 }, resume: { tokens: 10000 }, restart: "block" }, policy(), "2.16");
+        const spend = spendDeclaration(dir);
+        assert.equal(spend.resume, 10000);
+        const settings = claudeCode(parse(policy()), { spend }).artifact.value;
+        for (const [command, mode] of advisoryCommands(settings)) {
+            assert.deepEqual(spendFlags(afterMode(command, mode)), { declared: null, horizon: 3, resume: 10000, fault: null });
+        }
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+        const target = path.join(dir, ".claude", "settings.json");
+        const before = fs.readFileSync(target);
+        const manifest = path.join(dir, ".portulan", "workspace.json");
+        const m = JSON.parse(fs.readFileSync(manifest));
+        for (const [spec, tokens] of [["2.15", 10000], ["2.17", 0], ["3.0", 0], ["invalid", 0], [undefined, 0], ["2.16", -1], ["2.16", null]]) {
+            fs.writeFileSync(manifest, JSON.stringify({ ...m, portulan: { spec }, spend: { ...m.spend, resume: { tokens } } }));
+            assert.equal(run(["--workspace", dir], { quiet: true }), 2);
+            assert.deepEqual(fs.readFileSync(target), before);
+        }
+    });
+
     test("undeclared, or declared with neither half, the settings and the notes read exactly as they did", () => {
         const plain = claudeCode(parse(policy()));
         const none = { manifest: ".portulan/workspace.json", multipliers: null, horizon: null };
@@ -729,11 +749,11 @@ describe("the declared figures", () => {
             [{ hooks: [{ type: "command", command: stopGate }, { type: "command", command: `node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" stop --read 0.05 --write-5m 1.5 --write-1h 2.5 --horizon 30` }] }],
         );
         const said =
-            "the restart advisory also holds a turn's end (`spend.restart` \"block\"): at the first stop at or past the restart threshold that no block provoked, " +
-            "once in a session and again after each compaction, with the line as the reason, beside the Stop-gate. Nothing ends the session, " +
-            "and the line still comes with a tool result or at the prompt";
+            "the restart advisory's Stop command (`spend.restart` \"block\") holds once only with an explicit horizon, an explicit resume expense " +
+            "and finite positive estimated savings; equality never holds. Without both estimates it reports conditionally without holding. " +
+            "Retry protection and once per compaction still apply; nothing ends the session";
         assert.ok(block.notes.includes(said), block.notes.join("\n"));
-        const alone = claudeCode(parse(policy()), { spend: { manifest: ".portulan/workspace.json", multipliers: null, horizon: null, restart: "block" } });
+        const alone = claudeCode(parse(policy()), { spend: { manifest: ".portulan/workspace.json", multipliers: null, horizon: null, restart: "block", resume: null } });
         const value = alone.artifact.value;
         assert.equal(value.hooks.Stop[0].hooks[1].command, `node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" stop`);
         assert.equal(value.statusLine.command, `node "\${CLAUDE_PROJECT_DIR}/cli/advisory.mjs" status`);
@@ -782,7 +802,7 @@ describe("the declared figures", () => {
             const commands = advisoryCommands(claudeCode(parse(policy()), { spend: { ...spend, restart: "block" } }).artifact.value);
             assert.deepEqual(commands.map(([, mode]) => mode), ["tool", "prompt", "status", "stop"]);
             for (const [command, mode] of commands) {
-                assert.deepEqual(spendFlags(afterMode(command, mode)), { declared: spend.multipliers, horizon: spend.horizon, fault: null }, command);
+                assert.deepEqual(spendFlags(afterMode(command, mode)), { declared: spend.multipliers, horizon: spend.horizon, resume: spend.resume ?? null, fault: null }, command);
             }
         }
     });
@@ -799,8 +819,8 @@ describe("the declared figures", () => {
         assert.equal(spendDeclaration(workspace()), null);
         const dir = workspaceWithSpend({ multipliers: { read: 0.05, write: { "5m": 1.5, "1h": 2.5 } }, horizon: { requests: 30 } });
         assert.deepEqual(spendDeclaration(dir), DECLARED);
-        assert.deepEqual(spendDeclaration(workspaceWithSpend({})), { manifest: ".portulan/workspace.json", multipliers: null, horizon: null, restart: null });
-        assert.deepEqual(spendDeclaration(workspaceWithSpend({ restart: "block" })), { manifest: ".portulan/workspace.json", multipliers: null, horizon: null, restart: "block" });
+        assert.deepEqual(spendDeclaration(workspaceWithSpend({})), { manifest: ".portulan/workspace.json", multipliers: null, horizon: null, restart: null, resume: null });
+        assert.deepEqual(spendDeclaration(workspaceWithSpend({ restart: "block" })), { manifest: ".portulan/workspace.json", multipliers: null, horizon: null, restart: "block", resume: null });
         // A missing or unparseable manifest is `doctor`'s to name: `run` stops on the second before it asks.
         assert.equal(spendDeclaration(scratch()), null);
         const broken = workspace();

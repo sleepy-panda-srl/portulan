@@ -93,13 +93,14 @@ test("interactive offer accepts each key independently and EOF writes nothing", 
     for (const replies of [["y", "3", "y"], ["n", "none", "y"], ["y"], ["n", "3", "y"]]) {
         const f = fixture("claude-opus-5-5", { overrides: { "claude-opus-5-5": rates } });
         const remaining = [...replies];
-        const io = { interactive: true, say: l => f.said.push(l), ask: async q => { f.asked.push(q); return remaining.shift() ?? null; } };
+        const io = { interactive: true, say: l => f.said.push(l), ask: async q => { f.asked.push(q); return q.startsWith("Declare an always-tier budget?") ? "n" : remaining.shift() ?? null; } };
         const code = await run(["--residence", "in-repo", "--name", "demo", "--summary", "Demo", "--no-cycle", "--cache-lifetime", "5m", "--handoff-budget", "none", f.target], { ...f.options, io });
         if (replies.length === 1) {
             assert.equal(code, 2);
             assert.equal(fs.existsSync(path.join(f.target, ".portulan")), false);
         } else {
             assert.equal(code, 0, f.warned.join("\n"));
+            assert.equal(f.manifest().context?.always, undefined);
             const s = f.manifest().spend;
             assert.equal(s?.multipliers?.read, replies[0] === "y" ? 0.03 : undefined);
             assert.equal(s?.horizon?.requests, replies[1] === "3" ? 3 : undefined);

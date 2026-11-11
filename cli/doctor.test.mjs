@@ -347,14 +347,14 @@ describe("what every context loads is reported, and failed only against a declar
         return hits[0];
     };
 
-    test("with no budget declared it is a note: the size, the largest file and what it is, and init's offer", async () => {
+    test("with no budget declared it reports size and qualifies init's prospective offer", async () => {
         const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()), "CLAUDE.md": instructions });
         const { findings } = await inspect(dir, { schema: SCHEMA });
         const hit = only(findings);
         assert.equal(hit.severity, "report");
         assert.match(hit.message, /^Claude Code: this repository's always tier is ~1,003 tokens, 3,000 B at 2\.99 bytes per token/);
         assert.match(hit.message, /the largest: CLAUDE\.md ~1,003 \(instructions\)/);
-        assert.match(hit.message, /budget: undeclared \(context\.always\.budget\.tokens\) — a report, not a rail; init would offer/);
+        assert.match(hit.message, /budget: undeclared \(context\.always\.budget\.tokens\) — a report, not a rail; init offers a projected budget/);
         assert.deepEqual(severities(findings, "fail"), []);
     });
 
@@ -628,6 +628,13 @@ describe("the declared multipliers and horizon, which compile and the ledger rea
         );
     });
 
+    test("resume expense is gated to 2.16 and its nonnegative bound is checked", async () => {
+        assert.deepEqual(severities(await inspected("2.16", { resume: { tokens: 0 } }), "fail"), []);
+        assert.deepEqual(severities(await inspected("2.16", { resume: { tokens: 10000.5 } }), "fail"), []);
+        assert.ok(severities(await inspected("2.15", { resume: { tokens: 0 } }), "fail").some(f => /spend.resume.*2.16/.test(f.message)));
+        for (const tokens of [-1, "0", null]) assert.ok(severities(await inspected("2.16", { resume: { tokens } }), "fail").length > 0);
+    });
+
     for (const restart of ["advise", "block"]) {
         test(`declared at 2.13, a restart of "${restart}" passes, alone or beside the figures`, async () => {
             assert.deepEqual(severities(await inspected("2.13", { restart }), "fail"), []);
@@ -696,7 +703,7 @@ describe("where every session switch stands is one line, reported and never fail
 
     test("a declared block, Workspace Definition 2.13's `spend.restart`, is said, and an advice as the default", async () => {
         const at = (restart) => line({ ...wellFormed(), portulan: { spec: "2.13" }, sessions: { cache_lifetime: "5m" }, spend: { restart } });
-        assert.equal(await at("block"), "cache lifetime 5m, compiled as `promptCacheTtl`; git instructions the host's default; multipliers the general ones; a turn's end held once at the restart threshold");
+        assert.equal(await at("block"), "cache lifetime 5m, compiled as `promptCacheTtl`; git instructions the host's default; multipliers the general ones; a turn's end held once only with explicit horizon, resume expense and positive estimated savings");
         assert.equal(await at("advise"), "cache lifetime 5m, compiled as `promptCacheTtl`; git instructions the host's default; multipliers the general ones");
     });
 
@@ -717,7 +724,7 @@ describe("where every session switch stands is one line, reported and never fail
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 15 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 16 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -1847,7 +1854,7 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
             return tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
         };
         assert.equal(await run([build("9.9")], { quiet: true }), 2, "a MAJOR ahead");
-        assert.equal(await run([build("2.16")], { quiet: true }), 2, "a MINOR ahead");
+        assert.equal(await run([build("2.17")], { quiet: true }), 2, "a MINOR ahead");
         assert.equal(await run([build("2.0")], { quiet: true }), 0, "the current version");
     });
 
@@ -2028,7 +2035,7 @@ describe("the packs a workspace declares", () => {
 
     test("the two version trains are read by different functions and do not collide", () => {
         assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 15 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 16 });
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });
 
@@ -3390,7 +3397,7 @@ describe("workspace usage report", () => {
             assert.match(result.stdout, /local worker: 4 line\(s\).*in 5,017 tokens, out 600 tokens.*time 7,714 ms/);
             assert.match(result.stdout, /threshold of 76,006/);
             assert.equal(result.stdout.match(/note  lever /g)?.length, 1);
-            assert.match(result.stdout, /lever .*recorded restart compared/);
+            assert.match(result.stdout, /lever .*session-dependent levers not compared: explicit horizon and resume expense required/);
         });
     }
     test("static output is identical with and without usage records", () => {

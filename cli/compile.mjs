@@ -630,6 +630,7 @@ export function claudeCode(parsed, options = {}) {
     const figures = [];
     if (spend?.multipliers) figures.push("--read", spend.multipliers.read, "--write-5m", spend.multipliers.write["5m"], "--write-1h", spend.multipliers.write["1h"]);
     if (spend?.horizon) figures.push("--horizon", spend.horizon);
+    if (spend?.resume != null) figures.push("--resume-tokens", spend.resume);
     const spendFlags = figures.map((f) => ` ${f}`).join("");
     const restartBlock = spend?.restart === "block";
     const spendFrom = figures.length || restartBlock ? spend.manifest : null;
@@ -730,11 +731,12 @@ export function claudeCode(parsed, options = {}) {
                 `commands carry them, so an edit to \`spend\` is drift until recompiled`,
         );
     }
+    if (spend?.resume != null) notes.push(`restart resume expense: ${spend.resume} input-equivalent tokens, excluding the fresh-context write and baseline reads`);
     if (restartBlock) {
         notes.push(
-            `the restart advisory also holds a turn's end (\`spend.restart\` "block"): at the first stop at or past the restart ` +
-                `threshold that no block provoked, once in a session and again after each compaction, with the line as the reason, beside the Stop-gate. Nothing ends the ` +
-                `session, and the line still comes with a tool result or at the prompt`,
+            `the restart advisory's Stop command (\`spend.restart\` "block") holds once only with an explicit horizon, an explicit resume expense ` +
+                `and finite positive estimated savings; equality never holds. Without both estimates it reports conditionally without holding. ` +
+                `Retry protection and once per compaction still apply; nothing ends the session`,
         );
     }
     if (editCoveredGates.length) {
@@ -1405,7 +1407,7 @@ function gatesOf(file, where, packs = []) {
 }
 
 /** The unit's body with each leads, engine and gates line written out; a leads path may end `#<heading>`. */
-function expandedBody(unit, dir, root, packs = []) {
+export function expandedBody(unit, dir, root, packs = []) {
     unit.leadSources = [];
     unit.written = new Set();
     return unit.body
@@ -1677,6 +1679,7 @@ export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
         }
         let text;
         try {
+            if (!fs.statSync(full).isFile()) throw new CompileError(`${source} is not a regular guidance unit`);
             text = fs.readFileSync(full, "utf8");
         } catch (cause) {
             throw new CompileError(`${source} could not be read — ${cause.code ?? cause.message}`);
@@ -1815,7 +1818,7 @@ function listReal(workspaceRoot, rel) {
 }
 
 /** Judged before either half writes, so a refusal leaves no gate artifact written beside it. */
-function planGuidance(guidance, workspaceRoot) {
+export function planGuidance(guidance, workspaceRoot) {
     const files = guidance ? claudeCodeGuidance(guidance).files : [];
     const rules = files.filter((f) => f.path.startsWith(`${GUIDANCE_RULES_DIR}/`));
     const owedFiles = rules.length
@@ -2191,6 +2194,14 @@ export function spendDeclaration(workspaceRoot, workspaceDir = ".portulan") {
             );
         }
     }
+    if (spend.resume !== null) {
+        const version = typeof parsed.portulan?.spec === "string" ? /^2\.([0-9]+)$/.exec(parsed.portulan.spec) : null;
+        const schema = JSON.parse(fs.readFileSync(new URL("../spec/workspace.schema.json", import.meta.url), "utf8"));
+        const supported = /\/spec\/2\.([0-9]+)\//.exec(schema.$id ?? "");
+        if (!version || !supported || Number(version[1]) < 16 || Number(version[1]) > Number(supported[1])) {
+            throw new CompileError(`\`spend.resume\` in ${where} requires Workspace Definition 2.16 through the shipped schema's supported minor`);
+        }
+    }
     return spend;
 }
 
@@ -2516,14 +2527,18 @@ export function composeFragments(policy, contributions) {
     return { policy: { ...policy, rules }, added, tightened };
 }
 
-export function readOwnedText(file, scope) {
+export function readOwnedBytes(file, scope) {
     fs.lstatSync(file);
     let owner, real;
     try { owner = fs.realpathSync(scope); real = fs.realpathSync(file); }
     catch (error) { throw new CompileError(`${file} could not be resolved — ${error.code ?? error.message}`); }
     if (!isInside(owner, real)) throw new CompileError(`${file} resolves outside its owner ${scope}`);
     if (!fs.statSync(real).isFile()) throw new CompileError(`${file} is not a regular source file`);
-    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(real));
+    return fs.readFileSync(real);
+}
+
+export function readOwnedText(file, scope) {
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(readOwnedBytes(file, scope));
 }
 
 function readWorkspaceText(workspaceRoot, workspaceDir) {

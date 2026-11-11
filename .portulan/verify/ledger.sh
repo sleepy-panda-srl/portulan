@@ -73,7 +73,9 @@ advisory=0
 # Output goes to a file, never a command substitution, whose subshell would lose advisory=1.
 call_hook() {
     local mode=$1 event=$2 session=$3 transcript=$4 out=$5 agent=${6:-} active=${7:-}
-    hook_payload "$session" "$transcript" "$event" "$agent" "$active" | node cli/advisory.mjs "$mode" >"$tmp/$out"
+    local figures=()
+    [ "$mode" = stop ] && figures=(--horizon 20 --resume-tokens 0)
+    hook_payload "$session" "$transcript" "$event" "$agent" "$active" | node cli/advisory.mjs "$mode" ${figures[@]+"${figures[@]}"} >"$tmp/$out"
     local status=$?
     if [ "$status" -ne 0 ]; then
         printf '  ✗ advisory: exited %s on %s — a hook must exit 0 on every path, or a UserPromptSubmit blocks the prompt\n' "$status" "$transcript"
@@ -108,8 +110,8 @@ if [ -s "$tmp/subagent" ]; then
     printf '  ✗ advisory: a subagent'"'"'s tool result was told the session'"'"'s line: %s\n' "$(cat -- "$tmp/subagent")"
     advisory=1
 fi
-if ! grep -q '"hookEventName":"PostToolUse","additionalContext":"Portulan restart advisory: after [0-9][0-9,]* requests, .*80,004.*finish the current step' "$tmp/tool"; then
-    printf '  ✗ advisory: the session past its threshold was not told with its first tool result, with its requests and to finish the step; it printed: %s\n' "$(cat -- "$tmp/tool")"
+if ! grep -q '"hookEventName":"PostToolUse","additionalContext":"Portulan restart advisory: after [0-9][0-9,]* requests, context .*threshold 80,004' "$tmp/tool"; then
+    printf '  ✗ advisory: the session past its threshold was not told with its first tool result, with its requests and assumptions; it printed: %s\n' "$(cat -- "$tmp/tool")"
     advisory=1
 fi
 if [ -s "$tmp/after" ]; then
@@ -132,7 +134,7 @@ tool stop-past "$PAST_THRESHOLD" stop-after
 tool stop-told "$PAST_THRESHOLD" stop-told-line
 stop stop-told "$PAST_THRESHOLD" stop-told
 stop stop-below "$BELOW_THRESHOLD" stop-below
-if ! grep -q '^{"decision":"block","reason":"Portulan restart advisory: after [0-9][0-9,]* requests, .*80,004.*: write the handoff and end the session\. Said once\."}$' "$tmp/stop-first" || grep -q 'finish' "$tmp/stop-first"; then
+if ! grep -q '^{"decision":"block","reason":"Portulan restart advisory: after [0-9][0-9,]* requests, context .*threshold 80,004.*consider a handoff and restart if these estimates still fit the task\. Said once\."}$' "$tmp/stop-first" || grep -q 'finish' "$tmp/stop-first"; then
     printf '  ✗ advisory: the session past its threshold was not held at its first stop with the line and its Stop ending; it printed: %s\n' "$(cat -- "$tmp/stop-first")"
     advisory=1
 fi
@@ -148,7 +150,7 @@ if [ -s "$tmp/stop-below" ]; then
     printf '  ✗ advisory: a session below its threshold was held at a stop: %s\n' "$(cat -- "$tmp/stop-below")"
     advisory=1
 fi
-[ "$advisory" -eq 0 ] && printf '  ok advisory: the session past its threshold is told once, at its first prompt or with its first tool result, and never twice; a subagent'"'"'s tool result and a session below the threshold are not; where declared, it is held once at a stop, a line said first spares no block, and nothing is said after one\n'
+[ "$advisory" -eq 0 ] && printf '  ok advisory: the session past its threshold is told once, at its first prompt or with its first tool result, and never twice; a subagent'"'"'s tool result and a session below the threshold are not; with an explicit horizon and resume expense, it is held once at a profitable stop, a line said first spares no block, and nothing is said after one\n'
 
 # Could-not-run outranks red: a run that judged nothing cannot vouch for the one that did.
 worst=$advisory

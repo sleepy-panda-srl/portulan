@@ -74,7 +74,8 @@ export function sessionsLine(manifest) {
     parts.push(multipliersWords(spend.multipliers) ?? "multipliers the general ones");
     const horizon = horizonWords(spend.horizon);
     if (horizon !== null) parts.push(horizon);
-    if (spend.restart === "block") parts.push("a turn's end held once at the restart threshold");
+    if (spend.resume?.tokens !== undefined) parts.push(`resume expense ${spend.resume.tokens} input-equivalent tokens`);
+    if (spend.restart === "block") parts.push("a turn's end held once only with explicit horizon, resume expense and positive estimated savings");
     if (lifetime === null && workspace.kind === "repository") {
         parts.push("`portulan upgrade` prints the five-minute lifetime's offer and its trade-off");
     }

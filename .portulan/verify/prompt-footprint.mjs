@@ -191,6 +191,7 @@ export async function hookProfiles(root) {
     const { gateOutput } = await load("gate.mjs");
     const { runStopRecipe, verdict, workNotice, stopOutput } = await load("stop-gate.mjs");
     const { advisoryOutput } = await load("advisory.mjs");
+    const { figureOf, sessionFigures } = await load("ledger.mjs");
     const entries = [];
     const add = (runner, profile, channel, text, nonempty = true) => {
         if (typeof text !== "string" || (nonempty ? text.length === 0 : text.length !== 0)) throw Error(`${profile}: native hook coverage missing`);
@@ -235,8 +236,16 @@ export async function hookProfiles(root) {
         }
     }
     for (const event of ["PostToolUse", "UserPromptSubmit", "Stop"]) {
-        for (const [name, multipliers] of [["declared", { source: "declared", read: 0.1, write: 1.25 }], ["recorded-5m", { recorded: true, lifetime: "5m", read: 0.1, write: 1.25 }], ["recorded-1h", { recorded: true, lifetime: "1h", read: 0.1, write: 2 }], ["undeclared", { recorded: false, read: 0.1, write: 1.25 }]]) {
-            const native = JSON.parse(advisoryOutput({ requests: 20, context: 30000, threshold: 26000, fresh: 16000, horizon: 20, multipliers }, event));
+        for (const name of ["declared", "recorded-5m", "recorded-1h", "undeclared"]) {
+            const priced = event === "Stop" || name === "declared";
+            const lifetime = name === "recorded-1h" ? "1h" : name === "recorded-5m" ? "5m" : null;
+            const figure = figureOf({ ...sessionFigures(), requests: 20, last: 100000, fresh: 16000, freshLifetime: lifetime }, {
+                declared: name === "declared" ? { read: 0.1, write: { "5m": 1.25, "1h": 2 } } : null,
+                horizon: priced || name === "recorded-1h" ? 20 : null,
+                resume: priced || name === "undeclared" ? 10000 : null,
+            });
+            if (event === "Stop" && (!figure.horizonDeclared || figure.resume === null || figure.saving <= 0)) throw Error("Stop profile must be profitable with explicit estimates");
+            const native = JSON.parse(advisoryOutput(figure, event));
             if (event === "Stop" ? native.decision !== "block" : native.hookSpecificOutput.hookEventName !== event) throw Error("advisory native shape changed");
             add("advisory.mjs", `${event}-${name}`, event === "Stop" ? "reason" : "additionalContext", event === "Stop" ? native.reason : native.hookSpecificOutput.additionalContext);
         }
