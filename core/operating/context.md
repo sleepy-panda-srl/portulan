@@ -344,6 +344,24 @@ they do not promise a universal host transcript latency bound.
 
 ### Keep the prefix stable
 
+`doctor` reports potential Claude Code cache risks from the declared tree's
+`.claude/settings.json`, `.claude/settings.local.json` and `.mcp.json`. It checks
+`opusplan` aliases and conditional Haiku plan upgrades, explicit project
+`ENABLE_TOOL_SEARCH=false`, and `ToolSearch` permission denial. Local scalar/env
+values override shared values; rejection and denial lists accumulate. MCP counts
+distinguish eligible configured candidates from project-file approvals. Neither count
+establishes trust, live activation or connectivity. User, managed, CLI and broader
+model/MCP policies, the full MCP schema, experimental-beta disabling and other
+selectors remain unassessed. Every assessment names its selectors and these
+limits, including when no recognized risk is found. Unreadable or invalid project sources produce sanitized notes rather
+than a cache-safe assurance. These reports change no validation verdict or settings.
+
+The inspected behavior follows Claude Code's [model configuration](https://code.claude.com/docs/en/model-config#opusplan-model-setting),
+[tool search](https://code.claude.com/docs/en/mcp#configure-tool-search) and
+[project MCP rejection](https://code.claude.com/docs/en/settings-reference#disabledmcpjsonservers)
+references, checked 2026-11-11. A detected setting is a potential risk, not a measured
+cache miss or bill.
+
 **Model and effort are chosen when a context is created**, and tool definitions are deferred wherever
 the host can defer them. Content that varies per session — a git snapshot, a date, a fresh working
 directory, a session ID — stays out of Portulan's own always tier and hook-injected text. It may leave

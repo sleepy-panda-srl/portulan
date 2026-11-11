@@ -50,6 +50,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`ab-run.mjs`](ab-run.mjs) | The A/B runner: spawns the agent turns of both arms and records the baseline they measure. Not shipped. |
 | [`ab.mjs`](ab.mjs) | The A/B arm builder — what "Portulan on" is made of, built rather than described. Not shipped. |
 | [`acquire-personas.mjs`](acquire-personas.mjs) | Acquire the frozen persona comparisons through native children; never run by a recipe. Not shipped. |
+| [`cache-risk.mjs`](cache-risk.mjs) | Potential cache risks from project files; host activation is not inferred. |
 | [`cache-stability.mjs`](cache-stability.mjs) | Prefix baseline. Not shipped. |
 | [`comments.mjs`](comments.mjs) | `comments` — the comments in a tree that record a change's history instead of what the code cannot show. |
 | [`context.mjs`](context.mjs) | Measure boot reads and the project's always tier. |
@@ -109,6 +110,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`advisory-host-trace.test.mjs`](advisory-host-trace.test.mjs) | The shipped host trace is evidence data; CI only replays its public counters. |
 | [`advisory.test.mjs`](advisory.test.mjs) | Tests for `advisory` — the restart advisory's one line with a tool result or at the prompt, and its figure in the status line. |
 | [`branch-freshness.test.mjs`](branch-freshness.test.mjs) | Tests for this repository's branch freshness check and trusted workflow. |
+| [`cache-risk.test.mjs`](cache-risk.test.mjs) | Project cache warnings are reports; no host state or server is consulted. |
 | [`cache-stability.test.mjs`](cache-stability.test.mjs) | Cache-prefix tests. |
 | [`checkout-refs.live.test.mjs`](checkout-refs.live.test.mjs) | A workflow that checks out MORE THAN ONCE names the ref of every checkout after the first. |
 | [`cli-roster.live.test.mjs`](cli-roster.live.test.mjs) | `cli/README.md` is exactly what ./roster.mjs renders from this directory, and the render keeps its shape. |
