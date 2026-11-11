@@ -47,6 +47,23 @@ A change's commit message is the fuller record: it says why, and `git log` finds
 Each entry for the next release is a file in [`changes/`](changes/), so two open changes never edit the
 same lines; `node cli/index.mjs --changes changes` prints them as the cut pastes them.
 
+## 0.4.1 — 2026-11-11
+
+**A closing command a drafted card can name.** 0.4.0's drafted boot card told an agent to run
+`finish.mjs` under a placeholder path no session could resolve, and agents searched the disk for it.
+`finish` is now a subcommand, and `init` drafts a card that names `portulan finish`.
+
+**Upgrade notes.** A card drafted before this version keeps the old line: nothing rewrites it, so
+edit it by hand as the entry below gives it
+([issue 659](https://github.com/sleepy-panda-srl/portulan/issues/659) tracks an `upgrade` repair).
+`npx @sleepy_panda_srl/portulan finish` answers only from this version on; where `npx` still runs an
+older cached copy, ask for `@latest`. The subcommand is named in [`docs/vision.md`](docs/vision.md),
+amended on the maintainer's ruling of 2026-11-11.
+
+### Fixed
+
+- **`portulan finish` closes a change, so a drafted card names a command that resolves.** The card `init` drafts told an agent to run `node <plugin root>/cli/finish.mjs`, a path no session could resolve, and agents searched the disk for it ([issue 657](https://github.com/sleepy-panda-srl/portulan/issues/657)). `finish` is now a subcommand, named in [`docs/vision.md`](docs/vision.md) on the maintainer's ruling of 2026-11-11, with the arguments and exit codes of `node cli/finish.mjs`; a new card names `portulan finish`, and `npx @sleepy_panda_srl/portulan finish` where `portulan` is not on the path. A card already drafted keeps the old line: in its Records section, replace `node <plugin root>/cli/finish.mjs` with `portulan finish` by hand.
+
 ## 0.4.0 — 2026-11-11
 
 **Measured context and spend, with advice that states its assumptions.** Milestones 12 and 13 closed
