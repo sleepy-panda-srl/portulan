@@ -5,6 +5,7 @@
 //
 // Exit 0 every workspace validates · 1 at least one does not · 2 could not run.
 
+import { readContextCap, contextCaps, contextCapLines } from "./ritual-contexts.mjs";
 import { readStopPolicy } from "./stop-policy.mjs";
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -1140,6 +1141,7 @@ export async function inspect(workspaceDir, options = {}) {
     }
 
     const composedPersonas = [];
+    const contextContributions = [];
 
     let resolvedPackRoots = null;
     let packsUnresolved = 0;
@@ -1210,6 +1212,10 @@ export async function inspect(workspaceDir, options = {}) {
                 }
                 continue;
             }
+            let contextCap;
+            try { contextCap = readContextCap(manifest, name); }
+            catch (e) { fail("packs", e.message); continue; }
+            contextContributions.push({ pack: name, contextCap });
             stats.packs += 1;
             const c = manifest.contributes ?? {};
 
@@ -1270,6 +1276,11 @@ export async function inspect(workspaceDir, options = {}) {
             }
         }
     }
+
+    try {
+        const caps = contextCaps(contextContributions, Array(packsUnresolved).fill(null));
+        for (const line of contextCapLines(caps)) report("contexts", line);
+    } catch (e) { fail("contexts", e.message); }
 
     if (workspace.librarian && !workspace.slots?.memory) {
         fail(
@@ -1819,7 +1830,7 @@ export async function inspect(workspaceDir, options = {}) {
                     : "";
                 report(
                     "enforcement",
-                    `this workspace composes ${fragments} gate rule(s) from the packs that resolved and declares no \`gates\` policy for them to join, so nothing here compiles them — \`compile\` exits 2 on this shape rather than emitting a partial policy${incomplete}`,
+                    `this workspace composes ${fragments} gate rule(s) from the packs that resolved and declares no \`gates\` policy for them to join, so nothing here compiles these gates; guidance, personas or a ritual cap can still compile independently${incomplete}`,
                 );
             }
         } catch (cause) {

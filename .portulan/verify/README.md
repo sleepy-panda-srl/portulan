@@ -713,3 +713,10 @@ above. The scheduled librarian, a watcher rather than a rail, carries its own pr
 - **`node --test` given a glob matching nothing exits `0`.** A green suite that ran nothing. `tests.sh`
   counts the files first for that reason, and the count and the glob deliberately cover the same set —
   a recursive `find` beside a non-recursive glob would let a test be counted and never run.
+
+The [ritual cap fixture](../../cli/fixtures/ritual-cap/README.md) records four
+isolated native Agent admission controls. The ledger recipe checks its numeric
+receipt offline; the tests recipe forces incorrect settings, overlap, admission,
+network-guard and ledger totals red. Acquisition is manual and never a recipe.
+The compiler/doctor tests separately exercise Pack Definition 1.1 counts,
+minimum composition, drift/removal, refusal and owned cap-only settings.

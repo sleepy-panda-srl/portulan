@@ -4157,7 +4157,7 @@ describe("guidance: the boot card, its imports and its lead lines", () => {
         const engine = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-engine-"));
         SCRATCH.push(engine);
         fs.mkdirSync(path.join(engine, "cli"));
-        for (const file of ["compile.mjs", "import-files.mjs", "guidance-files.mjs", "instructions-journal.mjs", "init-preview.mjs", "discover.mjs", "inside.mjs", "frontmatter.mjs", "symbols.mjs", "html-entities.mjs", "ledger.mjs", "stop-policy.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
+        for (const file of ["compile.mjs", "import-files.mjs", "guidance-files.mjs", "instructions-journal.mjs", "init-preview.mjs", "discover.mjs", "inside.mjs", "frontmatter.mjs", "symbols.mjs", "html-entities.mjs", "ledger.mjs", "stop-policy.mjs", "ritual-contexts.mjs"]) fs.copyFileSync(path.join(REPO, "cli", file), path.join(engine, "cli", file));
         fs.mkdirSync(path.join(engine, "core"));
         const leads = "# Leads\n\n- **A lead.**\n";
         fs.writeFileSync(path.join(engine, "core", "inside.md"), leads);

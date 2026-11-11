@@ -87,6 +87,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`recipe-set.mjs`](recipe-set.mjs) | The recipe set: the verify recipes a workspace yields, its own plus each composed pack's, namespaced by pack. |
 | [`release-eval.mjs`](release-eval.mjs) | Portulan — the eval result a release carries. |
 | [`review-meter.mjs`](review-meter.mjs) | The review-loop meter: the historical figures of this repository's Copilot review loop, derived from its reviews. |
+| [`ritual-contexts.mjs`](ritual-contexts.mjs) | Native admission limits do not count lifetime contexts or spend. |
 | [`roster.mjs`](roster.mjs) | The cli roster: `cli/README.md`, rendered from the files it lists and never edited by hand. Not shipped. |
 | [`rule-carriers.mjs`](rule-carriers.mjs) | `rule-carriers` — the rail that keeps a reduced rule reduced. |
 | [`sessions.mjs`](sessions.mjs) | The session switches' texts: the cache-lifetime offer `init` and `upgrade` print, and the one line `doctor` reports on them. |
@@ -174,6 +175,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`release-eval.test.mjs`](release-eval.test.mjs) | The release-eval suite, on the record layer only: `--capture` spawns every other rail, the tests that run this suite included. |
 | [`restart-resume.test.mjs`](restart-resume.test.mjs) | Bounded-run restart comparisons, recovery expense, profitability and Stop refusal controls. |
 | [`review-meter.test.mjs`](review-meter.test.mjs) | Tests for `review-meter` — the review-loop meter: arithmetic, snapshot contract, register rail, window and shaping. |
+| [`ritual-contexts.test.mjs`](ritual-contexts.test.mjs) | Ritual admission caps and total observed contexts have different units. |
 | [`rule-carriers.test.mjs`](rule-carriers.test.mjs) | Tests for `rule-carriers` — the rail that keeps a reduced rule reduced. |
 | [`sessions.test.mjs`](sessions.test.mjs) | `sessions` — the cache lifetime's offer, and `doctor`'s one line on the session switches. |
 | [`shadowed-pack.test.mjs`](shadowed-pack.test.mjs) | A shadowed pack is refused rather than picked. |

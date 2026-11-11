@@ -18,7 +18,37 @@ sentence reads as a citation now and did not before.
 |---|---|
 | Skills | [`session-open`](skills/session-open/SKILL.md) · [`pre-commit`](skills/pre-commit/SKILL.md) · [`milestone-close`](skills/milestone-close/SKILL.md) |
 | Persona | [`supervisor`](personas/supervisor.md) — grades, never implements or merges |
+| Context admission | One ordinary fresh native Agent at a time per Claude session; see the scope below. |
 | Gate fragments | `commit-without-the-hooks` (gated) · `self-certify-a-checkpoint` (prohibited) |
+
+## Context admission
+
+Pack Definition 1.1 declares `contributes.contexts.max_concurrent_subagents: 1`.
+One supervisor at a time fits this sequential ritual; the three checkpoints can
+still open three or more contexts over the work's lifetime. The ledger reports
+actual contexts separately. Composed ritual counts tighten by minimum, independent
+of pack order. An unresolved pack beside a known cap refuses compilation because
+its contribution is unknown. No workspace `rituals` slot is introduced.
+
+Claude compilation writes project `env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, even
+without a gate policy. It applies across rituals within one session and excludes
+the parent. It governs **ordinary fresh native Agent admission**, not all child
+activity: completed-agent resumes and `/subtask` forks can exceed it; workflow
+agents and team teammates have independent limits. Higher-precedence settings,
+experimental flags and ultracode paths can bypass the guard. It bounds neither
+lifetime children nor requests, time or tokens. Other adapters report the count
+as not compiled; that is a limit of these adapters, not a claim about their hosts.
+
+The [native trace](../../../cli/fixtures/ritual-cap/README.md) tests Claude Code
+2.1.321 with synthetic loopback responses. The [current host documentation](https://code.claude.com/docs/en/sub-agents#concurrent-subagent-limit)
+was checked on 2026-11-11. Neither establishes a universal hard ceiling. The
+compiler's cap-only path owns only its dedicated settings file and refuses to
+replace unrelated settings, including additions to a previously generated file.
+Removing declarations removes only that owned file; normal policy compilation
+retains its existing ownership of generated settings. If both policy and cap are
+removed while normal generated settings still carry a cap, every mode refuses
+and preserves those settings for explicit resolution. Uncapped workspaces retain
+unrelated linked settings.
 
 ## The three checkpoints
 
