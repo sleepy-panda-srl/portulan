@@ -102,7 +102,9 @@ To adopt Portulan in your own repository, `portulan init` interviews you, scans 
 drafts a workspace; `portulan doctor` validates it; `portulan compile` turns your gate policy into
 host enforcement. At a terminal, an in-repo draft offers an optional always-tier budget before writing.
 The offer covers current and projected guidance in both supported formats at your explicit ratio.
-Declining or an unavailable projection leaves it undeclared.
+Declining or an initially unavailable projection leaves it undeclared. After final confirmation,
+init checks the accepted cap against fresh project inputs. An insufficient cap, a newly unavailable
+measurement or a changed effective handoff cutoff stops before writing and asks you to run init again.
 
 ## Command-line interface
 
