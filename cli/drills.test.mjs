@@ -545,3 +545,49 @@ test("the entry guard survives a path containing a space", () => {
         fs.rmSync(dir, { recursive: true, force: true });
     }
 });
+
+
+function largeOutputDrill(kind, noiseStream, fault = "") {
+    return fixtureRepo(({ dir, git }) => {
+        const tellStream = kind === "hook" && fault !== "stderr-only" ? "stdout" : noiseStream;
+        const messages = {
+            clean: fault === "control-tell" ? FAKE_DRILL.tell : "clean",
+            drilled: fault === "missing-tell" ? "unrelated failure" : FAKE_DRILL.tell,
+        };
+        fs.writeFileSync(join(dir, "loud.mjs"), [
+            'import fs from "node:fs";',
+            'const drilled = fs.readFileSync("marker.txt", "utf8").includes("DRILLED");',
+            `process.${noiseStream}.write("x".repeat(1_200_000) + "\\n");`,
+            `process.${tellStream}.write((drilled ? ${JSON.stringify(messages.drilled)} : ${JSON.stringify(messages.clean)}) + "\\n");`,
+            `process.exitCode = drilled ? ${kind === "hook" ? 0 : 1} : 0;`,
+        ].join("\n"));
+        git("add", "loud.mjs");
+        git("commit", "--quiet", "-m", "invented large output rail");
+        const quotedNode = "'" + process.execPath.replaceAll("'", "'\\''") + "'";
+        const rail = kind === "hook"
+            ? { id: "fake", argv: ["loud.mjs"], tellStream: "stdout" }
+            : { id: "fake", run: quotedNode + " loud.mjs" };
+        const drill = { ...FAKE_DRILL, exit: kind === "hook" ? 0 : 1 };
+        return drillOne({ rail, drill, repoRoot: dir, sha: "HEAD", say: () => {} });
+    });
+}
+
+for (const kind of ["recipe", "hook"]) {
+    for (const stream of ["stdout", "stderr"]) {
+        test(`large rail output retains the final verdict (${kind}, ${stream})`, () => {
+            assert.equal(largeOutputDrill(kind, stream), null);
+        });
+    }
+    test(`large rail output preserves missing-tell rejection (${kind})`, () => {
+        assert.match(largeOutputDrill(kind, "stdout", "missing-tell").what, /never said/);
+    });
+    test(`large rail output preserves control-tell rejection (${kind})`, () => {
+        assert.throws(
+            () => largeOutputDrill(kind, "stdout", "control-tell"),
+            error => error instanceof CouldNotRun && /already says/.test(error.message),
+        );
+    });
+}
+test("large rail output on hook stderr cannot supply a missing stdout tell", () => {
+    assert.match(largeOutputDrill("hook", "stderr", "stderr-only").what, /never said/);
+});

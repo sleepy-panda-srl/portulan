@@ -13,6 +13,7 @@ import { isInside } from "./inside.mjs";
 import { recipeSet, resolverFor } from "./recipe-set.mjs";
 
 const RAIL_TIMEOUT_MS = 10 * 60 * 1000;
+const RAIL_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
 
 export const DRILL_SESSION_PREFIX = "portulan-drill";
 
@@ -861,6 +862,7 @@ function runRail({ rail, worktree, stdin, workspaceRel }) {
             // After the spread, so a drill's own `cwd` cannot point the hook at another tree.
             input: `${JSON.stringify({ ...payload, cwd: worktree })}\n`,
             timeout: RAIL_TIMEOUT_MS,
+            maxBuffer: RAIL_MAX_BUFFER_BYTES,
             // Set, never inherited: the hooks read their tree and workspace from these two.
             env: { ...process.env, CLAUDE_PROJECT_DIR: worktree, PORTULAN_WORKSPACE: workspaceRel },
         });
@@ -872,6 +874,7 @@ function runRail({ rail, worktree, stdin, workspaceRel }) {
         cwd: worktree,
         encoding: "utf8",
         timeout: RAIL_TIMEOUT_MS,
+        maxBuffer: RAIL_MAX_BUFFER_BYTES,
     });
     if (result.error) throw new CouldNotRun(`rail \`${rail.id}\` could not run — ${result.error.message}`);
     return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };

@@ -36,7 +36,7 @@ and data remain reproducible; the new explicit live entry point is audited indep
 fixture README's stale output claim and current doctrine's obsolete footprint debt sentence are
 corrected with this implementation. Red-first source/ownership/I/O/consumer checks, a tracked
 exemplar and fresh invented live capture precede all32 recipes, strict validators, the private seam
-and a new independent pre-commit. No size cap, calibration or milestone state is changed.
+and a new independent pre-commit. No footprint/prompt cap, calibration or milestone state is changed.
 
 **Verification.** The opening controls first failed on the missing selector (21 red of 34), then
 consumer/preview/interruption controls exposed missing recovery, projection and source protections.
@@ -627,3 +627,46 @@ For capture 22 I independently matched four raw hashes, four staged code hashes,
 All 100 publication surfaces passed the private scan, including full names, staged blobs, binary diff, actual branch and exact proposed commit and PR text. All 900 planted mixed-case controls were refused.
 
 Signed by Sleepy Panda Codex, independent pre-commit supervisor, 2026-11-11.
+
+
+## CI output-capture follow-up
+
+The published PR's workspace job passed, but its full forced-red sweep could not judge `tests`:
+Node's implicit 1 MiB child-output buffer overflowed (`spawnSync bash ENOBUFS`). The larger test
+suite's TAP exceeds that bound. Recipe and hook rail execution now share an explicit 64 MiB capture
+limit, consistent with existing subprocess capture in finish/Stop tooling. This is process I/O
+collection; declared footprint and prompt budgets, timeouts and verdict/tell checks stay fixed.
+
+Nine large-output controls cover stdout and stderr on recipe and hook execution, a required failure
+tell beyond the old bound, wrong/pre-existing tells and the production stdout-only hook contract.
+The original eight first failed at the old bound, and the reviewed nine also all failed there. Both
+the implementer and independent reviewer replayed the actual test-rail green control and forced
+failure successfully. The user's merge-and-closure-review instruction still applies.
+
+
+The initial 50 drill harness tests passed. The independent reviewer supplied the production-shaped
+adjustment below, yielding 51 passing tests and nine new controls. The actual CI tests rail completed
+both its green control and deliberately failing assertion. This follow-up updates PR #631 rather
+than opening another item/PR.
+
+
+## Independent pre-commit for the CI repair, 2026-11-11
+
+Adjustment 1 is folded in verbatim from the reviewer's tested replacement block. The signed record
+below describes the frozen pre-adjustment revision; the writer's production behavior is unchanged.
+
+**APPROVE-WITH-ADJUSTMENTS.** Commit after adjustment 1 is applied.
+
+1. Use the shipped hook contract in the large-output regressions in `cli/drills.test.mjs`. Both shipped hooks take the failure marker from stdout and can fire with exit 0. Giving the staged synthetic hooks their real `tellStream: "stdout"` made exactly one of the eight new controls fail. It expected a marker printed only on stderr to count as a fire. Keep the large stderr payload, put the valid hook marker on stdout, and add a control requiring a missing stdout marker to remain a finding even when stderr contains it. The corrected test block passed 51/51 on Node 22. Restoring the implicit limit made all nine large-output controls fail. Deliberately accepting hook stderr as a marker passed all 50 staged tests and failed the corrected 51st control.
+
+I verified the four-file staged change at HEAD `7c82bfe74c661b2485a8bb921623775fb9b2aaaa` on `codex/m12-nested-instructions`, with comparison ref `9061693ee03e86782adaabc9cd4c6482de0b3626`. The source and two isolated copies matched in complete staged entries and modes, working bytes, refs and binary diff. The diff SHA-256 was `5c742bd5a0ac75c9041551719dd1e357fe619dde9f07feedf4b251e60777269f`.
+
+The shared 64 MiB bound reaches both subprocess calls that run a rail. Removing just the hook setting or just the recipe setting broke the corresponding four controls. Removing both broke all eight. Restoring each mutation brought the controls back to green. Eighteen independent production-shaped cases exercised both streams, hook marker selection, wrong exits, exit 2, missing or pre-existing markers and overflow in control or fire. Both kinds reported ENOBUFS as unjudged above the explicit bound, even when an expected marker had already been emitted. The ten-minute timeout, verdict logic and footprint/prompt cap files match the PR head.
+
+All 32 yielded recipes passed on Node 22.23.4. The full suite passed 4,406 tests and its recipe emitted 1,107,006 bytes. The independent replay of the actual tests drill obtained a green control followed by exit 1 and the deliberately failing assertion's required marker. On Node 20.20.2 and 26.13.0, all 50 staged harness tests passed. All three runs reported zero failures, cancellations, skips and TODOs. Strict validation passed for both actual plugin roots in separate empty profiles. Both validators printed a nonblocking directory-icon warning. The comment recipe measured 260,499 of 261,520 bytes and zero history lines.
+
+I rechecked the existing native observation offline. The four raw and four implementation hashes, 15-file inventory and ten callbacks still agree, and 20 historical files match the PR head. It demonstrates the recorded project-root session. Subtree startup, other hosts, whole-host accounting, calibration, savings and power-loss durability remain undemonstrated. The new buffer is finite. This pre-commit does not demonstrate the post-push GitHub result or close M12.
+
+All 12 publication surfaces passed the private scan, including the staged names and complete blobs, binary diff, branch and exact proposed commit and PR text. All 108 planted mixed-case controls were refused. Both restored review copies and the frozen source retained the original seal at release.
+
+**Frozen source RELEASED.** Signed by Sleepy Panda Codex, independent pre-commit supervisor, 2026-11-11.
