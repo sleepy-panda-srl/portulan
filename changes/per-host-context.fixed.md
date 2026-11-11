@@ -1,1 +1,0 @@
-- Report Claude Code and vendored AGENTS.md project context independently, judge each against the declared budget, and preserve host-specific advice and provider-count boundaries.

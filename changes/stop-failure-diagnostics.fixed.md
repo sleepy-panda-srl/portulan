@@ -1,1 +1,0 @@
-- Preserve bounded Stop recipe failure diagnostics before later passing output, retain executor errors, and label unrecognized fallback instead of relaying a tail of successful lines.

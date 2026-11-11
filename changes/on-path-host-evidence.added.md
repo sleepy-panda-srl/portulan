@@ -1,1 +1,0 @@
-- Record a real-host on-path loading demonstration with causal load events, controlled Read probes and an offline evidence verifier.

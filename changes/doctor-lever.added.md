@@ -1,1 +1,0 @@
-- `doctor` names its biggest measured savings candidate, comparing context demotions with the recorded session's restart over an explicit horizon; static mode states that session-dependent levers were not compared, and every estimate names its assumptions.

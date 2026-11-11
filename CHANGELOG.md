@@ -47,6 +47,142 @@ A change's commit message is the fuller record: it says why, and `git log` finds
 Each entry for the next release is a file in [`changes/`](changes/), so two open changes never edit the
 same lines; `node cli/index.mjs --changes changes` prints them as the cut pastes them.
 
+## 0.4.0 — 2026-11-11
+
+**Measured context and spend, with advice that states its assumptions.** Milestones 12 and 13 closed
+on 2026-11-11. What a host loads into every context is counted per host against a declared budget,
+with demotion to on-read as the repair, and what a session spends is kept in a ledger that `doctor`
+and the Stop-gate read to compare continuing with restarting. The release also carries Stop-gate,
+`finish`, compiler, Markdown-reader and local-worker repairs that belong to neither milestone.
+
+**Upgrade notes.** Budgets, handoff caps, price multipliers and the request horizon are opt-in: `init`
+offers them and writes none without consent. A Stop hold on restart advice needs an explicit horizon,
+an explicit resume expense and positive estimated savings; missing cache counters stay unpriced
+instead of producing one. The Stop-gate now follows `slots.handoffs`, so a workspace with no handoff
+series is asked to commit and push rather than to write one, and it accepts a declared recipe timeout.
+Restart compilation refuses a missing, malformed or unsupported-major spec declaration. Eligible
+core-persona bindings refresh on upgrade; missing bindings are not installed. Both independent closes
+leave whole-host counts, billing, cross-host timing and crash or concurrent-write guarantees unproven,
+and the estimates support no general quality or billing claim. The limits are recorded in
+[milestone 12](docs/milestones/m12.md) and [milestone 13](docs/milestones/m13.md).
+
+### Added
+
+- `recipe-set --agent` offers one counted green line and complete failure streams for every yielded recipe through a shared executor; `doctor --agent` aggregates green validations into one count line while retaining full failure reports. Existing CI uses the recipe interface.
+
+- A `cache-stability` recipe checks Portulan's loaded files, hook templates, compiled hook commands and gate explanation inputs against a committed golden, with an inventory of suspicious dates, hashes, IDs, paths and counts; every content change requires explicit baseline review.
+
+- Recorded milestone 12's declared-budget demonstration as an offline fixture: actual context and static-doctor CLI failures become green after guidance is demoted to on-read, with the budget and guidance body preserved. The context suite reproduces the observations and rejects invalid repairs.
+
+- Compile core personas' declared model, instruction floor and cache lifetime into existing plugin bindings when compiling this engine's own tree; the compile recipe now detects drift in those committed fields, and unusable core or pack frontmatter is refused before binding blocks can be erased.
+
+- Record reproducible demo boot read-set evidence across pinned bundle replacement, with unchanged workspace bytes and a separate migration no-op.
+
+- `doctor` names its biggest measured savings candidate, comparing context demotions with the recorded session's restart over an explicit horizon; static mode states that session-dependent levers were not compared, and every estimate names its assumptions.
+
+- The forced-red sweep now removes `--static` from the doctor recipe and verifies that telemetry rejects its local usage-record reader, alongside the existing default-report and static filesystem-isolation tests.
+
+- **Finish boundary controls.** Added end-to-end regression evidence for absent tree pack roots, unresolved-pack refusal before commit, and shell parse diagnostics with rollback and no push. Documented the investigated cases and the current single-line manifest boundary; no runtime behavior changed.
+
+- Optional Workspace Definition 2.15 handoff token caps and bounded index windows, with forward-only cutoffs, tree-independent reports and opt-in init offers; full-series output remains available without a budget.
+
+- `init` offers the price multipliers and remaining-request horizon independently, using the last recorded Claude Code model's file-based managed rates, a dated vendor table, then general figures; declarations remain opt-in through the interview, flags or answers file.
+
+- The librarian reports Claude Code project always-tier headroom and conditional demotion drafts for loaded, matching workspace units. The standing report carries the drafts; guidance and compiled rules remain unchanged until a human applies them.
+
+- Record a real-host on-path loading demonstration with causal load events, controlled Read probes and an offline evidence verifier.
+
+- Three acquired core-persona A/B records and an offline checker now ship with the inherited-model, undeclared-effort policy they support. Existing eligible persona bindings refresh on upgrade without configuration, using the compiler's ownership planner; missing bindings and foreign core adapters are not installed. The bounded [protocol and limits](evals/ab/personas/README.md) include every parent/child request, both probes and the disclosed retained-answer decoder repair.
+
+- Add explicit on-demand provider token estimates for the measured project always corpus, with model attribution, bounded sanitized transport and an offline recipe audit.
+
+- Recorded a real Claude Code session with matching saved-host and ledger totals and zero difference in all four classes, retained as a normalized offline replay with explicit acquisition lifecycle and privacy limits.
+
+### Changed
+
+- The `tools/local-llm` pack no longer calls a local call free for the parent session. The `delegate-local` skill gains *When it pays*: each call is a whole parent request that re-reads the context, so an edit the parent can write in one short Edit stays in the parent, and a call pays only while its miss rate stays under a break-even set by the context's size and what a call saves, 5–12% at 236k tokens in the one run measured, which missed 20% ([#583](https://github.com/sleepy-panda-srl/portulan/issues/583)). The README's opening line and first structural fact say the same, its 10-file example counts ten separate calls as ten parent requests, and it no longer offers a file summary to the disabled prose role.
+
+- Spend and restart doctrine now has one canonical part in `core/operating/context.md`, covering usage-based pricing, the computed restart threshold, stable prefixes, earned routing and output budgets. The session guide links to those rules while retaining startup and cache-setting details.
+
+### Fixed
+
+- Retain the first restart crossing in delayed transcript batches, report historical
+  crossings separately from current advice, and keep Stop holds tied to the latest
+  profitable comparison. Replay changed assumptions and ship an offline-verified
+  paired synthetic Claude Code hook trace.
+
+- Report potential project cache risks in doctor: plan-mode model switching and
+  disabled tool search with eligible MCP definitions, with bounded configuration
+  precedence, approval counts and sanitized unassessed notes.
+
+- Report branch and recent-session spend-class indices with explicit assumptions,
+  uncertainty, matching levers and recorded-role output breakdowns. Compare priced
+  restart alternatives only within the branch's owned scope.
+  Preserve missing/invalid counter validity so partial usage cannot produce false
+  class dominance or an unsupported advisory Stop hold.
+
+- Recheck the accepted init budget and handoff cutoff after final confirmation, refusing before writing when changed inputs invalidate consent.
+
+- Derive init's handoff cutoff from the index's eligible records, ignoring unrelated filenames and refusing untrustworthy series before writing a record cap.
+
+- Compile ritual-pack context counts into Claude's fresh-Agent admission setting,
+  compose bounds by minimum, report native exceptions and preserve separate actual
+  ledger totals. Support owned cap-only settings and demonstrate four isolated
+  native controls with offline receipts.
+
+- Restore the merged comment-byte budget by shortening two compiler comments,
+  retaining their rationales and leaving executable source and both rails unchanged.
+
+- Keep missing cache-read/write observations unpriced in ledger and advisory paths,
+  preventing false Stop holds while supporting explicit-zero and duplicate completion,
+  complete lifetime derivation, and safe migration of cached comparisons.
+
+- Compile Claude restart advice and declared session settings without a gate policy,
+  composing ritual caps while refusing edited or foreign managed settings.
+
+- Keep delayed duplicate requests in their canonical position so old observations
+  cannot become the latest context or falsely hold Stop after cache eviction.
+
+- Compile and inspect existing persona bindings at each tree's native plugin or project location, support persona-only workspaces, bind the product's composed roles and byte-check a committed on-invoke exemplar.
+
+- Compiling a list's leads now recognizes CommonMark type-1 and type-6 HTML block tags immediately below an item, ending the list instead of refusing it as a lazy continuation. The shared import reader uses the same boundary; inline tags and invalid tag delimiters retain their existing treatment.
+
+- Compiler and context import reads now refuse named Markdown regions where the reader cannot determine host imports reliably, including nested imported files, instead of silently overcounting or missing imports.
+
+- Offer and accept an explicit always-tier budget before init writes, covering both projected project guidance formats at the chosen ratio and preserving a decline.
+
+- The librarian reads explicit leading proposal outcomes, including recorded rulings, instead of treating a historical mention of “pending” in the rationale as a new decision; unresolved and ambiguous declarations remain pending.
+
+- Qualify the historical librarian PR wording with the later accepted standing-report carrier for conditional demotion drafts.
+
+- Allow default loopback chat generations up to a bounded 15-minute complete-response deadline, reject truncated output before applying edits, and correctly parse generated code fences containing whitespace or inline backticks. Model routing and operator-selected profiles remain unchanged.
+
+- Markdown section reads retain autolink text, decode HTML5 character references outside code and escapes, preserve ATX heading content, and recognize top-level setext headings indented up to three spaces without promoting list continuations.
+
+- Compile the accepted nested on-path CLAUDE.md target with portable ownership, interrupted-write recovery, consumer parity and a separately verifiable real-host observation, keeping forced-red verification usable with the larger test suite.
+
+- Rail reachable skill bodies, persona charters and bindings, native hook message profiles and vendored AGENTS.md profiles in the repository's context recipe; unavailable coverage refuses judgement.
+
+- Report Claude Code and vendored AGENTS.md project context independently, judge each against the declared budget, and preserve host-specific advice and provider-count boundaries.
+
+- Record the successful explicit provider-token estimate on invented input and align M12’s count criterion with the accepted provider limit.
+
+- Local-worker receipts distinguish reasoning and cached-input subsets from their parent totals, preserve unknown measurements and historical ledger receipts, and diagnose reasoning-only exhaustion without treating a smaller source slice as a guaranteed remedy ([#578](https://github.com/sleepy-panda-srl/portulan/issues/578)).
+
+- **Bound recipe cleanup.** Finish and the Stop-gate share process-group timeout and interruption cleanup, with KILL escalation after 250 ms. Finish retains handled interruptions through output draining and stops before later recipes or a push. Windows uses bounded, preflighted taskkill tree termination; native Windows execution remains unverified.
+
+- Restart compilation refuses missing, malformed and unsupported-major spec declarations. The ledger recipe now checks that a provoked Stop consumes no hold, and the slot reference names the repeated-hold limitation for harnesses that omit the retry marker while rotating session IDs.
+
+- Restart advice includes optional resume expense in input-equivalent tokens, names its remaining-request assumptions, and reports conditionally when recovery cost is unknown; Stop holds require an explicit horizon, explicit expense and positive estimated savings (#503).
+
+- Preserve bounded Stop recipe failure diagnostics before later passing output, retain executor errors, and label unrecognized fallback instead of relaying a tail of successful lines.
+
+- The Stop-gate follows `slots.handoffs`: it checks the declared directory, and a workspace with no series is asked to commit and push open work without writing a handoff. Recipe checks and retry bounds remain in force; malformed record policy is refused explicitly.
+
+- The Stop-gate preserves handoff refusal counts when Git cannot determine whether work remains, and bounds its remote handoff content lookup to two days before the handoff date. A handoff pushed only in an older-dated commit can therefore count as this tree's own.
+
+- The Stop-gate accepts a workspace-declared recipe timeout with a compiled outer margin, names actual timeouts, and skips recipe execution on cap-released Stops while retaining an explicit unverified result and preserving handoff recovery.
+
 ## 0.3.0 — 2026-11-03
 
 **Bounded local development, with measured routing and visible usage.** A workspace can compose

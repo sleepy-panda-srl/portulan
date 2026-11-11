@@ -1,1 +1,0 @@
-- The forced-red sweep now removes `--static` from the doctor recipe and verifies that telemetry rejects its local usage-record reader, alongside the existing default-report and static filesystem-isolation tests.

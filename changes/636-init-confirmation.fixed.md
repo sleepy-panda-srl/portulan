@@ -1,1 +1,0 @@
-- Recheck the accepted init budget and handoff cutoff after final confirmation, refusing before writing when changed inputs invalidate consent.

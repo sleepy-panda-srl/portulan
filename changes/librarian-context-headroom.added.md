@@ -1,1 +1,0 @@
-- The librarian reports Claude Code project always-tier headroom and conditional demotion drafts for loaded, matching workspace units. The standing report carries the drafts; guidance and compiled rules remain unchanged until a human applies them.

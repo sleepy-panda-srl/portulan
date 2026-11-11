@@ -1,1 +1,0 @@
-- The Stop-gate preserves handoff refusal counts when Git cannot determine whether work remains, and bounds its remote handoff content lookup to two days before the handoff date. A handoff pushed only in an older-dated commit can therefore count as this tree's own.

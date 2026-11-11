@@ -1,1 +1,0 @@
-- Recorded a real Claude Code session with matching saved-host and ledger totals and zero difference in all four classes, retained as a normalized offline replay with explicit acquisition lifecycle and privacy limits.
