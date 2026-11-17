@@ -1,0 +1,1 @@
+- Local-model chat, summarize and transform accept `--max-tokens` and optional phase progress on stderr; exhausted responses are saved privately for diagnosis without accepting partial edits.

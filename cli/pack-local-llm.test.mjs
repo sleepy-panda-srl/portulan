@@ -382,7 +382,7 @@ test("a receipt marks what the server did not report as unmeasured, never as zer
     assert.equal(res.promptTokens, null);
     assert.equal(res.completionTokens, null);
     const receipt = formatPassReceipt({ mode: "chat", model: "m", ...res });
-    assert.match(receipt, / in=\? out=\? time=\d+ms rate=\? reasoning=\? cached-in=\? spend=\$0\.00$/);
+    assert.match(receipt, / in=\? out=\? time=\d+ms rate=\? reasoning=\? cached-in=\? max-tokens=4096 spend=\$0\.00$/);
     assert.doesNotMatch(receipt, /ttft/);
     assert.equal(receipt.includes("\n"), false);
 });
@@ -773,7 +773,7 @@ describe("--prompt-file, --context, --insert-after and endpoint locking", () => 
             assert.ok(timeline[1].started >= timeline[0].ended - 5, JSON.stringify(timeline));
             assert.doesNotMatch(r1.stderr, /queued=/);
             assert.match(r2.stderr, /waited \d+ms for endpoint lock/);
-            assert.match(r2.stderr, / queued=\d+ms spend=\$0\.00$/m);
+            assert.match(r2.stderr, / queued=\d+ms max-tokens=4096 spend=\$0\.00$/m);
             const r2ReceiptLine = r2.stderr.trim().split("\n").find((l) => l.startsWith("OK "));
             const parsed = receiptOf(r2ReceiptLine);
             assert.ok(parsed && parsed.time >= 100 && parsed.time < 250, r2ReceiptLine);
@@ -1673,7 +1673,7 @@ describe("transform --preflight, --verify-expect and candidate preservation (#57
             });
             assert.equal(res.ok, true);
             assert.equal(res.preflight, baselineStatus === 0 ? "green" : "red");
-            assert.match(res.receipt, new RegExp(`preflight=${baselineStatus === 0 ? "green" : "red"} spend=\\$0\\.00$`));
+            assert.match(res.receipt, new RegExp(`preflight=${baselineStatus === 0 ? "green" : "red"} max-tokens=4096 spend=\\$0\\.00$`));
         }
     });
 

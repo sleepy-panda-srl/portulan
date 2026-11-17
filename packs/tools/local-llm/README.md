@@ -47,8 +47,17 @@ retain their existing transport behavior and response capacity. A caller injecti
 its own transport can explicitly use the exported `localModelFetch`; the default
 repair cannot change a transport hidden inside an injection.
 
+## Generation controls and diagnostics
+
 A response ending with `finish_reason: length` is incomplete and is rejected before
-a replacement or verifier can run. Workspaces may enforce stronger completion or
+a replacement or verifier can run. The error prints the path of a private temporary
+`response.json` containing the returned raw message (including any reasoning), usage,
+request ID, model and requested output budget; it includes no prompt. The directory
+is owner-only and the file is mode `0600`. It is separate from metadata-only lifecycle
+records. If saving fails, refusal and rollback still apply and the error says no
+diagnostic was saved. Inspect it locally and remove it when finished; it is raw model
+output, not an accepted replacement or committed evidence.
+Workspaces may enforce stronger completion or
 slice limits without changing earned routing or model profiles. The code extractor
 accepts valid whitespace/language fences, preserves inline backticks, and rejects
 an unfinished fence. Provenance: owner Marius, November 5, 2026; local thinking
@@ -64,6 +73,21 @@ request time: the runner does not stream, so it cannot see a first token. The le
 accepts both historical and extended receipts and continues counting parent totals.
 Update runner and ledger together: older strict receipt readers do not understand
 the added fields.
+
+`chat`, `summarize` and `transform` accept `--max-tokens <n>` (default `4096`), a positive
+safe integer sent as `max_tokens` and recorded as `max-tokens=<n>` in the receipt.
+The exported calls accept `maxTokens` too. This requests a combined output budget;
+backend behavior still determines how it binds. A stricter owner profile remains
+authoritative; this flag grants no permission to change its cap or effort.
+Transform receipts use a wrapper's reported effective budget when available, falling
+back to the requested budget for older injected replies; differing or invalid reported
+retry budgets print `max-tokens=?` rather than claiming a single known cap.
+
+`--progress` reports request ID, queued/generation phase and elapsed time to stderr
+on phase entry and every ten seconds while waiting, across all three prompt modes.
+The response remains nonstreaming and bounded: `tokens=?` is honest until final
+usage arrives, and no first-token timing is measured. The timer stops on completion,
+failure or cancellation. Without the flag, no progress lines are printed.
 
 On `length`, the diagnostic distinguishes a measured all-reasoning response from
 other combined-budget exhaustion. A short input does not cap thinking. Inspect the

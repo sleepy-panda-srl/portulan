@@ -134,15 +134,16 @@ export function incompleteGenerationMessage(usage) {
 
 const figure = (value, unit) => (value === null || value === undefined ? "?" : `${value}${unit}`);
 
-export function formatPassReceipt({ mode, model, attempts = 1, promptTokens = null, completionTokens = null, reasoningTokens = null, cachedPromptTokens = null, totalMs = null, tokPerSec = null, target = "", queuedMs = 0, preflight = null }) {
+export function formatPassReceipt({ mode, model, attempts = 1, promptTokens = null, completionTokens = null, reasoningTokens = null, cachedPromptTokens = null, totalMs = null, tokPerSec = null, target = "", queuedMs = 0, preflight = null, maxTokens }) {
     const usage = readUsage({prompt_tokens:promptTokens,completion_tokens:completionTokens,
         completion_tokens_details:{reasoning_tokens:reasoningTokens},prompt_tokens_details:{cached_tokens:cachedPromptTokens}});
     const where = target ? ` target=${target}` : "";
     const queued = Number.isSafeInteger(queuedMs) && queuedMs > 0 ? ` queued=${queuedMs}ms` : "";
     const baseline = preflight === "green" || preflight === "red" ? ` preflight=${preflight}` : "";
+    const budget = maxTokens === undefined ? "" : ` max-tokens=${Number.isSafeInteger(maxTokens) && maxTokens > 0 ? maxTokens : "?"}`;
     return (
         `OK mode=${mode} model=${model}${where} attempts=${attempts} in=${figure(usage.promptTokens, "t")} out=${figure(usage.completionTokens, "t")} ` +
-        `time=${figure(totalMs, "ms")} rate=${figure(tokPerSec, "tok/s")} reasoning=${figure(usage.reasoningTokens, "t")} cached-in=${figure(usage.cachedPromptTokens, "t")}${queued}${baseline} spend=$0.00`
+        `time=${figure(totalMs, "ms")} rate=${figure(tokPerSec, "tok/s")} reasoning=${figure(usage.reasoningTokens, "t")} cached-in=${figure(usage.cachedPromptTokens, "t")}${queued}${baseline}${budget} spend=$0.00`
     );
 }
 
@@ -741,6 +742,8 @@ export async function callLocalChat({
     messages,
     maxInputBytes = DEFAULT_MAX_INPUT_BYTES,
     maxTokens = 4096,
+    progress = false,
+    onProgress = (line) => console.error(line),
     effort = "low",
     temperature = 0.1,
     seed,
@@ -755,6 +758,9 @@ export async function callLocalChat({
     exitOnSignal = true,
     fetchImpl = globalThis.fetch,
 }) {
+    if (!Number.isSafeInteger(maxTokens) || maxTokens < 1) {
+        throw new CouldNotRunError("--max-tokens takes a positive safe integer");
+    }
     const endpoint = assertLoopback(baseUrl, { allowRemote });
     const serialized = messages.map((m) => m.content ?? "").join("\n");
     assertInputBudget(serialized, { maxInputBytes });
@@ -783,14 +789,21 @@ export async function callLocalChat({
 
     const shouldLock = !noLock && (useLock === true || lockDir !== undefined || fetchImpl === globalThis.fetch);
     let lock = { queuedMs: 0, release: () => {} };
+    let progressPhase = "queued";
+    const started = performance.now();
+    const reportProgress = () => onProgress(`local-llm: request=${activeLifecycle?.id ?? requestId ?? "?"} phase=${progressPhase} elapsed=${Math.round(performance.now() - started)}ms tokens=?`);
+    const progressTimer = progress ? setInterval(reportProgress, 10_000) : null;
     try {
         activeLifecycle?.setPhase("queued", { model, endpoint });
+        if (progress) reportProgress();
         lock = shouldLock
             ? await acquireEndpointLock(endpoint, { ...(lockDir ? { lockDir } : {}), ...(activeSignal ? { signal: activeSignal } : {}) })
             : { queuedMs: 0, release: () => {} };
         if (lock.queuedMs > 0) console.error(`local-llm: waited ${lock.queuedMs}ms for endpoint lock (${endpoint})`);
 
         activeLifecycle?.setPhase("generation", { model, endpoint });
+        progressPhase = "generation";
+        if (progress) reportProgress();
         const t0 = performance.now();
         const res = await localFetch(
             `${endpoint}/chat/completions`,
@@ -829,7 +842,9 @@ export async function callLocalChat({
         const totalMs = Math.max(1, Math.round(performance.now() - t0));
         const usage = readUsage(data.usage);
         if (data.choices?.[0]?.finish_reason === "length") {
-            throw new CouldNotRunError(incompleteGenerationMessage(data.usage));
+            const diagnosticPath = saveIncompleteResponse({ requestId: activeLifecycle?.id ?? requestId ?? null, model, maxTokens, response: data });
+            const note = diagnosticPath ? ` Saved incomplete response to ${diagnosticPath}.` : " Could not save incomplete response diagnostic.";
+            throw Object.assign(new CouldNotRunError(incompleteGenerationMessage(data.usage) + note), { diagnosticPath });
         }
         const rawContent = data.choices?.[0]?.message?.content ?? "";
         const { completionTokens } = usage;
@@ -838,6 +853,7 @@ export async function callLocalChat({
             requestId: activeLifecycle?.id ?? null,
             content: stripThinking(rawContent),
             rawContent,
+            maxTokens,
             ...usage,
             totalMs,
             queuedMs: lock.queuedMs,
@@ -854,6 +870,7 @@ export async function callLocalChat({
         });
         throw err;
     } finally {
+        clearInterval(progressTimer);
         unregisterSignals();
         lock.release();
     }
@@ -1220,6 +1237,21 @@ function saveCandidateReply(content) {
     }
 }
 
+function saveIncompleteResponse(diagnostic) {
+    let dir;
+    try {
+        dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-local-llm-incomplete-"));
+        const saved = path.join(dir, "response.json");
+        fs.writeFileSync(saved, JSON.stringify(diagnostic, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
+        return saved;
+    } catch {
+        if (dir) {
+            try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
+        }
+        return null;
+    }
+}
+
 export async function verifyGatedTransform({
     filePath,
     lineRange = null,
@@ -1236,6 +1268,8 @@ export async function verifyGatedTransform({
     baseUrl = DEFAULT_BASE_URL,
     allowRemote = false,
     maxInputBytes = DEFAULT_MAX_INPUT_BYTES,
+    maxTokens = 4096,
+    progress = false,
     effort = "low",
     retries = DEFAULT_RETRIES,
     noLock = false,
@@ -1250,6 +1284,9 @@ export async function verifyGatedTransform({
 }) {
     if (!verifyCmd) {
         throw new CouldNotRunError("transform requires --verify <cmd>: every local edit is gated by a verify command, and kept only on its exit 0");
+    }
+    if (!Number.isSafeInteger(maxTokens) || maxTokens < 1) {
+        throw new CouldNotRunError("--max-tokens takes a positive safe integer");
     }
     let expectRegex = null;
     if (verifyExpect !== null && verifyExpect !== undefined) {
@@ -1359,6 +1396,7 @@ export async function verifyGatedTransform({
     let modelMs = 0;
     let queuedMs = 0;
     let preflightOutcome = null;
+    let effectiveMaxTokens;
     try {
         if (preflight) {
             activeLifecycle?.setPhase("preflight", { attempt: 0 });
@@ -1400,7 +1438,9 @@ export async function verifyGatedTransform({
             ];
 
             activeLifecycle?.setPhase("generation", { attempt, model, endpoint: baseUrl });
-            const reply = await chatFn({ baseUrl, allowRemote, model, messages, maxInputBytes, effort, noLock, signal: abortController.signal, lifecycle: activeLifecycle, exitOnSignal });
+            const reply = await chatFn({ baseUrl, allowRemote, model, messages, maxInputBytes, maxTokens, progress, effort, noLock, signal: abortController.signal, lifecycle: activeLifecycle, exitOnSignal });
+            const reportedBudget = reply.maxTokens === undefined ? maxTokens : Number.isSafeInteger(reply.maxTokens) && reply.maxTokens > 0 ? reply.maxTokens : null;
+            effectiveMaxTokens = attempt === 1 ? reportedBudget : effectiveMaxTokens === reportedBudget ? effectiveMaxTokens : null;
             promptTokens = sum(promptTokens, reply.promptTokens);
             completionTokens = sum(completionTokens, reply.completionTokens);
             reasoningTokens = sum(reasoningTokens, reply.reasoningTokens);
@@ -1445,6 +1485,7 @@ export async function verifyGatedTransform({
                         totalMs: modelMs,
                         queuedMs,
                         preflight: preflightOutcome,
+                        maxTokens: effectiveMaxTokens,
                         tokPerSec: rate(completionTokens, modelMs),
                         target: path.basename(filePath),
                     }),
@@ -2318,6 +2359,7 @@ const BOOLEAN_FLAGS = Object.freeze({
     "--write": "write",
     "--preflight": "preflight",
     "--no-lock": "noLock",
+    "--progress": "progress",
     "--help": "help",
 });
 const VALUE_FLAGS = Object.freeze({
@@ -2335,6 +2377,7 @@ const VALUE_FLAGS = Object.freeze({
     "--verify-expect": "verifyExpect",
     "--retries": "retries",
     "--max-input-bytes": "maxInputBytes",
+    "--max-tokens": "maxTokens",
     "--prompt": "prompt",
     "--prompt-file": "promptFile",
     "--k": "k",
@@ -2352,6 +2395,7 @@ const REPEATABLE_VALUE_FLAGS = Object.freeze({
 const COUNT_FLAGS = Object.freeze({
     retries: ["--retries", 0],
     maxInputBytes: ["--max-input-bytes", 1],
+    maxTokens: ["--max-tokens", 1],
     k: ["--k", 1],
     insertAfter: ["--insert-after", 0],
     insertBefore: ["--insert-before", 1],
@@ -2389,13 +2433,13 @@ function refuseOutside(args, takes, mode) {
 const TRANSFORM_USAGE =
     "local-llm.mjs transform [--role code | --model <id>] [--effort low] --file <path> --verify <cmd> [--preflight] [--verify-expect <regex>] (--prompt <instruction> | --prompt-file <path>) " +
     "[--lines <a>-<b> | --insert-after <n> | --insert-before <n>] [--seam-blank-lines <n>] " +
-    "[--context <a>-<b>] [--context-file <path>[:a-b]] [--retries <n>] [--no-lock]";
+    "[--context <a>-<b>] [--context-file <path>[:a-b]] [--retries <n>] [--max-tokens <n>] [--progress] [--no-lock]";
 
 export const USAGE = `local-llm.mjs — a zero-dependency runner for a loopback OpenAI-compatible model.
 
   local-llm.mjs status
   local-llm.mjs lifecycle
-  local-llm.mjs chat|summarize [--role code|prose | --model <id>] [--file <path> [--lines <a>-<b>]] [--context <a>-<b>] [--context-file <path>[:a-b]] (--prompt <text> | --prompt-file <path>) [--no-lock]
+  local-llm.mjs chat|summarize [--role code|prose | --model <id>] [--file <path> [--lines <a>-<b>]] [--context <a>-<b>] [--context-file <path>[:a-b]] (--prompt <text> | --prompt-file <path>) [--max-tokens <n>] [--progress] [--no-lock]
   ${TRANSFORM_USAGE}
   local-llm.mjs eval [--role code|prose | --model <id>] [--task code|codify|handoff] [--no-lock]
   local-llm.mjs eval --ab --k ${AB_K} --seed <s> --host-cmd "<command>" --host-model <id> --write [--repo-root <dir>]
@@ -2436,6 +2480,11 @@ Every chat request is refused off loopback unless --allow-remote is passed, is r
 --max-input-bytes (default ${DEFAULT_MAX_INPUT_BYTES}), and serialises per endpoint via an advisory
 lockfile unless --no-lock is passed. transform defaults to --role code at --effort low; --effort
 defaults to low.
+chat, summarize and transform accept --max-tokens (positive safe integer, default 4096),
+recorded in the receipt; it does not override a stricter caller-owned profile.
+--progress prints queued/generation phase and elapsed time to stderr immediately and every
+10 seconds while waiting. Tokens remain unknown until the nonstreaming response completes.
+Incomplete length responses are refused and saved privately to a temporary diagnostic file.
 
 Exit codes: 0 green · 1 red check or model/verify failure · 2 could not run.`;
 
@@ -2461,7 +2510,7 @@ export function parseArgs(argv) {
     }
     for (const [key, [flag, min]] of Object.entries(COUNT_FLAGS)) {
         if (args[key] === undefined) continue;
-        if (!/^\d+$/.test(args[key]) || Number(args[key]) < min) {
+        if (!/^\d+$/.test(args[key]) || !Number.isSafeInteger(Number(args[key])) || Number(args[key]) < min) {
             throw new CouldNotRunError(`${flag} takes a whole number of at least ${min}, not ${JSON.stringify(args[key])}`);
         }
         args[key] = Number(args[key]);
@@ -2617,7 +2666,7 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
             }
         }
         if (!PROMPT_MODES.has(cmd)) {
-            for (const key of ["promptFile", "contexts", "contextFiles"]) {
+            for (const key of ["promptFile", "contexts", "contextFiles", "maxTokens", "progress"]) {
                 if (args[key] !== undefined) throw new CouldNotRunError(`${FLAG_OF[key]} belongs to chat, summarize or transform, not ${cmd}`);
             }
         }
@@ -2670,6 +2719,8 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
                     model: chosen,
                     effort: args.effort ?? "low",
                     maxInputBytes: args.maxInputBytes ?? DEFAULT_MAX_INPUT_BYTES,
+                    maxTokens: args.maxTokens ?? 4096,
+                    progress: Boolean(args.progress),
                     noLock: Boolean(args.noLock),
                     signal: lifecycle.controller.signal,
                     lifecycle,
@@ -2705,6 +2756,8 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
                 baseUrl,
                 allowRemote: args.allowRemote,
                 maxInputBytes: args.maxInputBytes ?? DEFAULT_MAX_INPUT_BYTES,
+                maxTokens: args.maxTokens ?? 4096,
+                progress: Boolean(args.progress),
                 effort: args.effort ?? "low",
                 retries: args.retries ?? DEFAULT_RETRIES,
                 noLock: Boolean(args.noLock),

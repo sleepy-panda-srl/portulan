@@ -145,7 +145,7 @@ const chainOf = (r) => (r.sidechain ? `agent:${r.agent ?? ""}` : "session");
 
 /** A whole-line local receipt is read wherever it appears. */
 const RECEIPT =
-    /^OK mode=([a-z]+) model=(\S+)(?: target=.+?)? attempts=([1-9]\d*) in=(?:(0|[1-9]\d*)t|\?) out=(?:(0|[1-9]\d*)t|\?) time=(?:(0|[1-9]\d*)ms|\?) rate=(?:(?:0|[1-9]\d*)(?:\.\d)?tok\/s|\?)(?: reasoning=(?:(0|[1-9]\d*)t|\?) cached-in=(?:(0|[1-9]\d*)t|\?))?(?: queued=(?:0|[1-9]\d*)ms)?(?: preflight=(?:green|red))? spend=\$0\.00$/;
+    /^OK mode=([a-z]+) model=(\S+)(?: target=.+?)? attempts=([1-9]\d*) in=(?:(0|[1-9]\d*)t|\?) out=(?:(0|[1-9]\d*)t|\?) time=(?:(0|[1-9]\d*)ms|\?) rate=(?:(?:0|[1-9]\d*)(?:\.\d)?tok\/s|\?)(?: reasoning=(?:(0|[1-9]\d*)t|\?) cached-in=(?:(0|[1-9]\d*)t|\?))?(?: queued=(?:0|[1-9]\d*)ms)?(?: preflight=(?:green|red))?(?: max-tokens=([1-9]\d*|\?))? spend=\$0\.00$/;
 
 /** A figure the runner printed as `?` is null, never 0. */
 export function receiptOf(line) {
@@ -154,6 +154,7 @@ export function receiptOf(line) {
     const [attempts, input, output, time] = [m[3], m[4], m[5], m[6]].map((v) => (v === undefined ? null : Number(v)));
     const [reasoning, cached] = [m[7], m[8]].map((v) => (v === undefined ? null : Number(v)));
     if (![attempts, input, output, time, reasoning, cached].every((v) => v === null || Number.isSafeInteger(v))) return null;
+    if (m[9] !== undefined && m[9] !== "?" && !Number.isSafeInteger(Number(m[9]))) return null;
     if (reasoning !== null && (output === null || reasoning > output)) return null;
     if (cached !== null && (input === null || cached > input)) return null;
     return { mode: m[1], model: m[2], attempts, in: input, out: output, time };
