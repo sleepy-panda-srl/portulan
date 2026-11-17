@@ -17,6 +17,7 @@ import {
     acquireEndpointLock,
     assertInputBudget,
     assertLoopback,
+    beginLifecycle,
     buildPrompt,
     callLocalChat,
     cosine,
@@ -28,15 +29,20 @@ import {
     EARNED_ROUTING,
     operationalModel,
     FEEDBACK_CHARS,
+    formatCancelReceipt,
     formatPassReceipt,
     foldAb,
     gradeRoleOutput,
     hostPrompt,
+    lifecycleDir,
     loadPredicates,
     main,
+    normalizeLifecycleUsage,
     parseArgs,
     publishAb,
     RailError,
+    readLifecycleRecords,
+    reconcileLifecycleRecords,
     renderAbRegister,
     resolveInstruction,
     RESTORE_SIGNALS,
@@ -1497,6 +1503,7 @@ describe("dedup", () => {
             assert.match(none.err[1], /mode=dedup model=other-embedder attempts=1/);
             assert.equal(requests[1].body.model, "other-embedder");
         } finally {
+            server.closeAllConnections?.();
             server.close();
         }
     });
@@ -1765,5 +1772,270 @@ describe("transform --preflight, --verify-expect and candidate preservation (#57
         assert.match(step3, /--verify-expect/);
         assert.equal((await captured(() => main(["chat", "--preflight", "--prompt", "hi"]))).code, 2);
         assert.equal((await captured(() => main(["chat", "--verify-expect", "ok", "--prompt", "hi"]))).code, 2);
+    });
+
+    test("SIGINT/SIGTERM interrupt transform generation and verification with durable receipts and restored bytes (#581)", async () => {
+        for (const sig of ["SIGINT", "SIGTERM"]) {
+            const dir = scratch();
+            const stateDir = scratch();
+            const target = path.join(dir, "gen-int.mjs");
+            const original = "export const secretSource = 'KEEP_ME_SAFE';\n";
+            fs.writeFileSync(target, original);
+            let hit = 0;
+            let holdRes = null;
+            const server = http.createServer((req, res) => {
+                if (req.method === "POST" && req.url === "/v1/chat/completions") {
+                    req.resume();
+                    req.on("end", () => {
+                        hit += 1;
+                        if (hit === 1) {
+                            res.writeHead(200, { "Content-Type": "application/json" });
+                            res.end(JSON.stringify({
+                                choices: [{ finish_reason: "stop", message: { content: "```js\nexport const secretSource = 'UNVERIFIED_EDIT';\n```" } }],
+                                usage: { prompt_tokens: 10, completion_tokens: 5 },
+                            }));
+                            return;
+                        }
+                        holdRes = res;
+                    });
+                }
+            });
+            await new Promise((r) => server.listen(0, "127.0.0.1", r));
+            const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+            let child = null;
+            try {
+                child = spawn(
+                    process.execPath,
+                    [
+                        RUNNER,
+                        "transform",
+                        "--base-url",
+                        baseUrl,
+                        "--file",
+                        target,
+                        "--verify",
+                        "exit 1",
+                        "--retries",
+                        "1",
+                        "--no-lock",
+                        "--prompt",
+                        "SECRET_PROMPT_DO_NOT_LEAK",
+                    ],
+                    { env: { ...process.env, PORTULAN_LOCAL_LLM_STATE_DIR: stateDir }, stdio: ["ignore", "pipe", "pipe"] },
+                );
+                let stderr = "";
+                child.stderr.on("data", (d) => { stderr += d.toString(); });
+                await waitFor(() => hit === 2, "second generation request started", 5000);
+                await new Promise((r) => setTimeout(r, 30));
+                child.kill(sig);
+                const code = await new Promise((r) => child.on("exit", r));
+                assert.equal(code, 2, stderr);
+                assert.equal(fs.readFileSync(target, "utf8"), original);
+                assert.match(stderr, new RegExp(`CANCELLED id=[^ ]+ mode=transform .*phase=generation signal=${sig} reason=interrupted elapsed=\\d+ms rollback=restored provider-cancel=unknown in=\\? out=\\? reasoning=\\? cached-in=\\?`));
+                assert.doesNotMatch(stderr, /SECRET_PROMPT_DO_NOT_LEAK|KEEP_ME_SAFE/);
+
+                const records = readLifecycleRecords({ stateDir, reconcile: false });
+                assert.equal(records.length, 1);
+                assert.equal(records[0].status, "cancelled");
+                assert.equal(records[0].terminalOutcome, "cancelled");
+                assert.equal(records[0].phase, "generation");
+                assert.equal(records[0].signal, sig);
+                assert.equal(records[0].rollback, "restored");
+                assert.equal(records[0].providerCancellation, "unknown");
+                assert.deepEqual(records[0].usage, { input: null, output: null, cached: null, reasoning: null });
+                const rawJson = fs.readFileSync(path.join(lifecycleDir(stateDir), fs.readdirSync(lifecycleDir(stateDir))[0]), "utf8");
+                assert.doesNotMatch(rawJson, /SECRET_PROMPT_DO_NOT_LEAK|KEEP_ME_SAFE|UNVERIFIED_EDIT/);
+            } finally {
+                if (child && child.exitCode === null && child.signalCode === null) try { child.kill("SIGKILL"); } catch {}
+                if (holdRes && !holdRes.writableEnded) holdRes.destroy();
+                server.closeAllConnections?.();
+                server.close();
+            }
+        }
+
+        const dir = scratch();
+        const stateDir = scratch();
+        const target = path.join(dir, "verify-int.mjs");
+        const pidFile = path.join(dir, "verify.pid");
+        const original = "export const val = 1;\n";
+        fs.writeFileSync(target, original);
+        const server = http.createServer((req, res) => {
+            req.resume();
+            req.on("end", () => {
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({
+                    choices: [{ finish_reason: "stop", message: { content: "```js\nexport const val = 2;\n```" } }],
+                    usage: { prompt_tokens: 12, completion_tokens: 4 },
+                }));
+            });
+        });
+        await new Promise((r) => server.listen(0, "127.0.0.1", r));
+        const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+        let verifyChild = null;
+        try {
+            const verify = `echo $$ > ${JSON.stringify(pidFile)} && exec sleep 20`;
+            verifyChild = spawn(
+                process.execPath,
+                [RUNNER, "transform", "--base-url", baseUrl, "--file", target, "--verify", verify, "--no-lock", "--prompt", "edit"],
+                { env: { ...process.env, PORTULAN_LOCAL_LLM_STATE_DIR: stateDir }, stdio: ["ignore", "pipe", "pipe"] },
+            );
+            let stderr = "";
+            verifyChild.stderr.on("data", (d) => { stderr += d.toString(); });
+            await waitFor(() => fs.existsSync(pidFile) && fs.readFileSync(pidFile, "utf8").trim() !== "", "verify started", 5000);
+            verifyChild.kill("SIGINT");
+            const code = await new Promise((r) => verifyChild.on("exit", r));
+            assert.equal(code, 2);
+            assert.equal(fs.readFileSync(target, "utf8"), original);
+            assert.match(stderr, /CANCELLED id=[^ ]+ mode=transform .*phase=verification signal=SIGINT .*rollback=restored provider-cancel=unknown in=\? out=\?/);
+            const recs = readLifecycleRecords({ stateDir, reconcile: false });
+            assert.equal(recs[0].phase, "verification");
+            assert.equal(recs[0].rollback, "restored");
+        } finally {
+            if (verifyChild && verifyChild.exitCode === null && verifyChild.signalCode === null) try { verifyChild.kill("SIGKILL"); } catch {}
+            server.closeAllConnections?.();
+            server.close();
+        }
+    });
+
+    test("read-only modes report not_applicable rollback on completion and cancellation and compose with #574 lock (#581)", async () => {
+        const stateDir = scratch();
+        const lockDir = scratch();
+        const slotDir = slot({ "a.md": "alpha text\n", "b.md": "beta text\n" });
+        let releaseHolder = null;
+        let callIndex = 0;
+        const server = http.createServer((req, res) => {
+            req.resume();
+            req.on("end", async () => {
+                if (req.url === "/v1/embeddings") {
+                    res.writeHead(200, { "Content-Type": "application/json" });
+                    res.end(JSON.stringify({ data: [{ index: 0, embedding: [1, 0] }, { index: 1, embedding: [0, 1] }], usage: { prompt_tokens: 7 } }));
+                    return;
+                }
+                callIndex += 1;
+                if (callIndex === 1) {
+                    await new Promise((r) => { releaseHolder = r; });
+                }
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({
+                    choices: [{ finish_reason: "stop", message: { content: "OK reply" } }],
+                    usage: { prompt_tokens: 15, completion_tokens: 5 },
+                }));
+            });
+        });
+        await new Promise((r) => server.listen(0, "127.0.0.1", r));
+        const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+        const env = { ...process.env, PORTULAN_LOCAL_LLM_STATE_DIR: stateDir, PORTULAN_LOCAL_LLM_LOCK_DIR: lockDir };
+        let holder = null;
+        let waiter = null;
+        let dedupChild = null;
+        try {
+            holder = spawn(process.execPath, [RUNNER, "chat", "--base-url", baseUrl, "--prompt", "first"], { env, stdio: ["ignore", "pipe", "pipe"] });
+            let hErr = "";
+            holder.stderr.on("data", (d) => { hErr += d.toString(); });
+            await waitFor(() => callIndex === 1, "holder acquired lock and started chat", 5000);
+
+            waiter = spawn(process.execPath, [RUNNER, "chat", "--base-url", baseUrl, "--prompt", "second"], { env, stdio: ["ignore", "pipe", "pipe"] });
+            let wErr = "";
+            waiter.stderr.on("data", (d) => { wErr += d.toString(); });
+            const lockFile = endpointLockPath(baseUrl, lockDir);
+            await waitFor(
+                () => readLifecycleRecords({ stateDir, reconcile: false }).some((r) => r.pid === waiter.pid && r.status === "started"),
+                "waiter lifecycle started",
+                5000,
+            );
+            await new Promise((r) => setTimeout(r, 50));
+
+            waiter.kill("SIGTERM");
+            const wCode = await new Promise((r) => waiter.on("exit", r));
+            assert.equal(wCode, 2, wErr);
+            assert.match(wErr, /CANCELLED id=[^ ]+ mode=chat .*phase=queued signal=SIGTERM .*rollback=not_applicable provider-cancel=unknown/);
+            assert.equal(fs.existsSync(lockFile), true, "cancelling queued caller must not remove holder lock");
+
+            releaseHolder();
+            releaseHolder = null;
+            const hCode = await new Promise((r) => holder.on("exit", r));
+            assert.equal(hCode, 0, hErr);
+            assert.match(hErr, /OK mode=chat .* spend=\$0\.00/);
+            assert.equal(fs.existsSync(lockFile), false, "holder cleaned up its own lock");
+
+            dedupChild = spawn(process.execPath, [RUNNER, "dedup", "--base-url", baseUrl, "--dir", slotDir], { env, stdio: ["ignore", "pipe", "pipe"] });
+            assert.equal(await new Promise((r) => dedupChild.on("exit", r)), 0);
+
+            const recs = readLifecycleRecords({ stateDir, reconcile: false });
+            const cancelled = recs.find((r) => r.status === "cancelled");
+            const completed = recs.filter((r) => r.status === "completed");
+            assert.ok(cancelled && cancelled.rollback === "not_applicable" && cancelled.phase === "queued");
+            assert.equal(completed.length, 2);
+            for (const c of completed) assert.equal(c.rollback, "not_applicable");
+        } finally {
+            if (releaseHolder) releaseHolder();
+            for (const p of [holder, waiter, dedupChild]) {
+                if (p && p.exitCode === null && p.signalCode === null) try { p.kill("SIGKILL"); } catch {}
+            }
+            server.closeAllConnections?.();
+            server.close();
+        }
+    });
+
+    test("SIGKILL leaves start record, reconcile marks dead PIDs orphaned safely, and records stay metadata-only and bounded (#581)", async () => {
+        const stateDir = scratch();
+        let reqStarted = false;
+        const server = http.createServer((req, res) => {
+            reqStarted = true;
+            req.resume();
+        });
+        await new Promise((r) => server.listen(0, "127.0.0.1", r));
+        const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+        let child = null;
+        try {
+            child = spawn(
+                process.execPath,
+                [RUNNER, "chat", "--base-url", baseUrl, "--no-lock", "--prompt", "CRASH_PROMPT_SECRET"],
+                { env: { ...process.env, PORTULAN_LOCAL_LLM_STATE_DIR: stateDir }, stdio: "ignore" },
+            );
+            await waitFor(() => reqStarted, "request started", 5000);
+            child.kill("SIGKILL");
+            await new Promise((r) => child.on("exit", r));
+
+            const rawRecords = readLifecycleRecords({ stateDir, reconcile: false });
+            assert.equal(rawRecords.length, 1);
+            assert.equal(rawRecords[0].status, "started");
+            assert.equal(rawRecords[0].terminalOutcome, null);
+
+            const liveAdapter = beginLifecycle({ mode: "adapter", model: "qwen", endpoint: baseUrl, phase: "generation", stateDir, reconcile: false });
+            const cliReconcile = spawnSync(process.execPath, [RUNNER, "lifecycle"], {
+                env: { ...process.env, PORTULAN_LOCAL_LLM_STATE_DIR: stateDir },
+                encoding: "utf8",
+            });
+            assert.equal(cliReconcile.status, 0, cliReconcile.stderr);
+            const parsed = JSON.parse(cliReconcile.stdout);
+            assert.equal(parsed.reconciled.length, 1);
+            assert.equal(parsed.reconciled[0].requestId, rawRecords[0].requestId);
+            assert.equal(parsed.reconciled[0].status, "orphaned");
+            assert.equal(parsed.reconciled[0].terminalOutcome, "orphaned");
+            assert.equal(parsed.reconciled[0].reason, "orphan_dead_pid");
+            assert.equal(parsed.reconciled[0].elapsedMs, null);
+            assert.equal(parsed.reconciled[0].providerCancellation, "unknown");
+            assert.deepEqual(parsed.reconciled[0].usage, { input: null, output: null, cached: null, reasoning: null });
+
+            const liveRec = parsed.records.find((r) => r.requestId === liveAdapter.id);
+            assert.equal(liveRec.status, "started", "live peer PID must not be marked orphaned");
+            liveAdapter.complete({ phase: "completed", rollback: "not_applicable" });
+
+            const boundedDir = scratch();
+            for (let i = 0; i < 6; i += 1) {
+                const lc = beginLifecycle({ mode: "adapter", model: "m", stateDir: boundedDir, maxRecords: 3, reconcile: false });
+                lc.complete({ rollback: "not_applicable" });
+            }
+            const remaining = fs.readdirSync(lifecycleDir(boundedDir)).filter((f) => f.endsWith(".json"));
+            assert.equal(remaining.length, 3);
+            assert.equal(lifecycleDir().startsWith(os.tmpdir()), true);
+            assert.match(formatCancelReceipt({ requestId: "r1", mode: "chat", model: "m", phase: "generation", signal: "SIGINT", reason: "interrupted", elapsedMs: 10, rollback: "not_applicable", providerCancellation: "unknown", usage: null }), /^CANCELLED id=r1 /);
+            assert.deepEqual(normalizeLifecycleUsage({ prompt_tokens: 5, completion_tokens_details: { reasoning_tokens: 9 } }), { input: 5, output: null, cached: null, reasoning: null });
+        } finally {
+            if (child && child.exitCode === null && child.signalCode === null) try { child.kill("SIGKILL"); } catch {}
+            server.closeAllConnections?.();
+            server.close();
+        }
     });
 });
