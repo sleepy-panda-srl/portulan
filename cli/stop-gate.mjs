@@ -370,6 +370,25 @@ export function workNotice({ stamp, directory, identity, answeredElsewhere = "",
         `and the next action. Five lines is enough; absent is not.${found}`;
 }
 
+function realDir(dir) {
+    try {
+        return fs.realpathSync(dir);
+    } catch {
+        return path.resolve(dir);
+    }
+}
+
+function holdsWorkspace(tree) {
+    try {
+        const root = realDir(tree.root);
+        if (!isInside(root, realDir(tree.workspace))) return false;
+        const file = fs.realpathSync(path.join(tree.workspace, "workspace.json"));
+        return isInside(root, file) && fs.statSync(file).isFile();
+    } catch {
+        return false;
+    }
+}
+
 function workProblems(tree) {
     const problems = [];
 
@@ -396,14 +415,7 @@ function workProblems(tree) {
     // `handoffPresent` first: `didWork()` runs git several times and may warn about a handoff that is not owed.
     const work = handoffPresent ? null : didWork(tree.root);
     if (work === true) {
-        const real = (dir) => {
-            try {
-                return fs.realpathSync(dir);
-            } catch {
-                return path.resolve(dir);
-            }
-        };
-        const answeredElsewhere = tree.origin === "session" && real(tree.root) !== real(REPO)
+        const answeredElsewhere = tree.origin === "session" && realDir(tree.root) !== realDir(REPO)
             ? ` — the tree this session worked in, not the one this hook was told (${REPO})`
             : "";
         const { recorded } = handoffs;
@@ -422,16 +434,24 @@ function workProblems(tree) {
     return { problems, handoffEnabled, handoffCleared: handoffPresent || work === false };
 }
 
-export async function runStopRecipe(recipe, execute = runRecipe) {
+export async function runStopRecipe(recipe, execute = runRecipe, tree = { root: REPO, workspace: WORKSPACE, origin: "told" }) {
+    const runRoot = tree?.root ?? REPO;
     const problem = text => ({ reason: "recipe", text: clipDiagnostic(text, STOP_RECIPE_BYTES) });
+    if (tree?.origin === "session" && realDir(runRoot) !== realDir(REPO) && !holdsWorkspace(tree)) {
+        const expected = path.join(path.relative(runRoot, tree.workspace) || ".", "workspace.json");
+        return problem(
+            `verify recipe \`${clipDiagnostic(recipe?.id ?? "default", 512)}\` could not run in ${clipDiagnostic(runRoot, 512)}: ` +
+                `the session's tree does not hold \`${clipDiagnostic(expected, 256)}\` — not falling back to ${clipDiagnostic(REPO, 512)}.`,
+        );
+    }
     if (!recipe || recipe.error) return {
         reason: "recipe",
         text: clipDiagnostic(`could not read the workspace's default verify recipe from ${clipDiagnostic(path.join(WORKSPACE, "workspace.json"), 512)}: ${clipDiagnostic(recipe?.error ?? "no runnable default", 4096)}. Nothing verified this work.`, STOP_RECIPE_BYTES),
     };
-    const label = clipDiagnostic(`verify recipe \`${clipDiagnostic(recipe.id, 512)}\` in ${clipDiagnostic(REPO, 512)}`, 1100);
+    const label = clipDiagnostic(`verify recipe \`${clipDiagnostic(recipe.id, 512)}\` in ${clipDiagnostic(runRoot, 512)}`, 1100);
     try {
         const diagnostics = stopDiagnostics();
-        const result = await execute(recipe, { root: REPO, env: process.env, timeout: recipe.timeout * 1000, mergeOutput: false, onOutput: diagnostics.add });
+        const result = await execute(recipe, { root: runRoot, env: process.env, timeout: recipe.timeout * 1000, mergeOutput: false, onOutput: diagnostics.add });
         if (result.outcome === "green") return null;
         const outcome = result.timedOut
             ? `could not run: timed out after ${clipDiagnostic(recipe.timeout, 64)} s — the gate could not judge`
@@ -450,7 +470,7 @@ async function collectProblems(tree, state, chain) {
     const recipeProblem = skip ? {
         reason: "recipe", charge: false, capped: recipeCapped,
         text: "verify recipe not rerun: this Stop is released at a refusal bound. No result was measured on this Stop; existing obligations remain unresolved. Run verification explicitly before claiming done.",
-    } : await runStopRecipe(defaultRecipe());
+    } : await runStopRecipe(defaultRecipe(), runRecipe, tree);
     return { ...work, problems: [...(recipeProblem ? [recipeProblem] : []), ...work.problems], recipeGreen: !skip && recipeProblem === null };
 }
 

@@ -729,19 +729,16 @@ describe("the manifest chooses whether and where this tree records handoffs", ()
         assert.equal(fs.existsSync(sentinel), false, "the payload's workspace must not choose a recipe to execute");
     });
 
-    test("unreadable or malformed session manifests still run the trusted recipe and return a bounded refusal", () => {
-        for (const broken of ["missing", "malformed"]) {
-            const { told, session } = twoTrees({ toldCarriesHandoff: false });
-            const sentinel = path.join(told, "trusted-recipe-ran.txt");
-            configure(told, (manifest) => { manifest.verify.recipes[0].run = 'touch "$PORTULAN_TEST_SENTINEL"'; });
-            const file = path.join(session, ".portulan", "workspace.json");
-            if (broken === "missing") fs.unlinkSync(file);
-            else fs.writeFileSync(file, "{");
-            const result = gate(told, `broken-session-policy-${broken}`, { PORTULAN_TEST_SENTINEL: sentinel }, { cwd: session });
-            assert.equal(result.decision, "block");
-            assert.match(result.reason, /record policy/);
-            assert.equal(fs.existsSync(sentinel), true, "record policy failure cannot skip the trusted recipe");
-        }
+    test("malformed session manifests still run the trusted recipe in the session tree and return a bounded refusal", () => {
+        const { told, session } = twoTrees({ toldCarriesHandoff: false });
+        const sentinel = path.join(session, "trusted-recipe-ran.txt");
+        configure(told, (manifest) => { manifest.verify.recipes[0].run = 'pwd > "$PORTULAN_TEST_SENTINEL"'; });
+        fs.writeFileSync(path.join(session, ".portulan", "workspace.json"), "{");
+        const result = gate(told, "broken-session-policy-malformed", { PORTULAN_TEST_SENTINEL: sentinel }, { cwd: session });
+        assert.equal(result.decision, "block");
+        assert.match(result.reason, /record policy/);
+        assert.equal(fs.existsSync(sentinel), true, "record policy failure cannot skip the trusted recipe");
+        assert.equal(fs.realpathSync(fs.readFileSync(sentinel, "utf8").trim()), fs.realpathSync(session));
     });
 
     test("a recipe-only release in a pushed no-series tree asks for a report, never a handoff", () => {
@@ -1324,4 +1321,69 @@ test("bumpChain follows stop_hook_active and is keyed to the tree, not the sessi
     } finally {
         fs.rmSync(dir, { recursive: true, force: true });
     }
+});
+
+describe("the verify recipe runs in the session's resolved worktree (#653)", () => {
+    const configure = (repo, edit) => {
+        const file = path.join(repo, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+        edit(manifest);
+        fs.writeFileSync(file, JSON.stringify(manifest));
+    };
+
+    test("runs and builds in the session worktree, never judging or mutating the primary checkout", () => {
+        const { told, session, stamp } = twoTrees({ toldCarriesHandoff: false, sessionDirty: false });
+        fs.writeFileSync(path.join(session, ".portulan", "handoffs", `${stamp}-own.md`), "open\n");
+        const script = 'printf "%s\\n" "$PWD" > .verify-ran; test -f ok.txt';
+        configure(told, (m) => { m.verify.recipes[0].run = script; });
+
+        fs.writeFileSync(path.join(session, "ok.txt"), "green in session\n");
+        const green = gate(told, "wt-green-told-red", {}, { cwd: session });
+        assert.equal(green.decision, "allow");
+        assert.equal(fs.existsSync(path.join(told, ".verify-ran")), false, "primary checkout must not run the recipe");
+        assert.equal(
+            fs.realpathSync(fs.readFileSync(path.join(session, ".verify-ran"), "utf8").trim()),
+            fs.realpathSync(session),
+        );
+
+        fs.unlinkSync(path.join(session, "ok.txt"));
+        fs.writeFileSync(path.join(told, "ok.txt"), "green in told only\n");
+        const red = gate(told, "wt-red-told-green", {}, { cwd: session });
+        assert.equal(red.decision, "block");
+        assert.match(red.reason, /RED \(exit 1\)/);
+        assert.ok(red.reason.includes(fs.realpathSync(session)), `expected session tree in reason: ${red.reason}`);
+        assert.doesNotMatch(red.reason, new RegExp(fs.realpathSync(told).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    });
+
+    test("refuses without falling back to the primary checkout when the worktree holds no workspace or script", () => {
+        const { told, session, stamp } = twoTrees({ toldCarriesHandoff: false, sessionDirty: false });
+        fs.writeFileSync(path.join(session, ".portulan", "handoffs", `${stamp}-own.md`), "open\n");
+        const toldSentinel = path.join(scratch(), "told-fallback");
+        const verifyRel = path.join(".portulan", "verify");
+        fs.mkdirSync(path.join(told, verifyRel), { recursive: true });
+        fs.writeFileSync(
+            path.join(told, verifyRel, "check.sh"),
+            `#!/usr/bin/env bash\ntouch '${toldSentinel}'\n`,
+            { mode: 0o755 },
+        );
+        configure(told, (m) => { m.verify.recipes[0].run = "./.portulan/verify/check.sh"; });
+
+        const missingScript = gate(told, "wt-missing-script", {}, { cwd: session });
+        assert.equal(missingScript.decision, "block");
+        assert.match(missingScript.reason, /could not run/);
+        assert.ok(missingScript.reason.includes(fs.realpathSync(session)));
+        assert.equal(fs.existsSync(toldSentinel), false, "missing worktree script must not fall back to told");
+
+        fs.unlinkSync(path.join(session, ".portulan", "workspace.json"));
+        const missingWs = gate(told, "wt-missing-workspace", {}, { cwd: session });
+        assert.equal(missingWs.decision, "block");
+        assert.match(missingWs.reason, /does not hold/);
+        assert.ok(missingWs.reason.includes(fs.realpathSync(session)));
+        assert.equal(fs.existsSync(toldSentinel), false, "missing worktree workspace must not fall back to told");
+
+        const outsideWs = gate(told, "wt-abs-workspace", { PORTULAN_WORKSPACE: path.join(told, ".portulan") }, { cwd: session });
+        assert.equal(outsideWs.decision, "block");
+        assert.match(outsideWs.reason, /does not hold/);
+        assert.equal(fs.existsSync(toldSentinel), false);
+    });
 });
