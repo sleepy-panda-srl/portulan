@@ -9,29 +9,30 @@ import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 import { HTML_ENTITIES } from "./html-entities.mjs";
+import { CannotOutline, outlineCs, outlinePy } from "./symbols-code.mjs";
+export { CannotOutline, outlineCs, outlinePy };
 
 const USAGE = "usage: node cli/symbols.mjs <file>... | <file.md>#<heading>... | --find <name>...";
 
 /** Past this many characters a line's code is cut with `…`, so an outline stays one line per symbol. */
 const WIDTH = 110;
 
-export class CannotOutline extends Error {}
-
-/** `js`, `sh`, `md`, or null for a file this does not read: by extension, then by a `#!` line. */
+/** Language by extension, then shebang; null where unsupported. */
 export function languageOf(file, firstLine = "") {
     const ext = path.extname(file);
     if ([".mjs", ".js", ".cjs"].includes(ext)) return "js";
     if ([".sh", ".bash"].includes(ext)) return "sh";
     if ([".md", ".markdown"].includes(ext)) return "md";
+    if (ext === ".cs") return "cs";
+    if (ext === ".py") return "py";
     if (ext !== "" || !firstLine.startsWith("#!")) return null;
     if (/\bnode\b/.test(firstLine)) return "js";
+    if (/\bpython[0-9.]*\b/.test(firstLine)) return "py";
     if (/\b(ba|da|z)?sh\b/.test(firstLine)) return "sh";
     return null;
 }
 
-// ===========================================================================================
-// 1. JavaScript: tokens, brackets, statements
-// ===========================================================================================
+// JavaScript tokens, brackets and statements.
 
 const KEYWORDS_BEFORE_REGEX = new Set(["return", "typeof", "instanceof", "in", "of", "new", "delete", "void",
     "throw", "case", "default", "do", "else", "yield", "await"]);
@@ -1001,13 +1002,13 @@ export function outlineFile(file, shown = file, src = null) {
         throw new CannotOutline(`cannot read ${shown}: ${error.code ?? error.message}`);
     }
     const language = languageOf(file, src.split("\n", 1)[0]);
-    if (!language) throw new CannotOutline(`${shown} is not JavaScript, shell or Markdown; read it whole`);
+    if (!language) throw new CannotOutline(`${shown} has no supported outline; use a bounded declaration search (rg -n) to select a span`);
     try {
-        const outline = language === "js" ? outlineJs(src) : language === "sh" ? outlineSh(src) : outlineMd(src);
+        const outline = { js: outlineJs, sh: outlineSh, md: outlineMd, cs: outlineCs, py: outlinePy }[language](src);
         check(outline);
         return outline;
     } catch (error) {
-        if (error instanceof CannotOutline) throw new CannotOutline(`${shown}: ${error.message}; read it as usual`);
+        if (error instanceof CannotOutline) throw new CannotOutline(`${shown}: ${error.message}; use a bounded declaration search (rg -n)`);
         throw error;
     }
 }
@@ -1018,7 +1019,7 @@ function check({ lines, entries }) {
         let previous = null;
         for (const e of list) {
             if (!(e.start >= lo && e.start <= e.end && e.end <= hi)) throw new CannotOutline(`a span ${e.start}-${e.end} outside ${lo}-${hi}`);
-            if (!e.section && previous && e.start <= previous.end) throw new CannotOutline(`spans ${previous.start}-${previous.end} and ${e.start}-${e.end} overlap`);
+            if (!e.section && previous && e.start <= previous.end && !(Number.isInteger(previous.endOffset) && previous.endOffset <= e.startOffset)) throw new CannotOutline(`spans ${previous.start}-${previous.end} and ${e.start}-${e.end} overlap`);
             if (!e.section) previous = e;
             walk(e.children, e.start, e.end);
         }
@@ -1035,7 +1036,7 @@ export function render(file, { lines, bytes, entries }) {
         for (const e of list) {
             const anchor = e.anchor === undefined ? "" : ` #${e.anchor}`;
             const size = e.bytes === undefined ? "" : ` (${grouped(e.bytes)} B)`;
-            out.push(`${indent}${e.start === e.end ? e.start : `${e.start}-${e.end}`} ${e.text}${anchor}${size}`);
+            out.push(`${indent}${e.start === e.end && !e.range ? e.start : `${e.start}-${e.end}`} ${e.text}${anchor}${size}`);
             walk(e.children, `${indent}  `);
         }
     };
@@ -1043,7 +1044,7 @@ export function render(file, { lines, bytes, entries }) {
     return out;
 }
 
-/** Tracked JavaScript and shell files, by extension or `#!`, as paths relative to `cwd`. */
+/** Tracked supported code, relative to `cwd`. */
 export function trackedCode(cwd) {
     let listed;
     try {
@@ -1089,7 +1090,7 @@ export function find(cwd, name) {
             for (const e of list) {
                 const names = Array.isArray(e.name) ? e.name : e.name ? [e.name] : [];
                 if (names.includes(name) || (owner && names.some((n) => `${owner}.${n}` === name))) {
-                    hits.push(`${file}:${e.start === e.end ? e.start : `${e.start}-${e.end}`} ${e.text}`);
+                    hits.push(`${file}:${e.start === e.end && !e.range ? e.start : `${e.start}-${e.end}`} ${e.text}`);
                 }
                 walk(e.children, names[0] ?? null);
             }

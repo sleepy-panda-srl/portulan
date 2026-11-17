@@ -30,7 +30,8 @@ test("the tracked code is found, and every file of it outlines", () => {
 // A script parses no `import.meta`, top-level `await` or lone class member, so each span is adapted to parse alone.
 function compileError(language, text, member, own) {
     try {
-        if (language !== "js") {
+        if (language !== "js" && language !== "sh") return null;
+        if (language === "sh") {
             execFileSync("bash", ["-n"], { input: text, stdio: ["pipe", "ignore", "pipe"] });
             return null;
         }
