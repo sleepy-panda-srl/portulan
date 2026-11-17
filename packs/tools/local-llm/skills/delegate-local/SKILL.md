@@ -65,9 +65,10 @@ parent then touches up, adds a whole request. So:
    `node <plugin root>/cli/symbols.mjs <file>` and pass `--file <file> --lines <start>-<end>` (to
    `transform`, `chat` and `summarize` alike) rather than the whole file. `cli/` ships with the
    repository-root plugin and not in the `packs/` payload; there, find the span's line numbers with
-   `grep -n`. Prefill scales with prompt bytes: proposal 0039 measured prompts of about 400–470 tokens
-   prefilling in 0.85–1.88 s, and the `32 KB` default of `--max-input-bytes` (about 8k tokens) is a
-   ceiling, not a measured latency.
+   `grep -n`. To pass read-only helper signatures without retyping them, add repeatable
+   `--context <a>-<b>` or `--context-file <path>[:a-b]`. Prefill scales with prompt bytes: proposal
+   0039 measured prompts of about 400–470 tokens prefilling in 0.85–1.88 s, and the `32 KB` default of
+   `--max-input-bytes` (about 8k tokens) is a ceiling, not a measured latency.
 2. **Use an earned role.** Code transforms and strict syntax use `--role code`
    (`qwen/qwen3.8-27b`) at `--effort low`, supported by the
    [captured A/B](../../../../../evals/ab/local-worker.md)'s L5/H5 code cell. Shared `--role prose`
@@ -77,8 +78,10 @@ parent then touches up, adds a whole request. So:
    candidate with `--model <id>` and no `--role`; that is deliberate evaluation, not earned routing.
    Screen a candidate with `node <runner> eval --model <id>`; it needs `cli/` beside `packs/` and exits
    `2` without it. Passing a screen never enables a role.
-3. **Gate every edit.** `node <runner> transform --file <path> --verify "<cmd>" --prompt "<instruction>"`,
-   where `--verify` is required. The runner applies the edit, runs `<cmd>`, retries with the end of its
+3. **Gate every edit.** `node <runner> transform --file <path> --verify "<cmd>" --prompt-file p.txt`
+   (or `--prompt "<instruction>"`), where `--verify` is required; to add a test or a function without
+   re-emitting anchor code, use `--insert-after <line>` (with optional `--context <a>-<b>`), e.g.
+   `--insert-after 120 --context 10-40 --prompt-file spec.txt`. The runner applies the edit, runs `<cmd>`, retries with the end of its
    output on exit `1`, and keeps the edit only on exit `0`; any other exit, and SIGINT, SIGTERM or
    SIGHUP, restores the file byte for byte. It is a rollback, not an atomic write: any other signal that
    ends the runner, SIGKILL and SIGQUIT among them, or a power loss between the edit and its verdict

@@ -14,6 +14,7 @@ import {
     AB_RECORD,
     AB_REGISTER,
     AB_TASKS,
+    acquireEndpointLock,
     assertInputBudget,
     assertLoopback,
     buildPrompt,
@@ -22,6 +23,7 @@ import {
     CouldNotRunError,
     currentScreen,
     DEFAULT_DEDUP_THRESHOLD,
+    endpointLockPath,
     extractFencedCode,
     EARNED_ROUTING,
     operationalModel,
@@ -36,6 +38,7 @@ import {
     publishAb,
     RailError,
     renderAbRegister,
+    resolveInstruction,
     RESTORE_SIGNALS,
     ROLE_MODELS,
     runHostTurn,
@@ -44,9 +47,11 @@ import {
     readSlot,
     runOfflineVerify,
     runRoleEval,
+    spliceInsertion,
     stripThinking,
     TASK_ROLES,
     turnSeed,
+    usualBlankRun,
     verifyAb,
     verifyAbRecord,
     verifyGatedTransform,
@@ -519,6 +524,251 @@ describe("arguments", () => {
         fs.writeFileSync(file, "one\ntwo\nthree\nfour\n");
         assert.equal(buildPrompt({ _: ["chat"], prompt: "Summarize", file, lines: "2-3" }), "Summarize\n\n```\ntwo\nthree\n```");
         assert.throws(() => buildPrompt({ _: ["chat"], prompt: "x", lines: "1-2" }), CouldNotRunError);
+    });
+});
+
+describe("--prompt-file, --context, --insert-after and endpoint locking", () => {
+    test("transform --prompt-file sends file bytes unchanged and stdin - works; combining with --prompt exits 2", async () => {
+        const dir = scratch();
+        const promptFile = path.join(dir, "prompt.txt");
+        const exactPrompt = "Replace '\\\"$HOME\"' and (char)47 verbatim.\nLine 2 with $DOLLAR and `backticks`.";
+        fs.writeFileSync(promptFile, exactPrompt);
+        const target = path.join(dir, "Sample.cs");
+        fs.writeFileSync(target, "export const a = 1;\n");
+
+        const { baseUrl, run, close } = await recordingServer();
+        try {
+            const bodies = await run(
+                0,
+                "transform",
+                "--base-url",
+                baseUrl,
+                "--file",
+                target,
+                "--verify",
+                "true",
+                "--prompt-file",
+                promptFile,
+            );
+            assert.equal(bodies.length, 1);
+            assert.ok(bodies[0].messages[1].content.startsWith(`Instruction: ${exactPrompt}\n\n`));
+
+            await run(2, "transform", "--base-url", baseUrl, "--file", target, "--verify", "true", "--prompt", "hi", "--prompt-file", promptFile);
+            await run(2, "chat", "--base-url", baseUrl, "--prompt", "hi", "--prompt-file", promptFile);
+            const missingFlag = await captured(() => main(["transform", "--file", target, "--verify", "true"]));
+            assert.equal(missingFlag.code, 2);
+            assert.match(missingFlag.err.join("\n"), /--prompt-file/);
+            const help = await captured(() => main(["--help"]));
+            assert.equal(help.code, 0);
+            assert.match(help.out.join("\n"), /--prompt-file/);
+        } finally {
+            close();
+        }
+
+        assert.equal(resolveInstruction({ promptFile: "-", readFileFn: undefined }, { readStdinFn: () => "from stdin\n$x" }), "from stdin\n$x");
+        const stdinTarget = path.join(dir, "stdin.mjs");
+        fs.writeFileSync(stdinTarget, "export const a = 1;\n");
+        const stdinFail = spawnSync(
+            process.execPath,
+            [RUNNER, "transform", "--base-url", "https://api.example.com/v1", "--file", stdinTarget, "--verify", "true", "--prompt-file", "-"],
+            { input: "stdin spec $HOME '\\\"x\\\"", encoding: "utf8" },
+        );
+        assert.equal(stdinFail.status, 1);
+        assert.match(stdinFail.stderr, /Refused non-loopback endpoint/);
+    });
+
+    test("--context and --context-file send read-only slices, keep outside lines byte-identical, and count against --max-input-bytes", async () => {
+        const dir = scratch();
+        const target = path.join(dir, "worker.mjs");
+        const helper = path.join(dir, "helper.mjs");
+        const initial = "export function sig(a, b) {\n    return a + b;\n}\nexport function target() {\n    return 1;\n}\n";
+        fs.writeFileSync(target, initial);
+        fs.writeFileSync(helper, "export const FACTOR = 10;\nexport const UNUSED = 99;\n");
+
+        const { baseUrl, sent, run, close } = await recordingServer();
+        try {
+            const bodies = await run(
+                0,
+                "transform",
+                "--base-url",
+                baseUrl,
+                "--file",
+                target,
+                "--lines",
+                "4-6",
+                "--context",
+                "1-3",
+                "--context-file",
+                `${helper}:1-1`,
+                "--verify",
+                "true",
+                "--prompt",
+                "update target",
+            );
+            assert.equal(bodies.length, 1);
+            const promptText = bodies[0].messages[1].content;
+            assert.match(promptText, /Reference context \(read-only, do NOT return these lines — worker\.mjs lines 1-3\):\n```\nexport function sig\(a, b\) \{\n    return a \+ b;\n\}\n```/);
+            assert.match(promptText, /Reference context \(read-only, do NOT return these lines — helper\.mjs lines 1-1\):\n```\nexport const FACTOR = 10;\n```/);
+            assert.doesNotMatch(promptText, /UNUSED/);
+            assert.equal(
+                fs.readFileSync(target, "utf8"),
+                "export function sig(a, b) {\n    return a + b;\n}\nexport const a = 2;\n",
+            );
+
+            const sentBefore = sent.length;
+            await run(
+                1,
+                "transform",
+                "--base-url",
+                baseUrl,
+                "--file",
+                target,
+                "--lines",
+                "4-4",
+                "--context",
+                "1-3",
+                "--max-input-bytes",
+                "120",
+                "--verify",
+                "true",
+                "--prompt",
+                "update",
+            );
+            assert.equal(sent.length, sentBefore);
+            await run(2, "chat", "--base-url", baseUrl, "--context", "1-2", "--prompt", "hi");
+        } finally {
+            close();
+        }
+    });
+
+    test("--insert-after and --insert-before keep original non-blank lines identical and enforce seam blank lines", async () => {
+        const dir = scratch();
+        const pyFile = path.join(dir, "sample.py");
+        fs.writeFileSync(pyFile, "def first():\n    return 1\n\n\ndef second():\n    return 2\n");
+        assert.equal(usualBlankRun(fs.readFileSync(pyFile, "utf8").split("\n")), 2);
+
+        const prompts = [];
+        const res = await verifyGatedTransform({
+            filePath: pyFile,
+            insertAfter: 2,
+            instruction: "add middle()",
+            verifyCmd: "true",
+            chatFn: async ({ messages }) => {
+                prompts.push(messages);
+                return { content: "```python\n\n\ndef middle():\n    return 42\n\n\n```", promptTokens: 20, completionTokens: 10, totalMs: 50 };
+            },
+            execFn: () => ({ status: 0, stdout: "", stderr: "" }),
+        });
+        assert.equal(res.ok, true);
+        assert.match(prompts[0][0].content, /Never repeat existing anchor lines/);
+        assert.match(prompts[0][1].content, /Insertion point: immediately after line 2/);
+        assert.equal(
+            fs.readFileSync(pyFile, "utf8"),
+            "def first():\n    return 1\n\n\ndef middle():\n    return 42\n\n\ndef second():\n    return 2\n",
+        );
+
+        const custom = spliceInsertion(["a", "", "b"], 1, "\n\n    x\n\n", 1);
+        assert.deepEqual(custom, ["a", "", "    x", "", "b"]);
+        assert.deepEqual(spliceInsertion(["a", "", "b"], 1, "\n\nx\n\n", 0), ["a", "x", "b"]);
+        assert.deepEqual(spliceInsertion(["a", "b"], 0, "\n\ntop\n\n", 2), ["top", "", "", "a", "b"]);
+
+        const jsFile = path.join(dir, "mod.mjs");
+        const initialJs = "const a = 1;\n\nconst c = 3;\n";
+        fs.writeFileSync(jsFile, initialJs);
+        const beforeRes = await verifyGatedTransform({
+            filePath: jsFile,
+            insertBefore: 3,
+            seamBlankLines: 1,
+            instruction: "add b",
+            verifyCmd: "true",
+            chatFn: async () => ({ content: "\nconst b = 2;\n\n", promptTokens: 10, completionTokens: 5, totalMs: 20 }),
+            execFn: () => ({ status: 0 }),
+        });
+        assert.equal(beforeRes.ok, true);
+        assert.equal(fs.readFileSync(jsFile, "utf8"), "const a = 1;\n\nconst b = 2;\n\nconst c = 3;\n");
+
+        const parsed = parseArgs(["transform", "--file", jsFile, "--verify", "true", "--prompt", "x", "--insert-after", "2", "--seam-blank-lines", "0"]);
+        assert.equal(parsed.insertAfter, 2);
+        assert.equal(parsed.seamBlankLines, 0);
+        assert.equal(await main(["transform", "--file", jsFile, "--verify", "true", "--prompt", "x", "--lines", "1-1", "--insert-after", "1"]), 2);
+        assert.equal(await main(["transform", "--file", jsFile, "--verify", "true", "--prompt", "x", "--seam-blank-lines", "1"]), 2);
+        assert.equal(await main(["chat", "--insert-after", "1", "--prompt", "x"]), 2);
+    });
+
+    test("concurrent runner processes serialise per endpoint, exclude queue wait from deadline, recover dead locks, and allow --no-lock", async () => {
+        const lockDir = scratch();
+        let active = 0;
+        let maxConcurrent = 0;
+        const timeline = [];
+        const server = http.createServer((req, res) => {
+            active += 1;
+            maxConcurrent = Math.max(maxConcurrent, active);
+            const id = timeline.length + 1;
+            const started = Date.now();
+            setTimeout(() => {
+                active -= 1;
+                timeline.push({ id, started, ended: Date.now() });
+                res.setHeader("Content-Type", "application/json");
+                res.end(
+                    JSON.stringify({
+                        choices: [{ finish_reason: "stop", message: { content: "```js\nexport const x = 2;\n```" } }],
+                        usage: { prompt_tokens: 10, completion_tokens: 5 },
+                    }),
+                );
+            }, 140);
+        });
+        await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+        const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+        const runCli = (extra = []) =>
+            new Promise((resolve, reject) => {
+                const child = spawn(
+                    process.execPath,
+                    [RUNNER, "chat", "--base-url", baseUrl, "--prompt", "hi", ...extra],
+                    { env: { ...process.env, PORTULAN_LOCAL_LLM_LOCK_DIR: lockDir }, stdio: ["ignore", "pipe", "pipe"] },
+                );
+                let stdout = "";
+                let stderr = "";
+                child.stdout.setEncoding("utf8").on("data", (c) => (stdout += c));
+                child.stderr.setEncoding("utf8").on("data", (c) => (stderr += c));
+                child.on("error", reject);
+                child.on("close", (status) => resolve({ status, stdout, stderr }));
+            });
+        try {
+            const first = runCli();
+            await new Promise((resolve) => setTimeout(resolve, 25));
+            const second = runCli();
+            const [r1, r2] = await Promise.all([first, second]);
+            assert.equal(r1.status, 0, r1.stderr);
+            assert.equal(r2.status, 0, r2.stderr);
+            assert.equal(maxConcurrent, 1);
+            assert.equal(timeline.length, 2);
+            assert.ok(timeline[1].started >= timeline[0].ended - 5, JSON.stringify(timeline));
+            assert.doesNotMatch(r1.stderr, /queued=/);
+            assert.match(r2.stderr, /waited \d+ms for endpoint lock/);
+            assert.match(r2.stderr, / queued=\d+ms spend=\$0\.00$/m);
+            const r2ReceiptLine = r2.stderr.trim().split("\n").find((l) => l.startsWith("OK "));
+            const parsed = receiptOf(r2ReceiptLine);
+            assert.ok(parsed && parsed.time >= 100 && parsed.time < 250, r2ReceiptLine);
+
+            const lockFile = endpointLockPath(baseUrl.replace("127.0.0.1", "localhost"), lockDir);
+            fs.writeFileSync(lockFile, JSON.stringify({ pid: 99999999, startedAt: Date.now() - 10_000, endpoint: baseUrl }));
+            const recovered = await runCli();
+            assert.equal(recovered.status, 0, recovered.stderr);
+            assert.equal(fs.existsSync(lockFile), false);
+
+            maxConcurrent = 0;
+            const [p1, p2] = await Promise.all([runCli(["--no-lock"]), runCli(["--no-lock"])]);
+            assert.equal(p1.status, 0);
+            assert.equal(p2.status, 0);
+            assert.equal(maxConcurrent, 2);
+        } finally {
+            server.close();
+        }
+
+        const beforeListeners = listening();
+        const lockOnly = await acquireEndpointLock("http://127.0.0.1:43210/v1", { lockDir });
+        lockOnly.release();
+        assert.deepEqual(listening(), beforeListeners);
     });
 });
 
