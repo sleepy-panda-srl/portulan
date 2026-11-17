@@ -8,7 +8,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { bumpChain, bumpCount, clearReason, today, verdict, runStopRecipe, REASONS, MAX_BLOCKS, MAX_CHAIN_BLOCKS, MAX_TOTAL_BLOCKS } from "./stop-gate.mjs";
+import { bumpChain, bumpCount, clearReason, today, verdict, runStopRecipe, treeFingerprint, REASONS, MAX_BLOCKS, MAX_CHAIN_BLOCKS, MAX_TOTAL_BLOCKS } from "./stop-gate.mjs";
 import { readStopPolicy, DEFAULT_STOP_TIMEOUT, MAX_STOP_TIMEOUT } from "./stop-policy.mjs";
 
 // `./stop-gate.mjs` imports `./recipe-set.mjs`, which can read the host's installed-plugin record: point it at none.
@@ -1385,5 +1385,155 @@ describe("the verify recipe runs in the session's resolved worktree (#653)", () 
         assert.equal(outsideWs.decision, "block");
         assert.match(outsideWs.reason, /does not hold/);
         assert.equal(fs.existsSync(toldSentinel), false);
+    });
+});
+
+describe("per-recipe stopTimeout, verify.stop selection, and unchanged-tree skip (#652)", () => {
+    const configure = (repo, edit) => {
+        const file = path.join(repo, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+        edit(manifest);
+        fs.writeFileSync(file, JSON.stringify(manifest));
+    };
+
+    test("per-recipe stopTimeout and verify.stop validate spec 2.17 and precedence", () => {
+        const policy = readStopPolicy({
+            portulan: { spec: "2.17" },
+            verify: {
+                default: "full",
+                stop: "quick",
+                stopTimeout: 180,
+                recipes: [
+                    { id: "full", run: "npm test", stopTimeout: 300 },
+                    { id: "quick", run: "npm run lint", stopTimeout: 25 },
+                ],
+            },
+        });
+        assert.equal(policy.gateId, "quick");
+        assert.equal(policy.seconds, 25);
+        assert.equal(policy.declared, true);
+        assert.equal(policy.source, "recipe");
+
+        const fallback = readStopPolicy({
+            portulan: { spec: "2.17" },
+            verify: {
+                default: "full",
+                stop: "quick",
+                stopTimeout: 180,
+                recipes: [
+                    { id: "full", run: "npm test", stopTimeout: 300 },
+                    { id: "quick", run: "npm run lint" },
+                ],
+            },
+        });
+        assert.equal(fallback.gateId, "quick");
+        assert.equal(fallback.seconds, 180);
+        assert.equal(fallback.source, "verify");
+
+        assert.throws(
+            () => readStopPolicy({ portulan: { spec: "2.16" }, verify: { default: "a", stop: "a", recipes: [{ id: "a", run: "true" }] } }),
+            /2\.17/,
+        );
+        assert.throws(
+            () => readStopPolicy({ portulan: { spec: "2.16" }, verify: { default: "a", recipes: [{ id: "a", run: "true", stopTimeout: 10 }] } }),
+            /2\.17/,
+        );
+        assert.throws(
+            () => readStopPolicy({ portulan: { spec: "2.17" }, verify: { default: "a", stop: "missing", recipes: [{ id: "a", run: "true" }] } }),
+            /not among the declared recipes/,
+        );
+        assert.throws(
+            () => readStopPolicy({ portulan: { spec: "2.17" }, verify: { default: "a", recipes: [{ id: "a", run: "true", stopTimeout: 0 }] } }),
+            /stopTimeout/,
+        );
+    });
+
+    test("verify.stop runs the shorter Stop recipe instead of verify.default and reports which recipe ran", () => {
+        const repo = rebaseMerged();
+        fs.writeFileSync(path.join(repo, ".portulan/handoffs", `${today()}-open.md`), "Open work\n");
+        const fullMarker = path.join(scratch(), "full-ran");
+        const fastMarker = path.join(scratch(), "fast-ran");
+        configure(repo, (m) => {
+            m.portulan = { spec: "2.17" };
+            m.verify = {
+                default: "full",
+                stop: "fast",
+                recipes: [
+                    { id: "full", run: `touch '${fullMarker}'; exit 1`, stopTimeout: 300 },
+                    { id: "fast", run: `touch '${fastMarker}'; exit 1`, stopTimeout: 12 },
+                ],
+            };
+        });
+        const res = gate(repo, "stop-recipe-alias");
+        assert.equal(res.decision, "block");
+        assert.equal(fs.existsSync(fastMarker), true);
+        assert.equal(fs.existsSync(fullMarker), false);
+        assert.match(res.reason, /verify recipe `fast` \(Stop recipe; default `full`\)/);
+        assert.match(res.reason, /RED \(exit 1\)/);
+    });
+
+    test("a recipe timed out on an unchanged tree is not rerun on the next block of the same turn, and clears on edits or new turns", () => {
+        const repo = rebaseMerged();
+        fs.writeFileSync(path.join(repo, ".portulan/handoffs", `${today()}-open.md`), "Open work\n");
+        const marker = path.join(scratch(), "runs");
+        configure(repo, (m) => {
+            m.portulan = { spec: "2.17" };
+            m.verify = {
+                default: "slow",
+                recipes: [{ id: "slow", run: `echo run >> '${marker}'; sleep 5`, stopTimeout: 1 }],
+            };
+        });
+        fs.writeFileSync(path.join(repo, "tracked.txt"), "initial\n");
+
+        const first = gate(repo, "unchanged-skip", {}, { cwd: repo, stop_hook_active: false });
+        assert.equal(first.decision, "block");
+        assert.match(first.reason, /timed out after 1 s/);
+        assert.equal(fs.readFileSync(marker, "utf8").trim().split("\n").length, 1);
+
+        const second = gate(repo, "unchanged-skip", {}, { cwd: repo, stop_hook_active: true });
+        assert.equal(second.decision, "block");
+        assert.match(second.reason, /not rerun on this unchanged tree: timed out after 1 s/);
+        assert.equal(fs.readFileSync(marker, "utf8").trim().split("\n").length, 1);
+
+        fs.writeFileSync(path.join(repo, "tracked.txt"), "edited in turn\n");
+        const edited = gate(repo, "unchanged-skip", {}, { cwd: repo, stop_hook_active: true });
+        assert.equal(edited.decision, "block");
+        assert.match(edited.reason, /timed out after 1 s/);
+        assert.doesNotMatch(edited.reason, /not rerun/);
+        assert.equal(fs.readFileSync(marker, "utf8").trim().split("\n").length, 2);
+
+        const capped = gate(repo, "unchanged-skip", {}, { cwd: repo, stop_hook_active: true });
+        assert.equal(capped.decision, "allow");
+        assert.match(capped.stderr, /not rerun/);
+        assert.equal(fs.readFileSync(marker, "utf8").trim().split("\n").length, 2);
+
+        const newTurn = gate(repo, "unchanged-turn-reset", {}, { cwd: repo, stop_hook_active: false });
+        assert.equal(newTurn.decision, "block");
+        assert.doesNotMatch(newTurn.reason, /not rerun on this unchanged tree/);
+        assert.equal(fs.readFileSync(marker, "utf8").trim().split("\n").length, 3);
+    });
+
+    test("treeFingerprint detects content edits, untracked files, and returns null outside git", async () => {
+        const repo = rebaseMerged();
+        const f1 = treeFingerprint(repo);
+        assert.ok(typeof f1 === "string" && f1.length === 64);
+        assert.equal(treeFingerprint(repo), f1);
+        fs.writeFileSync(path.join(repo, "untracked.txt"), "one\n");
+        const f2 = treeFingerprint(repo);
+        assert.notEqual(f2, f1);
+        fs.writeFileSync(path.join(repo, "untracked.txt"), "two\n");
+        assert.notEqual(treeFingerprint(repo), f2);
+        assert.equal(treeFingerprint(scratch()), null);
+
+        let calls = 0;
+        const exec = async () => { calls += 1; return { outcome: "green" }; };
+        const res = await runStopRecipe(
+            { id: "r", run: "true", timeout: 10 },
+            exec,
+            { root: repo, workspace: path.join(repo, ".portulan"), origin: "told" },
+            { stopHookActive: true, fingerprint: null, timeoutDir: scratch(), durationDir: scratch() },
+        );
+        assert.equal(res, null);
+        assert.equal(calls, 1);
     });
 });

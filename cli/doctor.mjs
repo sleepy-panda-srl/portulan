@@ -6,7 +6,7 @@
 // Exit 0 every workspace validates · 1 at least one does not · 2 could not run.
 
 import { readContextCap, contextCaps, contextCapLines } from "./ritual-contexts.mjs";
-import { readStopPolicy } from "./stop-policy.mjs";
+import { readStopPolicy, readRecipeDuration } from "./stop-policy.mjs";
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
@@ -839,6 +839,7 @@ export async function inspect(workspaceDir, options = {}) {
             ["spend", 12, workspace.spend],
             ["spend.restart", 13, workspace.spend?.restart],
             ["spend.resume", 16, workspace.spend?.resume],
+            ["verify.stop", 17, workspace.verify?.stop],
             ["handoffs.series", 15, workspace.handoffs?.series],
             ["handoffs.index.budget", 15, workspace.handoffs?.index?.budget],
         ]) {
@@ -850,6 +851,15 @@ export async function inspect(workspaceDir, options = {}) {
                 );
             }
         }
+        (workspace.verify?.recipes ?? []).forEach((recipe, i) => {
+            if (major === 2 && minor < 17 && recipe?.stopTimeout !== undefined) {
+                fail(
+                    "schema",
+                    `\`verify.recipes[${i}].stopTimeout\` is Workspace Definition 2.17's, and this manifest declares ${major}.${minor}, ` +
+                        "whose validator refuses it as an unknown key. Declare 2.17, or remove the key",
+                );
+            }
+        });
     }
 
     const errors = validate(schema, workspace);
@@ -986,7 +996,10 @@ export async function inspect(workspaceDir, options = {}) {
     });
 
     // ---------------------------------------------------------------- cross-field
-    try { readStopPolicy(workspace); } catch (error) { fail("cross", error.message); }
+    const gateKeyFailure = findings.some((f) => f.check === "schema" && /verify\.(?:stop|recipes\[\d+\]\.stopTimeout)/.test(f.message));
+    if (!gateKeyFailure) {
+        try { readStopPolicy(workspace); } catch (error) { fail("cross", error.message); }
+    }
 
     // Own recipes only: a composed recipe may never be the workspace's `verify.default`.
     const ids = (workspace.verify?.recipes ?? []).map((r) => r.id);
@@ -1964,6 +1977,19 @@ export async function inspect(workspaceDir, options = {}) {
     try {
         const root = treeOf(dir, workspace);
         if (root !== null) for (const line of cacheRiskLines(root)) report("cache-risk", line);
+        if (!options.static) {
+            try {
+                const policy = readStopPolicy(workspace);
+                const recorded = policy.gateId ? readRecipeDuration(root ?? dir, policy.gateId, options.durationDir) : null;
+                if (recorded && (recorded.durationMs > policy.seconds * 1000 || (recorded.timedOut && recorded.durationMs >= policy.seconds * 1000))) {
+                    report(
+                        "verify",
+                        `last recorded duration for Stop recipe \`${policy.gateId}\` (${(recorded.durationMs / 1000).toFixed(1)} s) ` +
+                            `exceeds the gate limit of ${policy.seconds} s — declare a higher \`stopTimeout\` on the recipe or \`verify\`, or set \`verify.stop\` to a shorter recipe`,
+                    );
+                }
+            } catch {}
+        }
     } catch { report("cache-risk", "project configuration unassessed — the declared tree could not be read."); }
     report("lever", `Claude Code project domain: ${biggestLeverLine(dir, workspace)}`);
 
@@ -2178,7 +2204,7 @@ export async function run(argv, options = {}) {
                 ...(discoverPacks ? { discoverPacks } : {}),
                 ...(repoRoots.length ? { repoRoots } : {}),
             };
-            const { findings, stats, workspace } = await inspect(dir, { ...options, ...roots });
+            const { findings, stats, workspace } = await inspect(dir, { ...options, ...roots, static: staticMode });
             const bad = findings.filter((f) => f.severity === "fail");
             let evidence = null;
             const usageLines = !staticMode && !options.quiet && !bad.length && workspace

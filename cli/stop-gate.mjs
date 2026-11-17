@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Stop-gate: bounded recipe and work checks. Hook failures need a verdict, since a crashed hook fails open.
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -10,7 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { isInside } from "./inside.mjs";
 import { recipeSet } from "./recipe-set.mjs";
 import { runRecipe } from "./recipe-runner.mjs";
-import { readStopPolicy } from "./stop-policy.mjs";
+import { readStopPolicy, recordRecipeDuration } from "./stop-policy.mjs";
 import { stopDiagnostics, clipDiagnostic, STOP_RECIPE_BYTES } from "./stop-diagnostics.mjs";
 
 const PROJECT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -187,14 +188,89 @@ function allow() {
     process.exit(0);
 }
 
+function timeoutFile(dir, root = REPO) {
+    const hash = crypto.createHash("sha256").update(String(root)).digest("hex").slice(0, 16);
+    return path.join(dir, `portulan-stopgate-timeout-${hash}.json`);
+}
+
+function readTimedOutState(dir, root = REPO) {
+    try {
+        const data = JSON.parse(fs.readFileSync(timeoutFile(dir, root), "utf8"));
+        return data && typeof data === "object" && typeof data.fingerprint === "string" ? data : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeTimedOutState(dir, root, entry) {
+    try {
+        fs.writeFileSync(timeoutFile(dir, root), JSON.stringify(entry));
+    } catch {}
+}
+
+function clearTimedOutState(dir, root = REPO) {
+    try {
+        fs.rmSync(timeoutFile(dir, root), { force: true });
+    } catch {}
+}
+
+export function treeFingerprint(root) {
+    try {
+        const git = (args, encoding = "utf8") => execFileSync("git", ["-C", root, ...args], {
+            encoding, timeout: 10_000, stdio: ["ignore", "pipe", "pipe"], maxBuffer: 8 * 1024 * 1024,
+        });
+        git(["rev-parse", "--git-dir"]);
+        const hash = crypto.createHash("sha256");
+        let head = "UNBORN";
+        try { head = git(["rev-parse", "--verify", "-q", "HEAD"]).trim() || "UNBORN"; } catch {}
+        hash.update("HEAD\0").update(head).update("\0");
+        hash.update("STAGED\0").update(git(["diff", "--cached", "--raw", "-z"], "buffer")).update("\0");
+        const status = git(["status", "--porcelain=v1", "-z", "--untracked-files=all"], "buffer");
+        hash.update("STATUS\0").update(status).update("\0");
+        const entries = status.toString("utf8").split("\0");
+        for (let i = 0; i < entries.length; i += 1) {
+            const rec = entries[i];
+            if (!rec) continue;
+            const code = rec.slice(0, 2);
+            const rel = rec.slice(3);
+            const paths = [rel];
+            if ((code[0] === "R" || code[0] === "C") && i + 1 < entries.length) paths.push(entries[++i]);
+            for (const p of paths) {
+                const abs = path.join(root, p);
+                hash.update("PATH\0").update(p).update("\0");
+                try {
+                    const st = fs.lstatSync(abs);
+                    if (st.isSymbolicLink()) hash.update("LINK\0").update(fs.readlinkSync(abs)).update("\0");
+                    else if (st.isFile()) {
+                        hash.update("FILE\0");
+                        const fd = fs.openSync(abs, "r");
+                        try {
+                            const buf = Buffer.allocUnsafe(65536);
+                            let n;
+                            while ((n = fs.readSync(fd, buf, 0, buf.length, null)) > 0) hash.update(buf.subarray(0, n));
+                        } finally { fs.closeSync(fd); }
+                    } else if (st.isDirectory()) hash.update("DIR\0");
+                    else hash.update("OTHER\0");
+                } catch {
+                    hash.update("MISSING\0");
+                }
+            }
+        }
+        return hash.digest("hex");
+    } catch {
+        return null;
+    }
+}
+
 function defaultRecipe() {
     try {
         const manifest = JSON.parse(fs.readFileSync(path.join(WORKSPACE, "workspace.json"), "utf8"));
         // No pack: `verify.default` is a bare slug, which no composed id is.
         const set = recipeSet(manifest, { packs: [] });
         if (!set.ok) return null;
-        const recipe = set.recipes.find((r) => r.id === set.default);
-        return recipe ? { id: recipe.id, run: recipe.run, timeout: readStopPolicy(manifest).seconds } : null;
+        const policy = readStopPolicy(manifest);
+        const recipe = set.recipes.find((r) => r.id === (policy.gateId ?? set.default));
+        return recipe ? { id: recipe.id, run: recipe.run, timeout: policy.seconds, defaultId: set.default } : null;
     } catch (error) {
         return { error: error.message };
     }
@@ -434,7 +510,7 @@ function workProblems(tree) {
     return { problems, handoffEnabled, handoffCleared: handoffPresent || work === false };
 }
 
-export async function runStopRecipe(recipe, execute = runRecipe, tree = { root: REPO, workspace: WORKSPACE, origin: "told" }) {
+export async function runStopRecipe(recipe, execute = runRecipe, tree = { root: REPO, workspace: WORKSPACE, origin: "told" }, options = {}) {
     const runRoot = tree?.root ?? REPO;
     const problem = text => ({ reason: "recipe", text: clipDiagnostic(text, STOP_RECIPE_BYTES) });
     if (tree?.origin === "session" && realDir(runRoot) !== realDir(REPO) && !holdsWorkspace(tree)) {
@@ -448,11 +524,34 @@ export async function runStopRecipe(recipe, execute = runRecipe, tree = { root: 
         reason: "recipe",
         text: clipDiagnostic(`could not read the workspace's default verify recipe from ${clipDiagnostic(path.join(WORKSPACE, "workspace.json"), 512)}: ${clipDiagnostic(recipe?.error ?? "no runnable default", 4096)}. Nothing verified this work.`, STOP_RECIPE_BYTES),
     };
-    const label = clipDiagnostic(`verify recipe \`${clipDiagnostic(recipe.id, 512)}\` in ${clipDiagnostic(runRoot, 512)}`, 1100);
+    const role = recipe.defaultId && recipe.id !== recipe.defaultId ? ` (Stop recipe; default \`${clipDiagnostic(recipe.defaultId, 256)}\`)` : "";
+    const label = clipDiagnostic(`verify recipe \`${clipDiagnostic(recipe.id, 512)}\`${role} in ${clipDiagnostic(runRoot, 512)}`, 1100);
+    const timeoutDir = options.timeoutDir ?? os.tmpdir();
+    const currentFp = Object.hasOwn(options, "fingerprint") ? options.fingerprint : treeFingerprint(runRoot);
+    if (options.stopHookActive) {
+        const cached = readTimedOutState(timeoutDir, runRoot);
+        if (
+            cached &&
+            cached.id === recipe.id &&
+            cached.run === recipe.run &&
+            cached.timeout === recipe.timeout &&
+            currentFp !== null &&
+            cached.fingerprint === currentFp
+        ) {
+            return problem(`${label} — not rerun on this unchanged tree: timed out after ${clipDiagnostic(recipe.timeout, 64)} s earlier in this turn — the gate could not judge`);
+        }
+    }
+    clearTimedOutState(timeoutDir, runRoot);
     try {
         const diagnostics = stopDiagnostics();
+        const startedAt = Date.now();
         const result = await execute(recipe, { root: runRoot, env: process.env, timeout: recipe.timeout * 1000, mergeOutput: false, onOutput: diagnostics.add });
+        const durationMs = Number.isFinite(result?.durationMs) ? result.durationMs : Date.now() - startedAt;
+        recordRecipeDuration(runRoot, recipe.id, { durationMs, outcome: result.outcome, timedOut: Boolean(result.timedOut), timeoutMs: recipe.timeout * 1000 }, options.durationDir);
         if (result.outcome === "green") return null;
+        if (result.timedOut && currentFp !== null) {
+            writeTimedOutState(timeoutDir, runRoot, { id: recipe.id, run: recipe.run, timeout: recipe.timeout, fingerprint: currentFp });
+        }
         const outcome = result.timedOut
             ? `could not run: timed out after ${clipDiagnostic(recipe.timeout, 64)} s — the gate could not judge`
             : result.outcome === "red" ? `RED (exit ${clipDiagnostic(result.code, 64)})` : `could not run (exit ${clipDiagnostic(result.code ?? "no status", 64)}) — the gate could not judge`;
@@ -462,7 +561,7 @@ export async function runStopRecipe(recipe, execute = runRecipe, tree = { root: 
     }
 }
 
-async function collectProblems(tree, state, chain) {
+async function collectProblems(tree, state, chain, stopHookActive = false) {
     const work = workProblems(tree);
     const recipeCapped = (state.counts.recipe ?? 0) >= MAX_BLOCKS;
     const handoffCapped = work.problems.some(p => p.reason === "handoff") && (state.counts.handoff ?? 0) >= MAX_BLOCKS;
@@ -470,7 +569,7 @@ async function collectProblems(tree, state, chain) {
     const recipeProblem = skip ? {
         reason: "recipe", charge: false, capped: recipeCapped,
         text: "verify recipe not rerun: this Stop is released at a refusal bound. No result was measured on this Stop; existing obligations remain unresolved. Run verification explicitly before claiming done.",
-    } : await runStopRecipe(defaultRecipe(), runRecipe, tree);
+    } : await runStopRecipe(defaultRecipe(), runRecipe, tree, { stopHookActive });
     return { ...work, problems: [...(recipeProblem ? [recipeProblem] : []), ...work.problems], recipeGreen: !skip && recipeProblem === null };
 }
 
@@ -529,9 +628,11 @@ async function main() {
     const tree = resolveSessionTree(payload.cwd);
     if (tree.note) process.stderr.write(`portulan stop-gate: ${tree.note}; answering about ${REPO} instead.\n`);
 
+    const stopHookActive = payload.stop_hook_active === true;
     const prior = readCount(counterFile(sessionId, os.tmpdir()));
-    const chain = bumpChain(payload.stop_hook_active === true, os.tmpdir(), tree.root);
-    const { problems, recipeGreen, handoffEnabled, handoffCleared } = await collectProblems(tree, prior, chain);
+    const chain = bumpChain(stopHookActive, os.tmpdir(), tree.root);
+    if (!stopHookActive) clearTimedOutState(os.tmpdir(), tree.root);
+    const { problems, recipeGreen, handoffEnabled, handoffCleared } = await collectProblems(tree, prior, chain, stopHookActive);
 
     // The session's counts stay on the told root, so a `cwd` that moves mid-session cannot restart them.
     if (recipeGreen) clearReason(sessionId, "recipe");

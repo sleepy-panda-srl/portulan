@@ -649,7 +649,7 @@ export function claudeCode(parsed, options = {}) {
             readStopPolicy({ portulan: { spec: "2.14" }, verify: { stopTimeout: seconds ?? null } });
         } catch (error) { throw new CompileError(error.message); }
     }
-    const declaredIn = [figuresIn, contexts.limit !== null && "ritual contexts in composed pack manifests", stopPolicy && `\`verify.stopTimeout\` in ${stopPolicy.manifest}`].filter(Boolean).join(", or ");
+    const declaredIn = [figuresIn, contexts.limit !== null && "ritual contexts in composed pack manifests", stopPolicy && `\`verify.stopTimeout\` / recipe \`stopTimeout\` in ${stopPolicy.manifest}`].filter(Boolean).join(", or ");
     const value = {
         $portulan: {
             generated: "cli/compile.mjs",

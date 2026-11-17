@@ -43,6 +43,32 @@ test("a declared Stop deadline compiles an outer timeout and changing it is drif
     assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1);
 });
 
+test("spec 2.17 verify.stop and per-recipe stopTimeout compile outer hook timeout and refuse earlier spec minors (#652)", () => {
+    const dir = workspace();
+    const file = path.join(dir, ".portulan/workspace.json");
+    const output = path.join(dir, ".claude/settings.json");
+    const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+    manifest.portulan.spec = "2.17";
+    manifest.verify = {
+        default: "full",
+        stop: "quick",
+        stopTimeout: 150,
+        recipes: [
+            { id: "full", run: "true", stopTimeout: 300 },
+            { id: "quick", run: "true", stopTimeout: 45 },
+        ],
+    };
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+    assert.equal(JSON.parse(fs.readFileSync(output, "utf8")).hooks.Stop[0].hooks[0].timeout, 105);
+
+    manifest.portulan.spec = "2.16";
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    const preserved = fs.readFileSync(output, "utf8");
+    assert.equal(run(["--workspace", dir], { quiet: true }), 2);
+    assert.equal(fs.readFileSync(output, "utf8"), preserved);
+});
+
 test("invalid Stop deadlines refuse every compile mode without creating or replacing artifacts", () => {
     for (const exists of [false, true]) for (const mode of [[], ["--check"], ["--matrix"]]) for (const [spec, value] of [["2.14", 0], ["2.14", "360"], ["2.13", 360]]) {
         const dir = workspace();
@@ -682,7 +708,7 @@ describe("the declared figures", () => {
         const before = fs.readFileSync(target);
         const manifest = path.join(dir, ".portulan", "workspace.json");
         const m = JSON.parse(fs.readFileSync(manifest));
-        for (const [spec, tokens] of [["2.15", 10000], ["2.17", 0], ["3.0", 0], ["invalid", 0], [undefined, 0], ["2.16", -1], ["2.16", null]]) {
+        for (const [spec, tokens] of [["2.15", 10000], ["2.18", 0], ["3.0", 0], ["invalid", 0], [undefined, 0], ["2.16", -1], ["2.16", null]]) {
             fs.writeFileSync(manifest, JSON.stringify({ ...m, portulan: { spec }, spend: { ...m.spend, resume: { tokens } } }));
             assert.equal(run(["--workspace", dir], { quiet: true }), 2);
             assert.deepEqual(fs.readFileSync(target), before);

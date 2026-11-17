@@ -228,14 +228,17 @@ number governing both would make a bump in either mean a change in the other:
 
 | Schema | Manifest key | Current | What it governs |
 |---|---|---|---|
-| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.16** | the Workspace Definition — the manifest at a workspace root |
+| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.17** | the Workspace Definition — the manifest at a workspace root |
 | [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.1** | the Pack Definition — the manifest at a pack root. |
 
 The rules below apply to each train independently. `portulan.spec` is `MAJOR.MINOR`, and the current
-Workspace Definition version is **2.16**. It did **not** move when the Pack Definition arrived, because
+Workspace Definition version is **2.17**. It did **not** move when the Pack Definition arrived, because
 `workspace.schema.json` was byte-identical across that change: `packs` already existed as an array of
 strings and was deliberately left that way, since tightening its items to the canonical `category/name`
 form would be a constraint an existing manifest could newly fail, which is a MAJOR.
+
+**2.17 adds optional `verify.stop` and `verify.recipes[].stopTimeout`**, from [#652](https://github.com/sleepy-panda-srl/portulan/issues/652).
+A workspace may name a shorter own recipe in `verify.stop` for the Stop-gate without changing `verify.default`, and may override the Stop deadline per recipe via `verify.recipes[].stopTimeout` (same range as `verify.stopTimeout`, overriding it when present). `doctor`, `compile`, and the Stop-gate share validation and gate both keys to 2.17; `KNOWN_SPECS` in `index` and `librarian` adds `2.17`. Existing manifests need no change.
 
 **2.16 adds optional `spend.resume.tokens`**, from [#503](https://github.com/sleepy-panda-srl/portulan/issues/503).
 It prices additional restart expense in uncached-input-token equivalents. Doctor

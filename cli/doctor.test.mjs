@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { run as compileRun } from "./compile.mjs";
 import { run as contextRun } from "./context.mjs";
+import { recordRecipeDuration } from "./stop-policy.mjs";
 
 // `doctor` reads the host's installed-plugin record, so every case gets an empty host unless it passes `env:`.
 const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
@@ -724,7 +725,7 @@ describe("where every session switch stands is one line, reported and never fail
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 16 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 17 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -1854,7 +1855,7 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
             return tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
         };
         assert.equal(await run([build("9.9")], { quiet: true }), 2, "a MAJOR ahead");
-        assert.equal(await run([build("2.17")], { quiet: true }), 2, "a MINOR ahead");
+        assert.equal(await run([build("2.18")], { quiet: true }), 2, "a MINOR ahead");
         assert.equal(await run([build("2.0")], { quiet: true }), 0, "the current version");
     });
 
@@ -2035,7 +2036,7 @@ describe("the packs a workspace declares", () => {
 
     test("the two version trains are read by different functions and do not collide", () => {
         assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 1 });
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 16 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 17 });
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });
 
@@ -3558,4 +3559,41 @@ test("doctor names portulan.spec 2.3 when floor.strict is declared under gate-po
     assert.match(text(fails), /gates\.json/);
     assert.match(text(fails), /portulan\.spec/);
     assert.match(text(fails), /2\.3/);
+});
+
+test("doctor gates verify.stop and per-recipe stopTimeout to 2.17 and warns when recorded duration exceeds the Stop limit (#652)", async () => {
+    for (const [spec, verify, ok] of [
+        ["2.17", { default: "full", stop: "fast", recipes: [{ id: "full", run: "true", stopTimeout: 300 }, { id: "fast", run: "true", stopTimeout: 20 }] }, true],
+        ["2.16", { default: "full", stop: "fast", recipes: [{ id: "full", run: "true" }, { id: "fast", run: "true" }] }, false],
+        ["2.16", { default: "full", recipes: [{ id: "full", run: "true", stopTimeout: 120 }] }, false],
+        ["2.17", { default: "full", stop: "missing", recipes: [{ id: "full", run: "true" }] }, false],
+        ["2.17", { default: "full", recipes: [{ id: "full", run: "true", stopTimeout: 0 }] }, false],
+    ]) {
+        const manifest = { ...wellFormed(), portulan: { spec }, verify };
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(manifest) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(findings, "fail");
+        assert.equal(failures.length === 0, ok, JSON.stringify({ spec, verify, failures }));
+    }
+
+    const durationDir = scratch();
+    const manifest = {
+        ...wellFormed(),
+        portulan: { spec: "2.17" },
+        verify: { default: "full", recipes: [{ id: "full", run: "true" }] },
+    };
+    const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(manifest) });
+    recordRecipeDuration(dir, "full", { durationMs: 120_000, outcome: "green" }, durationDir);
+    const warned = await inspect(dir, { schema: SCHEMA, durationDir });
+    const verifyNotes = checks(warned.findings, "verify").filter((f) => f.severity === "report");
+    assert.equal(verifyNotes.length, 1);
+    assert.match(verifyNotes[0].message, /`full`.*120\.0 s.*exceeds.*90 s/);
+
+    const staticRun = await inspect(dir, { schema: SCHEMA, durationDir, static: true });
+    assert.equal(checks(staticRun.findings, "verify").length, 0);
+
+    const raised = { ...manifest, verify: { default: "full", recipes: [{ id: "full", run: "true", stopTimeout: 180 }] } };
+    fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(raised));
+    const cleared = await inspect(dir, { schema: SCHEMA, durationDir });
+    assert.equal(checks(cleared.findings, "verify").length, 0);
 });

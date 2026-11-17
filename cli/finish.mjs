@@ -17,6 +17,7 @@ import { CHANGES_DIR, CHANGES_README } from "./form.mjs";
 import { CHANGE_NAME } from "./index.mjs";
 import { recipeSet, resolverFor } from "./recipe-set.mjs";
 import { INTERRUPTIONS, runRecipe, tailKeeper } from "./recipe-runner.mjs";
+import { recordRecipeDuration } from "./stop-policy.mjs";
 export { runRecipe, tailKeeper };
 
 export const RECIPE_TIMEOUT_MS = 10 * 60 * 1000;
@@ -310,8 +311,18 @@ export async function finish(options, { cwd = process.cwd(), env = process.env, 
     const recipeEnv = { ...env, PORTULAN_BASE_REF: base.ref };
     const results = [];
     for (const recipe of set.recipes) {
+        const startedAt = Date.now();
         try {
-            results.push(resultOf(recipe.id, await runOne(recipe, { root, env: recipeEnv })));
+            const raw = await runOne(recipe, { root, env: recipeEnv });
+            const outcome = resultOf(recipe.id, raw);
+            if (!outcome.interrupted) {
+                recordRecipeDuration(root, recipe.id, {
+                    durationMs: Number.isFinite(raw?.durationMs) ? raw.durationMs : Date.now() - startedAt,
+                    outcome: outcome.outcome,
+                    timedOut: Boolean(raw?.timedOut),
+                });
+            }
+            results.push(outcome);
         } catch (error) {
             results.push({ id: recipe.id, outcome: "could not run", code: null, output: textOf(error) });
         }
