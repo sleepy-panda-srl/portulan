@@ -48,8 +48,9 @@ export function readStopPolicy(manifest) {
         for (let i = 0; i < recipes.length; i += 1) {
             const perRecipe = recipes[i]?.stopTimeout;
             if (perRecipe !== undefined) {
-                requireSpecMinor(manifest, 17, `verify.recipes[${i}].stopTimeout`);
-                validateTimeoutSeconds(perRecipe, `verify.recipes[${i}].stopTimeout`);
+                const label = `verify.recipes[${i}].stopTimeout`;
+                requireSpecMinor(manifest, 17, label);
+                validateTimeoutSeconds(perRecipe, label);
             }
         }
     }
