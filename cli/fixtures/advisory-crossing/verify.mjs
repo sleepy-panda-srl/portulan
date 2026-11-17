@@ -42,7 +42,14 @@ export function verifyCapture(capture) {
                     const event = ids.length === 0 ? "UserPromptSubmit" : ids.length === 4 ? "Stop" : "PostToolUse";
                     assert.equal(entry.event, event);
                     const output = { UserPromptSubmit: onPrompt, PostToolUse: onTool, Stop: onStop }[event]({ session_id: run.name, transcript_path: file }, { dir, horizon: 20, resume: 0 });
-                    assert.deepEqual(entry.output, output === null ? null : JSON.parse(output));
+                    const observed = structuredClone(entry.output);
+                    if (run.name === "crossing" && ids.length === 2 && event === "PostToolUse") {
+                        const old = "consider a handoff and restart if these estimates still fit the task. Said once.";
+                        const line = observed?.hookSpecificOutput?.additionalContext;
+                        assert.ok(typeof line === "string" && line.endsWith(old));
+                        observed.hookSpecificOutput.additionalContext = line.slice(0, -old.length) + "consider restart if these estimates still fit the task, after collecting all delegated work and results. Said once.";
+                    }
+                    assert.deepEqual(observed, output === null ? null : JSON.parse(output));
                     if (entry.output !== null) outputs.push({ at: ids.length, event, output: entry.output });
                 }
             }

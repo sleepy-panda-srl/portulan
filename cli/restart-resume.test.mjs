@@ -5,10 +5,60 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { figureOf, sessionFigures, readSpend, restartThreshold } from "./ledger.mjs";
-import { onPrompt, onStop, onStatus, main, spendFlags, adviceLine, statusLine } from "./advisory.mjs";
+import { onPrompt, onTool, onStop, onStatus, main, spendFlags, adviceLine, statusLine } from "./advisory.mjs";
 
 const figures = (context) => ({ ...sessionFigures(), fresh: 26000, last: context, freshLifetime: "5m", requests: 15 });
 const request = (id, tokens) => JSON.stringify({ type: "assistant", message: { id, usage: { input_tokens: 0, cache_creation_input_tokens: id === "first" ? tokens : 0, cache_read_input_tokens: id === "first" ? 0 : tokens, output_tokens: 1 } } });
+
+test("restart action follows explicit record policy and waits for delegated results", () => {
+    const f = figureOf(figures(500000), { horizon: 20, resume: 0 });
+    assert.doesNotMatch(adviceLine(f), /handoff/i);
+    assert.match(adviceLine(f, "Stop", { handoffs: true }), /handoff/);
+    assert.match(adviceLine(f), /delegated.*results/i);
+});
+
+for (const hook of [onPrompt, onTool, onStop]) test(`busy ${hook.name} preserves delivery for an idle hook`, () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-busy-"));
+    try {
+        const file = path.join(dir, "session.jsonl");
+        fs.writeFileSync(file, [request("first", 26000), request("next", 500000)].join("\n") + "\n");
+        const payload = { session_id: "s", transcript_path: file }, options = { dir, horizon: 20, resume: 0 };
+        for (const task of [{ id: "a", type: "agent", status: "running" }, { id: "b", type: "shell", status: "unknown" }]) {
+            assert.equal(hook({ ...payload, background_tasks: [task] }, options), null);
+        }
+        assert.deepEqual(fs.readdirSync(dir), ["session.jsonl"]);
+        assert.match(hook({ ...payload, background_tasks: [] }, options), /restart/i);
+        assert.equal(hook(payload, options), null);
+        if (hook !== onStop) {
+            assert.equal((hook === onPrompt ? onTool : onPrompt)(payload, options), null);
+            assert.match(onStop(payload, options), /restart/i);
+        }
+        for (const inventory of [null, {}, undefined]) {
+            assert.match(hook({ ...payload, session_id: `unknown-${JSON.stringify(inventory)}`, background_tasks: inventory }, options), /delegated.*results/i);
+        }
+        assert.equal(hook({ ...payload, session_id: "child", agent_id: "worker", background_tasks: [] }, options), null);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("handoff CLI option composes with figures and cannot repair malformed Stop input", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-records-"));
+    try {
+        const file = path.join(dir, "session.jsonl");
+        fs.writeFileSync(file, [request("first", 26000), request("next", 500000)].join("\n") + "\n");
+        let count = 0;
+        const invoke = args => {
+            let out = "", err = "";
+            main(["stop", ...args], { dir, payload: { session_id: `s${count++}`, transcript_path: file }, stdout: { write: s => out += s }, stderr: { write: s => err += s } });
+            return { out, err };
+        };
+        for (const args of [["--handoffs", "--horizon", "20", "--resume-tokens", "0"], ["--horizon", "20", "--handoffs", "--resume-tokens", "0"], ["--horizon", "20", "--resume-tokens", "0", "--handoffs"]]) {
+            const r = invoke(args); assert.equal(r.err, ""); assert.match(r.out, /handoff/);
+        }
+        for (const args of [["--horizon", "--handoffs", "20", "--resume-tokens", "0"], ["--horizon", "20", "--resume-tokens", "--handoffs"], ["--horizon", "20", "--resume-tokens", "0", "--handoffs", "--handoffs"]]) {
+            const r = invoke(args); assert.equal(r.out, ""); assert.notEqual(r.err, "");
+        }
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
 
 test("resume expense and a short remainder reverse the bounded-run comparison", () => {
     const old = figureOf(figures(50000));

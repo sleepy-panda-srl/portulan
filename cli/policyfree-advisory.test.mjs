@@ -29,6 +29,24 @@ async function fixture(fn) {
     try { return await fn({ root, manifest, save, write, file, settings, compile, cli }); }
     finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
+for (const gated of [false, true]) test(`compiled record policy is explicit, repeatable and removable (gated=${gated})`, () => fixture(({ manifest, save, compile, settings, write }) => {
+    if (gated) {
+        manifest.gates = "gates.json";
+        write(".portulan/gates.json", { portulan: { spec: "2.2" }, why: "gate-map.md", rules: [{ id: "fixture-gate", tier: "gated", action: { shell: "git merge" }, reason: "Fixture." }] });
+    }
+    manifest.spend = { ...structuredClone(priced), restart: "block" };
+    manifest.slots.handoffs = "handoffs/"; save();
+    assert.equal(compile(), 0); assert.equal(compile(), 0); assert.equal(compile("--check"), 0);
+    const s = settings(); assert.equal(s.$portulan.records, ".portulan/workspace.json");
+    for (const event of ["PostToolUse", "UserPromptSubmit", "Stop"]) assert.match(s.hooks[event][0].hooks.at(-1).command, /--handoffs$/);
+    delete manifest.slots.handoffs; save(); assert.equal(compile("--check"), 1); assert.equal(compile(), 0); assert.equal(compile("--check"), 0);
+    assert.equal(settings().$portulan.records, undefined);
+    assert.doesNotMatch(JSON.stringify(settings().hooks), /--handoffs/);
+}));
+for (const slots of [null, [], "bad", { handoffs: null }, { handoffs: "absolute" }, { handoffs: "/outside/" }]) test(`invalid record declaration refuses before writes (${JSON.stringify(slots)})`, () => fixture(({ manifest, save, compile, file }) => {
+    assert.equal(compile(), 0); const before = fs.readFileSync(file, "utf8");
+    manifest.slots = slots; save(); assert.equal(compile(), 2); assert.equal(fs.readFileSync(file, "utf8"), before);
+}));
 for (const kind of ["repository", "demo", "portfolio"]) test(`doctor-valid minimal ${kind} gets default advice at either workspace address`, () => fixture(async ({ root, manifest, save, settings, compile, cli }) => {
     manifest.kind = kind; save();
     const d = await inspect(root + "/.portulan", { static: true, packRoots: [root + "/packs"] });

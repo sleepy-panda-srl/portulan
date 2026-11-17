@@ -368,7 +368,7 @@ output uncertainty does not invalidate otherwise usable input-only restart math.
 
 ### Restart at a computed threshold
 
-**A restart comparison states its assumptions before advising a handoff.** Its
+**A restart comparison states its assumptions before advising a restart.** Its
 break-even context is `C* = F + (F × m_w + R) / (n × m_r)`: fresh context `F`,
 write/read multipliers `m_w` and `m_r`, requests remaining `n`, and additional
 resume expense `R` in uncached-input-token equivalents. The workspace declares
@@ -392,6 +392,18 @@ the session automatically. [`spec/slots.md`](../../spec/slots.md#spend--the-figu
 gives the declaration contract. This refinement follows the bounded-run evidence
 in [#503](https://github.com/sleepy-panda-srl/portulan/issues/503); proposal 0038 is
 preserved as its dated decision record.
+
+The advisory mentions a handoff only when the governing workspace declares
+`slots.handoffs`; the compiler passes that record policy explicitly. It does not
+infer one from a directory. A supplied nonempty `background_tasks` array suppresses
+prompt, tool and advisory Stop output before consuming either once-only marker.
+Claude Code documents this in-flight inventory in [Stop input](https://code.claude.com/docs/en/hooks#stop-input).
+An empty array reports no tasks; absent or malformed inventory is unknown. Prompt
+and tool hooks document no complete inventory, so restart wording remains
+conditional on collecting all delegated work and results. This does not alter the
+verification Stop-gate or end a session. It follows [#575](https://github.com/sleepy-panda-srl/portulan/issues/575)
+and preserves [#503](https://github.com/sleepy-panda-srl/portulan/issues/503) and
+[#505](https://github.com/sleepy-panda-srl/portulan/issues/505)'s qualified comparisons.
 
 A delayed transcript batch retains its first usable crossing in the current
 compaction generation, including that request's context, fresh context and price

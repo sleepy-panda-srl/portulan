@@ -134,7 +134,7 @@ tool stop-past "$PAST_THRESHOLD" stop-after
 tool stop-told "$PAST_THRESHOLD" stop-told-line
 stop stop-told "$PAST_THRESHOLD" stop-told
 stop stop-below "$BELOW_THRESHOLD" stop-below
-if ! grep -q '^{"decision":"block","reason":"Portulan restart advisory: after [0-9][0-9,]* requests, context .*threshold 80,004.*consider a handoff and restart if these estimates still fit the task\. Said once\."}$' "$tmp/stop-first" || grep -q 'finish' "$tmp/stop-first"; then
+if ! grep -q '^{"decision":"block","reason":"Portulan restart advisory: after [0-9][0-9,]* requests, context .*threshold 80,004.*consider restart if these estimates still fit the task, after collecting all delegated work and results\. Said once\."}$' "$tmp/stop-first" || grep -q 'finish' "$tmp/stop-first"; then
     printf '  ✗ advisory: the session past its threshold was not held at its first stop with the line and its Stop ending; it printed: %s\n' "$(cat -- "$tmp/stop-first")"
     advisory=1
 fi

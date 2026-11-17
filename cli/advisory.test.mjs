@@ -176,7 +176,7 @@ describe("the block at a stop, where a workspace declares it", () => {
             assert.deepEqual(Object.keys(parsed), ["decision", "reason"]);
             assert.equal(parsed.decision, "block");
             assert.match(parsed.reason, /^Portulan restart advisory: after 4 requests, context 80,001 tokens, threshold 80,000/);
-            assert.match(parsed.reason, /consider a handoff and restart if these estimates still fit the task\. Said once\.$/, "the turn is ending, so there is no step left to finish");
+            assert.match(parsed.reason, /consider restart if these estimates still fit the task, after collecting all delegated work and results\. Said once\.$/);
             assert.equal(onStop({ session_id: "s", transcript_path: file }, { dir: state }), null, "held once");
             grow(file, record({ read: 80000, w1h: 10 }));
             assert.equal(onStop({ session_id: "s", transcript_path: file }, { dir: state }), null, "and not again at a later stop");

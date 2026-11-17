@@ -89,12 +89,12 @@
     },
     {
       "id": "hook-commands:.claude/settings.json",
-      "sha256": "9a163430d27f2821b93b949c0678e1a6cd5a39b2e743ebed881c30120820ff8a",
+      "sha256": "d7be72f0f9feaf9f3af22f325bc3903ff0c00f0c9d1709b6d64c7268423c80f0",
       "volatile": []
     },
     {
       "id": "hook:cli/advisory.mjs",
-      "sha256": "ec73d9a3cc0213296c910f05139aec31d93a5e0980104e3b0d662469d91935f7",
+      "sha256": "82a669af9ca6428cb4eb0e73a22439d9aadd13f88f9431c3d2c3733977e9e014",
       "volatile": []
     },
     {

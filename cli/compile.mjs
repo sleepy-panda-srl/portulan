@@ -636,6 +636,8 @@ export function claudeCode(parsed, options = {}) {
     if (spend?.horizon) figures.push("--horizon", spend.horizon);
     if (spend?.resume != null) figures.push("--resume-tokens", spend.resume);
     const spendFlags = figures.map((f) => ` ${f}`).join("");
+    const recordFlags = options.records?.handoffs === true ? " --handoffs" : "";
+    const recordsFrom = recordFlags ? options.records.manifest : null;
     const restartBlock = spend?.restart === "block";
     const spendFrom = figures.length || restartBlock ? spend.manifest : null;
     const figuresIn =
@@ -649,13 +651,14 @@ export function claudeCode(parsed, options = {}) {
             readStopPolicy({ portulan: { spec: "2.14" }, verify: { stopTimeout: seconds ?? null } });
         } catch (error) { throw new CompileError(error.message); }
     }
-    const declaredIn = [figuresIn, contexts.limit !== null && "ritual contexts in composed pack manifests", stopPolicy && `\`verify.stopTimeout\` / recipe \`stopTimeout\` in ${stopPolicy.manifest}`].filter(Boolean).join(", or ");
+    const declaredIn = [figuresIn, recordsFrom && `\`slots.handoffs\` in ${recordsFrom}`, contexts.limit !== null && "ritual contexts in composed pack manifests", stopPolicy && `\`verify.stopTimeout\` / recipe \`stopTimeout\` in ${stopPolicy.manifest}`].filter(Boolean).join(", or ");
     const value = {
         $portulan: {
             generated: "cli/compile.mjs",
             source,
             ...(sessionsFrom ? { sessions: sessionsFrom } : {}),
             ...(spendFrom ? { spend: spendFrom } : {}),
+            ...(recordsFrom ? { records: recordsFrom } : {}),
             ...(stopPolicy ? { verify: stopPolicy.manifest } : {}),
             ...(packs.length ? { packs } : {}),
             ...(contexts.limit !== null ? { contexts: contexts.sources } : {}),
@@ -673,11 +676,11 @@ export function claudeCode(parsed, options = {}) {
             } : {}),
             ...(hasPolicy || restartBlock ? { Stop: [{ hooks: [
                 ...(hasPolicy ? [{ type: "command", command: `node ${stopRunner}`, ...(stopPolicy ? { timeout: stopPolicy.seconds + STOP_HOOK_MARGIN } : {}) }] : []),
-                ...(restartBlock ? [{ type: "command", command: `node ${advisoryRunner} stop${spendFlags}` }] : []),
+                ...(restartBlock ? [{ type: "command", command: `node ${advisoryRunner} stop${spendFlags}${recordFlags}` }] : []),
             ] }] } : {}),
             // No matcher means every tool; a non-blocking `Stop` hook's output would reach only the host's debug log.
-            PostToolUse: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} tool${spendFlags}` }] }],
-            UserPromptSubmit: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} prompt${spendFlags}` }] }],
+            PostToolUse: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} tool${spendFlags}${recordFlags}` }] }],
+            UserPromptSubmit: [{ hooks: [{ type: "command", command: `node ${advisoryRunner} prompt${spendFlags}${recordFlags}` }] }],
         },
         statusLine: { type: "command", command: `node ${advisoryRunner} status${spendFlags}` },
         ...switches,
@@ -2179,6 +2182,19 @@ const SESSION_SWITCHES = {
 };
 const HEADLESS_SWITCHES = { ...SESSION_SWITCHES, exclude_dynamic_sections: (v) => typeof v === "boolean" };
 
+export function recordsDeclaration(workspaceRoot, workspaceDir = ".portulan") {
+    let parsed;
+    try { parsed = JSON.parse(readWorkspaceText(workspaceRoot, workspaceDir)); } catch { return null; }
+    const slots = parsed?.slots;
+    if (slots === undefined) return null;
+    const where = path.join(workspaceDir, "workspace.json").split(path.sep).join("/");
+    const plain = slots !== null && typeof slots === "object" && !Array.isArray(slots);
+    if (!plain || (Object.hasOwn(slots, "handoffs") && (typeof slots.handoffs !== "string" || slots.handoffs.length < 2 || !/^[^#?:/][^#?:]*\/$/.test(slots.handoffs)))) {
+        throw new CompileError(`\`slots.handoffs\` in ${where} requires a relative directory path ending in /; \`slots\` must be an object`);
+    }
+    return { manifest: where, handoffs: Object.hasOwn(slots, "handoffs") };
+}
+
 /** The manifest's `sessions`, or null where it declares none or cannot be read; a shape the schema refuses throws. */
 export function sessionsDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
@@ -3149,6 +3165,7 @@ export function run(argv, options = {}) {
         if (!check && guidancePlan) preflightGuidanceWrites(guidancePlan, workspaceRoot);
         const sessions = sessionsDeclaration(workspaceRoot, workspaceDir);
         const spend = spendDeclaration(workspaceRoot, workspaceDir);
+        const records = recordsDeclaration(workspaceRoot, workspaceDir);
         const stopPolicy = stopDeclaration(workspaceRoot, workspaceDir);
         const { file: policyFile, declared: policyDeclared, reason: policyReason } = policyDeclaration(workspaceRoot, workspaceDir);
         const packOptions = { named: namedRoots, discovery: () => discoverPackRoots(), forced };
@@ -3168,7 +3185,7 @@ export function run(argv, options = {}) {
             const authored = policyReason === "no-key" && ["repository", "demo", "portfolio"].includes(JSON.parse(readWorkspaceText(workspaceRoot, workspaceDir)).kind);
             const advice = authored ? claudeCode(null, {
                 source: path.join(workspaceDir, "workspace.json").split(path.sep).join("/"),
-                root: path.resolve(workspaceRoot), sessions, spend, contexts, packProvenance: packs.contributions,
+                root: path.resolve(workspaceRoot), sessions, spend, records, contexts, packProvenance: packs.contributions,
             }) : null;
             const capPlan = capOnlyPlan(workspaceRoot, contexts, advice?.artifact.value ?? null);
             const personas = planPersonas(packs.contributions, workspaceRoot, workspaceDir);
@@ -3216,6 +3233,7 @@ export function run(argv, options = {}) {
             packProvenance: contributions,
             sessions,
             spend,
+            records,
             stopPolicy,
             contexts: contextCaps(contributions, unresolved),
         });

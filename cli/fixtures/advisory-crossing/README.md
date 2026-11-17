@@ -35,6 +35,10 @@ answers. Two preliminary guard probes corrected the sandbox's required
 
 `node cli/fixtures/advisory-crossing/verify.mjs` replays the public trace against
 the production advisory without launching Claude or opening a socket. The ledger
+replay maps only request 2's exact historical action suffix to the current qualified
+default; its envelope and numeric prefix still compare exactly. The capture and
+its source digests remain unchanged. This is no fresh host measurement of #575's
+record policy or background-task handling. The ledger
 recipe runs it; the tests recipe also mutates usage, visibility, output and the
 network-guard receipt to demonstrate rejection. A data receipt cannot independently
 prove its own acquisition: the fresh checkpoint checks the raw local originals,
