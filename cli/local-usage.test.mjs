@@ -89,8 +89,10 @@ test('ledger accepts legacy and extended receipts, refuses impossible subsets',(
     const legacy='OK mode=chat model=m attempts=1 in=12t out=18t time=10ms rate=1tok/s spend=$0.00';
     const extended=legacy.replace(' spend=',' reasoning=15t cached-in=4t spend=');
     const queued=extended.replace(' spend=',' queued=250ms spend=');
+    const preflighted=extended.replace(' spend=',' queued=250ms preflight=red spend=');
     assert.deepEqual(receiptOf(extended),receiptOf(legacy));
     assert.deepEqual(receiptOf(queued),receiptOf(legacy));
+    assert.deepEqual(receiptOf(preflighted),receiptOf(legacy));
     assert.equal(receiptOf(extended.replace('reasoning=15t','reasoning=19t')),null);
     assert.equal(receiptOf(extended.replace('cached-in=4t','cached-in=13t')),null);
 });

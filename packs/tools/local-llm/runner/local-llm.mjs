@@ -134,14 +134,15 @@ export function incompleteGenerationMessage(usage) {
 
 const figure = (value, unit) => (value === null || value === undefined ? "?" : `${value}${unit}`);
 
-export function formatPassReceipt({ mode, model, attempts = 1, promptTokens = null, completionTokens = null, reasoningTokens = null, cachedPromptTokens = null, totalMs = null, tokPerSec = null, target = "", queuedMs = 0 }) {
+export function formatPassReceipt({ mode, model, attempts = 1, promptTokens = null, completionTokens = null, reasoningTokens = null, cachedPromptTokens = null, totalMs = null, tokPerSec = null, target = "", queuedMs = 0, preflight = null }) {
     const usage = readUsage({prompt_tokens:promptTokens,completion_tokens:completionTokens,
         completion_tokens_details:{reasoning_tokens:reasoningTokens},prompt_tokens_details:{cached_tokens:cachedPromptTokens}});
     const where = target ? ` target=${target}` : "";
     const queued = Number.isSafeInteger(queuedMs) && queuedMs > 0 ? ` queued=${queuedMs}ms` : "";
+    const baseline = preflight === "green" || preflight === "red" ? ` preflight=${preflight}` : "";
     return (
         `OK mode=${mode} model=${model}${where} attempts=${attempts} in=${figure(usage.promptTokens, "t")} out=${figure(usage.completionTokens, "t")} ` +
-        `time=${figure(totalMs, "ms")} rate=${figure(tokPerSec, "tok/s")} reasoning=${figure(usage.reasoningTokens, "t")} cached-in=${figure(usage.cachedPromptTokens, "t")}${queued} spend=$0.00`
+        `time=${figure(totalMs, "ms")} rate=${figure(tokPerSec, "tok/s")} reasoning=${figure(usage.reasoningTokens, "t")} cached-in=${figure(usage.cachedPromptTokens, "t")}${queued}${baseline} spend=$0.00`
     );
 }
 
@@ -752,6 +753,25 @@ function buildInsertionPromptSection(filePath, allLines, splitIndex) {
     return parts.join("\n\n");
 }
 
+function describeVerifyFault(check) {
+    return check.error
+        ? `failed to run (${check.error.message})`
+        : check.signal
+          ? `was killed by ${check.signal}`
+          : `exited ${check.status}`;
+}
+
+function saveCandidateReply(content) {
+    try {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-local-llm-reply-"));
+        const saved = path.join(dir, "reply.txt");
+        fs.writeFileSync(saved, content, { encoding: "utf8", mode: 0o600 });
+        return saved;
+    } catch {
+        return null;
+    }
+}
+
 export async function verifyGatedTransform({
     filePath,
     lineRange = null,
@@ -762,6 +782,8 @@ export async function verifyGatedTransform({
     contextFiles = [],
     instruction,
     verifyCmd,
+    preflight = false,
+    verifyExpect = null,
     model = ROLE_MODELS.code,
     baseUrl = DEFAULT_BASE_URL,
     allowRemote = false,
@@ -774,6 +796,17 @@ export async function verifyGatedTransform({
 }) {
     if (!verifyCmd) {
         throw new CouldNotRunError("transform requires --verify <cmd>: every local edit is gated by a verify command, and kept only on its exit 0");
+    }
+    let expectRegex = null;
+    if (verifyExpect !== null && verifyExpect !== undefined) {
+        if (typeof verifyExpect !== "string" || verifyExpect === "") {
+            throw new CouldNotRunError("--verify-expect requires a non-empty regular expression");
+        }
+        try {
+            expectRegex = new RegExp(verifyExpect);
+        } catch (err) {
+            throw new CouldNotRunError(`Invalid --verify-expect regex ${JSON.stringify(verifyExpect)}: ${err.message}`);
+        }
     }
     const modeCount = [lineRange !== null, insertAfter !== null, insertBefore !== null].filter(Boolean).length;
     if (modeCount > 1) {
@@ -844,7 +877,23 @@ export async function verifyGatedTransform({
     let cachedPromptTokens = 0;
     let modelMs = 0;
     let queuedMs = 0;
+    let preflightOutcome = null;
     try {
+        if (preflight) {
+            const baseline = await execFn(verifyCmd, { onSpawn: (child) => (verifying = child) });
+            verifying = null;
+            if (baseline.status === 0) {
+                preflightOutcome = "green";
+            } else if (baseline.status === 1) {
+                preflightOutcome = "red";
+            } else {
+                const baselineOutput = [baseline.stdout, baseline.stderr].filter(Boolean).join("\n").trim();
+                throw new CouldNotRunError(
+                    `Verify preflight ${describeVerifyFault(baseline)}, which is no verdict (0 green, 1 red); skipped model call and left ${filePath} untouched.${baselineOutput ? `\n${tail(baselineOutput, 400)}` : ""}`,
+                );
+            }
+        }
+
         for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
             const returnKind = insertMode ? "the new code to insert" : "the replacement code";
             const retryFeedback = lastError
@@ -886,10 +935,15 @@ export async function verifyGatedTransform({
             verifying = null;
             const output = [check.stdout, check.stderr].filter(Boolean).join("\n").trim();
             if (check.status === 0) {
+                if (expectRegex && !expectRegex.test(output)) {
+                    lastError = `Verify exited 0 without matching --verify-expect /${verifyExpect}/.${output ? `\n${output}` : ""}`;
+                    continue;
+                }
                 kept = true;
                 return {
                     ok: true,
                     attempts: attempt,
+                    preflight: preflightOutcome,
                     receipt: formatPassReceipt({
                         mode: "transform",
                         model,
@@ -900,19 +954,17 @@ export async function verifyGatedTransform({
                         cachedPromptTokens,
                         totalMs: modelMs,
                         queuedMs,
+                        preflight: preflightOutcome,
                         tokPerSec: rate(completionTokens, modelMs),
                         target: path.basename(filePath),
                     }),
                 };
             }
             if (check.status !== 1) {
-                const how = check.error
-                    ? `failed to run (${check.error.message})`
-                    : check.signal
-                      ? `was killed by ${check.signal}`
-                      : `exited ${check.status}`;
+                const savedPath = saveCandidateReply(reply.content);
+                const savedNote = savedPath ? ` Saved candidate reply to ${savedPath}.` : "";
                 throw new CouldNotRunError(
-                    `Verify command ${how}, which is no verdict (0 green, 1 red); restored ${filePath}.${output ? `\n${tail(output, 400)}` : ""}`,
+                    `Verify command ${describeVerifyFault(check)}, which is no verdict (0 green, 1 red); restored ${filePath}.${savedNote}${output ? `\n${tail(output, 400)}` : ""}`,
                 );
             }
             lastError = output;
@@ -1752,6 +1804,7 @@ const BOOLEAN_FLAGS = Object.freeze({
     "--allow-remote": "allowRemote",
     "--ab": "ab",
     "--write": "write",
+    "--preflight": "preflight",
     "--no-lock": "noLock",
     "--help": "help",
 });
@@ -1767,6 +1820,7 @@ const VALUE_FLAGS = Object.freeze({
     "--insert-before": "insertBefore",
     "--seam-blank-lines": "seamBlankLines",
     "--verify": "verify",
+    "--verify-expect": "verifyExpect",
     "--retries": "retries",
     "--max-input-bytes": "maxInputBytes",
     "--prompt": "prompt",
@@ -1801,7 +1855,7 @@ const FLAG_OF = Object.freeze({
 });
 const EVAL_ONLY = Object.freeze(["ab", "write", "verifyRecord", "k", "seed", "hostCmd", "hostModel", "repoRoot"]);
 const AB_ONLY = Object.freeze(["k", "seed", "hostCmd", "hostModel", "repoRoot"]);
-const TRANSFORM_ONLY = Object.freeze(["insertAfter", "insertBefore", "seamBlankLines"]);
+const TRANSFORM_ONLY = Object.freeze(["insertAfter", "insertBefore", "seamBlankLines", "preflight", "verifyExpect"]);
 const PROMPT_MODES = new Set(["chat", "summarize", "transform"]);
 const AB_TAKES = Object.freeze(new Set(["_", "ab", "write", "k", "seed", "hostCmd", "hostModel", "repoRoot", "baseUrl", "effort", "noLock"]));
 const RECORD_TAKES = Object.freeze(new Set(["_", "verifyRecord", "write", "repoRoot"]));
@@ -1821,7 +1875,7 @@ function refuseOutside(args, takes, mode) {
 }
 
 const TRANSFORM_USAGE =
-    "local-llm.mjs transform [--role code | --model <id>] [--effort low] --file <path> --verify <cmd> (--prompt <instruction> | --prompt-file <path>) " +
+    "local-llm.mjs transform [--role code | --model <id>] [--effort low] --file <path> --verify <cmd> [--preflight] [--verify-expect <regex>] (--prompt <instruction> | --prompt-file <path>) " +
     "[--lines <a>-<b> | --insert-after <n> | --insert-before <n>] [--seam-blank-lines <n>] " +
     "[--context <a>-<b>] [--context-file <path>[:a-b]] [--retries <n>] [--no-lock]";
 
@@ -2100,6 +2154,8 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
                 contextFiles: args.contextFiles ?? [],
                 instruction,
                 verifyCmd: args.verify,
+                preflight: Boolean(args.preflight),
+                verifyExpect: args.verifyExpect ?? null,
                 model: operationalModel(args, "code"),
                 baseUrl,
                 allowRemote: args.allowRemote,
