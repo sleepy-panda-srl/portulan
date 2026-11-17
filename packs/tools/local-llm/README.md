@@ -130,6 +130,33 @@ exhaustion, investigate backend/profile/task behavior before selecting another s
 Do not lower an operator-pinned
 model/effort or bypass verification. This advice reduces failures, does not guarantee completion.
 
+## Choosing checks
+
+`transform --precheck "<cheap command>" --verify "<full command>"` runs the precheck
+after each candidate is written and before full verification. Exit `1` supplies retry
+feedback and skips the full verifier for that attempt. Exit `0` proceeds to the required
+full verifier; it cannot accept an edit by itself. An unavailable command, signal or
+other exit is no verdict: stop, restore the original target bytes and exit `2`, saving
+the candidate reply when possible. Exhausted red checks also restore the target and
+exit `1`. Failure tails name `precheck` or `verification` so callers can distinguish them.
+Checks are shell commands; rollback restores the target, not their other side effects.
+
+Choose a fast check that rejects likely defects, and keep a full verifier that proves
+the requested behavior. Syntax alone cannot establish that tests pass or style is valid.
+These are command examples, not measured timings or installed prerequisites:
+
+| Stack | Fast check example | What still needs verification |
+|---|---|---|
+| .NET | `dotnet build path/to/App.csproj --no-restore -v q -nologo` | Relevant tests and configured style rules; restore assets must already exist. |
+| Python | `python -m py_compile path/to/module.py`; with pycodestyle installed, add `pycodestyle --select=E303 path/to/module.py` for excess blank lines. | Behavioral tests and the project's full lint rules; compilation alone misses blank-line defects. |
+| Node | `node --check path/to/module.mjs` | Relevant tests and lint; syntax is not behavior. |
+
+`--preflight` is separate: it runs the full `--verify` once on the untouched target
+before generation. A green or red baseline proceeds; a no-verdict baseline stops
+without a model call. Use `--verify-expect <regex>` when an empty test filter could
+exit `0`; the full verifier must also print a matching result. It does not apply to
+the precheck. Without `--precheck`, the existing full-verification loop is unchanged.
+
 ## The A/B record
 
 The acquired [capture](../../../evals/ab/local-worker.json) and its generated

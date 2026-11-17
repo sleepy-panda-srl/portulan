@@ -81,9 +81,9 @@ parent then touches up, adds a whole request. So:
 3. **Gate every edit.** `node <runner> transform --file <path> --verify "<cmd>" --prompt-file p.txt`
    (or `--prompt "<instruction>"`), where `--verify` is required; to add a test or a function without
    re-emitting anchor code, use `--insert-after <line>` (with optional `--context <a>-<b>`), e.g.
-   `--insert-after 120 --context 10-40 --prompt-file spec.txt`. Pass `--preflight` to run `--verify`
-   once on the untouched file before calling the model (exit `0` or `1` proceeds; any other exit
-   refuses), and `--verify-expect <regex>` when an empty filter could otherwise exit `0`. The runner applies the edit, runs `<cmd>`, retries with the end of its
+   `--insert-after 120 --context 10-40 --prompt-file spec.txt`. For `--precheck` on each candidate,
+   `--preflight` on the untouched baseline and `--verify-expect`, follow
+   [choosing checks](../../README.md#choosing-checks). The runner applies the edit, runs `<cmd>`, retries with the end of its
    output on exit `1`, and keeps the edit only on exit `0`; any other exit, and SIGINT, SIGTERM or
    SIGHUP, restores the file byte for byte. It is a rollback, not an atomic write: any other signal that
    ends the runner, SIGKILL and SIGQUIT among them, or a power loss between the edit and its verdict
