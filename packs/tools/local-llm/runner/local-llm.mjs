@@ -148,6 +148,10 @@ export function formatPassReceipt({ mode, model, attempts = 1, promptTokens = nu
 }
 
 const tail = (text, chars) => (text.length > chars ? `…${text.slice(-chars)}` : text);
+const formatDiagnostic = (message) => String(message).replace(/\r\n?|\n/g, "\n  ");
+const assertRequestActive = (signal) => {
+    if (signal?.aborted) throw Object.assign(new CouldNotRunError("Local request aborted"), { code: "LOCAL_REQUEST_ABORTED" });
+};
 const sum = (a, b) => (Number.isSafeInteger(a) && a >= 0 && Number.isSafeInteger(b) && b >= 0 && Number.isSafeInteger(a + b) ? a + b : null);
 const rate = (tokens, ms) => (tokens === null || !ms ? null : Number((tokens / (ms / 1000)).toFixed(1)));
 
@@ -770,10 +774,11 @@ export async function callLocalChat({
         : null;
     const activeLifecycle = lifecycle ?? ownLifecycle;
     const controller = ownLifecycle ? ownLifecycle.controller : null;
-    const activeSignal = signal ?? controller?.signal;
+    const activeSignal = controller?.signal ?? signal ?? lifecycle?.controller?.signal;
+    const forwardAbort = () => controller.abort();
     if (signal && controller && signal !== controller.signal) {
         if (signal.aborted) controller.abort();
-        else signal.addEventListener("abort", () => controller.abort(), { once: true });
+        else signal.addEventListener("abort", forwardAbort, { once: true });
     }
     const unregisterSignals = ownLifecycle
         ? registerSignalCancel((sig) => {
@@ -791,19 +796,26 @@ export async function callLocalChat({
     let lock = { queuedMs: 0, release: () => {} };
     let progressPhase = "queued";
     const started = performance.now();
-    const reportProgress = () => onProgress(`local-llm: request=${activeLifecycle?.id ?? requestId ?? "?"} phase=${progressPhase} elapsed=${Math.round(performance.now() - started)}ms tokens=?`);
+    const reportProgress = () => {
+        if (!activeSignal?.aborted) onProgress(`local-llm: request=${activeLifecycle?.id ?? requestId ?? "?"} phase=${progressPhase} elapsed=${Math.round(performance.now() - started)}ms tokens=?`);
+    };
     const progressTimer = progress ? setInterval(reportProgress, 10_000) : null;
+    const stopProgress = () => clearInterval(progressTimer);
+    activeSignal?.addEventListener("abort", stopProgress, { once: true });
     try {
+        assertRequestActive(activeSignal);
         activeLifecycle?.setPhase("queued", { model, endpoint });
         if (progress) reportProgress();
         lock = shouldLock
             ? await acquireEndpointLock(endpoint, { ...(lockDir ? { lockDir } : {}), ...(activeSignal ? { signal: activeSignal } : {}) })
             : { queuedMs: 0, release: () => {} };
+        assertRequestActive(activeSignal);
         if (lock.queuedMs > 0) console.error(`local-llm: waited ${lock.queuedMs}ms for endpoint lock (${endpoint})`);
 
         activeLifecycle?.setPhase("generation", { model, endpoint });
         progressPhase = "generation";
         if (progress) reportProgress();
+        assertRequestActive(activeSignal);
         const t0 = performance.now();
         const res = await localFetch(
             `${endpoint}/chat/completions`,
@@ -827,9 +839,11 @@ export async function callLocalChat({
             },
             fetchImpl,
         );
+        assertRequestActive(activeSignal);
 
         if (!res.ok) {
             const body = await res.text().catch(() => "");
+            assertRequestActive(activeSignal);
             throw new CouldNotRunError(`Local LLM server returned HTTP ${res.status}: ${body.slice(0, 200)}`);
         }
 
@@ -837,8 +851,10 @@ export async function callLocalChat({
         try {
             data = await res.json();
         } catch (err) {
+            assertRequestActive(activeSignal);
             throw new CouldNotRunError(`Local LLM server returned a body that is not JSON — ${err.message}`);
         }
+        assertRequestActive(activeSignal);
         const totalMs = Math.max(1, Math.round(performance.now() - t0));
         const usage = readUsage(data.usage);
         if (data.choices?.[0]?.finish_reason === "length") {
@@ -870,7 +886,9 @@ export async function callLocalChat({
         });
         throw err;
     } finally {
-        clearInterval(progressTimer);
+        stopProgress();
+        activeSignal?.removeEventListener("abort", stopProgress);
+        if (signal && controller) signal.removeEventListener("abort", forwardAbort);
         unregisterSignals();
         lock.release();
     }
@@ -1400,11 +1418,7 @@ export async function verifyGatedTransform({
         lastError = output || `${phase === "precheck" ? "Precheck" : "Verify"} exited 1 without output.`;
         retryFailures.push({ attempt, phase, feedback: tail(lastError, FEEDBACK_CHARS) });
     };
-    const assertActive = () => {
-        if (abortController.signal.aborted) {
-            throw Object.assign(new CouldNotRunError("Local request aborted"), { code: "LOCAL_REQUEST_ABORTED" });
-        }
-    };
+    const assertActive = () => assertRequestActive(abortController.signal);
     const checkCandidate = async (cmd, phase, attempt, content) => {
         assertActive();
         activeLifecycle?.setPhase(phase, { attempt });
@@ -1496,12 +1510,14 @@ export async function verifyGatedTransform({
 
             if (precheckCmd !== null) {
                 const precheck = await checkCandidate(precheckCmd, "precheck", attempt, reply.content);
+                assertActive();
                 if (precheck.status === 1) {
                     recordFailure(attempt, precheck.output, "precheck");
                     continue;
                 }
             }
             const check = await checkCandidate(verifyCmd, "verification", attempt, reply.content);
+            assertActive();
             const { output } = check;
             if (check.status === 0) {
                 if (expectRegex && !expectRegex.test(output)) {
@@ -2811,11 +2827,11 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
             if (res.ok) {
                 console.log(res.receipt);
                 for (const failure of res.retryFailures) {
-                    console.error(`local-llm: attempt=${failure.attempt} phase=${failure.phase} failed:\n${failure.feedback}`);
+                    console.error(formatDiagnostic(`local-llm: attempt=${failure.attempt} phase=${failure.phase} failed:\n${failure.feedback}`));
                 }
                 return 0;
             }
-            console.error(res.error);
+            console.error(formatDiagnostic(res.error));
             return 1;
         }
 
@@ -2876,7 +2892,7 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
 
         throw new CouldNotRunError(`Unknown command: ${cmd}`);
     } catch (err) {
-        console.error(err.message);
+        console.error(formatDiagnostic(err.message));
         return err instanceof RailError ? 1 : 2;
     }
 }

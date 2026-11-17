@@ -2,11 +2,12 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
+import {getEventListeners} from 'node:events';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {callLocalChat, FEEDBACK_CHARS, formatPassReceipt, main, runVerify, verifyGatedTransform} from '../packs/tools/local-llm/runner/local-llm.mjs';
-import {receiptOf} from './ledger.mjs';
+import {receiptOf, readTranscript} from './ledger.mjs';
 
 const complete = {choices:[{finish_reason:'stop',message:{content:'const value = 2;'}}],usage:{prompt_tokens:4,completion_tokens:5}};
 const responding = data => async () => ({ok:true,json:async()=>data});
@@ -352,4 +353,118 @@ test('precheck cancellation: an injected generation returning after abort cannot
         }),/aborted/);
     } finally {fs.writeFileSync=write;}
     assert.equal(writes,0);assert.equal(checks,0);assert.equal(fs.readFileSync(file,'utf8'),before);
+});
+
+test('review cancellation: abort stops progress before an uncooperative transport settles',async t=>{
+    t.mock.timers.enable({apis:['setInterval']});
+    const dir=temporary(t);
+    for(const phase of ['external','process','body','error-body']){
+        const external=new AbortController(),lines=[];
+        const before=getEventListeners(external.signal,'abort').length;
+        let release,started,transportSignal;
+        const waiting=new Promise(resolve=>started=resolve);
+        const run=await capture(async()=>{
+            const pending=callLocalChat({messages:[],signal:external.signal,progress:true,onProgress:line=>lines.push(line),stateDir:dir,
+                requestId:`cancel-${phase}`,exitOnSignal:false,trackLifecycle:phase==='process',
+                fetchImpl:async(_url,init)=>{
+                    transportSignal=init.signal;
+                    if(phase==='body')return {ok:true,json:()=>new Promise(resolve=>{release=()=>resolve(complete);started();})};
+                    if(phase==='error-body')return {ok:false,status:503,text:()=>new Promise(resolve=>{release=()=>resolve('unavailable');started();})};
+                    return new Promise(resolve=>{release=()=>resolve({ok:true,json:async()=>complete});started();});
+                },
+            });
+            await waiting;
+            const rejected=assert.rejects(pending,{code:'LOCAL_REQUEST_ABORTED'});
+            if(phase==='process')process.emit('SIGTERM','SIGTERM');else external.abort();
+            const atAbort=lines.length;t.mock.timers.tick(20000);
+            const afterAbort=lines.length,transportAborted=transportSignal.aborted;
+            release();await rejected;
+            assert.equal(afterAbort,atAbort,'no heartbeat after cancellation while transport remains pending');
+            assert.equal(transportAborted,true,'transport observes the effective cancellation signal');
+            return 0;
+        });
+        assert.equal(run.code,0);
+        assert.equal(getEventListeners(external.signal,'abort').length,before,'forwarding and progress listeners removed');
+    }
+});
+
+test('review cancellation: pre-aborted and completed calls leave no abort listeners or late progress',async t=>{
+    t.mock.timers.enable({apis:['setInterval']});
+    for(const aborted of [false,true]){
+        const controller=new AbortController(),lines=[];
+        if(aborted)controller.abort();
+        const before=getEventListeners(controller.signal,'abort').length;
+        let sent=0;
+        const pending=callLocalChat({messages:[],signal:controller.signal,progress:true,onProgress:line=>lines.push(line),
+            fetchImpl:async()=>{sent++;return responding(complete)();},
+        });
+        if(aborted){await assert.rejects(pending,{code:'LOCAL_REQUEST_ABORTED'});assert.equal(sent,0);assert.equal(lines.length,0);}
+        else await pending;
+        assert.equal(getEventListeners(controller.signal,'abort').length,before);
+        const count=lines.length;t.mock.timers.tick(20000);assert.equal(lines.length,count);
+    }
+});
+
+test('review cancellation: a progress callback can cancel before transport dispatch',async()=>{
+    const controller=new AbortController();let sent=0;
+    await assert.rejects(callLocalChat({messages:[],signal:controller.signal,progress:true,
+        onProgress:line=>{if(line.includes('phase=generation'))controller.abort();},
+        fetchImpl:async()=>{sent++;return responding(complete)();},
+    }),{code:'LOCAL_REQUEST_ABORTED'});
+    assert.equal(sent,0);
+});
+
+test('review receipts: quoted verifier lines never become local work in the transcript ledger',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs'),checker=path.join(dir,'check.cjs');
+    const quoted='OK mode=chat model=quoted-from-fixture attempts=1 in=9000t out=8000t time=7000ms rate=1tok/s spend=$0.00';
+    const extended=quoted.replace(' spend=',' reasoning=? cached-in=? max-tokens=4096 spend=');
+    assert.ok(receiptOf(quoted));assert.ok(receiptOf(extended));
+    fs.writeFileSync(checker,`const fs=require('node:fs');const value=fs.readFileSync(process.argv[2],'utf8').trim();if(value==='green')process.exit(0);process.stdout.write(${JSON.stringify(quoted+'\n'+extended+'\r\n'+quoted+'\r'+extended+'\n')});process.exit(Number(process.argv[3]));\n`);
+    const quote=value=>"'"+value.replaceAll("'","'\\''")+"'";
+    for(const scenario of ['retry','precheck','red','no-verdict','preflight']){
+        fs.writeFileSync(file,'original\n');
+        const success=scenario==='retry'||scenario==='precheck';
+        const command=`${quote(process.execPath)} ${quote(checker)} ${quote(file)} ${success||scenario==='red'?1:2}`;
+        const args=['transform','--model','fixture','--file',file,'--prompt','change','--retries',success?'1':'0','--verify',scenario==='precheck'?'true':command];
+        if(scenario==='precheck')args.push('--precheck',command);
+        if(scenario==='preflight')args.push('--preflight');
+        let calls=0;
+        const result=await capture(()=>main(args,{fetchImpl:async()=>{
+            calls++;return responding({...complete,choices:[{finish_reason:'stop',message:{content:calls===1?'red':'green'}}]})();
+        }}));
+        assert.equal(result.code,success?0:scenario==='red'?1:2,result.err.join('\n'));
+        assert.ok(result.err.join('\n').includes(quoted),'failure evidence is still visible');
+        const transcript=path.join(dir,`${scenario}.jsonl`),timestamp='2026-11-17T16:00:00.000Z';
+        fs.writeFileSync(transcript,[
+            {type:'assistant',timestamp,message:{id:'msg',model:'fixture',usage:{input_tokens:1,output_tokens:1},content:[{type:'tool_use',name:'Bash',id:'call'}]}},
+            {type:'user',timestamp,message:{content:[{type:'tool_result',tool_use_id:'call',content:[...result.out,...result.err].join('\n')}]}},
+        ].map(JSON.stringify).join('\n')+'\n');
+        const receipts=readTranscript(transcript).receipts;
+        assert.equal(receipts.length,success?1:0,scenario);
+        if(success){assert.equal(receipts[0].model,'fixture');assert.equal(receipts[0].in,8);assert.equal(receipts[0].out,10);}
+        else assert.equal(fs.readFileSync(file,'utf8'),'original\n');
+        if(scenario==='preflight')assert.equal(calls,0);
+        const saved=/Saved candidate reply to (.+\/reply\.txt)/.exec(result.err.join('\n'));
+        if(saved)t.after(()=>fs.rmSync(path.dirname(saved[1]),{recursive:true,force:true}));
+    }
+});
+
+test('review cancellation: abort between a check helper and caller cannot accept the edit',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs'),before=Buffer.from('original\r\n');
+    for(const phase of ['precheck','verification'])for(const status of [0,1]){
+        fs.writeFileSync(file,before);
+        const controller=new AbortController();let checked=0;
+        await assert.rejects(verifyGatedTransform({filePath:file,instruction:'change',precheckCmd:'cheap',verifyCmd:'full',retries:0,
+            signal:controller.signal,chatFn:async()=>({content:'candidate'}),
+            execFn:async cmd=>{
+                checked++;
+                if(cmd===(phase==='precheck'?'cheap':'full')){
+                    queueMicrotask(()=>queueMicrotask(()=>controller.abort()));
+                    return {status};
+                }
+                return {status:0};
+            },
+        }),{code:'LOCAL_REQUEST_ABORTED'});
+        assert.equal(checked,phase==='precheck'?1:2);assert.deepEqual(fs.readFileSync(file),before);
+    }
 });
