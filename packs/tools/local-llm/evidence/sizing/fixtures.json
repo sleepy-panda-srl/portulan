@@ -1,0 +1,731 @@
+{
+  "schema": 1,
+  "plannedDate": "2026-11-17",
+  "profile": {
+    "model": "qwen/qwen3.8-27b",
+    "role": "code",
+    "effort": "low",
+    "enableThinking": false,
+    "maxTokens": 4096,
+    "retries": 0,
+    "cancelAfterMs": 180000,
+    "baseUrl": "http://127.0.0.1:1234/v1"
+  },
+  "stoppingRule": "One generation per cell, fixed order, no adaptive retry/profile change. Stop remaining cells after cancellation or unavailable transport/routing; record them not-run. Two failed single-generation calls exhaust that shape. Known completed length/refusal or verifier-red is retained, not retried.",
+  "cells": [
+    {
+      "id": "replace-small",
+      "shape": "replacement",
+      "requestedGeneratedLines": 15,
+      "exportName": "clamp",
+      "before": "export function clamp(value, min, max) { return 0; }\n",
+      "expectedSource": "export function clamp(value, min, max) {\n  if (!Number.isFinite(value)) {\n    throw new TypeError(\"value\");\n  }\n  if (min > max) {\n    throw new RangeError(\"range\");\n  }\n  if (value < min) {\n    return min;\n  }\n  if (value > max) {\n    return max;\n  }\n  return value;\n}",
+      "badSource": "export function clamp() { return 99; }",
+      "lineRange": "1-1",
+      "helpers": {},
+      "checks": [
+        {
+          "args": [
+            5,
+            0,
+            10
+          ],
+          "expected": 5
+        },
+        {
+          "args": [
+            -1,
+            0,
+            10
+          ],
+          "expected": 0
+        },
+        {
+          "args": [
+            11,
+            0,
+            10
+          ],
+          "expected": 10
+        },
+        {
+          "args": [
+            0,
+            0,
+            10
+          ],
+          "expected": 0
+        },
+        {
+          "args": [
+            10,
+            0,
+            10
+          ],
+          "expected": 10
+        },
+        {
+          "args": [
+            1.25,
+            0,
+            10
+          ],
+          "expected": 1.25
+        },
+        {
+          "args": [
+            -5,
+            -10,
+            -2
+          ],
+          "expected": -5
+        },
+        {
+          "args": [
+            null,
+            0,
+            10
+          ],
+          "throws": "TypeError"
+        },
+        {
+          "args": [
+            2,
+            5,
+            1
+          ],
+          "throws": "RangeError"
+        }
+      ],
+      "instruction": "1. Replace only clamp. Reject nonfinite or non-number value with TypeError. Reject min > max with RangeError. Otherwise return value clamped inclusively to min/max.\n2. Use braces on every if, one statement per line and readable wrapping; roughly 15 lines is the scope estimate, not padding.\n3. Return only the complete replacement function in one JavaScript fence, no commentary."
+    },
+    {
+      "id": "replace-large",
+      "shape": "replacement",
+      "requestedGeneratedLines": 35,
+      "exportName": "classify",
+      "before": "export function classify(event) { return null; }\n",
+      "expectedSource": "export function classify(event) {\n  if (event === null || typeof event !== \"object\") {\n    throw new TypeError(\"event\");\n  }\n  const attempt = event.attempt ?? 0;\n  if (!Number.isInteger(attempt) || attempt < 0) {\n    throw new RangeError(\"attempt\");\n  }\n  switch (event.kind) {\n    case \"start\": {\n      return { state: \"running\", terminal: false, retryable: false };\n    }\n    case \"success\": {\n      return { state: \"done\", terminal: true, retryable: false };\n    }\n    case \"retry\": {\n      return { state: \"waiting\", terminal: false, retryable: attempt < 3 };\n    }\n    case \"cancel\": {\n      return { state: \"cancelled\", terminal: true, retryable: false };\n    }\n    case \"timeout\": {\n      return { state: \"failed\", terminal: true, retryable: attempt < 3 };\n    }\n    case \"error\": {\n      return { state: \"failed\", terminal: true, retryable: false };\n    }\n    case \"pause\": {\n      return { state: \"paused\", terminal: false, retryable: false };\n    }\n    default: {\n      return { state: \"unknown\", terminal: false, retryable: false };\n    }\n  }\n}",
+      "badSource": "export function classify() { return 99; }",
+      "lineRange": "1-1",
+      "helpers": {},
+      "checks": [
+        {
+          "args": [
+            {
+              "kind": "start"
+            }
+          ],
+          "expected": {
+            "state": "running",
+            "terminal": false,
+            "retryable": false
+          }
+        },
+        {
+          "args": [
+            {
+              "kind": "success"
+            }
+          ],
+          "expected": {
+            "state": "done",
+            "terminal": true,
+            "retryable": false
+          }
+        },
+        {
+          "args": [
+            {
+              "kind": "retry"
+            }
+          ],
+          "expected": {
+            "state": "waiting",
+            "terminal": false,
+            "retryable": true
+          }
+        },
+        {
+          "args": [
+            {
+              "kind": "cancel"
+            }
+          ],
+          "expected": {
+            "state": "cancelled",
+            "terminal": true,
+            "retryable": false
+          }
+        },
+        {
+          "args": [
+            {
+              "kind": "timeout"
+            }
+          ],
+          "expected": {
+            "state": "failed",
+            "terminal": true,
+            "retryable": true
+          }
+        },
+        {
+          "args": [
+            {
+              "kind": "error"
+            }
+          ],
+          "expected": {
+            "state": "failed",
+            "terminal": true,
+            "retryable": false
+          }
+        },
+        {
+          "args": [
+            {
+              "kind": "pause"
+            }
+          ],
+          "expected": {
+            "state": "paused",
+            "terminal": false,
+            "retryable": false
+          }
+        },
+        {
+          "args": [
+            {
+              "kind": "other"
+            }
+          ],
+          "expected": {
+            "state": "unknown",
+            "terminal": false,
+            "retryable": false
+          }
+        },
+        {
+          "args": [
+            {
+              "kind": "retry",
+              "attempt": 3
+            }
+          ],
+          "expected": {
+            "state": "waiting",
+            "terminal": false,
+            "retryable": false
+          }
+        },
+        {
+          "args": [
+            {
+              "kind": "timeout",
+              "attempt": 2
+            }
+          ],
+          "expected": {
+            "state": "failed",
+            "terminal": true,
+            "retryable": true
+          }
+        },
+        {
+          "args": [
+            {
+              "kind": "timeout",
+              "attempt": 3
+            }
+          ],
+          "expected": {
+            "state": "failed",
+            "terminal": true,
+            "retryable": false
+          }
+        },
+        {
+          "args": [
+            null
+          ],
+          "throws": "TypeError"
+        },
+        {
+          "args": [
+            {
+              "kind": "start",
+              "attempt": -1
+            }
+          ],
+          "throws": "RangeError"
+        },
+        {
+          "args": [
+            {
+              "kind": "start",
+              "attempt": 1.5
+            }
+          ],
+          "throws": "RangeError"
+        }
+      ],
+      "instruction": "1. Replace only classify(event). Null/non-object is TypeError. attempt defaults to 0; noninteger/negative attempt is RangeError. Return exactly state, terminal, retryable.\n2. start -> running/false/false; success -> done/true/false; retry -> waiting/false/(attempt<3); cancel -> cancelled/true/false; timeout -> failed/true/(attempt<3); error -> failed/true/false; pause -> paused/false/false; any other kind -> unknown/false/false.\n3. Use a switch with braced cases, braces for ifs, one statement per line, readable wrapping. Roughly 35 new lines; do not pad.\n4. Return only complete replacement function in one JavaScript fence."
+    },
+    {
+      "id": "insert-small",
+      "shape": "test insertion",
+      "requestedGeneratedLines": 15,
+      "before": "import { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { clamp } from \"./helper.mjs\";\n",
+      "insertAfter": 3,
+      "helpers": {
+        "helper.mjs": "export function clamp(value, min, max) {\n  if (process.env.PILOT_MUTANT === \"1\") { return 99; }\n  if (!Number.isFinite(value)) {\n    throw new TypeError(\"value\");\n  }\n  if (min > max) {\n    throw new RangeError(\"range\");\n  }\n  if (value < min) {\n    return min;\n  }\n  if (value > max) {\n    return max;\n  }\n  return value;\n}\n"
+      },
+      "requiredTests": 3,
+      "expectedSource": "test(\"below\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"inside\", () => {\n  assert.equal(clamp(3, 0, 10), 3);\n  assert.equal(clamp(7, 0, 10), 7);\n});\n\ntest(\"above\", () => {\n  assert.equal(clamp(11, 0, 10), 10);\n  assert.equal(clamp(50, 0, 10), 10);\n});",
+      "badSource": "test(\"empty0\", () => { assert.ok(true); });\ntest(\"empty1\", () => { assert.ok(true); });\ntest(\"empty2\", () => { assert.ok(true); });",
+      "instruction": "1. Insert exactly 3 node:test cases using existing imports and helper; do not repeat imports. Each case is synchronous and makes two assert.equal calls for these (value,min,max,expected) tuples: below: [[-1, 0, 10, 0], [-5, 0, 10, 0]]; inside: [[3, 0, 10, 3], [7, 0, 10, 7]]; above: [[11, 0, 10, 10], [50, 0, 10, 10]].\n2. Match this already-wrapped layout, one assertion per physical line:\ntest(\"name\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n3. Use the helper signature from read-only context. Return only new tests in one JavaScript fence. About 15 new lines, no padding.",
+      "expectedAssertions": [
+        {
+          "args": [
+            -1,
+            0,
+            10
+          ],
+          "expected": 0
+        },
+        {
+          "args": [
+            -5,
+            0,
+            10
+          ],
+          "expected": 0
+        },
+        {
+          "args": [
+            3,
+            0,
+            10
+          ],
+          "expected": 3
+        },
+        {
+          "args": [
+            7,
+            0,
+            10
+          ],
+          "expected": 7
+        },
+        {
+          "args": [
+            11,
+            0,
+            10
+          ],
+          "expected": 10
+        },
+        {
+          "args": [
+            50,
+            0,
+            10
+          ],
+          "expected": 10
+        }
+      ],
+      "negativeSources": [
+        {
+          "name": "partial-tautology",
+          "source": "test(\"below\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"tautology0\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology1\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});"
+        },
+        {
+          "name": "duplicated-tuples",
+          "source": "test(\"duplicate0\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"duplicate1\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"duplicate2\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});"
+        },
+        {
+          "name": "missing-assertions",
+          "source": "test(\"below\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n});\n\ntest(\"inside\", () => {\n  assert.equal(clamp(3, 0, 10), 3);\n});\n\ntest(\"above\", () => {\n  assert.equal(clamp(11, 0, 10), 10);\n});"
+        },
+        {
+          "name": "wrong-expected-value",
+          "source": "test(\"below\", () => {\n  assert.equal(clamp(-1, 0, 10), 999);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"inside\", () => {\n  assert.equal(clamp(3, 0, 10), 3);\n  assert.equal(clamp(7, 0, 10), 7);\n});\n\ntest(\"above\", () => {\n  assert.equal(clamp(11, 0, 10), 10);\n  assert.equal(clamp(50, 0, 10), 10);\n});"
+        },
+        {
+          "name": "constant-actual",
+          "source": "test(\"tautology0\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology1\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology2\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});"
+        }
+      ]
+    },
+    {
+      "id": "insert-large",
+      "shape": "test insertion",
+      "requestedGeneratedLines": 35,
+      "before": "import { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { clamp } from \"./helper.mjs\";\n",
+      "insertAfter": 3,
+      "helpers": {
+        "helper.mjs": "export function clamp(value, min, max) {\n  if (process.env.PILOT_MUTANT === \"1\") { return 99; }\n  if (!Number.isFinite(value)) {\n    throw new TypeError(\"value\");\n  }\n  if (min > max) {\n    throw new RangeError(\"range\");\n  }\n  if (value < min) {\n    return min;\n  }\n  if (value > max) {\n    return max;\n  }\n  return value;\n}\n"
+      },
+      "requiredTests": 7,
+      "expectedSource": "test(\"below\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"inside\", () => {\n  assert.equal(clamp(3, 0, 10), 3);\n  assert.equal(clamp(7, 0, 10), 7);\n});\n\ntest(\"above\", () => {\n  assert.equal(clamp(11, 0, 10), 10);\n  assert.equal(clamp(50, 0, 10), 10);\n});\n\ntest(\"edges\", () => {\n  assert.equal(clamp(0, 0, 10), 0);\n  assert.equal(clamp(10, 0, 10), 10);\n});\n\ntest(\"negative\", () => {\n  assert.equal(clamp(-12, -10, -2), -10);\n  assert.equal(clamp(-1, -10, -2), -2);\n});\n\ntest(\"fractional\", () => {\n  assert.equal(clamp(1.25, 0, 10), 1.25);\n  assert.equal(clamp(9.75, 0, 10), 9.75);\n});\n\ntest(\"equal-bounds\", () => {\n  assert.equal(clamp(2, 5, 5), 5);\n  assert.equal(clamp(9, 5, 5), 5);\n});",
+      "badSource": "test(\"empty0\", () => { assert.ok(true); });\ntest(\"empty1\", () => { assert.ok(true); });\ntest(\"empty2\", () => { assert.ok(true); });\ntest(\"empty3\", () => { assert.ok(true); });\ntest(\"empty4\", () => { assert.ok(true); });\ntest(\"empty5\", () => { assert.ok(true); });\ntest(\"empty6\", () => { assert.ok(true); });",
+      "instruction": "1. Insert exactly 7 node:test cases using existing imports and helper; do not repeat imports. Each case is synchronous and makes two assert.equal calls for these (value,min,max,expected) tuples: below: [[-1, 0, 10, 0], [-5, 0, 10, 0]]; inside: [[3, 0, 10, 3], [7, 0, 10, 7]]; above: [[11, 0, 10, 10], [50, 0, 10, 10]]; edges: [[0, 0, 10, 0], [10, 0, 10, 10]]; negative: [[-12, -10, -2, -10], [-1, -10, -2, -2]]; fractional: [[1.25, 0, 10, 1.25], [9.75, 0, 10, 9.75]]; equal-bounds: [[2, 5, 5, 5], [9, 5, 5, 5]].\n2. Match this already-wrapped layout, one assertion per physical line:\ntest(\"name\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n3. Use the helper signature from read-only context. Return only new tests in one JavaScript fence. About 35 new lines, no padding.",
+      "expectedAssertions": [
+        {
+          "args": [
+            -1,
+            0,
+            10
+          ],
+          "expected": 0
+        },
+        {
+          "args": [
+            -5,
+            0,
+            10
+          ],
+          "expected": 0
+        },
+        {
+          "args": [
+            3,
+            0,
+            10
+          ],
+          "expected": 3
+        },
+        {
+          "args": [
+            7,
+            0,
+            10
+          ],
+          "expected": 7
+        },
+        {
+          "args": [
+            11,
+            0,
+            10
+          ],
+          "expected": 10
+        },
+        {
+          "args": [
+            50,
+            0,
+            10
+          ],
+          "expected": 10
+        },
+        {
+          "args": [
+            0,
+            0,
+            10
+          ],
+          "expected": 0
+        },
+        {
+          "args": [
+            10,
+            0,
+            10
+          ],
+          "expected": 10
+        },
+        {
+          "args": [
+            -12,
+            -10,
+            -2
+          ],
+          "expected": -10
+        },
+        {
+          "args": [
+            -1,
+            -10,
+            -2
+          ],
+          "expected": -2
+        },
+        {
+          "args": [
+            1.25,
+            0,
+            10
+          ],
+          "expected": 1.25
+        },
+        {
+          "args": [
+            9.75,
+            0,
+            10
+          ],
+          "expected": 9.75
+        },
+        {
+          "args": [
+            2,
+            5,
+            5
+          ],
+          "expected": 5
+        },
+        {
+          "args": [
+            9,
+            5,
+            5
+          ],
+          "expected": 5
+        }
+      ],
+      "negativeSources": [
+        {
+          "name": "partial-tautology",
+          "source": "test(\"below\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"tautology0\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology1\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology2\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology3\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology4\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology5\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});"
+        },
+        {
+          "name": "duplicated-tuples",
+          "source": "test(\"duplicate0\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"duplicate1\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"duplicate2\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"duplicate3\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"duplicate4\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"duplicate5\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"duplicate6\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});"
+        },
+        {
+          "name": "missing-assertions",
+          "source": "test(\"below\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n});\n\ntest(\"inside\", () => {\n  assert.equal(clamp(3, 0, 10), 3);\n});\n\ntest(\"above\", () => {\n  assert.equal(clamp(11, 0, 10), 10);\n});\n\ntest(\"edges\", () => {\n  assert.equal(clamp(0, 0, 10), 0);\n});\n\ntest(\"negative\", () => {\n  assert.equal(clamp(-12, -10, -2), -10);\n});\n\ntest(\"fractional\", () => {\n  assert.equal(clamp(1.25, 0, 10), 1.25);\n});\n\ntest(\"equal-bounds\", () => {\n  assert.equal(clamp(2, 5, 5), 5);\n});"
+        },
+        {
+          "name": "wrong-expected-value",
+          "source": "test(\"below\", () => {\n  assert.equal(clamp(-1, 0, 10), 999);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\n\ntest(\"inside\", () => {\n  assert.equal(clamp(3, 0, 10), 3);\n  assert.equal(clamp(7, 0, 10), 7);\n});\n\ntest(\"above\", () => {\n  assert.equal(clamp(11, 0, 10), 10);\n  assert.equal(clamp(50, 0, 10), 10);\n});\n\ntest(\"edges\", () => {\n  assert.equal(clamp(0, 0, 10), 0);\n  assert.equal(clamp(10, 0, 10), 10);\n});\n\ntest(\"negative\", () => {\n  assert.equal(clamp(-12, -10, -2), -10);\n  assert.equal(clamp(-1, -10, -2), -2);\n});\n\ntest(\"fractional\", () => {\n  assert.equal(clamp(1.25, 0, 10), 1.25);\n  assert.equal(clamp(9.75, 0, 10), 9.75);\n});\n\ntest(\"equal-bounds\", () => {\n  assert.equal(clamp(2, 5, 5), 5);\n  assert.equal(clamp(9, 5, 5), 5);\n});"
+        },
+        {
+          "name": "constant-actual",
+          "source": "test(\"tautology0\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology1\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology2\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology3\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology4\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology5\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});\n\ntest(\"tautology6\", () => {\n  assert.equal(1, 1);\n  assert.equal(2, 2);\n});"
+        }
+      ]
+    },
+    {
+      "id": "context-small",
+      "shape": "helper context",
+      "requestedGeneratedLines": 15,
+      "exportName": "formatTotal",
+      "before": "import { toCents, applyTax, formatMoney } from \"./helper.mjs\";\nexport function formatTotal(items, rate, currency) { return \"\"; }\nexport const untouched = \"keep\";\n",
+      "expectedSource": "export function formatTotal(items, rate, currency) {\n  if (!Array.isArray(items)) {\n    throw new TypeError(\"items\");\n  }\n  let cents = 0;\n  for (const value of items) {\n    cents += toCents(value);\n  }\n  const taxed = applyTax(cents, rate);\n  return formatMoney({ cents: taxed, currency });\n}",
+      "badSource": "export function formatTotal() { return 99; }",
+      "lineRange": "2-2",
+      "helpers": {
+        "helper.mjs": "export function toCents(value) {\n  if (typeof value !== \"number\" || !Number.isFinite(value)) { throw new TypeError(\"amount\"); }\n  return Math.round(value * 100);\n}\nexport function applyTax(cents, rate) {\n  if (!Number.isFinite(rate) || rate < 0) { throw new RangeError(\"rate\"); }\n  return Math.round(cents * (1 + rate));\n}\nexport function formatMoney({ cents, currency }) {\n  if (![\"USD\", \"EUR\"].includes(currency)) { throw new RangeError(\"currency\"); }\n  return `${currency} ${(cents / 100).toFixed(2)}`;\n}\nexport function parseCents(text) {\n  if (typeof text !== \"string\" || !/^-?\\d+(?:\\.\\d{1,2})?$/.test(text)) { return null; }\n  return Math.round(Number(text) * 100);\n}\n"
+      },
+      "checks": [
+        {
+          "args": [
+            [
+              1,
+              2
+            ],
+            0.1,
+            "USD"
+          ],
+          "expected": "USD 3.30"
+        },
+        {
+          "args": [
+            [],
+            0,
+            "EUR"
+          ],
+          "expected": "EUR 0.00"
+        },
+        {
+          "args": [
+            [
+              1.25,
+              2.5
+            ],
+            0,
+            "USD"
+          ],
+          "expected": "USD 3.75"
+        },
+        {
+          "args": [
+            [
+              -1,
+              2
+            ],
+            0.2,
+            "EUR"
+          ],
+          "expected": "EUR 1.20"
+        },
+        {
+          "args": [
+            null,
+            0,
+            "USD"
+          ],
+          "throws": "TypeError"
+        },
+        {
+          "args": [
+            [
+              1
+            ],
+            -1,
+            "USD"
+          ],
+          "throws": "RangeError"
+        },
+        {
+          "args": [
+            [
+              null
+            ],
+            0,
+            "USD"
+          ],
+          "throws": "TypeError"
+        },
+        {
+          "args": [
+            [
+              1
+            ],
+            0,
+            "BAD"
+          ],
+          "throws": "RangeError"
+        }
+      ],
+      "instruction": "1. Replace only formatTotal. Reject non-array items with TypeError. Convert each numeric price with toCents, sum cents, applyTax(cents,rate), then use formatMoney with its exact object signature. Read helper context; never redefine helpers.\n2. Preserve outside source; braces on if/for, one statement per line. Roughly 15 generated lines.\n3. Return only complete replacement function in one JavaScript fence."
+    },
+    {
+      "id": "context-large",
+      "shape": "helper context",
+      "requestedGeneratedLines": 35,
+      "exportName": "summarize",
+      "before": "import { parseCents, formatMoney } from \"./helper.mjs\";\nexport function summarize(rows, currency) { return null; }\nexport const untouched = \"keep\";\n",
+      "expectedSource": "export function summarize(rows, currency) {\n  if (!Array.isArray(rows)) {\n    throw new TypeError(\"rows\");\n  }\n  const groups = new Map();\n  let accepted = 0;\n  let rejected = 0;\n  let total = 0;\n  for (const row of rows) {\n    if (row === null || typeof row !== \"object\" || typeof row.account !== \"string\" || row.account.trim() === \"\") {\n      rejected++;\n      continue;\n    }\n    const cents = parseCents(row.amount);\n    if (cents === null) {\n      rejected++;\n      continue;\n    }\n    const account = row.account.trim();\n    groups.set(account, (groups.get(account) ?? 0) + cents);\n    total += cents;\n    accepted++;\n  }\n  const accounts = [...groups.keys()].sort().map(account => ({\n    account,\n    balance: formatMoney({ cents: groups.get(account), currency }),\n  }));\n  return {\n    accepted,\n    rejected,\n    total: formatMoney({ cents: total, currency }),\n    accounts,\n  };\n}",
+      "badSource": "export function summarize() { return 99; }",
+      "lineRange": "2-2",
+      "helpers": {
+        "helper.mjs": "export function toCents(value) {\n  if (typeof value !== \"number\" || !Number.isFinite(value)) { throw new TypeError(\"amount\"); }\n  return Math.round(value * 100);\n}\nexport function applyTax(cents, rate) {\n  if (!Number.isFinite(rate) || rate < 0) { throw new RangeError(\"rate\"); }\n  return Math.round(cents * (1 + rate));\n}\nexport function formatMoney({ cents, currency }) {\n  if (![\"USD\", \"EUR\"].includes(currency)) { throw new RangeError(\"currency\"); }\n  return `${currency} ${(cents / 100).toFixed(2)}`;\n}\nexport function parseCents(text) {\n  if (typeof text !== \"string\" || !/^-?\\d+(?:\\.\\d{1,2})?$/.test(text)) { return null; }\n  return Math.round(Number(text) * 100);\n}\n"
+      },
+      "checks": [
+        {
+          "args": [
+            [],
+            "USD"
+          ],
+          "expected": {
+            "accepted": 0,
+            "rejected": 0,
+            "total": "USD 0.00",
+            "accounts": []
+          }
+        },
+        {
+          "args": [
+            [
+              {
+                "account": "b",
+                "amount": "2.50"
+              },
+              {
+                "account": " a ",
+                "amount": "1.20"
+              },
+              {
+                "account": "a",
+                "amount": "-0.20"
+              }
+            ],
+            "EUR"
+          ],
+          "expected": {
+            "accepted": 3,
+            "rejected": 0,
+            "total": "EUR 3.50",
+            "accounts": [
+              {
+                "account": "a",
+                "balance": "EUR 1.00"
+              },
+              {
+                "account": "b",
+                "balance": "EUR 2.50"
+              }
+            ]
+          }
+        },
+        {
+          "args": [
+            [
+              null,
+              {
+                "account": "",
+                "amount": "1"
+              },
+              {
+                "account": "a",
+                "amount": "bad"
+              },
+              {
+                "account": "a",
+                "amount": "1.234"
+              }
+            ],
+            "USD"
+          ],
+          "expected": {
+            "accepted": 0,
+            "rejected": 4,
+            "total": "USD 0.00",
+            "accounts": []
+          }
+        },
+        {
+          "args": [
+            [
+              {
+                "account": "a",
+                "amount": "-1.2"
+              }
+            ],
+            "USD"
+          ],
+          "expected": {
+            "accepted": 1,
+            "rejected": 0,
+            "total": "USD -1.20",
+            "accounts": [
+              {
+                "account": "a",
+                "balance": "USD -1.20"
+              }
+            ]
+          }
+        },
+        {
+          "args": [
+            null,
+            "USD"
+          ],
+          "throws": "TypeError"
+        },
+        {
+          "args": [
+            [],
+            "BAD"
+          ],
+          "throws": "RangeError"
+        }
+      ],
+      "instruction": "1. Replace only summarize(rows,currency). Non-array rows -> TypeError. Return exactly accepted,rejected,total,accounts. Reject each null/non-object row, non-string/blank account or amount where parseCents returns null; increment rejected once.\n2. Trim accepted account names, sum cents per account and globally, count accepted, sort accounts lexicographically. accounts entries are {account,balance}; total and balances use formatMoney with its exact object signature. Read helper context, do not redefine helpers. Currency errors propagate even for no accepted rows.\n3. Preserve outside source; use braces for if/for, one statement per line and wrap returned object fields. About 35 new lines, no padding.\n4. Return only complete replacement function in one JavaScript fence."
+    }
+  ]
+}

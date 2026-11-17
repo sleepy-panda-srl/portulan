@@ -194,7 +194,7 @@ versioning. These steps document consumer adoption and recovery, not those mecha
 
 Proposal [`0036`](../../../.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md) budgets what a host loads into every fresh context, and Proposal [`0038`](../../../.portulan/proposals/0038-what-a-change-spends-is-measured.md) prices what a change spends across turns (`m_r × (F·T + g·T²/2)`). Together they expose two structural facts about hybrid local+cloud development:
 
-1. **Parent-context turns are quadratic, and a local call is one of them.** Every tool call in a frontier session re-reads the entire session history, the one that runs the runner included, so a local call costs nothing only in the local model's own tokens. A one-span `transform` that replaces one parent Edit saves the few hundred output tokens between writing the instruction and writing the code, and a miss, a call that keeps nothing or a kept edit the parent then touches up, adds a whole request. One run measured in [#583](https://github.com/sleepy-panda-srl/portulan/issues/583) missed 20% of its calls, against a break-even of 5–12% at a 236k-token context and the price ratios the skill's [*When it pays*](skills/delegate-local/SKILL.md#when-it-pays) states, and spent more parent tokens than it saved. A 10-file comment cleanup sent as ten `transform` calls, each its own tool call, is ten parent requests; a loop over the ten inside one Bash call is one, and that batching is not measured.
+1. **Parent-context turns are quadratic, and a separately issued local call is one of them.** Local tokens alone prove no parent savings. [When a call pays](#when-a-call-pays) keeps the cost model, observed miss rate and batching limits.
 2. **Local models choke on the host floor (`F`), not on the task.** A cloud subagent inherits a 44k–85k token prefix (`F`) subsidized by provider prompt caching. On local hardware, pre-filling 85k tokens into a 30B model's KV cache takes tens of seconds before the first token appears, whereas a **surgical prompt of a few hundred tokens** (built using [`cli/symbols.mjs`](../../../cli/symbols.mjs) spans) pre-filled in 0.85–1.9 seconds in proposal 0039's measurement.
 
 ## What the runner enforces in code
@@ -303,12 +303,59 @@ diagnostic prose. The API and model retain the raw bounded retry feedback.
 The acquired [record](../../../evals/ab/local-worker.md) supports `code` at low effort; shared `prose`
 is disabled because codify failed all five local turns. `summarize` defaults to that disabled role and
 refuses. An explicit `--model` without `--role` is an operator-selected candidate, not automatic routing.
-Delegate one complete function or a small test group per call, specify one observable change, prefer
-serial calls, and keep output to the selected replacement. On truncated output inspect the diagnostic and task contract; on transport
+Use the [sizing and wording guidance](#sizing-and-wording-a-call) before choosing a complete function
+or test group; specify one observable change, prefer serial calls, and return only the selected replacement. On truncated output inspect the diagnostic and task contract; on transport
 failure inspect the transport; on verifier failure inspect code. For reasoning-only
 exhaustion, investigate backend/profile/task behavior before selecting another span.
 Do not lower an operator-pinned
 model/effort or bypass verification. This advice reduces failures, does not guarantee completion.
+
+## Sizing and wording a call
+
+The skill's [sizing pass](skills/delegate-local/SKILL.md#sizing-and-wording-a-call)
+uses about 20 generated new lines as a conservative first scope for an uncalibrated
+Qwen low/4,096 task, not a current capacity limit. The [reported history](evidence/sizing/history.md)
+separates the older low/4,096, owner-pinned xhigh/thinking/8,192 and later repairs.
+The [fresh report and receipts](evidence/sizing/report.md) retain successes, failures,
+parent-rejected semantics and one separately preregistered diagnostic. The largest
+fixture-verified replacement was 61 physical lines; no universal maximum was found.
+
+Numbered steps, enforced style, wrapped examples and literal syntax each have a
+reported case in that history. Supply exact APIs and input/output fixtures too.
+A complete helper signature does not establish an input shape, and a green finite
+fixture corpus can miss valid-input semantics. Parent review and project-required
+behavior/style checks remain necessary. C# documentation comments were reported as
+syntax-gated code; this does not enable shared prose.
+
+For a sizing attempt, `--retries 1` allows at most two generations. Count receipt
+attempts, including across separate calls, and return the task shape to the parent
+after two failed generations. The runner's unchanged default is two retries, hence
+three generations; the skill names the smaller explicit cap. Never repeat identical
+exhaustion or lower an operator-pinned profile automatically. The pilot and its
+parent-directed diagnostic are distinct finite acquisitions, not routine retries.
+
+## When a call pays
+
+Each call is itself one parent request: the parent writes the instruction, waits and reads the receipt,
+and that request re-reads the whole context like any other. In 0038's `m_r × (F·T + g·T²/2)`, a call that
+replaces one parent Edit leaves `T` as it was and lowers `g` only by the output it saves, the difference
+between writing the instruction and writing the code. A miss, a call that keeps nothing or a kept edit the
+parent then touches up, adds a whole request. So:
+
+- **Keep an edit the parent can write in one short Edit in the parent.** Delegate only where one call
+  replaces more parent work than the request it costs.
+- **Whether a call pays turns on its miss rate and the context's size.** With `s` the output a kept call
+  saves, priced at 0038's five times input, and `c` a miss's re-read of the context `C` at the tenth of
+  input that `cli/ledger.mjs` takes for a cache read, a call pays only while its miss rate stays under
+  `s / (s + c)`, and under less once a miss's own output is counted. One run in
+  [#583](https://github.com/sleepy-panda-srl/portulan/issues/583) measured a 20% miss rate at a median `C`
+  of 236k. The output a kept call saved, derived from the parent's output on the edits it wrote itself, was
+  250–650 tokens and is overstated, since the parent kept its larger edits. That puts break-even at 5–12%,
+  a net loss, from one run, one local model and one parent model, and the verdict rests on the tenth: at
+  0038's fortieth, break-even is 17–35%.
+- **Where a call should pay is reasoning, not measurement:** a red→green loop the parent would otherwise
+  iterate, a batch of calls inside one tool request, and a long mechanical replacement the parent would
+  otherwise write out.
 
 ## Choosing checks
 
