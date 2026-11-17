@@ -1638,3 +1638,115 @@ describe("applyEdits and restore reach the tree, and delete", () => {
         assert.match(applyEdits(ws, [{ root: "tree", file: "../escape.md", next: "x" }], { treeDir: tree }).reason, /resolves outside/);
     });
 });
+
+describe("0012 — gate-policy floor.strict under 2.2 (#579)", () => {
+    const step = () => stepById("0012");
+    const policy = (spec, floor = { branch: "main", strict: false, checks: [], reviews: 0, resolve_conversations: true }) => ({
+        portulan: { spec },
+        why: "gate-map.md",
+        floor,
+        rules: [{ id: "push-force", tier: "gated", action: { shell: "git push --force" }, reason: "use lease" }],
+    });
+
+    function fixture({ gateSpec = "2.2", strict = false, extraFail = false, checks = [] } = {}) {
+        const root = scratch();
+        fs.mkdirSync(path.join(root, ".git"));
+        const dir = path.join(root, ".portulan");
+        fs.mkdirSync(path.join(dir, "verify"), { recursive: true });
+        for (const f of ["identity.md", "principles.md", "gate-map.md"]) fs.writeFileSync(path.join(dir, f), `# ${f}\n`);
+        fs.writeFileSync(path.join(dir, "verify", "workspace.sh"), "#!/usr/bin/env bash\nexit 2\n", { mode: 0o755 });
+        const m = manifest("2.16", extraFail ? { gates: "gates.json" } : { tree: "../", gates: "gates.json" });
+        fs.writeFileSync(path.join(dir, "workspace.json"), `${JSON.stringify(m, null, 2)}\n`);
+        fs.writeFileSync(
+            path.join(dir, "gates.json"),
+            `${JSON.stringify(policy(gateSpec, { branch: "main", strict, checks, reviews: 0, resolve_conversations: true }), null, 2)}\n`,
+        );
+        return dir;
+    }
+
+    test("owed on 2.1/2.2 policies with boolean floor.strict, unknown on non-boolean, false once 2.3 or absent", () => {
+        const p22 = JSON.stringify(policy("2.2"));
+        assert.equal(step().owed(view(manifest("2.16", { gates: "gates.json" }), { "gates.json": p22 })).owed, true);
+        assert.equal(step().owed(view(manifest("2.16"), { "gates.json": JSON.stringify(policy("2.1")) })).owed, true);
+        assert.equal(step().owed(view(manifest("2.16", { gates: "gates.json" }), { "gates.json": JSON.stringify(policy("2.3")) })).owed, false);
+        assert.equal(step().owed(view(manifest("2.16", { gates: "gates.json" }), { "gates.json": null })).owed, null);
+        assert.equal(step().owed(view(manifest("2.16", { gates: "gates.json" }), {
+            "gates.json": JSON.stringify(policy("2.2", { branch: "main", strict: "no", checks: [], reviews: 0, resolve_conversations: true })),
+        })).owed, null);
+        assert.equal(step().owed(view(manifest("2.16", { gates: "../outside.json" }), {})).owed, false);
+    });
+
+    test("plan bumps only portulan.spec to 2.3 while preserving floor.strict and rules", () => {
+        const ws = view(manifest("2.16", { gates: "gates.json" }), { "gates.json": JSON.stringify(policy("2.2"), null, 2) });
+        const planned = step().plan(ws);
+        assert.equal(planned.ok, true, planned.reason);
+        const next = JSON.parse(planned.edits[0].next);
+        assert.equal(next.portulan.spec, "2.3");
+        assert.equal(next.floor.strict, false);
+        assert.equal(next.rules[0].id, "push-force");
+    });
+
+    test("upgrade --check plans the step and --write migrates 2.2 + floor.strict to green doctor", async () => {
+        const dir = fixture();
+        const beforeDoctor = await inspect(dir);
+        assert.equal(beforeDoctor.findings.filter((f) => f.severity === "fail").length, 1);
+
+        const checkRun = harness();
+        assert.equal(await run([dir, "--check"], checkRun.options), 1);
+        assert.match(checkRun.text(), /0012-gate-policy-floor-strict/);
+        assert.doesNotMatch(checkRun.text(), /Refusing to migrate/);
+
+        const writeRun = harness();
+        assert.equal(await run([dir, "--write"], writeRun.options), 0, writeRun.text());
+        assert.match(writeRun.text(), /doctor is green/);
+        assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "gates.json"), "utf8")).portulan.spec, "2.3");
+        assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "gates.json"), "utf8")).floor.strict, false);
+
+        const afterDoctor = await inspect(dir);
+        assert.deepEqual(afterDoctor.findings.filter((f) => f.severity === "fail"), []);
+        assert.equal(await run([dir, "--check"], harness().options), 0);
+    });
+
+    test("upgrade succeeds even when existing carded guidance reads gates.json (boot.md)", async () => {
+        const dir = fixture();
+        const m = JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8"));
+        m.slots.context = "context/";
+        fs.writeFileSync(path.join(dir, "workspace.json"), `${JSON.stringify(m, null, 2)}\n`);
+        fs.mkdirSync(path.join(dir, "context"), { recursive: true });
+        fs.writeFileSync(
+            path.join(dir, "context", "boot.md"),
+            "---\ntier: always\n---\n# Portulan boot card\n\n## How this repository works\n\n<!-- engine: operating/context.md#every-request-pays-for-what-the-session-has-read -->\n\n## Gates\n\n<!-- gates: ../gates.json -->\n",
+        );
+
+        const checkRun = harness();
+        assert.equal(await run([dir, "--check"], checkRun.options), 1);
+        assert.match(checkRun.text(), /0012-gate-policy-floor-strict/);
+
+        const writeRun = harness();
+        assert.equal(await run([dir, "--write"], writeRun.options), 0, writeRun.text());
+        assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "gates.json"), "utf8")).portulan.spec, "2.3");
+        const afterDoctor = await inspect(dir);
+        assert.deepEqual(afterDoctor.findings.filter((f) => f.severity === "fail"), []);
+    });
+
+    test("unrelated doctor failures still trigger the pre-state refusal, and post-state reds roll back", async () => {
+        const multiFail = fixture({ extraFail: true });
+        const beforeMulti = fs.readFileSync(path.join(multiFail, "gates.json"), "utf8");
+        const multiRun = harness();
+        assert.equal(await run([multiFail, "--write"], multiRun.options), 1);
+        assert.match(multiRun.text(), /Refusing to migrate/);
+        assert.equal(fs.readFileSync(path.join(multiFail, "gates.json"), "utf8"), beforeMulti);
+
+        const badChecks = fixture({ checks: [{ context: "never-reported" }] });
+        fs.mkdirSync(path.join(path.dirname(badChecks), ".github", "workflows"), { recursive: true });
+        fs.writeFileSync(
+            path.join(path.dirname(badChecks), ".github", "workflows", "verify.yml"),
+            "on: pull_request\njobs:\n  other-check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: true\n",
+        );
+        const beforeBad = fs.readFileSync(path.join(badChecks, "gates.json"), "utf8");
+        const badRun = harness();
+        assert.equal(await run([badChecks, "--write"], badRun.options), 1);
+        assert.match(badRun.text(), /Rolled back/);
+        assert.equal(fs.readFileSync(path.join(badChecks, "gates.json"), "utf8"), beforeBad);
+    });
+});
