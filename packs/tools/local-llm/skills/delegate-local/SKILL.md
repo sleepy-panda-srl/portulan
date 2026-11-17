@@ -1,6 +1,6 @@
 ---
 name: delegate-local
-description: Offload a verify-gated one-file edit, a file digest or a draft to a local model. Use only where the workspace composes tools/local-llm and a server answers on loopback.
+description: Offload verify-gated code edits for hybrid development. Requires loopback; compose tools/local-llm or explicitly request a one-off under the same rails.
 ---
 
 # Skill — Delegate Local
@@ -12,9 +12,9 @@ description: Offload a verify-gated one-file edit, a file digest or a draft to a
 
 ## Before you start
 
-`<runner>` below is `runner/local-llm.mjs` in this pack's directory, two levels above this file:
-`<plugin root>/packs/tools/local-llm/runner/local-llm.mjs` where the plugin is the repository root, and
-`<plugin root>/tools/local-llm/runner/local-llm.mjs` where it is the `packs/` payload.
+Resolve `<runner>` through [adoption and upgrades](../../README.md#adopting-it-in-a-workspace).
+Without composition, propose it first; an explicit operator instruction permits a one-off
+runner invocation under the same rails, without composing the workspace.
 
 The runner talks to an OpenAI-compatible server on loopback: LM Studio on `127.0.0.1:1234` by default,
 or `--base-url` (or `PORTULAN_LOCAL_LLM_URL`) for another loopback port such as Ollama's `11434`. Run
