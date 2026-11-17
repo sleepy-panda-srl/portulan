@@ -1262,6 +1262,7 @@ export async function verifyGatedTransform({
     contextFiles = [],
     instruction,
     verifyCmd,
+    precheckCmd = null,
     preflight = false,
     verifyExpect = null,
     model = ROLE_MODELS.code,
@@ -1287,6 +1288,9 @@ export async function verifyGatedTransform({
     }
     if (!Number.isSafeInteger(maxTokens) || maxTokens < 1) {
         throw new CouldNotRunError("--max-tokens takes a positive safe integer");
+    }
+    if (precheckCmd !== null && (typeof precheckCmd !== "string" || !precheckCmd.trim())) {
+        throw new CouldNotRunError("--precheck requires a non-empty command");
     }
     let expectRegex = null;
     if (verifyExpect !== null && verifyExpect !== undefined) {
@@ -1348,6 +1352,8 @@ export async function verifyGatedTransform({
 
     let kept = false;
     let verifying = null;
+    const stopOnAbort = () => stopVerify(verifying);
+    abortController.signal.addEventListener("abort", stopOnAbort);
     let interrupted = false;
     const restore = () => {
         try {
@@ -1390,9 +1396,34 @@ export async function verifyGatedTransform({
 
     let lastError = "";
     const retryFailures = [];
-    const recordFailure = (attempt, output) => {
-        lastError = output || "Verify exited 1 without output.";
-        retryFailures.push({ attempt, phase: "verification", feedback: tail(lastError, FEEDBACK_CHARS) });
+    const recordFailure = (attempt, output, phase = "verification") => {
+        lastError = output || `${phase === "precheck" ? "Precheck" : "Verify"} exited 1 without output.`;
+        retryFailures.push({ attempt, phase, feedback: tail(lastError, FEEDBACK_CHARS) });
+    };
+    const assertActive = () => {
+        if (abortController.signal.aborted) {
+            throw Object.assign(new CouldNotRunError("Local request aborted"), { code: "LOCAL_REQUEST_ABORTED" });
+        }
+    };
+    const checkCandidate = async (cmd, phase, attempt, content) => {
+        assertActive();
+        activeLifecycle?.setPhase(phase, { attempt });
+        let check;
+        try {
+            check = await execFn(cmd, { onSpawn: (child) => (verifying = child) });
+        } finally {
+            verifying = null;
+        }
+        const output = [check.stdout, check.stderr].filter(Boolean).join("\n").trim();
+        if (check.error || check.signal || (check.status !== 0 && check.status !== 1)) {
+            const savedPath = saveCandidateReply(content);
+            const savedNote = savedPath ? ` Saved candidate reply to ${savedPath}.` : "";
+            throw new CouldNotRunError(
+                `${phase === "precheck" ? "Precheck" : "Verify"} command ${describeVerifyFault(check)}, which is no verdict (0 green, 1 red); restored ${filePath}.${savedNote}${output ? `\n${tail(output, 400)}` : ""}`,
+            );
+        }
+        assertActive();
+        return { ...check, output };
     };
     let promptTokens = 0;
     let completionTokens = 0;
@@ -1404,9 +1435,11 @@ export async function verifyGatedTransform({
     let effectiveMaxTokens;
     try {
         if (preflight) {
+            assertActive();
             activeLifecycle?.setPhase("preflight", { attempt: 0 });
             const baseline = await execFn(verifyCmd, { onSpawn: (child) => (verifying = child) });
             verifying = null;
+            assertActive();
             if (baseline.status === 0) {
                 preflightOutcome = "green";
             } else if (baseline.status === 1) {
@@ -1420,9 +1453,10 @@ export async function verifyGatedTransform({
         }
 
         for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
+            assertActive();
             const returnKind = insertMode ? "the new code to insert" : "the replacement code";
             const retryFeedback = lastError
-                ? `\n\nThe previous attempt failed verification; the end of its output:\n\`\`\`\n${tail(lastError, FEEDBACK_CHARS)}\n\`\`\`\nFix the issue and return ONLY ${returnKind}.`
+                ? `\n\nThe previous attempt failed ${retryFailures.at(-1).phase}; the end of its output:\n\`\`\`\n${tail(lastError, FEEDBACK_CHARS)}\n\`\`\`\nFix the issue and return ONLY ${returnKind}.`
                 : "";
             const bodySection = insertMode
                 ? buildInsertionPromptSection(filePath, allLines, splitIndex)
@@ -1444,6 +1478,7 @@ export async function verifyGatedTransform({
 
             activeLifecycle?.setPhase("generation", { attempt, model, endpoint: baseUrl });
             const reply = await chatFn({ baseUrl, allowRemote, model, messages, maxInputBytes, maxTokens, progress, effort, noLock, signal: abortController.signal, lifecycle: activeLifecycle, exitOnSignal });
+            assertActive();
             const reportedBudget = reply.maxTokens === undefined ? maxTokens : Number.isSafeInteger(reply.maxTokens) && reply.maxTokens > 0 ? reply.maxTokens : null;
             effectiveMaxTokens = attempt === 1 ? reportedBudget : effectiveMaxTokens === reportedBudget ? effectiveMaxTokens : null;
             promptTokens = sum(promptTokens, reply.promptTokens);
@@ -1459,10 +1494,15 @@ export async function verifyGatedTransform({
                 : [...allLines.slice(0, startLine - 1), extracted, ...allLines.slice(endLine)];
             fs.writeFileSync(filePath, updatedLines.join("\n") + (trailingNewline ? "\n" : ""), "utf8");
 
-            activeLifecycle?.setPhase("verification", { attempt });
-            const check = await execFn(verifyCmd, { onSpawn: (child) => (verifying = child) });
-            verifying = null;
-            const output = [check.stdout, check.stderr].filter(Boolean).join("\n").trim();
+            if (precheckCmd !== null) {
+                const precheck = await checkCandidate(precheckCmd, "precheck", attempt, reply.content);
+                if (precheck.status === 1) {
+                    recordFailure(attempt, precheck.output, "precheck");
+                    continue;
+                }
+            }
+            const check = await checkCandidate(verifyCmd, "verification", attempt, reply.content);
+            const { output } = check;
             if (check.status === 0) {
                 if (expectRegex && !expectRegex.test(output)) {
                     recordFailure(attempt, `Verify exited 0 without matching --verify-expect /${verifyExpect}/.${output ? `\n${output}` : ""}`);
@@ -1497,20 +1537,13 @@ export async function verifyGatedTransform({
                     }),
                 };
             }
-            if (check.status !== 1) {
-                const savedPath = saveCandidateReply(reply.content);
-                const savedNote = savedPath ? ` Saved candidate reply to ${savedPath}.` : "";
-                throw new CouldNotRunError(
-                    `Verify command ${describeVerifyFault(check)}, which is no verdict (0 green, 1 red); restored ${filePath}.${savedNote}${output ? `\n${tail(output, 400)}` : ""}`,
-                );
-            }
             recordFailure(attempt, output);
         }
 
         restore();
         activeLifecycle?.fail({
-            reason: "red_verify",
-            phase: "verification",
+            reason: retryFailures.at(-1).phase === "precheck" ? "red_precheck" : "red_verify",
+            phase: retryFailures.at(-1).phase,
             rollback: "restored",
             usage: { input: promptTokens, output: completionTokens, cached: cachedPromptTokens, reasoning: reasoningTokens },
         });
@@ -1519,7 +1552,7 @@ export async function verifyGatedTransform({
             requestId: activeLifecycle?.id ?? null,
             attempts: retries + 1,
             retryFailures,
-            error: `Verification remained red after ${retries + 1} attempt(s); restored ${filePath} byte-for-byte.\n${tail(lastError, FEEDBACK_CHARS)}`,
+            error: `${retryFailures.at(-1).phase === "precheck" ? "Precheck" : "Verification"} remained red after ${retries + 1} attempt(s); restored ${filePath} byte-for-byte.\n${tail(lastError, FEEDBACK_CHARS)}`,
         };
     } catch (err) {
         let rollbackStatus = kept ? "not_applicable" : "restored";
@@ -1537,6 +1570,7 @@ export async function verifyGatedTransform({
         try {
             if (!kept) restore();
         } finally {
+            abortController.signal.removeEventListener("abort", stopOnAbort);
             for (const sig of RESTORE_SIGNALS) process.off(sig, onSignal);
         }
     }
@@ -2381,6 +2415,7 @@ const VALUE_FLAGS = Object.freeze({
     "--insert-before": "insertBefore",
     "--seam-blank-lines": "seamBlankLines",
     "--verify": "verify",
+    "--precheck": "precheck",
     "--verify-expect": "verifyExpect",
     "--retries": "retries",
     "--max-input-bytes": "maxInputBytes",
@@ -2418,7 +2453,7 @@ const FLAG_OF = Object.freeze({
 });
 const EVAL_ONLY = Object.freeze(["ab", "write", "verifyRecord", "k", "seed", "hostCmd", "hostModel", "repoRoot"]);
 const AB_ONLY = Object.freeze(["k", "seed", "hostCmd", "hostModel", "repoRoot"]);
-const TRANSFORM_ONLY = Object.freeze(["insertAfter", "insertBefore", "seamBlankLines", "preflight", "verifyExpect"]);
+const TRANSFORM_ONLY = Object.freeze(["insertAfter", "insertBefore", "seamBlankLines", "preflight", "verifyExpect", "precheck"]);
 const PROMPT_MODES = new Set(["chat", "summarize", "transform"]);
 const AB_TAKES = Object.freeze(new Set(["_", "ab", "write", "k", "seed", "hostCmd", "hostModel", "repoRoot", "baseUrl", "effort", "noLock"]));
 const RECORD_TAKES = Object.freeze(new Set(["_", "verifyRecord", "write", "repoRoot"]));
@@ -2438,7 +2473,7 @@ function refuseOutside(args, takes, mode) {
 }
 
 const TRANSFORM_USAGE =
-    "local-llm.mjs transform [--role code | --model <id>] [--effort low] --file <path> --verify <cmd> [--preflight] [--verify-expect <regex>] (--prompt <instruction> | --prompt-file <path>) " +
+    "local-llm.mjs transform [--role code | --model <id>] [--effort low] --file <path> --verify <cmd> [--precheck <cmd>] [--preflight] [--verify-expect <regex>] (--prompt <instruction> | --prompt-file <path>) " +
     "[--lines <a>-<b> | --insert-after <n> | --insert-before <n>] [--seam-blank-lines <n>] " +
     "[--context <a>-<b>] [--context-file <path>[:a-b]] [--retries <n>] [--max-tokens <n>] [--progress] [--no-lock]";
 
@@ -2492,6 +2527,8 @@ recorded in the receipt; it does not override a stricter caller-owned profile.
 --progress prints queued/generation phase and elapsed time to stderr immediately and every
 10 seconds while waiting. Tokens remain unknown until the nonstreaming response completes.
 Incomplete length responses are refused and saved privately to a temporary diagnostic file.
+transform --precheck runs a cheap check on every candidate before mandatory --verify:
+exit 1 retries without full verification, exit 0 proceeds, any other outcome restores and exits 2.
 
 Exit codes: 0 green · 1 red check or model/verify failure · 2 could not run.`;
 
@@ -2757,6 +2794,7 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
                 contextFiles: args.contextFiles ?? [],
                 instruction,
                 verifyCmd: args.verify,
+                precheckCmd: args.precheck ?? null,
                 preflight: Boolean(args.preflight),
                 verifyExpect: args.verifyExpect ?? null,
                 model: operationalModel(args, "code"),

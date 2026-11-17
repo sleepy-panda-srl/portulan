@@ -5,7 +5,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import {callLocalChat, FEEDBACK_CHARS, formatPassReceipt, main, verifyGatedTransform} from '../packs/tools/local-llm/runner/local-llm.mjs';
+import {callLocalChat, FEEDBACK_CHARS, formatPassReceipt, main, runVerify, verifyGatedTransform} from '../packs/tools/local-llm/runner/local-llm.mjs';
 import {receiptOf} from './ledger.mjs';
 
 const complete = {choices:[{finish_reason:'stop',message:{content:'const value = 2;'}}],usage:{prompt_tokens:4,completion_tokens:5}};
@@ -233,4 +233,123 @@ test('retry feedback: a silent red verifier still supplies a bounded diagnostic'
     });
     assert.equal(result.ok,true);assert.equal(result.retryFailures.length,1);
     assert.match(result.retryFailures[0].feedback,/exited 1.*without output/i);
+});
+
+test('precheck: red skips full verification and green still requires the full verifier',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs');fs.writeFileSync(file,'original\n');
+    let prechecks=0,verifies=0,attempts=0;
+    const result=await verifyGatedTransform({filePath:file,instruction:'change',precheckCmd:'cheap',verifyCmd:'full',retries:2,
+        chatFn:async()=>({content:`candidate${++attempts}`}),
+        execFn:async cmd=>cmd==='cheap'?{status:++prechecks===1?1:0,stderr:'syntax failed'}:{status:++verifies===1?1:0,stderr:'test failed'},
+    });
+    assert.equal(result.ok,true);assert.equal(result.attempts,3);
+    assert.equal(prechecks,3);assert.equal(verifies,2);
+    assert.deepEqual(result.retryFailures.map(failure=>failure.phase),['precheck','verification']);
+    assert.equal(fs.readFileSync(file,'utf8'),'candidate3\n');
+});
+
+test('precheck: exhausted red and every no-verdict outcome restore the original bytes',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs'),before=Buffer.from('original\r\n');
+    for(const check of [{status:1},{status:2,stderr:'unavailable'},{status:null,error:new Error('launch failed')},{status:null,signal:'SIGTERM'}]){
+        fs.writeFileSync(file,before);
+        let verifies=0,prechecks=0;
+        const pending=verifyGatedTransform({filePath:file,instruction:'change',precheckCmd:'cheap',verifyCmd:'full',retries:1,stateDir:dir,
+            chatFn:async()=>({content:'candidate'}),
+            execFn:async cmd=>{if(cmd==='cheap'){prechecks++;return check;}verifies++;return {status:0};},
+        });
+        if(check.status===1){
+            const result=await pending;assert.equal(result.ok,false);assert.equal(prechecks,2);assert.match(result.error,/precheck.*red/i);
+        }else await assert.rejects(pending,error=>{
+            assert.match(error.message,/Precheck command.*no verdict/);
+            const saved=/Saved candidate reply to (.+\/reply\.txt)/.exec(error.message);
+            assert.ok(saved);assert.equal(fs.readFileSync(saved[1],'utf8'),'candidate');
+            t.after(()=>fs.rmSync(path.dirname(saved[1]),{recursive:true,force:true}));
+            assert.equal(prechecks,1);return true;
+        });
+        assert.equal(verifies,0);assert.deepEqual(fs.readFileSync(file),before);
+    }
+    fs.writeFileSync(file,before);
+    const fullRed=await verifyGatedTransform({filePath:file,instruction:'change',precheckCmd:'cheap',verifyCmd:'full',retries:0,
+        chatFn:async()=>({content:'candidate'}),execFn:async cmd=>({status:cmd==='cheap'?0:1}),
+    });
+    assert.equal(fullRed.ok,false);assert.deepEqual(fs.readFileSync(file),before);
+});
+
+test('precheck: CLI retries invalid syntax without running the full verifier for it',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs'),checker=path.join(dir,'check.cjs'),count=path.join(dir,'count');
+    fs.writeFileSync(file,'const value = 1;\n');
+    fs.writeFileSync(checker,"require('node:fs').appendFileSync(process.argv[2],'verified\\n');\n");
+    const quote=value=>"'"+value.replaceAll("'","'\\''")+"'";
+    let attempts=0;
+    const result=await capture(()=>main(['transform','--model','fixture','--file',file,'--prompt','change',
+        '--precheck',`${quote(process.execPath)} --check ${quote(file)}`,
+        '--verify',`${quote(process.execPath)} ${quote(checker)} ${quote(count)}`],
+        {fetchImpl:async()=>responding({choices:[{finish_reason:'stop',message:{content:++attempts===1?'const value = ;':'const value = 2;'}}]})()},
+    ));
+    assert.equal(result.code,0,result.err.join('\n'));
+    assert.equal(fs.readFileSync(count,'utf8'),'verified\n');assert.equal(attempts,2);
+    assert.match(result.out[0],/attempts=2 /);assert.equal(result.out.length,1);
+    assert.match(result.err.join('\n'),/phase=precheck.*failed:[\s\S]*SyntaxError/);
+});
+
+test('precheck: cancellation terminates its child and rolls back without full verification',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs'),checker=path.join(dir,'wait.cjs');
+    fs.writeFileSync(file,'original\n');fs.writeFileSync(checker,"console.log('ready');setInterval(()=>{},1000);\n");
+    const quote=value=>"'"+value.replaceAll("'","'\\''")+"'",controller=new AbortController();
+    let started=0;
+    await assert.rejects(verifyGatedTransform({filePath:file,instruction:'change',precheckCmd:`${quote(process.execPath)} ${quote(checker)}`,
+        verifyCmd:'full',signal:controller.signal,chatFn:async()=>({content:'candidate'}),
+        execFn:(cmd,options)=>{
+            assert.notEqual(cmd,'full','full verifier never runs after cancellation');started++;
+            return runVerify(cmd,{onSpawn:child=>{options.onSpawn(child);child.stdout.once('data',()=>controller.abort());}});
+        },
+    }),/Precheck command.*no verdict/);
+    assert.equal(started,1);assert.equal(fs.readFileSync(file,'utf8'),'original\n');
+});
+
+test('precheck: invalid commands and missing full verification refuse before generation',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs');fs.writeFileSync(file,'original\n');
+    let generated=0;
+    for(const precheckCmd of ['', ' ', 42])await assert.rejects(verifyGatedTransform({filePath:file,instruction:'change',verifyCmd:'full',precheckCmd,
+        chatFn:async()=>{generated++;return {content:'candidate'};},execFn:async()=>({status:0}),
+    }),/precheck/i);
+    await assert.rejects(verifyGatedTransform({filePath:file,instruction:'change',precheckCmd:'cheap',chatFn:async()=>{generated++;}}),/requires --verify/);
+    for(const cmd of ['chat','summarize','status','eval','dedup']){
+        const result=await capture(()=>main([cmd,'--precheck','cheap'],{fetchImpl:async()=>{generated++;return responding(complete)();}}));
+        assert.equal(result.code,2);
+    }
+    assert.equal(generated,0);assert.equal(fs.readFileSync(file,'utf8'),'original\n');
+});
+
+test('precheck cancellation: pre-aborted requests start neither baseline nor generation',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs'),controller=new AbortController();fs.writeFileSync(file,'original\n');
+    controller.abort();let checks=0,generated=0;
+    await assert.rejects(verifyGatedTransform({filePath:file,instruction:'change',preflight:true,precheckCmd:'cheap',verifyCmd:'full',signal:controller.signal,
+        chatFn:async()=>{generated++;return {content:'candidate'};},execFn:async()=>{checks++;return {status:0};},
+    }),/aborted/);
+    assert.equal(checks,0);assert.equal(generated,0);assert.equal(fs.readFileSync(file,'utf8'),'original\n');
+});
+
+test('precheck cancellation: aborting a real baseline child prevents generation',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs'),checker=path.join(dir,'baseline.cjs'),controller=new AbortController();
+    fs.writeFileSync(file,'original\n');fs.writeFileSync(checker,"console.log('ready');setInterval(()=>{},1000);\n");
+    const quote=value=>"'"+value.replaceAll("'","'\\''")+"'";
+    let generated=0,started=0;
+    await assert.rejects(verifyGatedTransform({filePath:file,instruction:'change',preflight:true,precheckCmd:'cheap',verifyCmd:`${quote(process.execPath)} ${quote(checker)}`,signal:controller.signal,
+        chatFn:async()=>{generated++;return {content:'candidate'};},
+        execFn:(cmd,options)=>{started++;return runVerify(cmd,{onSpawn:child=>{options.onSpawn(child);child.stdout.once('data',()=>controller.abort());}});},
+    }),/aborted|no verdict/);
+    assert.equal(started,1);assert.equal(generated,0);assert.equal(fs.readFileSync(file,'utf8'),'original\n');
+});
+
+test('precheck cancellation: an injected generation returning after abort cannot write a candidate',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs'),controller=new AbortController(),before='original\n';fs.writeFileSync(file,before);
+    const write=fs.writeFileSync;let writes=0,checks=0;
+    fs.writeFileSync=(target,content,...args)=>{if(target===file&&String(content)!==before)writes++;return write(target,content,...args);};
+    try {
+        await assert.rejects(verifyGatedTransform({filePath:file,instruction:'change',precheckCmd:'cheap',verifyCmd:'full',signal:controller.signal,
+            chatFn:async()=>{controller.abort();return {content:'candidate'};},execFn:async()=>{checks++;return {status:0};},
+        }),/aborted/);
+    } finally {fs.writeFileSync=write;}
+    assert.equal(writes,0);assert.equal(checks,0);assert.equal(fs.readFileSync(file,'utf8'),before);
 });
