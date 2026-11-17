@@ -2,11 +2,12 @@
 
 A tool pack for **Hybrid AI Orchestration**, argued in Proposal [`0039`](../../../.portulan/proposals/0039-a-local-model-runs-without-the-host-floor-and-under-a-thinking-cap.md). It lets a frontier orchestrator session offload bounded code transformations, verify-gated red→green retries and a screen of a curated slot for duplicate files to a local OpenAI-compatible runtime (such as **LM Studio** on `http://127.0.0.1:1234/v1` or **Ollama** on `http://127.0.0.1:11434/v1`) with **no API tokens for the local model's own work** and a **zero-floor prompt prefix**. Each call to it is still a parent request, which re-reads the parent's context like any other (fact 1 below).
 
-Composed through a workspace's `packs` array as `tools/local-llm`.
+For hybrid development, compose `tools/local-llm` through the governing workspace's
+`packs` array using [the adoption steps](#adopting-it-in-a-workspace).
 
 | Contributes | What |
 |---|---|
-| Skill | [`delegate-local`](skills/delegate-local/SKILL.md) — the pass a frontier session follows to hand a bounded edit or digest to the runner; its description names the precondition, a workspace composing this pack and a server answering on loopback |
+| Skill | [`delegate-local`](skills/delegate-local/SKILL.md) — bounded local work on loopback; propose composition first, or follow an explicit operator instruction for a one-off under the same rails |
 | Persona | [`local-worker`](personas/local-worker.md) — a context-firewall worker operating with an omitted host floor (`omitClaudeMd`) and a hard input-byte ceiling |
 | Verify | [`runner-rails`](verify/README.md) — offline verification of the runner's loopback-only guard, input-budget rail, rollback contract, and `dedup`'s refusals (zero network calls) |
 | Gate | `local-llm-off-loopback` (`propose`) — marks leaving loopback (`127.0.0.1` / `localhost` / `[::1]`) as a decision requiring explicit approval |
@@ -14,6 +15,180 @@ Composed through a workspace's `packs` array as `tools/local-llm`.
 The skill registers where a plugin manifest declares `skills/`, and this repository's manifests may
 declare only the skills of packs its own workspace composes, as its `.portulan/workspace.json` composes
 this one.
+
+## Adopting it in a workspace
+
+Requires Node.js 20 or newer, a loopback OpenAI-compatible server, and the earned
+code model `qwen/qwen3.8-27b` installed in that server. Composition adds the pack's
+restrictions and recipes; it does not by itself register host skills, create a
+persona binding or make CI execute the recipes. See [pack delivery](../../../plugin/skills/portulan/packs.md).
+
+1. **Named edit — identify the governing manifest and verified source.** The commands
+   below assume an in-repository governing `.portulan/workspace.json` with `tree: "../"`.
+   If the repository carries a `kind: "pointer"` manifest, follow `governed_by` to
+   its owner and use that feed's edit/delivery procedure; never add governing keys
+   to the pointer or draft a second workspace. See [workspace residence](../../../spec/slots.md#pointer--a-repository-whose-workspace-resides-elsewhere).
+   Choose a full checkout or installed CLI payload with `cli/` beside `packs/`,
+   verify its intended snapshot as described below, then set these absolute paths
+   from the consumer repository's root:
+
+   ```bash
+   PORTULAN_ROOT=/absolute/path/to/verified/portulan
+   WORKSPACE_DIR="$PWD/.portulan"
+   LOCAL_RUNNER="$PORTULAN_ROOT/packs/tools/local-llm/runner/local-llm.mjs"
+   PORTULAN_PACK_ARGS=(--pack-root "$PORTULAN_ROOT/packs")
+   ```
+
+   **Named edit — preserve every existing pack root.** Named roots replace derived
+   and automatically discovered roots. If existing packs come from another feed,
+   append its resolution root, repeating for each root, and retain the same array
+   on every command below:
+
+   ```bash
+   PORTULAN_PACK_ARGS+=(--pack-root /absolute/path/to/other/feed/root)
+   ```
+
+   In a packs-only plugin, the runner is instead
+   `<plugin root>/tools/local-llm/runner/local-llm.mjs`; that payload has no `cli/`.
+   Use a separately verified full CLI/source root for compilation and outlining.
+   Set `LOCAL_RUNNER` to that payload's runner and replace the public entry in
+   `PORTULAN_PACK_ARGS` with its actual root, preserving other feed roots; do not
+   let the CLI's bundled pack silently shadow the selected installed copy.
+
+2. **Named edit — append `"tools/local-llm"` to the governing manifest's `packs`
+   array, preserving other entries.** Apply the workspace's own gate for that
+   persistent change. If composition is not authorized, propose it first. An
+   explicit operator instruction may authorize a one-off runner invocation under
+   the same scope, loopback, earned-role, input, verification and rollback rails;
+   it does not compose the pack or install its restrictions/recipes.
+
+3. **Commands — inspect resolution, compile, and check drift.** Inspect doctor's
+   full report for **every** composed pack's selected path, then inspect `--matrix`
+   for intended outputs and gates. `PORTULAN_AGENT=0` keeps the full doctor report
+   even where an agent-mode environment default would condense a green result.
+   Resolve missing or unintended pack paths before writing. A green `--check` alone is
+   not proof of complete resolution; [#424](https://github.com/sleepy-panda-srl/portulan/issues/424)
+   owns that mechanism.
+
+   ```bash
+   PORTULAN_AGENT=0 node "$PORTULAN_ROOT/cli/doctor.mjs" --static "${PORTULAN_PACK_ARGS[@]}" "$WORKSPACE_DIR"
+   node "$PORTULAN_ROOT/cli/compile.mjs" --workspace "$WORKSPACE_DIR" "${PORTULAN_PACK_ARGS[@]}" --matrix
+   node "$PORTULAN_ROOT/cli/compile.mjs" --workspace "$WORKSPACE_DIR" "${PORTULAN_PACK_ARGS[@]}"
+   node "$PORTULAN_ROOT/cli/compile.mjs" --workspace "$WORKSPACE_DIR" "${PORTULAN_PACK_ARGS[@]}" --check
+   ```
+
+   **Named edits — host registration and CI.** Use the host/plugin's supported
+   skill registration and any declared persona binding. For an existing plugin
+   manifest owned by this workspace, `cli/skills-set.mjs` derives its pack portion
+   with `--write` and verifies it with `--check`, using the explicit workspace,
+   plugin root and resolution roots described in [pack delivery](../../../plugin/skills/portulan/packs.md).
+   It creates no plugin manifest; packs outside that plugin root register through
+   their own installed plugin. Do not edit installed manifests to add consumer policy.
+   Ensure its CI calls `cli/recipe-set.mjs` rather than assuming composition runs
+   the new `tools/local-llm:runner-rails` recipe automatically.
+
+4. **Command — check the endpoint and model inventory.** Start the local server,
+   then run:
+
+   ```bash
+   node "$LOCAL_RUNNER" status
+   ```
+
+   Require exit `0` and confirm the list includes the earned code model. Status
+   proves endpoint/model-list availability, not model quality or a successful
+   transform. On exit `1` or `2`, keep the work in the parent. See the skill for
+   another loopback port; do not authorize a remote endpoint implicitly.
+
+5. **Named edits and command — choose one complete span and prepare its prompt.**
+   Set `TARGET_FILE` to the actual file, outline it, then set `TARGET_LINES` to a
+   printed complete member/function range (`start-end`, including `N-N`).
+
+   ```bash
+   TARGET_FILE=path/to/File.cs
+   node "$PORTULAN_ROOT/cli/symbols.mjs" "$TARGET_FILE"
+   ```
+
+   **Named edits:** set `TARGET_LINES` to the selected range; set `PROJECT_VERIFY`
+   to the project's relevant behavioral tests and style checks; write
+   `local-prompt.txt` with one observable change and the required replacement form.
+   For .NET, a verifier can use `dotnet test path/to/Tests.csproj --no-restore`
+   after restore assets exist; choose checks for the actual project, not just
+   syntax. See [choosing checks](#choosing-checks).
+
+6. **Command — run the earned code role at low effort, then read its verdict.**
+
+   ```bash
+   node "$LOCAL_RUNNER" transform --role code --effort low \
+     --file "$TARGET_FILE" --lines "$TARGET_LINES" \
+     --verify "$PROJECT_VERIFY" --prompt-file local-prompt.txt --progress
+   ```
+
+   Wait for exit and read the receipt plus retry tails. Exit `0` keeps the verified
+   edit; `1` or `2` returns to the parent under the rollback contract below. Shared
+   `prose` remains disabled. An operator-selected `--model` without `--role` is a
+   candidate evaluation path, not earned routing or a way to enable prose.
+
+## Verifying an upgrade
+
+First record the intended full source commit (or verified release artifact), plugin
+selector, marketplace, installation scope, enabled state and relevant configuration.
+Locate the runner actually invoked and the adapters/hook commands actually loaded,
+using the host's installed-plugin inventory and generated settings. Record those
+absolute paths; multiple copies can differ at the same version. Compare against
+expected bytes **from the chosen snapshot**, not merely a checkout's reported HEAD:
+
+```bash
+PORTULAN_SOURCE=/absolute/path/to/source/checkout
+PORTULAN_COMMIT=full-reviewed-commit-sha
+set -o pipefail
+git -C "$PORTULAN_SOURCE" rev-parse "$PORTULAN_COMMIT^{commit}"
+git -C "$PORTULAN_SOURCE" show "$PORTULAN_COMMIT:packs/tools/local-llm/runner/local-llm.mjs" | cmp - "$LOCAL_RUNNER"
+```
+
+Require each comparison to exit `0`; `pipefail` keeps a failed source read from
+being hidden by a downstream comparison.
+
+Repeat the `git show … | cmp - <executed-path>` comparison for the **actual**
+adapter/hook modules and their local imports: for example `cli/compile.mjs`,
+`cli/advisory.mjs` and `cli/ledger.mjs` when those are the targets in use. Map source
+paths to the installed layout; a packs-only root omits the source path's `packs/`
+prefix and has no CLI. For a release artifact, compare with its verified extracted
+files in that layout. Recompile with the intended roots and inspect/check the
+generated binding/settings too. An updater's success message or matching version
+string alone proves none of these byte comparisons.
+
+Supported recovery commands below were checked with Claude Code 2.1.325 and Codex
+CLI 0.165.0 on 2026-11-17. Check the installed host's help when versions differ.
+Perform removals only for the recorded installation and preserve its configuration:
+
+Claude's uninstall/reinstall flow below applies to `user`, `project` or `local`
+scope. A `managed` installation follows its delivery owner's update/recovery
+procedure; the host's uninstall/install commands do not accept that scope.
+
+- **Claude Code:** run `claude plugin marketplace update portulan`, then
+  `claude plugin update portulan@portulan --scope <recorded-scope>`, and restart.
+  If same-version files remain stale, use
+  `claude plugin uninstall portulan@portulan --scope <recorded-scope> --keep-data`
+  followed by `claude plugin install portulan@portulan --scope <recorded-scope>`.
+  Substitute the recorded selector/marketplace. `--keep-data` preserves the plugin
+  data directory, not every setting; restore recorded configuration and enabled
+  state explicitly with the host's supported controls.
+- **Codex:** run `codex plugin marketplace upgrade <recorded-marketplace>`.
+  If the installed copy still differs, use `codex plugin remove <recorded-selector>`
+  then `codex plugin add <recorded-selector>`. Restore recorded configuration and
+  the plugin's enabled setting through the host's plugin controls; the CLI's
+  `--enable`/`--disable` flags are feature flags, not plugin enabled-state switches.
+  Start a fresh session.
+- **Checkout or package CLI:** point the invocation at the chosen clean checkout
+  or reinstall the verified package artifact using its package manager, then
+  recompile with the intended roots. Do not treat a dirty checkout as snapshot proof.
+
+After recovery, resolve loaded paths again and repeat the byte comparisons and
+compile check. Never hand-edit plugin caches or invent a version bump to force a
+refresh. [#424](https://github.com/sleepy-panda-srl/portulan/issues/424) owns stale/
+missing pack resolution and shadow detection;
+[#273](https://github.com/sleepy-panda-srl/portulan/issues/273) owns bundle/per-pack
+versioning. These steps document consumer adoption and recovery, not those mechanisms.
 
 ## Why this pack exists
 
