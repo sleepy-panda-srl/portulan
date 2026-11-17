@@ -153,6 +153,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`librarian.test.mjs`](librarian.test.mjs) | Tests for `librarian` — the scheduled pass over the curated layer. |
 | [`list-quoting.live.test.mjs`](list-quoting.live.test.mjs) | Every recipe that enumerates the tree reads the pathname git actually carries. |
 | [`local-completion.test.mjs`](local-completion.test.mjs) | Local completion and fenced-code regression tests. |
+| [`local-diagnostics.test.mjs`](local-diagnostics.test.mjs) | Local runner budgets, diagnostics and verification. |
 | [`local-transport.test.mjs`](local-transport.test.mjs) | Local HTTP deadlines, response bounds and compatibility tests. |
 | [`local-usage.test.mjs`](local-usage.test.mjs) | Usage, exhaustion and rollback tests. |
 | [`mutants.test.mjs`](mutants.test.mjs) | Tests for `mutants`, the mutation-census rail: its operator table, its imports, its corpus and its refusals. |

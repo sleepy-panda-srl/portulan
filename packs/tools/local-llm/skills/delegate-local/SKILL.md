@@ -88,6 +88,8 @@ parent then touches up, adds a whole request. So:
    SIGHUP, restores the file byte for byte. It is a rollback, not an atomic write: any other signal that
    ends the runner, SIGKILL and SIGQUIT among them, or a power loss between the edit and its verdict
    leaves the edit in place.
+   Calls can take minutes: use `--progress` and wait for exit if backgrounded.
+   See [generation controls and diagnostics](../../README.md#generation-controls-and-diagnostics).
 4. **Read only the receipt back.** On exit `0`, take the one-line receipt and do not re-read the file
    unless a later edit depends on its new line numbers. On exit `1` or `2`, escalate to the frontier
    implementer rather than looping locally again.
