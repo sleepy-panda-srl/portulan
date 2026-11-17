@@ -5,7 +5,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import {callLocalChat, formatPassReceipt, main, verifyGatedTransform} from '../packs/tools/local-llm/runner/local-llm.mjs';
+import {callLocalChat, FEEDBACK_CHARS, formatPassReceipt, main, verifyGatedTransform} from '../packs/tools/local-llm/runner/local-llm.mjs';
 import {receiptOf} from './ledger.mjs';
 
 const complete = {choices:[{finish_reason:'stop',message:{content:'const value = 2;'}}],usage:{prompt_tokens:4,completion_tokens:5}};
@@ -187,4 +187,50 @@ test('progress includes queued time, shared transform request identity, and stay
         assert.ok(result.err.some(line=>/phase=generation/.test(line)));
         assert.equal(result.out.length,1,'stdout contains only the answer');
     }
+});
+
+test('retry feedback: every bounded failure matches what the following model attempt sees',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs');fs.writeFileSync(file,'original\n');
+    const messages=[];
+    let checks=0;
+    const result=await verifyGatedTransform({filePath:file,instruction:'change',verifyCmd:'fixture',verifyExpect:'PASSED',retries:2,
+        chatFn:async options=>{messages.push(options.messages[1].content);return {content:'replacement'};},
+        execFn:async()=>++checks===1?{status:1,stdout:'x'.repeat(3000),stderr:'style rule failed'}:checks===2?{status:0,stdout:'no matching tests'}:{status:0,stdout:'PASSED'},
+    });
+    assert.equal(result.ok,true);
+    assert.equal(result.retryFailures.length,2);
+    for(const [index,failure] of result.retryFailures.entries()){
+        assert.equal(failure.attempt,index+1);assert.equal(failure.phase,'verification');
+        assert.ok(failure.feedback.length<=FEEDBACK_CHARS+1);
+        assert.ok(messages[index+1].includes(failure.feedback));
+    }
+    assert.match(result.retryFailures[0].feedback,/style rule failed/);
+    assert.match(result.retryFailures[1].feedback,/without matching --verify-expect/);
+});
+
+test('retry feedback: successful CLI stdout stays one receipt and stderr exposes every earlier tail',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs'),checker=path.join(dir,'check.cjs');
+    fs.writeFileSync(file,'original\n');
+    fs.writeFileSync(checker,"const fs=require('node:fs');const value=fs.readFileSync(process.argv[2],'utf8').trim();if(value==='green'){process.exit(0);}console.error('bad candidate: '+value);process.exit(1);\n");
+    const quote=value=>"'"+value.replaceAll("'","'\\''")+"'";
+    const args=['transform','--model','fixture','--file',file,'--prompt','change','--verify',`${quote(process.execPath)} ${quote(checker)} ${quote(file)}`];
+    let attempt=0;
+    const result=await capture(()=>main(args,{fetchImpl:async()=>responding({choices:[{finish_reason:'stop',message:{content:++attempt<3?`red${attempt}`:'green'}}]})()}));
+    assert.equal(result.code,0);
+    assert.equal(result.out.length,1);assert.match(result.out[0],/^OK .*attempts=3 /);
+    assert.equal(result.err.length,2);
+    assert.match(result.err[0],/attempt=1 phase=verification[\s\S]*bad candidate: red1/);
+    assert.match(result.err[1],/attempt=2 phase=verification[\s\S]*bad candidate: red2/);
+    const firstGreen=await capture(()=>main(args,{fetchImpl:responding({choices:[{finish_reason:'stop',message:{content:'green'}}]})}));
+    assert.equal(firstGreen.code,0);assert.equal(firstGreen.out.length,1);assert.deepEqual(firstGreen.err,[]);
+});
+
+test('retry feedback: a silent red verifier still supplies a bounded diagnostic',async t=>{
+    const dir=temporary(t),file=path.join(dir,'target.mjs');fs.writeFileSync(file,'original\n');
+    let checks=0;
+    const result=await verifyGatedTransform({filePath:file,instruction:'change',verifyCmd:'fixture',
+        chatFn:async()=>({content:'replacement'}),execFn:async()=>({status:++checks===1?1:0}),
+    });
+    assert.equal(result.ok,true);assert.equal(result.retryFailures.length,1);
+    assert.match(result.retryFailures[0].feedback,/exited 1.*without output/i);
 });

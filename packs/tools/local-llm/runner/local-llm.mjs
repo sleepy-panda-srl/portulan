@@ -1389,6 +1389,11 @@ export async function verifyGatedTransform({
     for (const sig of RESTORE_SIGNALS) process.on(sig, onSignal);
 
     let lastError = "";
+    const retryFailures = [];
+    const recordFailure = (attempt, output) => {
+        lastError = output || "Verify exited 1 without output.";
+        retryFailures.push({ attempt, phase: "verification", feedback: tail(lastError, FEEDBACK_CHARS) });
+    };
     let promptTokens = 0;
     let completionTokens = 0;
     let reasoningTokens = 0;
@@ -1460,7 +1465,7 @@ export async function verifyGatedTransform({
             const output = [check.stdout, check.stderr].filter(Boolean).join("\n").trim();
             if (check.status === 0) {
                 if (expectRegex && !expectRegex.test(output)) {
-                    lastError = `Verify exited 0 without matching --verify-expect /${verifyExpect}/.${output ? `\n${output}` : ""}`;
+                    recordFailure(attempt, `Verify exited 0 without matching --verify-expect /${verifyExpect}/.${output ? `\n${output}` : ""}`);
                     continue;
                 }
                 kept = true;
@@ -1474,6 +1479,7 @@ export async function verifyGatedTransform({
                     requestId: activeLifecycle?.id ?? null,
                     attempts: attempt,
                     preflight: preflightOutcome,
+                    retryFailures,
                     receipt: formatPassReceipt({
                         mode: "transform",
                         model,
@@ -1498,7 +1504,7 @@ export async function verifyGatedTransform({
                     `Verify command ${describeVerifyFault(check)}, which is no verdict (0 green, 1 red); restored ${filePath}.${savedNote}${output ? `\n${tail(output, 400)}` : ""}`,
                 );
             }
-            lastError = output;
+            recordFailure(attempt, output);
         }
 
         restore();
@@ -1512,6 +1518,7 @@ export async function verifyGatedTransform({
             ok: false,
             requestId: activeLifecycle?.id ?? null,
             attempts: retries + 1,
+            retryFailures,
             error: `Verification remained red after ${retries + 1} attempt(s); restored ${filePath} byte-for-byte.\n${tail(lastError, FEEDBACK_CHARS)}`,
         };
     } catch (err) {
@@ -2765,6 +2772,9 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
             });
             if (res.ok) {
                 console.log(res.receipt);
+                for (const failure of res.retryFailures) {
+                    console.error(`local-llm: attempt=${failure.attempt} phase=${failure.phase} failed:\n${failure.feedback}`);
+                }
                 return 0;
             }
             console.error(res.error);
