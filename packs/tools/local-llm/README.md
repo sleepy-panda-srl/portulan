@@ -88,6 +88,9 @@ on phase entry and every ten seconds while waiting, across all three prompt mode
 The response remains nonstreaming and bounded: `tokens=?` is honest until final
 usage arrives, and no first-token timing is measured. The timer stops on completion,
 failure or cancellation. Without the flag, no progress lines are printed.
+Abort stops heartbeats immediately and late replies are refused even when an injected
+transport ignores its signal. Settlement still depends on that injected implementation;
+provider cancellation is never inferred.
 
 On `length`, the diagnostic distinguishes a measured all-reasoning response from
 other combined-budget exhaustion. A short input does not cap thinking. Inspect the
@@ -120,6 +123,8 @@ the model saw (at most 1,500 characters plus a truncation marker). Expectation m
 and silent red exits have explicit diagnostics. A first-attempt pass prints no extra
 feedback; successful stdout remains one receipt. The API exposes `retryFailures`
 beside the result. Use these tails to fix the next prompt's style rules or API contract.
+Displayed feedback and error continuation lines are indented so quoted receipts stay
+diagnostic prose. The API and model retain the raw bounded retry feedback.
 The acquired [record](../../../evals/ab/local-worker.md) supports `code` at low effort; shared `prose`
 is disabled because codify failed all five local turns. `summarize` defaults to that disabled role and
 refuses. An explicit `--model` without `--role` is an operator-selected candidate, not automatic routing.

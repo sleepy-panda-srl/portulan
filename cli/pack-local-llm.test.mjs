@@ -723,17 +723,35 @@ describe("--prompt-file, --context, --insert-after and endpoint locking", () => 
         assert.equal(await main(["chat", "--insert-after", "1", "--prompt", "x"]), 2);
     });
 
-    test("concurrent runner processes serialise per endpoint, exclude queue wait from deadline, recover dead locks, and allow --no-lock", async () => {
+    test("concurrent runner processes serialise per endpoint, exclude queue wait from deadline, recover dead locks, and allow --no-lock", { timeout: 60_000 }, async () => {
         const lockDir = scratch();
         let active = 0;
         let maxConcurrent = 0;
         const timeline = [];
+        const children = new Set();
+        let firstArrived, releaseFirst, releaseParallel, parallelArrived;
+        const firstRequest = new Promise((resolve) => (firstArrived = resolve));
+        const firstGate = new Promise((resolve) => (releaseFirst = resolve));
+        const parallelRequests = new Promise((resolve) => (parallelArrived = resolve));
+        const parallelGate = new Promise((resolve) => (releaseParallel = resolve));
+        let parallel = false;
+        let parallelCount = 0;
+        const bounded = async (promise, label) => {
+            let timer;
+            try {
+                return await Promise.race([promise, new Promise((_, reject) => {
+                    timer = setTimeout(() => reject(new Error(`Timed out waiting for ${label}`)), 20_000);
+                })]);
+            } finally {
+                clearTimeout(timer);
+            }
+        };
         const server = http.createServer((req, res) => {
             active += 1;
             maxConcurrent = Math.max(maxConcurrent, active);
             const id = timeline.length + 1;
             const started = Date.now();
-            setTimeout(() => {
+            const respond = () => setTimeout(() => {
                 active -= 1;
                 timeline.push({ id, started, ended: Date.now() });
                 res.setHeader("Content-Type", "application/json");
@@ -744,27 +762,41 @@ describe("--prompt-file, --context, --insert-after and endpoint locking", () => 
                     }),
                 );
             }, 140);
+            if (timeline.length === 0 && active === 1 && !parallel) {
+                firstArrived();
+                firstGate.then(respond);
+            } else if (parallel) {
+                if (++parallelCount === 2) parallelArrived();
+                parallelGate.then(respond);
+            } else respond();
         });
         await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
         const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
-        const runCli = (extra = []) =>
+        const runCli = (extra = [], onStderr = () => {}) =>
             new Promise((resolve, reject) => {
                 const child = spawn(
                     process.execPath,
                     [RUNNER, "chat", "--base-url", baseUrl, "--prompt", "hi", ...extra],
                     { env: { ...process.env, PORTULAN_LOCAL_LLM_LOCK_DIR: lockDir }, stdio: ["ignore", "pipe", "pipe"] },
                 );
+                children.add(child);
                 let stdout = "";
                 let stderr = "";
                 child.stdout.setEncoding("utf8").on("data", (c) => (stdout += c));
-                child.stderr.setEncoding("utf8").on("data", (c) => (stderr += c));
+                child.stderr.setEncoding("utf8").on("data", (c) => { stderr += c; onStderr(stderr); });
                 child.on("error", reject);
-                child.on("close", (status) => resolve({ status, stdout, stderr }));
+                child.on("close", (status) => { children.delete(child); resolve({ status, stdout, stderr }); });
             });
         try {
             const first = runCli();
-            await new Promise((resolve) => setTimeout(resolve, 25));
-            const second = runCli();
+            await bounded(Promise.race([firstRequest, first.then(() => { throw new Error("First runner exited before its request"); })]), "first request");
+            let queued;
+            const waiterQueued = new Promise((resolve) => (queued = resolve));
+            const second = runCli(["--progress"], (stderr) => {
+                if ((stderr.match(/phase=queued/g) ?? []).length >= 2) queued();
+            });
+            await bounded(Promise.race([waiterQueued, second.then(() => { throw new Error("Waiter exited before queuing"); })]), "queued waiter heartbeat");
+            releaseFirst();
             const [r1, r2] = await Promise.all([first, second]);
             assert.equal(r1.status, 0, r1.stderr);
             assert.equal(r2.status, 0, r2.stderr);
@@ -776,7 +808,8 @@ describe("--prompt-file, --context, --insert-after and endpoint locking", () => 
             assert.match(r2.stderr, / queued=\d+ms max-tokens=4096 spend=\$0\.00$/m);
             const r2ReceiptLine = r2.stderr.trim().split("\n").find((l) => l.startsWith("OK "));
             const parsed = receiptOf(r2ReceiptLine);
-            assert.ok(parsed && parsed.time >= 100 && parsed.time < 250, r2ReceiptLine);
+            const queueMs = Number(/ queued=(\d+)ms/.exec(r2ReceiptLine)?.[1]);
+            assert.ok(parsed && parsed.time >= 100 && parsed.time < queueMs, r2ReceiptLine);
 
             const lockFile = endpointLockPath(baseUrl.replace("127.0.0.1", "localhost"), lockDir);
             fs.writeFileSync(lockFile, JSON.stringify({ pid: 99999999, startedAt: Date.now() - 10_000, endpoint: baseUrl }));
@@ -785,11 +818,19 @@ describe("--prompt-file, --context, --insert-after and endpoint locking", () => 
             assert.equal(fs.existsSync(lockFile), false);
 
             maxConcurrent = 0;
-            const [p1, p2] = await Promise.all([runCli(["--no-lock"]), runCli(["--no-lock"])]);
+            parallel = true;
+            const parallelRuns = [runCli(["--no-lock"]), runCli(["--no-lock"])];
+            await bounded(Promise.race([parallelRequests, ...parallelRuns.map((run) => run.then(() => { throw new Error("Parallel runner exited before overlap"); }))]), "parallel requests");
+            releaseParallel();
+            const [p1, p2] = await Promise.all(parallelRuns);
             assert.equal(p1.status, 0);
             assert.equal(p2.status, 0);
             assert.equal(maxConcurrent, 2);
         } finally {
+            releaseFirst();
+            releaseParallel();
+            for (const child of children) child.kill("SIGKILL");
+            server.closeAllConnections();
             server.close();
         }
 

@@ -6,7 +6,7 @@
   "source": {
     "commit": "0000000000000000000000000000000000000000",
     "clean": true,
-    "runner": "f8c2fb24e07d65da845fc9697243caba99f27353d411f69a1497bf9c55affa40"
+    "runner": "a4973327489847ebc7e14b695b8fff7bdfb3404093183b700f835e5159427dfa"
   },
   "machine": "none: a synthetic fixture, and no machine ran these turns",
   "k": 5,

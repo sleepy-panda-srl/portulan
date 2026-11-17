@@ -1,0 +1,1 @@
+- Local calls stop progress on cancellation and refuse late generation or check results; displayed verification diagnostics no longer introduce false ledger receipts.
