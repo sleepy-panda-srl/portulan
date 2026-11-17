@@ -1626,3 +1626,144 @@ test("a zero-quality tie earns nothing and both prose tasks must qualify", async
     change(prose, (t) => t.task === "handoff" && t.arm === "l" && t.run === 0, "no handoff headings");
     assert.equal((await deriveRouting(prose)).prose.enabled, false, "one failing handoff withholds the whole shared role");
 });
+
+describe("transform --preflight, --verify-expect and candidate preservation (#577)", () => {
+    test("--preflight refuses an unrunnable verify before calling the model and allows green/red baselines", async () => {
+        const dir = scratch();
+        const target = path.join(dir, "Sample.cs");
+        const before = "public int X() => 1;\n";
+        fs.writeFileSync(target, before);
+
+        let modelCalls = 0;
+        const countingChat = async () => {
+            modelCalls += 1;
+            return { content: "```\npublic int X() => 2;\n```", promptTokens: 5, completionTokens: 4, totalMs: 10, tokPerSec: 100 };
+        };
+
+        await assert.rejects(
+            () => verifyGatedTransform({
+                filePath: target,
+                instruction: "change X to 2",
+                verifyCmd: "missing-verify",
+                preflight: true,
+                chatFn: countingChat,
+                execFn: () => ({ status: 127, stdout: "", stderr: "missing-verify: not found" }),
+            }),
+            (err) => err instanceof CouldNotRunError && /preflight exited 127/.test(err.message),
+        );
+        assert.equal(modelCalls, 0, "counting stub proves model was never called on exit 127 preflight");
+        assert.equal(fs.readFileSync(target, "utf8"), before);
+
+        for (const baselineStatus of [0, 1]) {
+            let phase = 0;
+            const res = await verifyGatedTransform({
+                filePath: target,
+                instruction: "change X to 2",
+                verifyCmd: "dotnet test",
+                preflight: true,
+                chatFn: countingChat,
+                execFn: () => ({ status: phase++ === 0 ? baselineStatus : 0, stdout: "Passed: 1\n", stderr: "" }),
+            });
+            assert.equal(res.ok, true);
+            assert.equal(res.preflight, baselineStatus === 0 ? "green" : "red");
+            assert.match(res.receipt, new RegExp(`preflight=${baselineStatus === 0 ? "green" : "red"} spend=\\$0\\.00$`));
+        }
+    });
+
+    test("--verify-expect rejects exit-0 without match, retries on failure, and CLI exits 1 restoring file", async () => {
+        const dir = scratch();
+        const target = path.join(dir, "Sample.cs");
+        const before = "public int X() => 1;\n";
+        fs.writeFileSync(target, before);
+
+        let modelCalls = 0;
+        await assert.rejects(
+            () => verifyGatedTransform({
+                filePath: target,
+                instruction: "change X",
+                verifyCmd: "dotnet test",
+                verifyExpect: "[",
+                chatFn: async () => { modelCalls += 1; return { content: "```\nx\n```" }; },
+            }),
+            (err) => err instanceof CouldNotRunError && /Invalid --verify-expect/.test(err.message),
+        );
+        assert.equal(modelCalls, 0);
+
+        const prompts = [];
+        let execCalls = 0;
+        const retried = await verifyGatedTransform({
+            filePath: target,
+            instruction: "change X",
+            verifyCmd: "dotnet test",
+            verifyExpect: "Passed:\\s*[1-9]",
+            retries: 1,
+            chatFn: async ({ messages }) => {
+                prompts.push(messages[1].content);
+                return { content: "```\npublic int X() => 2;\n```", promptTokens: 5, completionTokens: 5, totalMs: 10, tokPerSec: 50 };
+            },
+            execFn: () => ({ status: 0, stdout: ++execCalls === 1 ? "Total tests: 0\n" : "Passed: 2\n", stderr: "" }),
+        });
+        assert.equal(retried.ok, true);
+        assert.equal(retried.attempts, 2);
+        assert.match(prompts[1], /--verify-expect/);
+
+        fs.writeFileSync(target, before);
+        const { baseUrl, run, close } = await recordingServer({ replyContent: "```\npublic int X() => 3;\n```" });
+        try {
+            await run(
+                1,
+                "transform",
+                "--base-url",
+                baseUrl,
+                "--file",
+                target,
+                "--retries",
+                "0",
+                "--verify",
+                "printf 'Passed: 0\\n'",
+                "--verify-expect",
+                "Passed:\\s*[1-9]",
+                "--prompt",
+                "change X to 3",
+            );
+            assert.equal(fs.readFileSync(target, "utf8"), before, "original file restored when --verify-expect does not match");
+        } finally {
+            close();
+        }
+    });
+
+    test("no-verdict verify exit saves candidate reply to a temp file and restores target; skill step 3 names both flags", async () => {
+        const dir = scratch();
+        const target = path.join(dir, "Sample.cs");
+        const before = "public int X() => 1;\n";
+        fs.writeFileSync(target, before);
+        let savedPath = null;
+        try {
+            await assert.rejects(
+                () => verifyGatedTransform({
+                    filePath: target,
+                    instruction: "change X to 2",
+                    verifyCmd: "missing-tool",
+                    chatFn: async () => ({ content: "```\npublic int X() => 2;\n```" }),
+                    execFn: () => ({ status: 127, stdout: "", stderr: "missing-tool: command not found" }),
+                }),
+                (err) => {
+                    const m = /Saved candidate reply to ([^\n]+\.txt)\./.exec(err.message);
+                    savedPath = m?.[1] ?? null;
+                    return err instanceof CouldNotRunError && savedPath !== null && /restored/.test(err.message);
+                },
+            );
+            assert.equal(fs.readFileSync(target, "utf8"), before);
+            assert.equal(fs.readFileSync(savedPath, "utf8"), "```\npublic int X() => 2;\n```");
+        } finally {
+            if (savedPath) fs.rmSync(path.dirname(savedPath), { recursive: true, force: true });
+        }
+
+        const skill = fs.readFileSync(path.join(REPO, "packs/tools/local-llm/skills/delegate-local/SKILL.md"), "utf8");
+        const step3 = skill.slice(skill.indexOf("3. **Gate every edit.**"), skill.indexOf("4. **Read only the receipt back.**"));
+        assert.match(step3, /--preflight/);
+        assert.match(step3, /--verify-expect/);
+        assert.equal((await captured(() => main(["chat", "--preflight", "--prompt", "hi"]))).code, 2);
+        assert.equal((await captured(() => main(["chat", "--verify-expect", "ok", "--prompt", "hi"]))).code, 2);
+    });
+});

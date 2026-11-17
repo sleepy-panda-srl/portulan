@@ -145,7 +145,7 @@ const chainOf = (r) => (r.sidechain ? `agent:${r.agent ?? ""}` : "session");
 
 /** A whole-line local receipt is read wherever it appears. */
 const RECEIPT =
-    /^OK mode=([a-z]+) model=(\S+)(?: target=.+?)? attempts=([1-9]\d*) in=(?:(0|[1-9]\d*)t|\?) out=(?:(0|[1-9]\d*)t|\?) time=(?:(0|[1-9]\d*)ms|\?) rate=(?:(?:0|[1-9]\d*)(?:\.\d)?tok\/s|\?)(?: reasoning=(?:(0|[1-9]\d*)t|\?) cached-in=(?:(0|[1-9]\d*)t|\?))?(?: queued=(?:0|[1-9]\d*)ms)? spend=\$0\.00$/;
+    /^OK mode=([a-z]+) model=(\S+)(?: target=.+?)? attempts=([1-9]\d*) in=(?:(0|[1-9]\d*)t|\?) out=(?:(0|[1-9]\d*)t|\?) time=(?:(0|[1-9]\d*)ms|\?) rate=(?:(?:0|[1-9]\d*)(?:\.\d)?tok\/s|\?)(?: reasoning=(?:(0|[1-9]\d*)t|\?) cached-in=(?:(0|[1-9]\d*)t|\?))?(?: queued=(?:0|[1-9]\d*)ms)?(?: preflight=(?:green|red))? spend=\$0\.00$/;
 
 /** A figure the runner printed as `?` is null, never 0. */
 export function receiptOf(line) {
