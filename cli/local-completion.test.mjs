@@ -11,9 +11,24 @@ test('fences with trailing whitespace, language and CRLF contain executable code
     assert.equal(extractFencedCode(`${open}\r\nexport const value = 42;\r\n\x60\x60\x60`).trim(), 'export const value = 42;');
   }
 });
-test('an unfinished opening fence is refused while plain code remains compatible', () => {
+test('an unfinished opening fence is refused while plain code remains compatible', async t => {
   assert.throws(() => extractFencedCode('```js\nexport const value = 42;'), /fenced/i);
   assert.equal(extractFencedCode('export const value = 42;'), 'export const value = 42;');
+  assert.equal(extractFencedCode('```csharp\n    if (openHere)\n    {\n```'), '    if (openHere)\n    {\n');
+  assert.equal(extractFencedCode('    if (openHere)\n    {'), '    if (openHere)\n    {');
+  assert.equal(extractFencedCode('\n\n    if (openHere)\n    {\n'), '    if (openHere)\n    {');
+  assert.equal(extractFencedCode('<think>\nplan\n</think>\n    if (openHere)\n    {\n'), '    if (openHere)\n    {');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'local-indent-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'Sample.cs');
+  fs.writeFileSync(file, 'class Sample\n{\n    oldCall();\n}\n');
+  const res = await verifyGatedTransform({
+    filePath: file, lineRange: '3-3', instruction: 'call x', verifyCmd: 'true',
+    chatFn: async () => ({ content: '    x();' }),
+    execFn: async () => ({ status: 0, stdout: '', stderr: '' }),
+  });
+  assert.equal(res.ok, true);
+  assert.equal(fs.readFileSync(file, 'utf8'), 'class Sample\n{\n    x();\n}\n');
 });
 test('inline triple backticks in generated code do not close the outer fence', () => {
   const code = 'const pattern = /```/;\nexport const value = 42;';

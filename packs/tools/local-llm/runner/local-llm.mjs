@@ -88,7 +88,10 @@ export function assertInputBudget(text, { maxInputBytes = DEFAULT_MAX_INPUT_BYTE
 }
 
 export function stripThinking(text) {
-    return text.replace(/^\s*<think>[\s\S]*?<\/think>\s*/i, "").trim();
+    return text
+        .replace(/^\s*<think>[\s\S]*?<\/think>[ \t]*\r?\n?/i, "")
+        .replace(/^(?:[ \t]*\r?\n)+/, "")
+        .trimEnd();
 }
 
 export function extractFencedCode(text) {
