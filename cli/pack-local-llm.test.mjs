@@ -525,6 +525,28 @@ describe("arguments", () => {
         assert.equal(buildPrompt({ _: ["chat"], prompt: "Summarize", file, lines: "2-3" }), "Summarize\n\n```\ntwo\nthree\n```");
         assert.throws(() => buildPrompt({ _: ["chat"], prompt: "x", lines: "1-2" }), CouldNotRunError);
     });
+
+    test("--help and transform missing-flag usage name the same flags including --role, --model and --effort", async () => {
+        const help = await captured(() => main(["--help"]));
+        assert.equal(help.code, 0);
+        const helpOutput = help.out.join("\n");
+        const helpTransformLine = helpOutput.split("\n").find((l) => l.trim().startsWith("local-llm.mjs transform "));
+        assert.ok(helpTransformLine, "missing transform line in --help");
+        assert.match(helpOutput, /transform defaults to --role code at --effort low/);
+
+        const missing = await captured(() => main(["transform"]));
+        assert.equal(missing.code, 2);
+        const errTransformLine = missing.err.join("\n").split("\n").find((l) => l.startsWith("Usage: local-llm.mjs transform "));
+        assert.ok(errTransformLine, "missing Usage line on missing flags");
+
+        const flagsOf = (line) => [...new Set(line.match(/--[a-z-]+/g) ?? [])].sort();
+        const helpFlags = flagsOf(helpTransformLine);
+        const errFlags = flagsOf(errTransformLine);
+        assert.deepEqual(helpFlags, errFlags);
+        for (const required of ["--role", "--model", "--effort", "--prompt-file"]) {
+            assert.ok(helpFlags.includes(required), `missing ${required}`);
+        }
+    });
 });
 
 describe("--prompt-file, --context, --insert-after and endpoint locking", () => {
