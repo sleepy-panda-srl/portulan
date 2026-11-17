@@ -42,15 +42,15 @@ const sourcesValid = sources => Array.isArray(sources) && sources.length > 0 && 
     [null, "tree", "outside-tree", "discovered"].includes(s.origin) && (s.version === null || typeof s.version === "string") &&
     (i === 0 || sources[i - 1].pack.localeCompare(s.pack) < 0));
 const capValid = (env, sources) => keys(env, [CONTEXT_CAP_ENV]) && sourcesValid(sources) && env[CONTEXT_CAP_ENV] === String(Math.min(...sources.map(s => s.limit)));
-const commandValid = (v, action) => keys(v, ["type", "command"]) && v.type === "command" && typeof v.command === "string" && new RegExp(String.raw`^node "[^"\r\n]+[/\\]advisory\.mjs" ${action}(?: --(?:read|write-5m|write-1h|horizon|resume-tokens) [0-9.eE+-]+)*$`).test(v.command);
+const commandValid = (v, action) => keys(v, ["type", "command"]) && v.type === "command" && typeof v.command === "string" && new RegExp(String.raw`^node "[^"\r\n]+[/\\]advisory\.mjs" ${action}(?: --(?:read|write-5m|write-1h|horizon|resume-tokens) [0-9.eE+-]+)*(?: --handoffs)?$`).test(v.command);
 const hookValid = (v, action) => Array.isArray(v) && v.length === 1 && keys(v[0], ["hooks"]) && Array.isArray(v[0].hooks) && v[0].hooks.length === 1 && commandValid(v[0].hooks[0], action);
 function adviceOwned(v) {
     const m = v?.$portulan;
     return keys(v, ["$portulan", "hooks", "statusLine"], ["includeGitInstructions", "promptCacheTtl", "env"]) &&
-        keys(m, ["generated", "kind", "digest", "source", "warning"], ["sessions", "spend", "packs", "contexts"]) &&
+        keys(m, ["generated", "kind", "digest", "source", "warning"], ["sessions", "spend", "records", "packs", "contexts"]) &&
         m.generated === "cli/compile.mjs" && m.kind === "advisory" && /^[a-f0-9]{64}$/.test(m.digest) && m.digest === fingerprint(v) &&
         typeof m.source === "string" && !path.isAbsolute(m.source) && !m.source.split("/").includes("..") && /(?:^|\/)workspace\.json$/.test(m.source) && typeof m.warning === "string" &&
-        ["sessions", "spend"].every(k => !Object.hasOwn(m, k) || m[k] === m.source) &&
+        ["sessions", "spend", "records"].every(k => !Object.hasOwn(m, k) || m[k] === m.source) &&
         (!Object.hasOwn(m, "packs") || (Array.isArray(m.packs) && m.packs.length > 0 && m.packs.every((p, i) => keys(p, ["pack", "origin", "version"]) && typeof p.pack === "string" && ["tree", "outside-tree", "discovered"].includes(p.origin) && (p.version === null || typeof p.version === "string") && (i === 0 || m.packs[i - 1].pack.localeCompare(p.pack) < 0)))) &&
         (!Object.hasOwn(v, "includeGitInstructions") || typeof v.includeGitInstructions === "boolean") && (!Object.hasOwn(v, "promptCacheTtl") || ["5m", "1h"].includes(v.promptCacheTtl)) &&
         (Object.hasOwn(v, "env") ? capValid(v.env, m.contexts) : !Object.hasOwn(m, "contexts")) &&

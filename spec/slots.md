@@ -50,7 +50,7 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `slots.memory` | path | no | constitution — thesis 1 *(memory)*; [`memory.md`](../core/operating/memory.md) |
 | `slots.repos` | path | no | constitution — thesis 1 *(repo cards)*; [`repo-card.md`](../core/templates/repo-card.md) |
 | `slots.tasks` | path | no | content — [`tasks/`](../.portulan/tasks/); constitution — BMAD, the story file as atomic context unit |
-| `slots.handoffs` | path | no | content — [`handoffs/`](../.portulan/handoffs/); [`loop.md`](../core/operating/loop.md) — when declared, the Stop-gate checks this series for open work; when absent, it asks to commit and push without a handoff |
+| `slots.handoffs` | path | no | content — [`handoffs/`](../.portulan/handoffs/); [`loop.md`](../core/operating/loop.md) — when declared, the Stop-gate checks this series for open work and the restart advisory may mention a handoff; when absent, neither asks for a handoff |
 | `slots.proposals` | path | no | content — [`proposals/`](../.portulan/proposals/); [`evolution.md`](../core/operating/evolution.md) |
 | `slots.context` | path | no | criterion — milestone 12, *`compile` emits Claude Code's on-path and on-invoke targets*; [`context.md`](../core/operating/context.md) — the four load tiers |
 | `verify` | structured | **for a governing kind** | criterion — *verify recipes*; [`verification.md`](../core/operating/verification.md) — the workspace sets the default |
@@ -871,6 +871,15 @@ declaration reports conditionally without holding. Retry protection uses the
 host's `stop_hook_active` marker; omitting it while rotating session identities
 can repeat holds. A hold is once per session and again after each compaction.
 It is the advisory's command rather than a reason inside the Stop-gate,
+and its handoff wording follows `slots.handoffs`. A nonempty host `background_tasks`
+array suppresses advisory output before its once-only markers; an absent or malformed
+inventory is unknown. Restart advice waits for collecting delegated work and results.
+Claude Code documents this inventory for [Stop](https://code.claude.com/docs/en/hooks#stop-input),
+not a complete inventory for prompt/tool hooks. See [the advisory contract](../core/operating/context.md#restart-at-a-computed-threshold)
+and [#575](https://github.com/sleepy-panda-srl/portulan/issues/575); the estimates from
+[#503](https://github.com/sleepy-panda-srl/portulan/issues/503) and
+[#505](https://github.com/sleepy-panda-srl/portulan/issues/505) still apply.
+The advisory is separate from verification,
 so the gate's counters and caps stay about the recipe and the handoff; and nothing ends the session, which
 stays the agent's or the human's act. `0038`'s *Enforcement* says the block comes *instead* of the line, and
 it is read here as *added*, because the line is what reaches an agent mid-stretch and a headless run's only

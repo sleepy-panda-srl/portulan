@@ -2,6 +2,7 @@
   "$portulan": {
     "generated": "cli/compile.mjs",
     "source": ".portulan/gates.json",
+    "records": ".portulan/workspace.json",
     "packs": [
       {
         "pack": "rituals/checkpoints",
@@ -27,7 +28,7 @@
         "version": "0.3.1"
       }
     ],
-    "warning": "Generated file. Edit .portulan/gates.json, or ritual contexts in composed pack manifests, and recompile; `verify/compile.sh` fails on drift."
+    "warning": "Generated file. Edit .portulan/gates.json, or `slots.handoffs` in .portulan/workspace.json, or ritual contexts in composed pack manifests, and recompile; `verify/compile.sh` fails on drift."
   },
   "permissions": {
     "deny": [],
@@ -71,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR}/cli/advisory.mjs\" tool"
+            "command": "node \"${CLAUDE_PROJECT_DIR}/cli/advisory.mjs\" tool --handoffs"
           }
         ]
       }
@@ -81,7 +82,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR}/cli/advisory.mjs\" prompt"
+            "command": "node \"${CLAUDE_PROJECT_DIR}/cli/advisory.mjs\" prompt --handoffs"
           }
         ]
       }

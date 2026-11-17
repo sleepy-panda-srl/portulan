@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Restart comparison with explicit horizon and resume expense; unknown recovery cost stays conditional.
 //
-// node cli/advisory.mjs tool|prompt|status|stop [--read m --write-5m m --write-1h m] [--horizon n] [--resume-tokens cost]
+// node cli/advisory.mjs tool|prompt|status|stop [--read m --write-5m m --write-1h m] [--horizon n] [--resume-tokens cost] [--handoffs]
 // Undeclared prices/horizon use general figures; unknown resume cost permits conditional reports only.
-// Tool/prompt output reaches the agent; a declared Stop holds only with explicit profitable estimates.
+// Tool/prompt output reaches the agent; Stop requires profitable estimates.
 // Retain the first crossing in a delayed batch; Stop uses the latest estimate. Hook failures exit 0.
 // Unusable figures are named on stderr.
 
@@ -282,14 +282,14 @@ function refresh(found, warn, spend) {
         : { why: "no request is recorded yet", after: "the first recorded request" };
 }
 
-export function adviceLine(figure, event = "UserPromptSubmit") {
+export function adviceLine(figure, event = "UserPromptSubmit", { handoffs = false } = {}) {
     const m = figure.multipliers;
     const horizon = `${figure.horizon} remaining (${figure.horizonDeclared ? "declared" : "default"})`;
     const resume = figure.resume == null ? "resume cost unknown; threshold is a lower bound" : `resume ${grouped(figure.resume)} input equivalents`;
     const comparison = figure.saving < 0 ? "Latest estimate does not favor restarting."
         : figure.resume != null && figure.horizonDeclared
-        ? `Estimated savings ${savingWords(figure.saving)} input equivalents; consider a handoff and restart if these estimates still fit the task.`
-        : "Restart only if remaining work and recovery cost make it cheaper; finish bounded work when that costs less.";
+        ? `Estimated savings ${savingWords(figure.saving)} input equivalents; consider ${handoffs ? "a handoff and " : ""}restart if these estimates still fit the task, after collecting all delegated work and results.`
+        : "Restart only after collecting all delegated work and results, if remaining work and recovery cost make it cheaper; finish bounded work when that costs less.";
     const first = figure.crossing;
     const history = first && first.requests !== figure.requests
         ? ` First crossing: request ${grouped(first.requests)}, context ${grouped(first.context)} / threshold ${grouped(first.threshold)} (fresh ${grouped(first.fresh)}, read ${first.multipliers.read}×, write ${first.multipliers.write}×, ${first.multipliers.recorded ? "recorded" : "assumed"} ${first.multipliers.lifetime}).`
@@ -304,17 +304,18 @@ export function statusLine(figure) {
         `multipliers ${m.source}: read ${m.read}×, write ${m.write}×`;
 }
 
-export function advisoryOutput(figure, event) {
-    const line = adviceLine(figure, event);
+export function advisoryOutput(figure, event, options) {
+    const line = adviceLine(figure, event, options);
     return event === "Stop"
         ? JSON.stringify({ decision: "block", reason: line })
         : JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: line } });
 }
 
-function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = null, horizon = null, resume = null } = {}) {
+function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = null, horizon = null, resume = null, handoffs = false } = {}) {
     // Claude Code 2.1.281: a subagent's tool call carries its own `agent_id` and the main session's transcript,
     // and a subagent told to end its session would end nothing.
     if (typeof payload?.agent_id === "string" && payload.agent_id !== "") return null;
+    if (Array.isArray(payload?.background_tasks) && payload.background_tasks.length > 0) return null;
     // Without the host's retry marker, rotated session ids can repeat the hold.
     if (event === "Stop" && payload?.stop_hook_active === true) return null;
     const sessionId = sessionOf(payload);
@@ -350,13 +351,13 @@ function once(event, payload, { dir = os.tmpdir(), warn = () => {}, declared = n
         }
         return null;
     }
-    if (event !== "Stop") return advisoryOutput(figure, event);
+    if (event !== "Stop") return advisoryOutput(figure, event, { handoffs });
     try {
         mark(toldFile(sessionId, figure.compactions, dir));
     } catch (error) {
         if (error.code !== "EEXIST") warn(`the told-once record could not be written — ${error.code ?? error.message}; the line may come once more after the block`);
     }
-    return advisoryOutput(figure, event);
+    return advisoryOutput(figure, event, { handoffs });
 }
 
 export const onTool = (payload, options) => once("PostToolUse", payload, options);
@@ -445,10 +446,17 @@ export function main(argv = process.argv.slice(2), { stdout = process.stdout, st
     const input = payload === undefined ? readPayload() : payload;
     const warn = (why) => stderr.write(`portulan advisory: ${why}\n`);
     try {
-        const figures = spendFlags(argv.slice(1));
+        const numeric = [];
+        let handoffs = false, duplicate = false;
+        for (let i = 1; i < argv.length;) {
+            if (argv[i] === "--handoffs") { duplicate ||= handoffs; handoffs = true; i++; }
+            else { numeric.push(argv[i++]); if (i < argv.length) numeric.push(argv[i++]); }
+        }
+        const figures = spendFlags(numeric);
+        if (duplicate) figures.fault = [figures.fault, "--handoffs is given twice"].filter(Boolean).join("; ");
         if (figures.fault !== null) warn(`the figures after ${mode} are not all usable — ${figures.fault}`);
         if (mode === "stop" && figures.fault !== null) return 0;
-        const priced = { dir, warn, declared: figures.declared, horizon: figures.horizon, resume: figures.resume };
+        const priced = { dir, warn, declared: figures.declared, horizon: figures.horizon, resume: figures.resume, handoffs };
         if (mode === "prompt" || mode === "tool" || mode === "stop") {
             const out = { tool: onTool, prompt: onPrompt, stop: onStop }[mode](input, priced);
             if (out !== null) stdout.write(`${out}\n`);
