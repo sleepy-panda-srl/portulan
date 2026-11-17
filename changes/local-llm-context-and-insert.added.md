@@ -1,0 +1,1 @@
+- `tools/local-llm`: add repeatable `--context` / `--context-file` read-only reference slices and `--insert-after` / `--insert-before` seam-normalized insertion mode ([#569](https://github.com/sleepy-panda-srl/portulan/issues/569), [#570](https://github.com/sleepy-panda-srl/portulan/issues/570)).

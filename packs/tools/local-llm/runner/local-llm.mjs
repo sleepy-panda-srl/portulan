@@ -134,13 +134,14 @@ export function incompleteGenerationMessage(usage) {
 
 const figure = (value, unit) => (value === null || value === undefined ? "?" : `${value}${unit}`);
 
-export function formatPassReceipt({ mode, model, attempts = 1, promptTokens = null, completionTokens = null, reasoningTokens = null, cachedPromptTokens = null, totalMs = null, tokPerSec = null, target = "" }) {
+export function formatPassReceipt({ mode, model, attempts = 1, promptTokens = null, completionTokens = null, reasoningTokens = null, cachedPromptTokens = null, totalMs = null, tokPerSec = null, target = "", queuedMs = 0 }) {
     const usage = readUsage({prompt_tokens:promptTokens,completion_tokens:completionTokens,
         completion_tokens_details:{reasoning_tokens:reasoningTokens},prompt_tokens_details:{cached_tokens:cachedPromptTokens}});
     const where = target ? ` target=${target}` : "";
+    const queued = Number.isSafeInteger(queuedMs) && queuedMs > 0 ? ` queued=${queuedMs}ms` : "";
     return (
         `OK mode=${mode} model=${model}${where} attempts=${attempts} in=${figure(usage.promptTokens, "t")} out=${figure(usage.completionTokens, "t")} ` +
-        `time=${figure(totalMs, "ms")} rate=${figure(tokPerSec, "tok/s")} reasoning=${figure(usage.reasoningTokens, "t")} cached-in=${figure(usage.cachedPromptTokens, "t")} spend=$0.00`
+        `time=${figure(totalMs, "ms")} rate=${figure(tokPerSec, "tok/s")} reasoning=${figure(usage.reasoningTokens, "t")} cached-in=${figure(usage.cachedPromptTokens, "t")}${queued} spend=$0.00`
     );
 }
 
@@ -253,6 +254,134 @@ async function localFetch(url, init, fetchImpl) {
     }
 }
 
+const ACTIVE_LOCKS = new Set();
+let lockSignalsWired = false;
+function releaseActiveLocks() {
+    for (const release of [...ACTIVE_LOCKS]) release();
+}
+function onLockSignal(signal) {
+    releaseActiveLocks();
+    syncLockSignals();
+    process.kill(process.pid, signal);
+}
+function syncLockSignals() {
+    const need = ACTIVE_LOCKS.size > 0;
+    if (need === lockSignalsWired) return;
+    lockSignalsWired = need;
+    for (const signal of RESTORE_SIGNALS) {
+        if (need) process.on(signal, onLockSignal);
+        else process.off(signal, onLockSignal);
+    }
+}
+
+function isProcessAlive(pid) {
+    if (!Number.isSafeInteger(pid) || pid <= 0) return false;
+    try {
+        process.kill(pid, 0);
+        return true;
+    } catch (err) {
+        return err.code !== "ESRCH";
+    }
+}
+
+export function endpointLockPath(endpoint, lockDir = process.env.PORTULAN_LOCAL_LLM_LOCK_DIR || os.tmpdir()) {
+    const parsed = new URL(endpoint);
+    if (parsed.hostname.toLowerCase() === "localhost") parsed.hostname = "127.0.0.1";
+    const key = `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}`;
+    const hash = createHash("sha256").update(key).digest("hex").slice(0, 16);
+    return path.join(lockDir, `portulan-local-llm-${hash}.lock`);
+}
+
+function tryRecoverStaleLock(lockPath, staleGraceMs) {
+    let stat;
+    let raw;
+    try {
+        stat = fs.statSync(lockPath);
+        raw = fs.readFileSync(lockPath, "utf8");
+    } catch (err) {
+        if (err.code === "ENOENT") return true;
+        throw err;
+    }
+    let holder = null;
+    try { holder = JSON.parse(raw); } catch { holder = null; }
+    const dead = holder !== null && Number.isSafeInteger(holder.pid) && !isProcessAlive(holder.pid);
+    const corrupt = holder === null && Date.now() - stat.mtimeMs > staleGraceMs;
+    if (!dead && !corrupt) return false;
+
+    const guardPath = `${lockPath}.recover`;
+    let ownsGuard = false;
+    try {
+        const fd = fs.openSync(guardPath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY, 0o600);
+        ownsGuard = true;
+        fs.writeSync(fd, `${process.pid}\n`);
+        fs.closeSync(fd);
+        try {
+            const nowStat = fs.statSync(lockPath);
+            const nowRaw = fs.readFileSync(lockPath, "utf8");
+            let nowHolder = null;
+            try { nowHolder = JSON.parse(nowRaw); } catch { nowHolder = null; }
+            const stillDead = nowHolder !== null && Number.isSafeInteger(nowHolder.pid) && !isProcessAlive(nowHolder.pid);
+            const stillCorrupt = nowHolder === null && Date.now() - nowStat.mtimeMs > staleGraceMs;
+            if (stillDead || stillCorrupt) fs.unlinkSync(lockPath);
+        } catch (err) {
+            if (err.code !== "ENOENT") throw err;
+        }
+        return true;
+    } catch (err) {
+        if (err.code === "EEXIST") {
+            try {
+                if (Date.now() - fs.statSync(guardPath).mtimeMs > 5000) fs.unlinkSync(guardPath);
+            } catch {}
+            return false;
+        }
+        if (err.code === "ENOENT") return true;
+        throw err;
+    } finally {
+        if (ownsGuard) {
+            try { fs.unlinkSync(guardPath); } catch {}
+        }
+    }
+}
+
+export async function acquireEndpointLock(
+    endpoint,
+    { lockDir = process.env.PORTULAN_LOCAL_LLM_LOCK_DIR || os.tmpdir(), pollMs = 50, staleGraceMs = 2000 } = {},
+) {
+    fs.mkdirSync(lockDir, { recursive: true });
+    const lockPath = endpointLockPath(endpoint, lockDir);
+    const waitStart = performance.now();
+    let waited = false;
+    while (true) {
+        let fd = null;
+        try {
+            fd = fs.openSync(lockPath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY, 0o600);
+            fs.writeSync(fd, `${JSON.stringify({ pid: process.pid, startedAt: Date.now(), endpoint })}\n`);
+            fs.closeSync(fd);
+            fd = null;
+            const queuedMs = waited ? Math.max(1, Math.round(performance.now() - waitStart)) : 0;
+            let released = false;
+            const release = () => {
+                if (released) return;
+                released = true;
+                ACTIVE_LOCKS.delete(release);
+                syncLockSignals();
+                try { fs.unlinkSync(lockPath); } catch {}
+            };
+            ACTIVE_LOCKS.add(release);
+            syncLockSignals();
+            return { lockPath, queuedMs, release };
+        } catch (err) {
+            if (fd !== null) {
+                try { fs.closeSync(fd); } catch {}
+            }
+            if (err.code !== "EEXIST") throw err;
+            waited = true;
+            if (tryRecoverStaleLock(lockPath, staleGraceMs)) continue;
+            await new Promise((resolve) => setTimeout(resolve, pollMs));
+        }
+    }
+}
+
 export async function callLocalChat({
     baseUrl = DEFAULT_BASE_URL,
     allowRemote = false,
@@ -263,61 +392,73 @@ export async function callLocalChat({
     effort = "low",
     temperature = 0.1,
     seed,
+    noLock = false,
+    useLock,
+    lockDir,
     fetchImpl = globalThis.fetch,
 }) {
     const endpoint = assertLoopback(baseUrl, { allowRemote });
     const serialized = messages.map((m) => m.content ?? "").join("\n");
     assertInputBudget(serialized, { maxInputBytes });
 
-    const t0 = performance.now();
-    const res = await localFetch(
-        `${endpoint}/chat/completions`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                model,
-                messages,
-                temperature,
-                max_tokens: maxTokens,
-                reasoning_effort: effort,
-                chat_template_kwargs: {
-                    enable_thinking: effort !== "none" && effort !== "low",
-                    reasoning_effort: effort === "none" ? "low" : effort,
-                },
-                stream: false,
-                ...(seed === undefined ? {} : { seed }),
-            }),
-        },
-        fetchImpl,
-    );
+    const shouldLock = !noLock && (useLock === true || lockDir !== undefined || fetchImpl === globalThis.fetch);
+    const lock = shouldLock ? await acquireEndpointLock(endpoint, { ...(lockDir ? { lockDir } : {}) }) : { queuedMs: 0, release: () => {} };
+    if (lock.queuedMs > 0) console.error(`local-llm: waited ${lock.queuedMs}ms for endpoint lock (${endpoint})`);
 
-    if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        throw new CouldNotRunError(`Local LLM server returned HTTP ${res.status}: ${body.slice(0, 200)}`);
-    }
-
-    let data;
     try {
-        data = await res.json();
-    } catch (err) {
-        throw new CouldNotRunError(`Local LLM server returned a body that is not JSON — ${err.message}`);
-    }
-    const totalMs = Math.max(1, Math.round(performance.now() - t0));
-    const usage = readUsage(data.usage);
-    if (data.choices?.[0]?.finish_reason === "length") {
-        throw new CouldNotRunError(incompleteGenerationMessage(data.usage));
-    }
-    const rawContent = data.choices?.[0]?.message?.content ?? "";
-    const { completionTokens } = usage;
+        const t0 = performance.now();
+        const res = await localFetch(
+            `${endpoint}/chat/completions`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    model,
+                    messages,
+                    temperature,
+                    max_tokens: maxTokens,
+                    reasoning_effort: effort,
+                    chat_template_kwargs: {
+                        enable_thinking: effort !== "none" && effort !== "low",
+                        reasoning_effort: effort === "none" ? "low" : effort,
+                    },
+                    stream: false,
+                    ...(seed === undefined ? {} : { seed }),
+                }),
+            },
+            fetchImpl,
+        );
 
-    return {
-        content: stripThinking(rawContent),
-        rawContent,
-        ...usage,
-        totalMs,
-        tokPerSec: rate(completionTokens, totalMs),
-    };
+        if (!res.ok) {
+            const body = await res.text().catch(() => "");
+            throw new CouldNotRunError(`Local LLM server returned HTTP ${res.status}: ${body.slice(0, 200)}`);
+        }
+
+        let data;
+        try {
+            data = await res.json();
+        } catch (err) {
+            throw new CouldNotRunError(`Local LLM server returned a body that is not JSON — ${err.message}`);
+        }
+        const totalMs = Math.max(1, Math.round(performance.now() - t0));
+        const usage = readUsage(data.usage);
+        if (data.choices?.[0]?.finish_reason === "length") {
+            throw new CouldNotRunError(incompleteGenerationMessage(data.usage));
+        }
+        const rawContent = data.choices?.[0]?.message?.content ?? "";
+        const { completionTokens } = usage;
+
+        return {
+            content: stripThinking(rawContent),
+            rawContent,
+            ...usage,
+            totalMs,
+            queuedMs: lock.queuedMs,
+            tokPerSec: rate(completionTokens, totalMs),
+        };
+    } finally {
+        lock.release();
+    }
 }
 
 export const DEFAULT_DEDUP_THRESHOLD = 0.8;
@@ -465,18 +606,160 @@ function splitLines(text) {
     return { lines: (trailingNewline ? text.slice(0, -1) : text).split("\n"), trailingNewline };
 }
 
-export function parseLineRange(spec, lineCount) {
+export function parseLineRange(spec, lineCount, flagName = "--lines") {
     const m = /^(\d+)-(\d+)$/.exec(String(spec));
-    if (!m) throw new CouldNotRunError(`Invalid --lines range ${JSON.stringify(spec)} (expected start-end)`);
+    if (!m) throw new CouldNotRunError(`Invalid ${flagName} range ${JSON.stringify(spec)} (expected start-end)`);
     const start = Math.max(1, Number(m[1]));
     const end = Math.min(lineCount, Number(m[2]));
-    if (start > end) throw new CouldNotRunError(`Invalid --lines range: start ${start} > end ${end}`);
+    if (start > end) throw new CouldNotRunError(`Invalid ${flagName} range: start ${start} > end ${end}`);
     return { start, end };
+}
+
+function readUtf8Validated(filePath, label = "Target") {
+    if (!fs.existsSync(filePath)) {
+        throw new CouldNotRunError(`${label} file does not exist: ${filePath}`);
+    }
+    const bytes = fs.readFileSync(filePath);
+    const text = bytes.toString("utf8");
+    if (!Buffer.from(text, "utf8").equals(bytes)) {
+        throw new CouldNotRunError(`Refused ${filePath}: it is not valid UTF-8, so rewriting any line would change the bytes of every line`);
+    }
+    return { bytes, text };
+}
+
+function parseContextFileSpec(spec, existsFn = fs.existsSync) {
+    const raw = String(spec);
+    const m = /^(.*):(\d+-\d+)$/.exec(raw);
+    if (m && m[1] !== "" && (!existsFn(raw) || existsFn(m[1]))) {
+        return { filePath: m[1], range: m[2] };
+    }
+    return { filePath: raw, range: null };
+}
+
+export function resolveContextSections({ filePath = null, fileLines = null, contexts = [], contextFiles = [] } = {}) {
+    const sections = [];
+    if (contexts.length > 0) {
+        if (!filePath) throw new CouldNotRunError("--context selects lines of --file, and no --file was given");
+        const lines = fileLines ?? splitLines(readUtf8Validated(filePath, "Target").text).lines;
+        for (const spec of contexts) {
+            const { start, end } = parseLineRange(spec, lines.length, "--context");
+            sections.push({
+                label: `${path.basename(filePath)} lines ${start}-${end}`,
+                text: lines.slice(start - 1, end).join("\n"),
+            });
+        }
+    }
+    for (const spec of contextFiles) {
+        const parsed = parseContextFileSpec(spec);
+        const { text } = readUtf8Validated(parsed.filePath, "Context");
+        const { lines } = splitLines(text);
+        if (parsed.range) {
+            const { start, end } = parseLineRange(parsed.range, lines.length, "--context-file");
+            sections.push({
+                label: `${path.basename(parsed.filePath)} lines ${start}-${end}`,
+                text: lines.slice(start - 1, end).join("\n"),
+            });
+        } else {
+            sections.push({
+                label: path.basename(parsed.filePath),
+                text: text.endsWith("\n") ? text.slice(0, -1) : text,
+            });
+        }
+    }
+    return sections.map(
+        (s) => `Reference context (read-only, do NOT return these lines — ${s.label}):\n\`\`\`\n${s.text}\n\`\`\``,
+    );
+}
+
+const isBlankLine = (line) => /^[ \t]*\r?$/.test(line);
+
+function trimBlankEdges(lines) {
+    let start = 0;
+    while (start < lines.length && isBlankLine(lines[start])) start += 1;
+    let end = lines.length;
+    while (end > start && isBlankLine(lines[end - 1])) end -= 1;
+    return lines.slice(start, end);
+}
+
+export function usualBlankRun(lines) {
+    const counts = new Map();
+    let run = 0;
+    let seenNonBlank = false;
+    for (const line of lines) {
+        if (isBlankLine(line)) {
+            if (seenNonBlank) run += 1;
+        } else {
+            if (seenNonBlank && run > 0) counts.set(run, (counts.get(run) ?? 0) + 1);
+            seenNonBlank = true;
+            run = 0;
+        }
+    }
+    if (counts.size === 0) return 0;
+    let bestLen = 1;
+    let bestFreq = -1;
+    for (const [len, freq] of counts) {
+        if (freq > bestFreq || (freq === bestFreq && len < bestLen)) {
+            bestLen = len;
+            bestFreq = freq;
+        }
+    }
+    return bestLen;
+}
+
+export function spliceInsertion(allLines, splitIndex, replyText, seamBlankLines = null) {
+    const rawLines = splitLines(replyText.replace(/\r\n/g, "\n")).lines;
+    const inserted = trimBlankEdges(rawLines);
+    if (inserted.length === 0) {
+        throw new CouldNotRunError("Empty insertion output; no edit accepted");
+    }
+    const before = allLines.slice(0, splitIndex);
+    const after = allLines.slice(splitIndex);
+    let prefixEnd = before.length;
+    while (prefixEnd > 0 && isBlankLine(before[prefixEnd - 1])) prefixEnd -= 1;
+    let suffixStart = 0;
+    while (suffixStart < after.length && isBlankLine(after[suffixStart])) suffixStart += 1;
+    const existingSeam = (before.length - prefixEnd) + suffixStart;
+    const seam = seamBlankLines !== null ? seamBlankLines : existingSeam > 0 ? existingSeam : usualBlankRun(allLines);
+    const prefix = before.slice(0, prefixEnd);
+    const suffix = after.slice(suffixStart);
+    const gap = Array(seam).fill("");
+    return [
+        ...prefix,
+        ...(prefix.length > 0 ? gap : []),
+        ...inserted,
+        ...(suffix.length > 0 ? gap : []),
+        ...suffix,
+    ];
+}
+
+function buildInsertionPromptSection(filePath, allLines, splitIndex) {
+    const beforeStart = Math.max(0, splitIndex - 10);
+    const afterEnd = Math.min(allLines.length, splitIndex + 5);
+    const parts = [
+        `Insertion point: immediately after line ${splitIndex} (before line ${splitIndex + 1}) of ${path.basename(filePath)}.`,
+        "Return ONLY the new code to insert. Do NOT repeat any existing anchor lines.",
+    ];
+    if (splitIndex > beforeStart) {
+        parts.push(
+            `Anchor before insertion point (read-only, lines ${beforeStart + 1}-${splitIndex}):\n\`\`\`\n${allLines.slice(beforeStart, splitIndex).join("\n")}\n\`\`\``,
+        );
+    }
+    if (afterEnd > splitIndex) {
+        parts.push(
+            `Anchor after insertion point (read-only, lines ${splitIndex + 1}-${afterEnd}):\n\`\`\`\n${allLines.slice(splitIndex, afterEnd).join("\n")}\n\`\`\``,
+        );
+    }
+    return parts.join("\n\n");
 }
 
 export async function verifyGatedTransform({
     filePath,
     lineRange = null,
+    insertAfter = null,
+    insertBefore = null,
+    seamBlankLines = null,
+    contexts = [],
+    contextFiles = [],
     instruction,
     verifyCmd,
     model = ROLE_MODELS.code,
@@ -485,25 +768,49 @@ export async function verifyGatedTransform({
     maxInputBytes = DEFAULT_MAX_INPUT_BYTES,
     effort = "low",
     retries = DEFAULT_RETRIES,
+    noLock = false,
     chatFn = callLocalChat,
     execFn = runVerify,
 }) {
     if (!verifyCmd) {
         throw new CouldNotRunError("transform requires --verify <cmd>: every local edit is gated by a verify command, and kept only on its exit 0");
     }
-    if (!fs.existsSync(filePath)) {
-        throw new CouldNotRunError(`Target file does not exist: ${filePath}`);
+    const modeCount = [lineRange !== null, insertAfter !== null, insertBefore !== null].filter(Boolean).length;
+    if (modeCount > 1) {
+        throw new CouldNotRunError("--lines, --insert-after, and --insert-before cannot be combined");
     }
-    const originalBytes = fs.readFileSync(filePath);
-    const originalText = originalBytes.toString("utf8");
-    if (!Buffer.from(originalText, "utf8").equals(originalBytes)) {
-        throw new CouldNotRunError(`Refused ${filePath}: it is not valid UTF-8, so rewriting any line would change the bytes of every line`);
+    const insertMode = insertAfter !== null || insertBefore !== null;
+    if (seamBlankLines !== null && !insertMode) {
+        throw new CouldNotRunError("--seam-blank-lines requires --insert-after or --insert-before");
     }
-    const { lines: allLines, trailingNewline } = splitLines(originalText);
-    const { start: startLine, end: endLine } = lineRange
-        ? parseLineRange(lineRange, allLines.length)
-        : { start: 1, end: allLines.length };
-    const targetSlice = allLines.slice(startLine - 1, endLine).join("\n");
+    if (seamBlankLines !== null && (!Number.isSafeInteger(seamBlankLines) || seamBlankLines < 0)) {
+        throw new CouldNotRunError(`--seam-blank-lines takes a whole number of at least 0, not ${JSON.stringify(seamBlankLines)}`);
+    }
+    const { bytes: originalBytes, text: originalText } = readUtf8Validated(filePath, "Target");
+    const parsedFile = splitLines(originalText);
+    const trailingNewline = originalText === "" ? true : parsedFile.trailingNewline;
+    const allLines = originalText === "" && insertMode ? [] : parsedFile.lines;
+
+    let startLine = 1;
+    let endLine = allLines.length;
+    let splitIndex = null;
+    if (insertAfter !== null) {
+        if (!Number.isSafeInteger(insertAfter) || insertAfter < 0 || insertAfter > allLines.length) {
+            throw new CouldNotRunError(`Invalid --insert-after line ${insertAfter}: file has ${allLines.length} line(s)`);
+        }
+        splitIndex = insertAfter;
+    } else if (insertBefore !== null) {
+        if (!Number.isSafeInteger(insertBefore) || insertBefore < 1 || insertBefore > allLines.length + 1) {
+            throw new CouldNotRunError(`Invalid --insert-before line ${insertBefore}: file has ${allLines.length} line(s)`);
+        }
+        splitIndex = insertBefore - 1;
+    } else if (lineRange) {
+        ({ start: startLine, end: endLine } = parseLineRange(lineRange, allLines.length));
+    }
+
+    const contextSections = resolveContextSections({ filePath, fileLines: allLines, contexts, contextFiles });
+    const contextBlock = contextSections.length > 0 ? `${contextSections.join("\n\n")}\n\n` : "";
+    const targetSlice = insertMode ? null : allLines.slice(startLine - 1, endLine).join("\n");
 
     let kept = false;
     let verifying = null;
@@ -516,6 +823,7 @@ export async function verifyGatedTransform({
     };
     const onSignal = (signal) => {
         stopVerify(verifying);
+        releaseActiveLocks();
         let outcome = kept ? "the verified edit stands" : `restored ${filePath}`;
         if (!kept) {
             try {
@@ -535,40 +843,43 @@ export async function verifyGatedTransform({
     let reasoningTokens = 0;
     let cachedPromptTokens = 0;
     let modelMs = 0;
+    let queuedMs = 0;
     try {
         for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
+            const returnKind = insertMode ? "the new code to insert" : "the replacement code";
             const retryFeedback = lastError
-                ? `\n\nThe previous attempt failed verification; the end of its output:\n\`\`\`\n${tail(lastError, FEEDBACK_CHARS)}\n\`\`\`\nFix the issue and return ONLY the replacement code.`
+                ? `\n\nThe previous attempt failed verification; the end of its output:\n\`\`\`\n${tail(lastError, FEEDBACK_CHARS)}\n\`\`\`\nFix the issue and return ONLY ${returnKind}.`
                 : "";
+            const bodySection = insertMode
+                ? buildInsertionPromptSection(filePath, allLines, splitIndex)
+                : `Target code (${path.basename(filePath)} lines ${startLine}-${endLine}):\n\`\`\`\n${targetSlice}\n\`\`\``;
 
             const messages = [
                 {
                     role: "system",
                     content:
-                        "You are a Portulan local code worker. Return ONLY the replacement code inside a single fenced code block (``` ... ```). " +
+                        `You are a Portulan local code worker. Return ONLY ${returnKind} inside a single fenced code block (\`\`\` ... \`\`\`). ` +
+                        (insertMode ? "Never repeat existing anchor lines. " : "") +
                         "Never add comments that record change history (dates, proposal/milestone numbers, PR/issue numbers, reviewer names) or narrate obvious code.",
                 },
                 {
                     role: "user",
-                    content:
-                        `Instruction: ${instruction}\n\n` +
-                        `Target code (${path.basename(filePath)} lines ${startLine}-${endLine}):\n` +
-                        "```\n" +
-                        targetSlice +
-                        "\n```" +
-                        retryFeedback,
+                    content: `Instruction: ${instruction}\n\n${contextBlock}${bodySection}${retryFeedback}`,
                 },
             ];
 
-            const reply = await chatFn({ baseUrl, allowRemote, model, messages, maxInputBytes, effort });
+            const reply = await chatFn({ baseUrl, allowRemote, model, messages, maxInputBytes, effort, noLock });
             promptTokens = sum(promptTokens, reply.promptTokens);
             completionTokens = sum(completionTokens, reply.completionTokens);
             reasoningTokens = sum(reasoningTokens, reply.reasoningTokens);
             cachedPromptTokens = sum(cachedPromptTokens, reply.cachedPromptTokens);
             modelMs = sum(modelMs, reply.totalMs);
+            queuedMs = sum(queuedMs, reply.queuedMs ?? 0);
 
-            const replacement = extractFencedCode(reply.content).replace(/\n$/, "");
-            const updatedLines = [...allLines.slice(0, startLine - 1), replacement, ...allLines.slice(endLine)];
+            const extracted = extractFencedCode(reply.content).replace(/\n$/, "");
+            const updatedLines = insertMode
+                ? spliceInsertion(allLines, splitIndex, extracted, seamBlankLines)
+                : [...allLines.slice(0, startLine - 1), extracted, ...allLines.slice(endLine)];
             fs.writeFileSync(filePath, updatedLines.join("\n") + (trailingNewline ? "\n" : ""), "utf8");
 
             const check = await execFn(verifyCmd, { onSpawn: (child) => (verifying = child) });
@@ -588,6 +899,7 @@ export async function verifyGatedTransform({
                         reasoningTokens,
                         cachedPromptTokens,
                         totalMs: modelMs,
+                        queuedMs,
                         tokPerSec: rate(completionTokens, modelMs),
                         target: path.basename(filePath),
                     }),
@@ -997,6 +1309,7 @@ export async function captureAb({
             stopVerify(running.child);
             fs.rmSync(running.cwd, { recursive: true, force: true });
         }
+        releaseActiveLocks();
         console.error(`Interrupted by ${signal}; ${journal === null ? `${turns.length} turn(s) lost, with no journal` : `${turns.length} turn(s) kept in ${journal}, and the same command resumes from them`}.`);
         process.exit(2);
     };
@@ -1439,6 +1752,7 @@ const BOOLEAN_FLAGS = Object.freeze({
     "--allow-remote": "allowRemote",
     "--ab": "ab",
     "--write": "write",
+    "--no-lock": "noLock",
     "--help": "help",
 });
 const VALUE_FLAGS = Object.freeze({
@@ -1449,10 +1763,14 @@ const VALUE_FLAGS = Object.freeze({
     "--task": "task",
     "--file": "file",
     "--lines": "lines",
+    "--insert-after": "insertAfter",
+    "--insert-before": "insertBefore",
+    "--seam-blank-lines": "seamBlankLines",
     "--verify": "verify",
     "--retries": "retries",
     "--max-input-bytes": "maxInputBytes",
     "--prompt": "prompt",
+    "--prompt-file": "promptFile",
     "--k": "k",
     "--seed": "seed",
     "--host-cmd": "hostCmd",
@@ -1461,14 +1779,31 @@ const VALUE_FLAGS = Object.freeze({
     "--dir": "dir",
     "--threshold": "threshold",
 });
-const COUNT_FLAGS = Object.freeze({ retries: ["--retries", 0], maxInputBytes: ["--max-input-bytes", 1], k: ["--k", 1] });
+const REPEATABLE_VALUE_FLAGS = Object.freeze({
+    "--context": "contexts",
+    "--context-file": "contextFiles",
+});
+const COUNT_FLAGS = Object.freeze({
+    retries: ["--retries", 0],
+    maxInputBytes: ["--max-input-bytes", 1],
+    k: ["--k", 1],
+    insertAfter: ["--insert-after", 0],
+    insertBefore: ["--insert-before", 1],
+    seamBlankLines: ["--seam-blank-lines", 0],
+});
 const FLAG_OF = Object.freeze({
-    ...Object.fromEntries([...Object.entries(BOOLEAN_FLAGS), ...Object.entries(VALUE_FLAGS)].map(([flag, key]) => [key, flag])),
+    ...Object.fromEntries(
+        [...Object.entries(BOOLEAN_FLAGS), ...Object.entries(VALUE_FLAGS), ...Object.entries(REPEATABLE_VALUE_FLAGS)].map(
+            ([flag, key]) => [key, flag],
+        ),
+    ),
     verifyRecord: "--verify",
 });
 const EVAL_ONLY = Object.freeze(["ab", "write", "verifyRecord", "k", "seed", "hostCmd", "hostModel", "repoRoot"]);
 const AB_ONLY = Object.freeze(["k", "seed", "hostCmd", "hostModel", "repoRoot"]);
-const AB_TAKES = Object.freeze(new Set(["_", "ab", "write", "k", "seed", "hostCmd", "hostModel", "repoRoot", "baseUrl", "effort"]));
+const TRANSFORM_ONLY = Object.freeze(["insertAfter", "insertBefore", "seamBlankLines"]);
+const PROMPT_MODES = new Set(["chat", "summarize", "transform"]);
+const AB_TAKES = Object.freeze(new Set(["_", "ab", "write", "k", "seed", "hostCmd", "hostModel", "repoRoot", "baseUrl", "effort", "noLock"]));
 const RECORD_TAKES = Object.freeze(new Set(["_", "verifyRecord", "write", "repoRoot"]));
 const AB_REFUSALS = Object.freeze({
     model: "arm L is each task's model as routed",
@@ -1485,12 +1820,17 @@ function refuseOutside(args, takes, mode) {
     }
 }
 
+const TRANSFORM_USAGE =
+    "local-llm.mjs transform --file <path> --verify <cmd> (--prompt <instruction> | --prompt-file <path>) " +
+    "[--lines <a>-<b> | --insert-after <n> | --insert-before <n>] [--seam-blank-lines <n>] " +
+    "[--context <a>-<b>] [--context-file <path>[:a-b]] [--retries <n>] [--no-lock]";
+
 export const USAGE = `local-llm.mjs — a zero-dependency runner for a loopback OpenAI-compatible model.
 
   local-llm.mjs status
-  local-llm.mjs chat|summarize [--role code|prose | --model <id>] [--file <path> [--lines <a>-<b>]] --prompt <text>
-  local-llm.mjs transform --file <path> --verify <cmd> --prompt <instruction> [--lines <a>-<b>] [--retries <n>]
-  local-llm.mjs eval [--role code|prose | --model <id>] [--task code|codify|handoff]
+  local-llm.mjs chat|summarize [--role code|prose | --model <id>] [--file <path> [--lines <a>-<b>]] [--context <a>-<b>] [--context-file <path>[:a-b]] (--prompt <text> | --prompt-file <path>) [--no-lock]
+  ${TRANSFORM_USAGE}
+  local-llm.mjs eval [--role code|prose | --model <id>] [--task code|codify|handoff] [--no-lock]
   local-llm.mjs eval --ab --k ${AB_K} --seed <s> --host-cmd "<command>" --host-model <id> --write [--repo-root <dir>]
   local-llm.mjs eval --verify [--repo-root <dir>]
   local-llm.mjs eval --write [--repo-root <dir>]
@@ -1525,8 +1865,9 @@ Routing evidence: ${AB_REGISTER}, k=5. Code is enabled (L5/H5); shared prose is 
 effort. --model without --role is an explicit candidate; eval and eval --ab remain screens/captures
 and never enable a role automatically.
 
-Every chat request is refused off loopback unless --allow-remote is passed, and is refused over
---max-input-bytes (default ${DEFAULT_MAX_INPUT_BYTES}). --effort defaults to low.
+Every chat request is refused off loopback unless --allow-remote is passed, is refused over
+--max-input-bytes (default ${DEFAULT_MAX_INPUT_BYTES}), and serialises per endpoint via an advisory
+lockfile unless --no-lock is passed. --effort defaults to low.
 
 Exit codes: 0 green · 1 red check or model/verify failure · 2 could not run.`;
 
@@ -1541,6 +1882,9 @@ export function parseArgs(argv) {
         } else if (Object.hasOwn(VALUE_FLAGS, tok)) {
             if (i + 1 >= argv.length) throw new CouldNotRunError(`${tok} needs a value`);
             args[VALUE_FLAGS[tok]] = argv[++i];
+        } else if (Object.hasOwn(REPEATABLE_VALUE_FLAGS, tok)) {
+            if (i + 1 >= argv.length) throw new CouldNotRunError(`${tok} needs a value`);
+            (args[REPEATABLE_VALUE_FLAGS[tok]] ??= []).push(argv[++i]);
         } else if (tok.startsWith("--")) {
             throw new CouldNotRunError(`Unknown option ${tok}`);
         } else {
@@ -1561,21 +1905,56 @@ export function parseArgs(argv) {
     return args;
 }
 
-export function buildPrompt(args) {
-    let input = args.prompt ?? args._.slice(1).join(" ");
+export function resolveInstruction(args, { readFileFn = fs.readFileSync, readStdinFn } = {}) {
+    if (args.prompt !== undefined && args.promptFile !== undefined) {
+        throw new CouldNotRunError("--prompt and --prompt-file cannot be combined");
+    }
+    if (args.promptFile !== undefined) {
+        if (args.promptFile === "") throw new CouldNotRunError("--prompt-file needs a path or -");
+        if (args.promptFile === "-") {
+            try {
+                return readStdinFn ? readStdinFn() : readFileFn(0, "utf8");
+            } catch (err) {
+                throw new CouldNotRunError(`Could not read --prompt-file -: ${err.message}`);
+            }
+        }
+        try {
+            return readFileFn(args.promptFile, "utf8");
+        } catch (err) {
+            throw new CouldNotRunError(`Could not read --prompt-file ${args.promptFile}: ${err.message}`);
+        }
+    }
+    return args.prompt;
+}
+
+export function buildPrompt(args, options = {}) {
+    const resolved = resolveInstruction(args, options);
+    if (args.promptFile !== undefined && args._.slice(1).length > 0) {
+        throw new CouldNotRunError("--prompt-file cannot be combined with positional prompt text");
+    }
+    let input = resolved ?? args._.slice(1).join(" ");
+    let fileLines = null;
+    let spanBlock = null;
     if (args.file) {
-        const text = fs.readFileSync(args.file, "utf8");
+        const { text } = readUtf8Validated(args.file, "Target");
         let span = text;
         if (args.lines) {
-            const { lines } = splitLines(text);
-            const { start, end } = parseLineRange(args.lines, lines.length);
-            span = lines.slice(start - 1, end).join("\n");
+            fileLines = splitLines(text).lines;
+            const { start, end } = parseLineRange(args.lines, fileLines.length);
+            span = fileLines.slice(start - 1, end).join("\n");
         }
-        input = `${input}\n\n\`\`\`\n${span}\n\`\`\``;
+        spanBlock = `\`\`\`\n${span}\n\`\`\``;
     } else if (args.lines) {
         throw new CouldNotRunError("--lines selects a span of --file, and no --file was given");
     }
-    return input;
+    const contextSections = resolveContextSections({
+        filePath: args.file ?? null,
+        fileLines,
+        contexts: args.contexts ?? [],
+        contextFiles: args.contextFiles ?? [],
+    });
+    const suffix = [...contextSections, ...(spanBlock ? [spanBlock] : [])];
+    return suffix.length > 0 ? `${input}\n\n${suffix.join("\n\n")}` : input;
 }
 
 async function loadHostRail(importFn = (specifier) => import(specifier)) {
@@ -1633,7 +2012,7 @@ async function abMode(args, { fetchImpl }) {
         screen: grading.screen,
         journal: conditions.journal,
         predicates: grading.predicates,
-        chatFn: (options) => callLocalChat({ ...options, fetchImpl }),
+        chatFn: (options) => callLocalChat({ ...options, noLock: Boolean(args.noLock), fetchImpl }),
         onTurn: (t, reused) =>
             console.error(`local-llm: ${t.arm.toUpperCase()} ${t.task} run ${t.run} ${t.completed ? (t.ok ? "PASS" : "FAIL") : "DID-NOT-COMPLETE"} ${t.ms}ms${reused ? " · from the journal, not re-run" : ""}`),
     });
@@ -1664,6 +2043,16 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
                 if (args[key] !== undefined) throw new CouldNotRunError(`${FLAG_OF[key]} belongs to eval, not ${cmd}`);
             }
         }
+        if (cmd !== "transform") {
+            for (const key of TRANSFORM_ONLY) {
+                if (args[key] !== undefined) throw new CouldNotRunError(`${FLAG_OF[key]} belongs to transform, not ${cmd}`);
+            }
+        }
+        if (!PROMPT_MODES.has(cmd)) {
+            for (const key of ["promptFile", "contexts", "contextFiles"]) {
+                if (args[key] !== undefined) throw new CouldNotRunError(`${FLAG_OF[key]} belongs to chat, summarize or transform, not ${cmd}`);
+            }
+        }
         if (cmd === "eval" && args._.length > 1) throw new CouldNotRunError(`eval takes no positional argument, not ${JSON.stringify(args._[1])}`);
         const baseUrl = args.baseUrl ?? DEFAULT_BASE_URL;
         const model = args.model ?? ROLE_MODELS[args.role ?? "code"];
@@ -1686,6 +2075,7 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
                 model: chosen,
                 effort: args.effort ?? "low",
                 maxInputBytes: args.maxInputBytes ?? DEFAULT_MAX_INPUT_BYTES,
+                noLock: Boolean(args.noLock),
                 messages: [{ role: "user", content: buildPrompt(args) }],
                 fetchImpl,
             });
@@ -1695,15 +2085,19 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
         }
 
         if (cmd === "transform") {
-            if (!args.file || !args.prompt || !args.verify) {
-                throw new CouldNotRunError(
-                    "Usage: local-llm.mjs transform --file <path> --verify <cmd> --prompt <instruction> [--lines <start>-<end>]",
-                );
+            const instruction = resolveInstruction(args);
+            if (!args.file || instruction === undefined || instruction === "" || !args.verify) {
+                throw new CouldNotRunError(`Usage: ${TRANSFORM_USAGE}`);
             }
             const res = await verifyGatedTransform({
                 filePath: args.file,
                 lineRange: args.lines ?? null,
-                instruction: args.prompt,
+                insertAfter: args.insertAfter ?? null,
+                insertBefore: args.insertBefore ?? null,
+                seamBlankLines: args.seamBlankLines ?? null,
+                contexts: args.contexts ?? [],
+                contextFiles: args.contextFiles ?? [],
+                instruction,
                 verifyCmd: args.verify,
                 model: operationalModel(args, "code"),
                 baseUrl,
@@ -1711,6 +2105,7 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
                 maxInputBytes: args.maxInputBytes ?? DEFAULT_MAX_INPUT_BYTES,
                 effort: args.effort ?? "low",
                 retries: args.retries ?? DEFAULT_RETRIES,
+                noLock: Boolean(args.noLock),
                 chatFn: (options) => callLocalChat({ ...options, fetchImpl }),
             });
             if (res.ok) {
@@ -1756,7 +2151,7 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
                 baseUrl,
                 allowRemote: args.allowRemote,
                 effort: args.effort ?? "low",
-                chatFn: (options) => callLocalChat({ ...options, fetchImpl }),
+                chatFn: (options) => callLocalChat({ ...options, noLock: Boolean(args.noLock), fetchImpl }),
             });
             for (const r of results) {
                 console.log(`${r.ok ? "PASS" : "FAIL"} task=${r.task} model=${r.model} time=${r.totalMs}ms rate=${figure(r.tokPerSec, "tok/s")} ${r.detail}`);

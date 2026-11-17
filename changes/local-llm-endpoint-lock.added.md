@@ -1,0 +1,1 @@
+- `tools/local-llm`: serialise per-endpoint chat calls via an advisory lockfile (`--no-lock` to opt out) and report `queued=<ms>ms` outside the generation deadline ([#574](https://github.com/sleepy-panda-srl/portulan/issues/574)).
