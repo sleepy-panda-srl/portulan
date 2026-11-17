@@ -1821,7 +1821,7 @@ function refuseOutside(args, takes, mode) {
 }
 
 const TRANSFORM_USAGE =
-    "local-llm.mjs transform --file <path> --verify <cmd> (--prompt <instruction> | --prompt-file <path>) " +
+    "local-llm.mjs transform [--role code | --model <id>] [--effort low] --file <path> --verify <cmd> (--prompt <instruction> | --prompt-file <path>) " +
     "[--lines <a>-<b> | --insert-after <n> | --insert-before <n>] [--seam-blank-lines <n>] " +
     "[--context <a>-<b>] [--context-file <path>[:a-b]] [--retries <n>] [--no-lock]";
 
@@ -1867,7 +1867,8 @@ and never enable a role automatically.
 
 Every chat request is refused off loopback unless --allow-remote is passed, is refused over
 --max-input-bytes (default ${DEFAULT_MAX_INPUT_BYTES}), and serialises per endpoint via an advisory
-lockfile unless --no-lock is passed. --effort defaults to low.
+lockfile unless --no-lock is passed. transform defaults to --role code at --effort low; --effort
+defaults to low.
 
 Exit codes: 0 green · 1 red check or model/verify failure · 2 could not run.`;
 

@@ -1,0 +1,1 @@
+- `tools/local-llm`: include `--role`, `--model`, and `--effort` in `transform` `--help` and missing-flag usage lines with matching flag parity ([#568](https://github.com/sleepy-panda-srl/portulan/issues/568)).
