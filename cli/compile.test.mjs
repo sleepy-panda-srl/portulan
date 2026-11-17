@@ -1148,7 +1148,7 @@ describe("the floor backend", () => {
         for (const spec of ["2.1", "2.2"]) {
             const p = withFloor({ strict: false });
             p.portulan.spec = spec;
-            assert.throws(() => parse(p), /floor.strict.*2\.3/);
+            assert.throws(() => parse(p), /floor\.strict.*2\.3.*portulan\.spec.*"2\.3"/);
         }
         for (const strict of [null, 0, 1, "false", {}, []]) {
             const p = withFloor({ strict });

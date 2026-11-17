@@ -8,6 +8,7 @@ import { assertNoSourceJournal } from "./instructions-journal.mjs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { FLOOR_STRICT_SPEC_ERROR } from "./compile.mjs";
 import { inspect, schemaVersion } from "./doctor.mjs";
 import { resolveGovernor } from "./discover.mjs";
 import { gitIn } from "./form.mjs";
@@ -579,7 +580,12 @@ export async function run(argv = [], options = {}) {
             return 2;
         }
         const fails = pre.findings.filter((finding) => finding.severity === "fail");
-        if (fails.length) {
+        const floorStrictOnly =
+            fails.length === 1 &&
+            fails[0].check === "enforcement" &&
+            fails[0].message.endsWith(` — ${FLOOR_STRICT_SPEC_ERROR}`) &&
+            steps.some((step) => step.id === "0012-gate-policy-floor-strict");
+        if (fails.length && !floorStrictOnly) {
             warn(
                 `upgrade: doctor reports ${fails.length} failing check(s) on ${shown} at the version it already declares. ` +
                     "Refusing to migrate: a migration would layer a second problem on the first, and a red afterwards " +
@@ -593,16 +599,22 @@ export async function run(argv = [], options = {}) {
     // Plan.
     const ctx = { bundle: BUNDLE, spec, tree, today: options.today ?? new Date().toISOString().slice(0, 10) };
     const plan = await planFor(ws, ctx, steps);
+    const repairPending = plan.entries.some((e) => e.step.id === "0012-gate-policy-floor-strict" && e.owed === true);
+    const deferred = new Set(
+        repairPending
+            ? plan.entries.filter((e) => e.owed === null && e.because.includes(FLOOR_STRICT_SPEC_ERROR)).map((e) => e.step.id)
+            : [],
+    );
 
-    if (plan.unknown > 0) {
-        for (const entry of plan.entries.filter((e) => e.owed === null)) {
+    if (plan.unknown > deferred.size) {
+        for (const entry of plan.entries.filter((e) => e.owed === null && !deferred.has(e.step.id))) {
             warn(`upgrade: ${entry.step.id} could not tell — ${entry.because}`);
         }
         warn("upgrade: refusing to report a workspace current while a step could not answer — nothing looked is never nothing wrong");
         return 2;
     }
 
-    if (behindByMajor && plan.owed === 0) {
+    if (behindByMajor && plan.owed === 0 && deferred.size === 0) {
         warn(
             `upgrade: ${shown} declares ${major}.${minor} and no migration in this chain reaches it — refusing to ` +
                 `report it current when this bundle implements ${spec.major}.${spec.minor} and doctor will not grade it`,
@@ -610,7 +622,7 @@ export async function run(argv = [], options = {}) {
         return 2;
     }
 
-    if (plan.owed === 0) {
+    if (plan.owed === 0 && deferred.size === 0) {
         say(`upgrade: ${shown} owes nothing — it is current at ${major}.${minor}`);
         offerCacheLifetime(ws.manifest);
         return 0;
@@ -619,6 +631,11 @@ export async function run(argv = [], options = {}) {
     for (const entry of plan.entries.filter((e) => e.owed === true)) {
         say(`upgrade: ${entry.step.id} (${entry.step.kind}${entry.hand ? ", by hand" : ""}) — ${entry.step.title}`);
         say(`upgrade:   ${entry.because}`);
+    }
+    if (!write) {
+        for (const entry of plan.entries.filter((e) => deferred.has(e.step.id))) {
+            say(`upgrade: ${entry.step.id} (${entry.step.kind}) — awaits \`0012-gate-policy-floor-strict\` before it can answer`);
+        }
     }
 
     const byHandOwed = plan.entries.filter((entry) => entry.hand).length;
@@ -695,10 +712,13 @@ export async function run(argv = [], options = {}) {
         treeDir = current.repository?.dir ?? treeDir;
         return null;
     };
+    const KIND_ORDER = { version: 0, repair: 1, form: 2 };
+    const ordered = [...plan.entries].sort((a, b) => (KIND_ORDER[a.step.kind] ?? 3) - (KIND_ORDER[b.step.kind] ?? 3));
+
     // Revisit earlier steps until a pass applies nothing.
     for (let pass = 0; ; pass++) {
         let appliedNow = 0;
-        for (const entry of plan.entries) {
+        for (const entry of ordered) {
             let asked = entry;
             if (applied.size > 0 || entry.owed !== true) {
                 [asked] = (await planFor(current, ctx, [entry.step])).entries;

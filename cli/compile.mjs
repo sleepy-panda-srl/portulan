@@ -135,6 +135,8 @@ export function parse(policy) {
     return { rules, floor: parseFloor(policy.floor, String(spec)) };
 }
 
+export const FLOOR_STRICT_SPEC_ERROR = '`floor.strict` requires gate-policy 2.3 — set `portulan.spec` to "2.3" in the gate policy (`gates.json`)';
+
 /** The optional platform floor, with strict freshness unless the policy explicitly chooses otherwise. */
 function parseFloor(floor, spec) {
     if (floor === undefined || floor === null) return null;
@@ -182,7 +184,7 @@ function parseFloor(floor, spec) {
         throw new CompileError("`floor.resolve_conversations` must be a boolean — omitting it would export a floor weaker than the one in force");
     }
     if (Object.hasOwn(floor, "strict")) {
-        if (spec !== "2.3") throw new CompileError("`floor.strict` requires gate-policy 2.3");
+        if (spec !== "2.3") throw new CompileError(FLOOR_STRICT_SPEC_ERROR);
         if (typeof floor.strict !== "boolean") throw new CompileError("`floor.strict` must be a boolean");
     }
     return { branch, checks, reviews: floor.reviews, resolve_conversations: floor.resolve_conversations, strict: floor.strict ?? true };
