@@ -97,7 +97,7 @@ describe("the roster pin's other half — the reader that is not JavaScript", ()
 
     test("no UNDECLARED reader enumerates the recipe set", () => {
         // Matched as text: a read through a string key, as in `verify["recipes"]`, goes unseen.
-        const allowed = new Set(["cli/recipe-set.mjs", "cli/doctor.mjs"]);
+        const allowed = new Set(["cli/recipe-set.mjs", "cli/doctor.mjs", "cli/stop-policy.mjs"]);
         const offenders = [];
 
         const decomment = (src, hash) =>

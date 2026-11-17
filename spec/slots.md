@@ -308,17 +308,22 @@ demonstration that a structured slot earns being structured. Recorded in custome
 ```json
 "verify": {
   "default": "{recipe-id}",
+  "stop": "{stop-recipe-id}",
   "stopTimeout": 360,
   "recipes": [
-    { "id": "{recipe-id}", "run": "{command}", "requires": ["{tool}"], "doc": "{path}" }
+    { "id": "{recipe-id}", "run": "{command}", "requires": ["{tool}"], "doc": "{path}", "stopTimeout": 360 }
   ]
 }
 ```
 
-`stopTimeout` is optional, added in 2.14: the Stop recipe deadline in seconds,
-undeclared at 90. A whole number from 1 through 2,147,423 keeps both Node timers
+`stop` is optional, added in 2.17: the id of an own recipe in `recipes` that the
+Stop-gate runs instead of `default`, so a workspace can run a faster check on Stop while
+keeping its full `default` recipe for CI and `finish`. Stop-gate reports whichever recipe ran.
+
+`stopTimeout` is optional on `verify` (added in 2.14) and on each entry in `recipes` (added in 2.17):
+the Stop recipe deadline in seconds, undeclared at 90 (per-recipe overrides `verify.stopTimeout`). A whole number from 1 through 2,147,423 keeps both Node timers
 in range. `doctor`, `compile` and the Stop runner refuse invalid values and
-declarations below 2.14. Recompile after changing it: the outer Stop hook gets
+declarations below the introducing minor (2.14 or 2.17). Recompile after changing it: the outer Stop hook gets
 sixty additional seconds. Both command and deadline come from the trusted
 hook-told workspace; a payload cannot select executable policy. See
 [execution and cap recovery](../cli/recipe-runner.md).

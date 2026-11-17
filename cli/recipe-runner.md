@@ -2,10 +2,18 @@
 
 `finish` and the Stop-gate share `recipe-runner.mjs`. Finish allows ten minutes.
 Stop allows ninety seconds unless its trusted workspace declares
-`verify.stopTimeout` in seconds at spec 2.14 or later. Recompile after declaring it:
+`verify.stopTimeout` (spec 2.14+) or per-recipe `verify.recipes[].stopTimeout`
+(spec 2.17+, overriding `verify.stopTimeout`), or names a shorter own Stop recipe
+in `verify.stop` (spec 2.17+). Recompile after declaring a timeout:
 the compiled Stop hook allows that deadline plus sixty seconds for other checks
 and cleanup. An invalid declaration prevents execution. Output is drained as it arrives; only the last
 64 KiB and at most one incoming chunk are retained.
+
+If the Stop recipe times out during a turn (`stop_hook_active`), subsequent Stops
+of that same turn skip re-executing it while the working tree is unchanged and report
+the earlier timeout instead of repeating the full deadline on unchanged bytes; any file
+or index change clears the skip. Local run durations are recorded under `os.tmpdir()` so
+`doctor` can warn when the Stop recipe's last recorded duration exceeds its gate limit.
 
 Stop reads both command and deadline from the hook-told workspace and runs in the
 hook-told root. The payload's session worktree selects its record/work checks,

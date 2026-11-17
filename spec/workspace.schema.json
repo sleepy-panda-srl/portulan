@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://portulan.dev/spec/2.16/workspace.schema.json",
-  "title": "Portulan Workspace Definition v2.16",
+  "$id": "https://portulan.dev/spec/2.17/workspace.schema.json",
+  "title": "Portulan Workspace Definition v2.17",
   "description": "The manifest at the root of a workspace. It is an index, not a container: it names the slots the engine resolves against and points at the Markdown that holds each slot's content and rationale. Written in a deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset and for what validates it.",
   "type": "object",
   "additionalProperties": false,
@@ -143,6 +143,10 @@
       "properties": {
         "default": {
           "description": "The `id` of the recipe the Stop-gate runs when nothing more specific applies. Constrained to the same shape as an id, so a value no recipe could ever carry is rejected by the schema rather than only by `doctor`.",
+          "$ref": "#/$defs/slug"
+        },
+        "stop": {
+          "description": "Optional, added in 2.17. The `id` of an own recipe in `verify.recipes` that the Stop-gate runs instead of `verify.default`, letting a workspace keep a shorter Stop check without changing its default CI/finish recipe.",
           "$ref": "#/$defs/slug"
         },
         "stopTimeout": {
@@ -553,6 +557,10 @@
         "doc": {
           "description": "Where the recipe's checks and their known limits are written up. Resolved from the WORKSPACE root, like every other path in this manifest — unlike the sibling `run`, which is a command line and is therefore written as it would be typed from the repository root. The two bases differ because the two fields are read by different things: `doc` by something resolving paths, `run` by a shell.",
           "$ref": "#/$defs/filePath"
+        },
+        "stopTimeout": {
+          "description": "Optional, added in 2.17. Per-recipe Stop deadline in seconds, overriding `verify.stopTimeout` and the 90-second default when this recipe is selected by the Stop-gate. Same positive integer range check as `verify.stopTimeout`.",
+          "type": "number"
         }
       }
     },
