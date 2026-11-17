@@ -1503,6 +1503,7 @@ describe("dedup", () => {
             assert.match(none.err[1], /mode=dedup model=other-embedder attempts=1/);
             assert.equal(requests[1].body.model, "other-embedder");
         } finally {
+            server.closeAllConnections?.();
             server.close();
         }
     });
@@ -1801,8 +1802,9 @@ describe("transform --preflight, --verify-expect and candidate preservation (#57
             });
             await new Promise((r) => server.listen(0, "127.0.0.1", r));
             const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+            let child = null;
             try {
-                const child = spawn(
+                child = spawn(
                     process.execPath,
                     [
                         RUNNER,
@@ -1844,7 +1846,9 @@ describe("transform --preflight, --verify-expect and candidate preservation (#57
                 const rawJson = fs.readFileSync(path.join(lifecycleDir(stateDir), fs.readdirSync(lifecycleDir(stateDir))[0]), "utf8");
                 assert.doesNotMatch(rawJson, /SECRET_PROMPT_DO_NOT_LEAK|KEEP_ME_SAFE|UNVERIFIED_EDIT/);
             } finally {
+                if (child && child.exitCode === null && child.signalCode === null) try { child.kill("SIGKILL"); } catch {}
                 if (holdRes && !holdRes.writableEnded) holdRes.destroy();
+                server.closeAllConnections?.();
                 server.close();
             }
         }
@@ -1867,18 +1871,19 @@ describe("transform --preflight, --verify-expect and candidate preservation (#57
         });
         await new Promise((r) => server.listen(0, "127.0.0.1", r));
         const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+        let verifyChild = null;
         try {
             const verify = `echo $$ > ${JSON.stringify(pidFile)} && exec sleep 20`;
-            const child = spawn(
+            verifyChild = spawn(
                 process.execPath,
                 [RUNNER, "transform", "--base-url", baseUrl, "--file", target, "--verify", verify, "--no-lock", "--prompt", "edit"],
                 { env: { ...process.env, PORTULAN_LOCAL_LLM_STATE_DIR: stateDir }, stdio: ["ignore", "pipe", "pipe"] },
             );
             let stderr = "";
-            child.stderr.on("data", (d) => { stderr += d.toString(); });
+            verifyChild.stderr.on("data", (d) => { stderr += d.toString(); });
             await waitFor(() => fs.existsSync(pidFile) && fs.readFileSync(pidFile, "utf8").trim() !== "", "verify started", 5000);
-            child.kill("SIGINT");
-            const code = await new Promise((r) => child.on("exit", r));
+            verifyChild.kill("SIGINT");
+            const code = await new Promise((r) => verifyChild.on("exit", r));
             assert.equal(code, 2);
             assert.equal(fs.readFileSync(target, "utf8"), original);
             assert.match(stderr, /CANCELLED id=[^ ]+ mode=transform .*phase=verification signal=SIGINT .*rollback=restored provider-cancel=unknown in=\? out=\?/);
@@ -1886,6 +1891,8 @@ describe("transform --preflight, --verify-expect and candidate preservation (#57
             assert.equal(recs[0].phase, "verification");
             assert.equal(recs[0].rollback, "restored");
         } finally {
+            if (verifyChild && verifyChild.exitCode === null && verifyChild.signalCode === null) try { verifyChild.kill("SIGKILL"); } catch {}
+            server.closeAllConnections?.();
             server.close();
         }
     });
@@ -1918,32 +1925,40 @@ describe("transform --preflight, --verify-expect and candidate preservation (#57
         await new Promise((r) => server.listen(0, "127.0.0.1", r));
         const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
         const env = { ...process.env, PORTULAN_LOCAL_LLM_STATE_DIR: stateDir, PORTULAN_LOCAL_LLM_LOCK_DIR: lockDir };
+        let holder = null;
+        let waiter = null;
+        let dedupChild = null;
         try {
-            const holder = spawn(process.execPath, [RUNNER, "chat", "--base-url", baseUrl, "--prompt", "first"], { env, stdio: ["ignore", "pipe", "pipe"] });
+            holder = spawn(process.execPath, [RUNNER, "chat", "--base-url", baseUrl, "--prompt", "first"], { env, stdio: ["ignore", "pipe", "pipe"] });
             let hErr = "";
             holder.stderr.on("data", (d) => { hErr += d.toString(); });
             await waitFor(() => callIndex === 1, "holder acquired lock and started chat", 5000);
 
-            const waiter = spawn(process.execPath, [RUNNER, "chat", "--base-url", baseUrl, "--prompt", "second"], { env, stdio: ["ignore", "pipe", "pipe"] });
+            waiter = spawn(process.execPath, [RUNNER, "chat", "--base-url", baseUrl, "--prompt", "second"], { env, stdio: ["ignore", "pipe", "pipe"] });
             let wErr = "";
             waiter.stderr.on("data", (d) => { wErr += d.toString(); });
             const lockFile = endpointLockPath(baseUrl, lockDir);
-            await waitFor(() => fs.existsSync(lockFile), "lock file exists", 3000);
-            await new Promise((r) => setTimeout(r, 120));
+            await waitFor(
+                () => readLifecycleRecords({ stateDir, reconcile: false }).some((r) => r.pid === waiter.pid && r.status === "started"),
+                "waiter lifecycle started",
+                5000,
+            );
+            await new Promise((r) => setTimeout(r, 50));
 
             waiter.kill("SIGTERM");
             const wCode = await new Promise((r) => waiter.on("exit", r));
-            assert.equal(wCode, 2);
+            assert.equal(wCode, 2, wErr);
             assert.match(wErr, /CANCELLED id=[^ ]+ mode=chat .*phase=queued signal=SIGTERM .*rollback=not_applicable provider-cancel=unknown/);
             assert.equal(fs.existsSync(lockFile), true, "cancelling queued caller must not remove holder lock");
 
             releaseHolder();
+            releaseHolder = null;
             const hCode = await new Promise((r) => holder.on("exit", r));
             assert.equal(hCode, 0, hErr);
             assert.match(hErr, /OK mode=chat .* spend=\$0\.00/);
             assert.equal(fs.existsSync(lockFile), false, "holder cleaned up its own lock");
 
-            const dedupChild = spawn(process.execPath, [RUNNER, "dedup", "--base-url", baseUrl, "--dir", slotDir], { env, stdio: ["ignore", "pipe", "pipe"] });
+            dedupChild = spawn(process.execPath, [RUNNER, "dedup", "--base-url", baseUrl, "--dir", slotDir], { env, stdio: ["ignore", "pipe", "pipe"] });
             assert.equal(await new Promise((r) => dedupChild.on("exit", r)), 0);
 
             const recs = readLifecycleRecords({ stateDir, reconcile: false });
@@ -1953,6 +1968,11 @@ describe("transform --preflight, --verify-expect and candidate preservation (#57
             assert.equal(completed.length, 2);
             for (const c of completed) assert.equal(c.rollback, "not_applicable");
         } finally {
+            if (releaseHolder) releaseHolder();
+            for (const p of [holder, waiter, dedupChild]) {
+                if (p && p.exitCode === null && p.signalCode === null) try { p.kill("SIGKILL"); } catch {}
+            }
+            server.closeAllConnections?.();
             server.close();
         }
     });
@@ -1966,8 +1986,9 @@ describe("transform --preflight, --verify-expect and candidate preservation (#57
         });
         await new Promise((r) => server.listen(0, "127.0.0.1", r));
         const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+        let child = null;
         try {
-            const child = spawn(
+            child = spawn(
                 process.execPath,
                 [RUNNER, "chat", "--base-url", baseUrl, "--no-lock", "--prompt", "CRASH_PROMPT_SECRET"],
                 { env: { ...process.env, PORTULAN_LOCAL_LLM_STATE_DIR: stateDir }, stdio: "ignore" },
@@ -2012,6 +2033,8 @@ describe("transform --preflight, --verify-expect and candidate preservation (#57
             assert.match(formatCancelReceipt({ requestId: "r1", mode: "chat", model: "m", phase: "generation", signal: "SIGINT", reason: "interrupted", elapsedMs: 10, rollback: "not_applicable", providerCancellation: "unknown", usage: null }), /^CANCELLED id=r1 /);
             assert.deepEqual(normalizeLifecycleUsage({ prompt_tokens: 5, completion_tokens_details: { reasoning_tokens: 9 } }), { input: 5, output: null, cached: null, reasoning: null });
         } finally {
+            if (child && child.exitCode === null && child.signalCode === null) try { child.kill("SIGKILL"); } catch {}
+            server.closeAllConnections?.();
             server.close();
         }
     });
