@@ -514,6 +514,18 @@ test("every pack module that can reach the network has a row in NETWORK_MODES", 
     assert.deepEqual(missing, [], `network-capable pack module(s) with no NETWORK_MODES row: ${missing.join(", ")}`);
 });
 
+test("manual sizing acquisition and child calls are network modes while controls and replay stay offline", () => {
+    const module = "packs/tools/local-llm/evidence/sizing/acquire.mjs";
+    for (const flag of ["--acquire", "--child"]) {
+        for (const command of [`node ${module} ${flag} /private/run`, `node /cache/${module} ${flag}=/private/run`]) {
+            assert.equal(auditRecipeSource(command).length, 1, command);
+        }
+    }
+    for (const args of ["--self-check", "--verify-fixture /private/fixture"]) assert.deepEqual(auditRecipeSource(`node ${module} ${args}`), []);
+    assert.equal(auditRecipeSource(`node ${module} --self-check; node ${module} --acquire /private/run`).length, 1);
+    assert.equal(auditRecipeSource(`node ${module} --child /private/run; node ${module} --self-check`).length, 1);
+});
+
 test("the local-llm runner reaches its endpoint in every invocation but --verify-offline", () => {
     for (const src of [
         "node packs/tools/local-llm/runner/local-llm.mjs",

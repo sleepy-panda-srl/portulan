@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "plannedDate": "2026-11-18",
+  "profile": {
+    "model": "qwen/qwen3.8-27b",
+    "role": "code",
+    "effort": "low",
+    "enableThinking": false,
+    "maxTokens": 4096,
+    "retries": 0,
+    "cancelAfterMs": 180000,
+    "baseUrl": "http://127.0.0.1:1234/v1"
+  },
+  "stoppingRule": "One parent-directed diagnostic call after the completed original pilot; one generation, no retry or profile change; stop on every terminal outcome. Not a continuation or pooled success tally.",
+  "cells": [
+    {
+      "id": "context-small",
+      "shape": "helper context",
+      "requestedGeneratedLines": 15,
+      "exportName": "formatTotal",
+      "before": "import { toCents, applyTax, formatMoney } from \"./helper.mjs\";\nexport function formatTotal(items, rate, currency) { return \"\"; }\nexport const untouched = \"keep\";\n",
+      "expectedSource": "export function formatTotal(items, rate, currency) {\n  if (!Array.isArray(items)) {\n    throw new TypeError(\"items\");\n  }\n  let cents = 0;\n  for (const value of items) {\n    cents += toCents(value);\n  }\n  const taxed = applyTax(cents, rate);\n  return formatMoney({ cents: taxed, currency });\n}",
+      "badSource": "export function formatTotal() { return 99; }",
+      "lineRange": "2-2",
+      "helpers": {
+        "helper.mjs": "export function toCents(value) {\n  if (typeof value !== \"number\" || !Number.isFinite(value)) { throw new TypeError(\"amount\"); }\n  return Math.round(value * 100);\n}\nexport function applyTax(cents, rate) {\n  if (!Number.isFinite(rate) || rate < 0) { throw new RangeError(\"rate\"); }\n  return Math.round(cents * (1 + rate));\n}\nexport function formatMoney({ cents, currency }) {\n  if (![\"USD\", \"EUR\"].includes(currency)) { throw new RangeError(\"currency\"); }\n  return `${currency} ${(cents / 100).toFixed(2)}`;\n}\nexport function parseCents(text) {\n  if (typeof text !== \"string\" || !/^-?\\d+(?:\\.\\d{1,2})?$/.test(text)) { return null; }\n  return Math.round(Number(text) * 100);\n}\n",
+        "examples.json": "{\n  \"function\": \"formatTotal(items, rate, currency)\",\n  \"itemsShape\": \"array of numeric prices, not objects\",\n  \"cases\": [\n    {\n      \"args\": [\n        [\n          1,\n          2\n        ],\n        0.1,\n        \"USD\"\n      ],\n      \"expected\": \"USD 3.30\"\n    },\n    {\n      \"args\": [\n        [],\n        0,\n        \"EUR\"\n      ],\n      \"expected\": \"EUR 0.00\"\n    },\n    {\n      \"args\": [\n        [\n          1.25,\n          2.5\n        ],\n        0,\n        \"USD\"\n      ],\n      \"expected\": \"USD 3.75\"\n    },\n    {\n      \"args\": [\n        [\n          -1,\n          2\n        ],\n        0.2,\n        \"EUR\"\n      ],\n      \"expected\": \"EUR 1.20\"\n    },\n    {\n      \"args\": [\n        null,\n        0,\n        \"USD\"\n      ],\n      \"throws\": \"TypeError\"\n    },\n    {\n      \"args\": [\n        [\n          1\n        ],\n        -1,\n        \"USD\"\n      ],\n      \"throws\": \"RangeError\"\n    },\n    {\n      \"args\": [\n        [\n          null\n        ],\n        0,\n        \"USD\"\n      ],\n      \"throws\": \"TypeError\"\n    },\n    {\n      \"args\": [\n        [\n          1\n        ],\n        0,\n        \"BAD\"\n      ],\n      \"throws\": \"RangeError\"\n    }\n  ]\n}\n"
+      },
+      "checks": [
+        {
+          "args": [
+            [
+              1,
+              2
+            ],
+            0.1,
+            "USD"
+          ],
+          "expected": "USD 3.30"
+        },
+        {
+          "args": [
+            [],
+            0,
+            "EUR"
+          ],
+          "expected": "EUR 0.00"
+        },
+        {
+          "args": [
+            [
+              1.25,
+              2.5
+            ],
+            0,
+            "USD"
+          ],
+          "expected": "USD 3.75"
+        },
+        {
+          "args": [
+            [
+              -1,
+              2
+            ],
+            0.2,
+            "EUR"
+          ],
+          "expected": "EUR 1.20"
+        },
+        {
+          "args": [
+            null,
+            0,
+            "USD"
+          ],
+          "throws": "TypeError"
+        },
+        {
+          "args": [
+            [
+              1
+            ],
+            -1,
+            "USD"
+          ],
+          "throws": "RangeError"
+        },
+        {
+          "args": [
+            [
+              null
+            ],
+            0,
+            "USD"
+          ],
+          "throws": "TypeError"
+        },
+        {
+          "args": [
+            [
+              1
+            ],
+            0,
+            "BAD"
+          ],
+          "throws": "RangeError"
+        }
+      ],
+      "instruction": "1. Replace only formatTotal. Reject non-array items with TypeError. Convert each numeric price with toCents, sum cents, applyTax(cents,rate), then use formatMoney with its exact object signature. Read helper context; never redefine helpers.\n2. Preserve outside source; braces on if/for, one statement per line. Roughly 15 generated lines.\n3. Return only complete replacement function in one JavaScript fence."
+    }
+  ]
+}

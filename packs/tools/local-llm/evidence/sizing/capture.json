@@ -1,0 +1,421 @@
+{
+  "schema": 1,
+  "startedAt": "2026-11-17T22:17:01.208Z",
+  "parentCommit": "a2f70a67bc721054c66c3993618a03788e24674e",
+  "sourceSha256": {
+    "runner": "a4973327489847ebc7e14b695b8fff7bdfb3404093183b700f835e5159427dfa",
+    "protocol": "212ced68f4b394f0442e9af0defc60d86e3d6621ec96250668413dd16b4d07e5",
+    "fixtures": "ecf4b61997e051bb4da54ab52df50bb74178edd3c5f07d22f46cfb937de66466",
+    "protocolNotes": "997af396ea16aac87a9c472df1af107fd73a91d0b59d372a3180c9202f8ababc"
+  },
+  "instrumentation": {
+    "transport": "production localModelFetch with private buffered-body recording",
+    "endpointLock": "production acquireEndpointLock held around the entire child command; injected fetch does not take another lock",
+    "queue": "manual wait recorded separately; native CLI queue telemetry is not claimed"
+  },
+  "profile": {
+    "model": "qwen/qwen3.8-27b",
+    "role": "code",
+    "effort": "low",
+    "enableThinking": false,
+    "maxTokens": 4096,
+    "retries": 0,
+    "cancelAfterMs": 180000,
+    "baseUrl": "http://127.0.0.1:1234/v1"
+  },
+  "stoppingRule": "One generation per cell, fixed order, no adaptive retry/profile change. Stop remaining cells after cancellation or unavailable transport/routing; record them not-run. Two failed single-generation calls exhaust that shape. Known completed length/refusal or verifier-red is retained, not retried.",
+  "runtime": {
+    "reportedModel": {
+      "key": "qwen/qwen3.8-27b",
+      "publisher": "qwen",
+      "architecture": "qwen3_5",
+      "format": "mlx",
+      "quantization": {
+        "name": "8bit",
+        "bits_per_weight": 8
+      },
+      "size_bytes": 29528353913,
+      "params_string": "27B"
+    },
+    "reportedMetadataSha256": "4fe274182aec34eb6a91086f558efdacc943d534cee57a2f730de9df959608dc",
+    "loadedInstancesBefore": 0,
+    "activeTemplateSha256": null,
+    "templateLimit": "The local API does not expose the active template bytes; no loaded-template/weight attestation.",
+    "repairReport": "https://github.com/sleepy-panda-srl/portulan/issues/571#issuecomment-6945668358"
+  },
+  "machine": {
+    "cpu": "Apple M5 Max",
+    "memoryBytes": 137438953472,
+    "platform": "darwin",
+    "release": "27.2.0",
+    "arch": "arm64",
+    "node": "v26.13.1"
+  },
+  "controls": [
+    {
+      "id": "replace-small",
+      "baseline": 1,
+      "intended": 0,
+      "incorrect": 1,
+      "additionalNegativeControls": []
+    },
+    {
+      "id": "replace-large",
+      "baseline": 1,
+      "intended": 0,
+      "incorrect": 1,
+      "additionalNegativeControls": []
+    },
+    {
+      "id": "insert-small",
+      "baseline": 1,
+      "intended": 0,
+      "incorrect": 1,
+      "additionalNegativeControls": [
+        "partial-tautology",
+        "duplicated-tuples",
+        "missing-assertions",
+        "wrong-expected-value",
+        "constant-actual"
+      ]
+    },
+    {
+      "id": "insert-large",
+      "baseline": 1,
+      "intended": 0,
+      "incorrect": 1,
+      "additionalNegativeControls": [
+        "partial-tautology",
+        "duplicated-tuples",
+        "missing-assertions",
+        "wrong-expected-value",
+        "constant-actual"
+      ]
+    },
+    {
+      "id": "context-small",
+      "baseline": 1,
+      "intended": 0,
+      "incorrect": 1,
+      "additionalNegativeControls": []
+    },
+    {
+      "id": "context-large",
+      "baseline": 1,
+      "intended": 0,
+      "incorrect": 1,
+      "additionalNegativeControls": []
+    }
+  ],
+  "cells": [
+    {
+      "id": "replace-small",
+      "shape": "replacement",
+      "requestedGeneratedLines": 15,
+      "selectedTargetLines": 1,
+      "anchorLines": 0,
+      "helperLines": {},
+      "outcome": "verified",
+      "code": 0,
+      "signal": null,
+      "cancelled": false,
+      "wallMs": 18827,
+      "requestId": "0b5c1bfe-5b15-479b-b7a4-bc5c316fd5f6",
+      "providerResponseId": "chatcmpl-65vbi3l341jcsiujwpn36k",
+      "attempts": 1,
+      "reportedRefusal": false,
+      "terminalReason": null,
+      "kept": true,
+      "endpointLock": {
+        "status": "acquired",
+        "queuedMs": 0
+      },
+      "requested": {
+        "model": "qwen/qwen3.8-27b",
+        "effort": "low",
+        "enableThinking": false,
+        "maxTokens": 4096
+      },
+      "finishReason": "stop",
+      "usage": {
+        "input": 189,
+        "output": 188,
+        "reasoning": 0,
+        "cached": null
+      },
+      "modelMs": 18318,
+      "emittedCodeLines": 21,
+      "addedSourceLines": 21,
+      "removedSourceLines": 1,
+      "rollback": "not-applicable",
+      "providerCancellation": "unknown",
+      "helpersIntact": true,
+      "scopeIntact": true,
+      "beforeSha256": "b0c1634c228cf9d1932dca9b8855a0438f1094511cd35b7c8e1e4dc84b75a5a9",
+      "afterSha256": "f0d28e56446f6beccca96ad82de46a684f9229b07851020245ca77f12e9c1381",
+      "responseSha256": "0d7b0d56904a754e2f87716cfe968dab8cda02957f3bbee528226d92763a6d2e",
+      "receipt": "OK mode=transform model=qwen/qwen3.8-27b target=target.mjs attempts=1 in=189t out=188t time=18318ms rate=10.3tok/s reasoning=0t cached-in=? preflight=red max-tokens=4096 spend=$0.00",
+      "acceptedSource": "export function clamp(value, min, max) {\n  if (typeof value !== \"number\" || !Number.isFinite(value)) {\n    throw new TypeError(\"value must be a finite number\");\n  }\n  if (typeof min !== \"number\" || !Number.isFinite(min)) {\n    throw new TypeError(\"min must be a finite number\");\n  }\n  if (typeof max !== \"number\" || !Number.isFinite(max)) {\n    throw new TypeError(\"max must be a finite number\");\n  }\n  if (min > max) {\n    throw new RangeError(\"min must be less than or equal to max\");\n  }\n  if (value < min) {\n    return min;\n  }\n  if (value > max) {\n    return max;\n  }\n  return value;\n}\n",
+      "emittedSource": "export function clamp(value, min, max) {\n  if (typeof value !== \"number\" || !Number.isFinite(value)) {\n    throw new TypeError(\"value must be a finite number\");\n  }\n  if (typeof min !== \"number\" || !Number.isFinite(min)) {\n    throw new TypeError(\"min must be a finite number\");\n  }\n  if (typeof max !== \"number\" || !Number.isFinite(max)) {\n    throw new TypeError(\"max must be a finite number\");\n  }\n  if (min > max) {\n    throw new RangeError(\"min must be less than or equal to max\");\n  }\n  if (value < min) {\n    return min;\n  }\n  if (value > max) {\n    return max;\n  }\n  return value;\n}"
+    },
+    {
+      "id": "replace-large",
+      "shape": "replacement",
+      "requestedGeneratedLines": 35,
+      "selectedTargetLines": 1,
+      "anchorLines": 0,
+      "helperLines": {},
+      "outcome": "verified",
+      "code": 0,
+      "signal": null,
+      "cancelled": false,
+      "wallMs": 22779,
+      "requestId": "2d28110a-4db9-4d5c-b6b9-e7069870b61c",
+      "providerResponseId": "chatcmpl-cd66clw90vppx8hh8i2wq",
+      "attempts": 1,
+      "reportedRefusal": false,
+      "terminalReason": null,
+      "kept": true,
+      "endpointLock": {
+        "status": "acquired",
+        "queuedMs": 0
+      },
+      "requested": {
+        "model": "qwen/qwen3.8-27b",
+        "effort": "low",
+        "enableThinking": false,
+        "maxTokens": 4096
+      },
+      "finishReason": "stop",
+      "usage": {
+        "input": 250,
+        "output": 382,
+        "reasoning": 0,
+        "cached": null
+      },
+      "modelMs": 22269,
+      "emittedCodeLines": 61,
+      "addedSourceLines": 61,
+      "removedSourceLines": 1,
+      "rollback": "not-applicable",
+      "providerCancellation": "unknown",
+      "helpersIntact": true,
+      "scopeIntact": true,
+      "beforeSha256": "f6183a24e5528ce6d174302bcfedc5b7d8da5bf3d6c94c64761c96acaf39c684",
+      "afterSha256": "7266736390bf3120c58c3eea4e6bdb8b96217077470128894e162c0d6e432309",
+      "responseSha256": "24d7aa89f3a7108b16d6442a350148aed3caac580a490b30cdccf14ca3332438",
+      "receipt": "OK mode=transform model=qwen/qwen3.8-27b target=target.mjs attempts=1 in=250t out=382t time=22269ms rate=17.2tok/s reasoning=0t cached-in=? preflight=red max-tokens=4096 spend=$0.00",
+      "acceptedSource": "export function classify(event) {\n  if (event === null || typeof event !== \"object\") {\n    throw new TypeError(\"event must be a non-null object\");\n  }\n\n  const kind = event.kind;\n  let attempt = event.attempt ?? 0;\n\n  if (!Number.isInteger(attempt) || attempt < 0) {\n    throw new RangeError(\"attempt must be a non-negative integer\");\n  }\n\n  let state;\n  let terminal;\n  let retryable;\n\n  switch (kind) {\n    case \"start\":\n      state = \"running\";\n      terminal = false;\n      retryable = false;\n      break;\n    case \"success\":\n      state = \"done\";\n      terminal = true;\n      retryable = false;\n      break;\n    case \"retry\":\n      state = \"waiting\";\n      terminal = false;\n      retryable = attempt < 3;\n      break;\n    case \"cancel\":\n      state = \"cancelled\";\n      terminal = true;\n      retryable = false;\n      break;\n    case \"timeout\":\n      state = \"failed\";\n      terminal = true;\n      retryable = attempt < 3;\n      break;\n    case \"error\":\n      state = \"failed\";\n      terminal = true;\n      retryable = false;\n      break;\n    case \"pause\":\n      state = \"paused\";\n      terminal = false;\n      retryable = false;\n      break;\n    default:\n      state = \"unknown\";\n      terminal = false;\n      retryable = false;\n      break;\n  }\n\n  return { state, terminal, retryable };\n}\n",
+      "emittedSource": "export function classify(event) {\n  if (event === null || typeof event !== \"object\") {\n    throw new TypeError(\"event must be a non-null object\");\n  }\n\n  const kind = event.kind;\n  let attempt = event.attempt ?? 0;\n\n  if (!Number.isInteger(attempt) || attempt < 0) {\n    throw new RangeError(\"attempt must be a non-negative integer\");\n  }\n\n  let state;\n  let terminal;\n  let retryable;\n\n  switch (kind) {\n    case \"start\":\n      state = \"running\";\n      terminal = false;\n      retryable = false;\n      break;\n    case \"success\":\n      state = \"done\";\n      terminal = true;\n      retryable = false;\n      break;\n    case \"retry\":\n      state = \"waiting\";\n      terminal = false;\n      retryable = attempt < 3;\n      break;\n    case \"cancel\":\n      state = \"cancelled\";\n      terminal = true;\n      retryable = false;\n      break;\n    case \"timeout\":\n      state = \"failed\";\n      terminal = true;\n      retryable = attempt < 3;\n      break;\n    case \"error\":\n      state = \"failed\";\n      terminal = true;\n      retryable = false;\n      break;\n    case \"pause\":\n      state = \"paused\";\n      terminal = false;\n      retryable = false;\n      break;\n    default:\n      state = \"unknown\";\n      terminal = false;\n      retryable = false;\n      break;\n  }\n\n  return { state, terminal, retryable };\n}"
+    },
+    {
+      "id": "insert-small",
+      "shape": "test insertion",
+      "requestedGeneratedLines": 15,
+      "selectedTargetLines": 0,
+      "anchorLines": 3,
+      "helperLines": {
+        "helper.mjs": 16
+      },
+      "outcome": "verified",
+      "code": 0,
+      "signal": null,
+      "cancelled": false,
+      "wallMs": 10279,
+      "requestId": "f521ca4a-9ec0-4ea4-b622-02b1ec0e5922",
+      "providerResponseId": "chatcmpl-7esp5mdkcrs1vi803dd0h",
+      "attempts": 1,
+      "reportedRefusal": false,
+      "terminalReason": null,
+      "kept": true,
+      "endpointLock": {
+        "status": "acquired",
+        "queuedMs": 0
+      },
+      "requested": {
+        "model": "qwen/qwen3.8-27b",
+        "effort": "low",
+        "enableThinking": false,
+        "maxTokens": 4096
+      },
+      "finishReason": "stop",
+      "usage": {
+        "input": 532,
+        "output": 153,
+        "reasoning": 0,
+        "cached": null
+      },
+      "modelMs": 9454,
+      "emittedCodeLines": 12,
+      "addedSourceLines": 12,
+      "removedSourceLines": 0,
+      "rollback": "not-applicable",
+      "providerCancellation": "unknown",
+      "helpersIntact": true,
+      "scopeIntact": true,
+      "beforeSha256": "8704d2b361efb8bbb53c0b385989eab4b1ea4b632c708fe312975e4fba8accba",
+      "afterSha256": "811151c83644c70610eb9281ef0391ae459a6bc7dcb81579d4201289c38867c6",
+      "responseSha256": "df4c21e3cf0abc1f120a3a87307535e49b949a2139187be63aa9c94ebddedfa8",
+      "receipt": "OK mode=transform model=qwen/qwen3.8-27b target=target.mjs attempts=1 in=532t out=153t time=9454ms rate=16.2tok/s reasoning=0t cached-in=? preflight=red max-tokens=4096 spend=$0.00",
+      "acceptedSource": "import { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { clamp } from \"./helper.mjs\";\ntest(\"below\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\ntest(\"inside\", () => {\n  assert.equal(clamp(3, 0, 10), 3);\n  assert.equal(clamp(7, 0, 10), 7);\n});\ntest(\"above\", () => {\n  assert.equal(clamp(11, 0, 10), 10);\n  assert.equal(clamp(50, 0, 10), 10);\n});\n",
+      "emittedSource": "test(\"below\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\ntest(\"inside\", () => {\n  assert.equal(clamp(3, 0, 10), 3);\n  assert.equal(clamp(7, 0, 10), 7);\n});\ntest(\"above\", () => {\n  assert.equal(clamp(11, 0, 10), 10);\n  assert.equal(clamp(50, 0, 10), 10);\n});"
+    },
+    {
+      "id": "insert-large",
+      "shape": "test insertion",
+      "requestedGeneratedLines": 35,
+      "selectedTargetLines": 0,
+      "anchorLines": 3,
+      "helperLines": {
+        "helper.mjs": 16
+      },
+      "outcome": "verified",
+      "code": 0,
+      "signal": null,
+      "cancelled": false,
+      "wallMs": 22392,
+      "requestId": "d1502118-ffe0-4ce2-8b22-ec16f013de0f",
+      "providerResponseId": "chatcmpl-yaomz1hfnlpppq1mbfcmj",
+      "attempts": 1,
+      "reportedRefusal": false,
+      "terminalReason": null,
+      "kept": true,
+      "endpointLock": {
+        "status": "acquired",
+        "queuedMs": 0
+      },
+      "requested": {
+        "model": "qwen/qwen3.8-27b",
+        "effort": "low",
+        "enableThinking": false,
+        "maxTokens": 4096
+      },
+      "finishReason": "stop",
+      "usage": {
+        "input": 661,
+        "output": 362,
+        "reasoning": 0,
+        "cached": null
+      },
+      "modelMs": 21562,
+      "emittedCodeLines": 28,
+      "addedSourceLines": 28,
+      "removedSourceLines": 0,
+      "rollback": "not-applicable",
+      "providerCancellation": "unknown",
+      "helpersIntact": true,
+      "scopeIntact": true,
+      "beforeSha256": "8704d2b361efb8bbb53c0b385989eab4b1ea4b632c708fe312975e4fba8accba",
+      "afterSha256": "7ad6a9b4298e230b9954cba6aef65c62d39f77ed16299dfdacdeca85d17284c6",
+      "responseSha256": "d14d684fb161adad2d86c17f13d20a7c15bf1589cbba568d3046c7f6ad4af662",
+      "receipt": "OK mode=transform model=qwen/qwen3.8-27b target=target.mjs attempts=1 in=661t out=362t time=21562ms rate=16.8tok/s reasoning=0t cached-in=? preflight=red max-tokens=4096 spend=$0.00",
+      "acceptedSource": "import { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { clamp } from \"./helper.mjs\";\ntest(\"below\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\ntest(\"inside\", () => {\n  assert.equal(clamp(3, 0, 10), 3);\n  assert.equal(clamp(7, 0, 10), 7);\n});\ntest(\"above\", () => {\n  assert.equal(clamp(11, 0, 10), 10);\n  assert.equal(clamp(50, 0, 10), 10);\n});\ntest(\"edges\", () => {\n  assert.equal(clamp(0, 0, 10), 0);\n  assert.equal(clamp(10, 0, 10), 10);\n});\ntest(\"negative\", () => {\n  assert.equal(clamp(-12, -10, -2), -10);\n  assert.equal(clamp(-1, -10, -2), -2);\n});\ntest(\"fractional\", () => {\n  assert.equal(clamp(1.25, 0, 10), 1.25);\n  assert.equal(clamp(9.75, 0, 10), 9.75);\n});\ntest(\"equal-bounds\", () => {\n  assert.equal(clamp(2, 5, 5), 5);\n  assert.equal(clamp(9, 5, 5), 5);\n});\n",
+      "emittedSource": "test(\"below\", () => {\n  assert.equal(clamp(-1, 0, 10), 0);\n  assert.equal(clamp(-5, 0, 10), 0);\n});\ntest(\"inside\", () => {\n  assert.equal(clamp(3, 0, 10), 3);\n  assert.equal(clamp(7, 0, 10), 7);\n});\ntest(\"above\", () => {\n  assert.equal(clamp(11, 0, 10), 10);\n  assert.equal(clamp(50, 0, 10), 10);\n});\ntest(\"edges\", () => {\n  assert.equal(clamp(0, 0, 10), 0);\n  assert.equal(clamp(10, 0, 10), 10);\n});\ntest(\"negative\", () => {\n  assert.equal(clamp(-12, -10, -2), -10);\n  assert.equal(clamp(-1, -10, -2), -2);\n});\ntest(\"fractional\", () => {\n  assert.equal(clamp(1.25, 0, 10), 1.25);\n  assert.equal(clamp(9.75, 0, 10), 9.75);\n});\ntest(\"equal-bounds\", () => {\n  assert.equal(clamp(2, 5, 5), 5);\n  assert.equal(clamp(9, 5, 5), 5);\n});"
+    },
+    {
+      "id": "context-small",
+      "shape": "helper context",
+      "requestedGeneratedLines": 15,
+      "selectedTargetLines": 1,
+      "anchorLines": 0,
+      "helperLines": {
+        "helper.mjs": 16
+      },
+      "outcome": "verifier-red",
+      "code": 1,
+      "signal": null,
+      "cancelled": false,
+      "wallMs": 6927,
+      "requestId": "d878c785-fdb2-4dab-9d0f-ecb3e0a0de9e",
+      "providerResponseId": "chatcmpl-o4jyrzhzyekapfek5ibsg",
+      "attempts": 1,
+      "reportedRefusal": false,
+      "terminalReason": "red_verify",
+      "kept": false,
+      "endpointLock": {
+        "status": "acquired",
+        "queuedMs": 0
+      },
+      "requested": {
+        "model": "qwen/qwen3.8-27b",
+        "effort": "low",
+        "enableThinking": false,
+        "maxTokens": 4096
+      },
+      "finishReason": "stop",
+      "usage": {
+        "input": 431,
+        "output": 102,
+        "reasoning": 0,
+        "cached": null
+      },
+      "modelMs": null,
+      "emittedCodeLines": 11,
+      "addedSourceLines": 0,
+      "removedSourceLines": 0,
+      "rollback": "restored",
+      "providerCancellation": "unknown",
+      "helpersIntact": true,
+      "scopeIntact": true,
+      "beforeSha256": "e20c0d7c3a2038028aec339fc8460e12d4c5ea99909ffd7762d4068b8185a6d2",
+      "afterSha256": "e20c0d7c3a2038028aec339fc8460e12d4c5ea99909ffd7762d4068b8185a6d2",
+      "responseSha256": "2d13c0e818fbeda0127a7567a603a14b1bca7fdc30649ded6e52c7181f46a87e",
+      "receipt": null,
+      "acceptedSource": null,
+      "emittedSource": null
+    },
+    {
+      "id": "context-large",
+      "shape": "helper context",
+      "requestedGeneratedLines": 35,
+      "selectedTargetLines": 1,
+      "anchorLines": 0,
+      "helperLines": {
+        "helper.mjs": 16
+      },
+      "outcome": "verified",
+      "code": 0,
+      "signal": null,
+      "cancelled": false,
+      "wallMs": 19427,
+      "requestId": "fd0a7d9a-9d1f-4210-aa09-8e08bd71b271",
+      "providerResponseId": "chatcmpl-qktj478yu2fwuv76lzrc5j",
+      "attempts": 1,
+      "reportedRefusal": false,
+      "terminalReason": null,
+      "kept": true,
+      "endpointLock": {
+        "status": "acquired",
+        "queuedMs": 0
+      },
+      "requested": {
+        "model": "qwen/qwen3.8-27b",
+        "effort": "low",
+        "enableThinking": false,
+        "maxTokens": 4096
+      },
+      "finishReason": "stop",
+      "usage": {
+        "input": 497,
+        "output": 318,
+        "reasoning": 0,
+        "cached": null
+      },
+      "modelMs": 18915,
+      "emittedCodeLines": 42,
+      "addedSourceLines": 42,
+      "removedSourceLines": 1,
+      "rollback": "not-applicable",
+      "providerCancellation": "unknown",
+      "helpersIntact": true,
+      "scopeIntact": true,
+      "beforeSha256": "1ef09bf2b63ee9816a9c786dc2b48c6fac8bd3124d4674f9181f524682b2f03c",
+      "afterSha256": "bc626066db68818d87d13ce55ccfabf89182559fd2df1e91dd40a8d3c1a2739a",
+      "responseSha256": "7f8dafe5e08678e9b806280af81e5775d5866ee45f3c55b9b1086b34b1f8c512",
+      "receipt": "OK mode=transform model=qwen/qwen3.8-27b target=target.mjs attempts=1 in=497t out=318t time=18915ms rate=16.8tok/s reasoning=0t cached-in=? preflight=red max-tokens=4096 spend=$0.00",
+      "acceptedSource": "import { parseCents, formatMoney } from \"./helper.mjs\";\nexport function summarize(rows, currency) {\n  if (!Array.isArray(rows)) {\n    throw new TypeError(\"rows\");\n  }\n  const accepted = [];\n  let rejected = 0;\n  let totalCents = 0;\n  const balances = {};\n  for (const row of rows) {\n    if (row === null || typeof row !== \"object\" || Array.isArray(row)) {\n      rejected += 1;\n      continue;\n    }\n    const account = row.account;\n    const amount = row.amount;\n    if (typeof account !== \"string\" || account.trim() === \"\") {\n      rejected += 1;\n      continue;\n    }\n    const cents = parseCents(amount);\n    if (cents === null) {\n      rejected += 1;\n      continue;\n    }\n    const name = account.trim();\n    accepted.push(name);\n    totalCents += cents;\n    balances[name] = (balances[name] || 0) + cents;\n  }\n  const accounts = Object.keys(balances)\n    .sort()\n    .map((name) => ({\n      account: name,\n      balance: formatMoney({ cents: balances[name], currency }),\n    }));\n  return {\n    accepted: accepted.length,\n    rejected,\n    total: formatMoney({ cents: totalCents, currency }),\n    accounts,\n  };\n}\nexport const untouched = \"keep\";\n",
+      "emittedSource": "export function summarize(rows, currency) {\n  if (!Array.isArray(rows)) {\n    throw new TypeError(\"rows\");\n  }\n  const accepted = [];\n  let rejected = 0;\n  let totalCents = 0;\n  const balances = {};\n  for (const row of rows) {\n    if (row === null || typeof row !== \"object\" || Array.isArray(row)) {\n      rejected += 1;\n      continue;\n    }\n    const account = row.account;\n    const amount = row.amount;\n    if (typeof account !== \"string\" || account.trim() === \"\") {\n      rejected += 1;\n      continue;\n    }\n    const cents = parseCents(amount);\n    if (cents === null) {\n      rejected += 1;\n      continue;\n    }\n    const name = account.trim();\n    accepted.push(name);\n    totalCents += cents;\n    balances[name] = (balances[name] || 0) + cents;\n  }\n  const accounts = Object.keys(balances)\n    .sort()\n    .map((name) => ({\n      account: name,\n      balance: formatMoney({ cents: balances[name], currency }),\n    }));\n  return {\n    accepted: accepted.length,\n    rejected,\n    total: formatMoney({ cents: totalCents, currency }),\n    accounts,\n  };\n}"
+    }
+  ],
+  "finishedAt": "2026-11-17T22:18:41.913Z"
+}

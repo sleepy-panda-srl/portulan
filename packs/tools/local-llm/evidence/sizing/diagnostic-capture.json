@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "startedAt": "2026-11-17T22:26:22.837Z",
+  "parentCommit": "a2f70a67bc721054c66c3993618a03788e24674e",
+  "sourceSha256": {
+    "runner": "a4973327489847ebc7e14b695b8fff7bdfb3404093183b700f835e5159427dfa",
+    "protocol": "212ced68f4b394f0442e9af0defc60d86e3d6621ec96250668413dd16b4d07e5",
+    "fixtures": "1a591296e37760fcb36c5d5f2b17eceed83c3c18ecd37a88d54564f85b218d60",
+    "protocolNotes": "d46a5d3b5556fe9193eaeee15c259095488ad9f48f4c78cb230d596d71a94f8c"
+  },
+  "instrumentation": {
+    "transport": "production localModelFetch with private buffered-body recording",
+    "endpointLock": "production acquireEndpointLock held around the entire child command; injected fetch does not take another lock",
+    "queue": "manual wait recorded separately; native CLI queue telemetry is not claimed"
+  },
+  "profile": {
+    "model": "qwen/qwen3.8-27b",
+    "role": "code",
+    "effort": "low",
+    "enableThinking": false,
+    "maxTokens": 4096,
+    "retries": 0,
+    "cancelAfterMs": 180000,
+    "baseUrl": "http://127.0.0.1:1234/v1"
+  },
+  "stoppingRule": "One parent-directed diagnostic call after the completed original pilot; one generation, no retry or profile change; stop on every terminal outcome. Not a continuation or pooled success tally.",
+  "runtime": {
+    "reportedModel": {
+      "key": "qwen/qwen3.8-27b",
+      "publisher": "qwen",
+      "architecture": "qwen3_5",
+      "format": "mlx",
+      "quantization": {
+        "name": "8bit",
+        "bits_per_weight": 8
+      },
+      "size_bytes": 29528353913,
+      "params_string": "27B"
+    },
+    "reportedMetadataSha256": "4fe274182aec34eb6a91086f558efdacc943d534cee57a2f730de9df959608dc",
+    "loadedInstancesBefore": 1,
+    "activeTemplateSha256": null,
+    "templateLimit": "The local API does not expose the active template bytes; no loaded-template/weight attestation.",
+    "repairReport": "https://github.com/sleepy-panda-srl/portulan/issues/571#issuecomment-6945668358"
+  },
+  "machine": {
+    "cpu": "Apple M5 Max",
+    "memoryBytes": 137438953472,
+    "platform": "darwin",
+    "release": "27.2.0",
+    "arch": "arm64",
+    "node": "v26.13.1"
+  },
+  "controls": [
+    {
+      "id": "context-small",
+      "baseline": 1,
+      "intended": 0,
+      "incorrect": 1,
+      "additionalNegativeControls": []
+    }
+  ],
+  "cells": [
+    {
+      "id": "context-small",
+      "shape": "helper context",
+      "requestedGeneratedLines": 15,
+      "selectedTargetLines": 1,
+      "anchorLines": 0,
+      "helperLines": {
+        "helper.mjs": 16,
+        "examples.json": 85
+      },
+      "outcome": "verified",
+      "code": 0,
+      "signal": null,
+      "cancelled": false,
+      "wallMs": 7313,
+      "requestId": "8397f668-1ee3-476b-9287-96586ede88bd",
+      "providerResponseId": "chatcmpl-9lxz37duyn4j9aou9lhoes",
+      "attempts": 1,
+      "reportedRefusal": false,
+      "terminalReason": null,
+      "kept": true,
+      "endpointLock": {
+        "status": "acquired",
+        "queuedMs": 0
+      },
+      "requested": {
+        "model": "qwen/qwen3.8-27b",
+        "effort": "low",
+        "enableThinking": false,
+        "maxTokens": 4096
+      },
+      "finishReason": "stop",
+      "usage": {
+        "input": 869,
+        "output": 102,
+        "reasoning": 0,
+        "cached": null
+      },
+      "modelMs": 6814,
+      "emittedCodeLines": 11,
+      "addedSourceLines": 11,
+      "removedSourceLines": 1,
+      "rollback": "not-applicable",
+      "providerCancellation": "unknown",
+      "helpersIntact": true,
+      "scopeIntact": true,
+      "beforeSha256": "e20c0d7c3a2038028aec339fc8460e12d4c5ea99909ffd7762d4068b8185a6d2",
+      "afterSha256": "bf2d73c1dc5deb673c95c106420e9a75a9346dca4196e5df3091c970630dcea8",
+      "responseSha256": "afeb68e60ea34e8aa7066ebb3979666f4b5e70d8e46877a26a02e24c1bcd347f",
+      "receipt": "OK mode=transform model=qwen/qwen3.8-27b target=target.mjs attempts=1 in=869t out=102t time=6814ms rate=15tok/s reasoning=0t cached-in=? preflight=red max-tokens=4096 spend=$0.00",
+      "acceptedSource": "import { toCents, applyTax, formatMoney } from \"./helper.mjs\";\nexport function formatTotal(items, rate, currency) {\n  if (!Array.isArray(items)) {\n    throw new TypeError(\"items\");\n  }\n  let totalCents = 0;\n  for (const price of items) {\n    totalCents += toCents(price);\n  }\n  const taxedCents = applyTax(totalCents, rate);\n  return formatMoney({ cents: taxedCents, currency });\n}\nexport const untouched = \"keep\";\n",
+      "emittedSource": "export function formatTotal(items, rate, currency) {\n  if (!Array.isArray(items)) {\n    throw new TypeError(\"items\");\n  }\n  let totalCents = 0;\n  for (const price of items) {\n    totalCents += toCents(price);\n  }\n  const taxedCents = applyTax(totalCents, rate);\n  return formatMoney({ cents: taxedCents, currency });\n}"
+    }
+  ],
+  "finishedAt": "2026-11-17T22:26:30.170Z"
+}

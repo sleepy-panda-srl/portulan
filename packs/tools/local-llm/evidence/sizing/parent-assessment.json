@@ -1,0 +1,144 @@
+{
+  "schema": 1,
+  "captureSha256": "51eb5ae6bd678b2506a07a6a3fc95e8ff2fd44cfdf2f151bc8611ba58f9f9a49",
+  "kind": "post-hoc parent review, not part of the preregistered success tally",
+  "contextLarge": {
+    "decision": "parent-rejected",
+    "reason": "ordinary object balances mishandle valid prototype-named accounts not covered by the original verifier",
+    "counterexamples": [
+      {
+        "input": [
+          [
+            {
+              "account": "__proto__",
+              "amount": "1.00"
+            }
+          ],
+          "USD"
+        ],
+        "expected": {
+          "accepted": 1,
+          "rejected": 0,
+          "total": "USD 1.00",
+          "accounts": [
+            {
+              "account": "__proto__",
+              "balance": "USD 1.00"
+            }
+          ]
+        },
+        "actual": {
+          "accepted": 1,
+          "rejected": 0,
+          "total": "USD 1.00",
+          "accounts": []
+        },
+        "passes": false
+      },
+      {
+        "input": [
+          [
+            {
+              "account": "constructor",
+              "amount": "1.00"
+            }
+          ],
+          "USD"
+        ],
+        "expected": {
+          "accepted": 1,
+          "rejected": 0,
+          "total": "USD 1.00",
+          "accounts": [
+            {
+              "account": "constructor",
+              "balance": "USD 1.00"
+            }
+          ]
+        },
+        "actual": {
+          "accepted": 1,
+          "rejected": 0,
+          "total": "USD 1.00",
+          "accounts": [
+            {
+              "account": "constructor",
+              "balance": "USD NaN"
+            }
+          ]
+        },
+        "passes": false
+      },
+      {
+        "input": [
+          [
+            {
+              "account": "toString",
+              "amount": "1.00"
+            }
+          ],
+          "USD"
+        ],
+        "expected": {
+          "accepted": 1,
+          "rejected": 0,
+          "total": "USD 1.00",
+          "accounts": [
+            {
+              "account": "toString",
+              "balance": "USD 1.00"
+            }
+          ]
+        },
+        "actual": {
+          "accepted": 1,
+          "rejected": 0,
+          "total": "USD 1.00",
+          "accounts": [
+            {
+              "account": "toString",
+              "balance": "USD NaN"
+            }
+          ]
+        },
+        "passes": false
+      }
+    ]
+  },
+  "replaceLarge": {
+    "decision": "style-review-required",
+    "reason": "the requested braced switch-case style was not enforced by the verifier and was not followed; fixture-verified is not full prompt conformance"
+  },
+  "observedRequests": [
+    {
+      "id": "replace-small",
+      "temperature": 0.1,
+      "seed": null
+    },
+    {
+      "id": "replace-large",
+      "temperature": 0.1,
+      "seed": null
+    },
+    {
+      "id": "insert-small",
+      "temperature": 0.1,
+      "seed": null
+    },
+    {
+      "id": "insert-large",
+      "temperature": 0.1,
+      "seed": null
+    },
+    {
+      "id": "context-small",
+      "temperature": 0.1,
+      "seed": null
+    },
+    {
+      "id": "context-large",
+      "temperature": 0.1,
+      "seed": null
+    }
+  ]
+}

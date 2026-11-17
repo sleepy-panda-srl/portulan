@@ -5,10 +5,8 @@ description: Offload verify-gated code edits for hybrid development. Requires lo
 
 # Skill — Delegate Local
 
-> Every turn in a frontier session re-reads its whole context (`m_r × (F·T + g·T²/2)`, proposal
-> [`0038`](../../../../../.portulan/proposals/0038-what-a-change-spends-is-measured.md)). This skill moves a
-> bounded, high-turn or read-heavy sub-task off that context and onto a local model on loopback, through
-> [`runner/local-llm.mjs`](../../runner/local-llm.mjs) and under a verify command.
+> Use the [loopback runner](../../runner/local-llm.mjs) for bounded work under verification.
+> A separately issued call remains a parent request; see the [spend limits](../../README.md#when-a-call-pays).
 
 ## Before you start
 
@@ -16,59 +14,65 @@ Resolve `<runner>` through [adoption and upgrades](../../README.md#adopting-it-i
 Without composition, propose it first; an explicit operator instruction permits a one-off
 runner invocation under the same rails, without composing the workspace.
 
-The runner talks to an OpenAI-compatible server on loopback: LM Studio on `127.0.0.1:1234` by default,
-or `--base-url` (or `PORTULAN_LOCAL_LLM_URL`) for another loopback port such as Ollama's `11434`. Run
-`node <runner> status` first. Exit `0` lists the models the server holds; exit `1` is an endpoint
-refused as off loopback; exit `2` is could-not-run — no server answered, it answered with an HTTP
-error, or `--base-url` is not a URL. On anything but `0`, do the work in the parent session. Never pass
-`--allow-remote` on your own authority: an endpoint off loopback is the `local-llm-off-loopback`
-decision, proposed before it runs.
+Use a loopback server: LM Studio defaults to `127.0.0.1:1234`; `--base-url` or
+`PORTULAN_LOCAL_LLM_URL` can select another local port. Run `node <runner> status`:
+`0` lists models, `1` refuses off loopback, `2` is could-not-run. Otherwise use the
+parent. `--allow-remote` requires the explicit `local-llm-off-loopback` decision.
 
 ## When to use it
 
 - **A verify-gated file transform longer than one short parent Edit:** a mechanical refactor or a
   history-comment cleanup across a file, or a unit test the parent would otherwise iterate red→green,
   where a verify command can prove the edit green or have it rolled back.
-- **An explicitly selected candidate research digest:** reading a long file or log so only a short digest enters the parent context.
-- **An explicitly selected candidate librarian or handoff draft:** compressing a handoff under its byte cap, or drafting a `codify` or
-  `consolidate` candidate for human review.
+- **Operator-selected candidate digests or librarian/handoff drafts:** use an explicit
+  `--model` without `--role`; normally keep these in the parent.
 
 Not for multi-file architectural planning, ambiguous requirements (`clarify`), or pre-merge verdicts
 (`reviewer`).
 
 ## When it pays
 
-Each call is itself one parent request: the parent writes the instruction, waits and reads the receipt,
-and that request re-reads the whole context like any other. In 0038's `m_r × (F·T + g·T²/2)`, a call that
-replaces one parent Edit leaves `T` as it was and lowers `g` only by the output it saves, the difference
-between writing the instruction and writing the code. A miss, a call that keeps nothing or a kept edit the
-parent then touches up, adds a whole request. So:
+Keep a one-short-Edit task in the parent. A separately issued call costs a parent
+request; batched invocations share a request boundary. The [cost model and measured
+limits](../../README.md#when-a-call-pays) explain why local tokens alone prove no savings.
 
-- **Keep an edit the parent can write in one short Edit in the parent.** Delegate only where one call
-  replaces more parent work than the request it costs.
-- **Whether a call pays turns on its miss rate and the context's size.** With `s` the output a kept call
-  saves, priced at 0038's five times input, and `c` a miss's re-read of the context `C` at the tenth of
-  input that `cli/ledger.mjs` takes for a cache read, a call pays only while its miss rate stays under
-  `s / (s + c)`, and under less once a miss's own output is counted. One run in
-  [#583](https://github.com/sleepy-panda-srl/portulan/issues/583) measured a 20% miss rate at a median `C`
-  of 236k. The output a kept call saved, derived from the parent's output on the edits it wrote itself, was
-  250–650 tokens and is overstated, since the parent kept its larger edits. That puts break-even at 5–12%,
-  a net loss, from one run, one local model and one parent model, and the verdict rests on the tenth: at
-  0038's fortieth, break-even is 17–35%.
-- **Where a call should pay is reasoning, not measurement:** a red→green loop the parent would otherwise
-  iterate, a batch of calls inside one tool request, and a long mechanical replacement the parent would
-  otherwise write out.
+## Sizing and wording a call
+
+For an uncalibrated shape, use **about 20 generated new lines** as an initial scope
+ceiling at `qwen/qwen3.8-27b`, low effort, **4,096 requested combined output tokens**.
+This is a [historically informed heuristic](../../evidence/sizing/history.md#low-effort-4096-tokens--november-5),
+not a current maximum, guarantee or runner line cap. The [current receipts](../../evidence/sizing/report.md)
+include a 61-line fixture pass and an 11-line failure; size alone establishes neither
+completion nor correctness. Input slices and the 32-KB input ceiling are different figures.
+
+- **Number the steps:** first-call successes were reported for numbered specs.
+- **State enforced style and supply already-wrapped examples:** brace-less C# `if`s
+  required another generation, then five calls with the brace rule passed first time;
+  rewrapping cost `out=3160t` versus `496t` for an already-wrapped example.
+- **Use literal syntax, exact APIs and input/output fixtures:** shorthand
+  `for x in y: stmt` was copied. In the current pilot, an assumed object shape failed
+  despite full helper signatures. See the [dated wording cases](../../evidence/sizing/history.md#wording-cases)
+  and the separately reported diagnostic; these are observations, not causal proofs.
+- **Use the smallest adequate behavioral verifier plus required style/build checks.**
+  Historical one-line calls took 4–8 s with a single-test verifier; keep such edits in
+  the parent. Syntax or a green but incomplete fixture corpus is not semantic proof.
+- **Bound a sizing attempt to two generations** (`--retries 1`; the runner defaults
+  to three). Count attempts across calls and return that kind of edit to the parent
+  after two failed generations; do not reset the count with an identical call.
+  The acquisition pilot used one generation per cell, and its diagnostic is separate.
+- **Code includes source-bound documentation comments with explicit syntax/style
+  checks and parent fidelity review.** Reported C# comments do not qualify general prose.
+  Preserve operator-pinned profiles; a smaller input or larger output request is no
+  thinking/completion guarantee. Keep unsupported prose in the parent.
 
 ## The pass
 
-1. **Scope the input first.** Outline a file of 300 lines or more with
-   `node <plugin root>/cli/symbols.mjs <file>` and pass `--file <file> --lines <start>-<end>` (to
-   `transform`, `chat` and `summarize` alike) rather than the whole file. `cli/` ships with the
-   repository-root plugin and not in the `packs/` payload; there, find the span's line numbers with
-   `grep -n`. To pass read-only helper signatures without retyping them, add repeatable
-   `--context <a>-<b>` or `--context-file <path>[:a-b]`. Prefill scales with prompt bytes: proposal
-   0039 measured prompts of about 400–470 tokens prefilling in 0.85–1.88 s, and the `32 KB` default of
-   `--max-input-bytes` (about 8k tokens) is a ceiling, not a measured latency.
+1. **Scope the input first.** Outline files of 300 lines or more with
+   `node <plugin root>/cli/symbols.mjs <file>`, then use `--file <file> --lines <start>-<end>`
+   for `transform`, `chat` or `summarize`. Packs-only installs lack `cli/`; use a bounded
+   declaration search there. Add read-only signatures/fixtures with repeatable
+   `--context <a>-<b>` or `--context-file <path>[:a-b]`. The 32-KB input cap is not a
+   latency measurement; see [prefill evidence](../../README.md#why-this-pack-exists).
 2. **Use an earned role.** Code transforms and strict syntax use `--role code`
    (`qwen/qwen3.8-27b`) at `--effort low`, supported by the
    [captured A/B](../../../../../evals/ab/local-worker.md)'s L5/H5 code cell. Shared `--role prose`
@@ -76,9 +80,8 @@ parent then touches up, adds a whole request. So:
    librarian drafts in the parent session. `summarize` defaults to prose and refuses; explicit roles,
    model overrides and environment mismatches cannot bypass the guard. An operator can select a
    candidate with `--model <id>` and no `--role`; that is deliberate evaluation, not earned routing.
-   Screen a candidate with `node <runner> eval --model <id>`; it needs `cli/` beside `packs/` and exits
-   `2` without it. Passing a screen never enables a role.
-3. **Gate every edit.** `node <runner> transform --file <path> --verify "<cmd>" --prompt-file p.txt`
+   `eval --model <id>` is a screen, never routing qualification; its [requirements](../../README.md#the-ab-record) still apply.
+3. **Gate every edit.** `node <runner> transform --file <path> --retries 1 --verify "<cmd>" --prompt-file p.txt`
    (or `--prompt "<instruction>"`), where `--verify` is required; to add a test or a function without
    re-emitting anchor code, use `--insert-after <line>` (with optional `--context <a>-<b>`), e.g.
    `--insert-after 120 --context 10-40 --prompt-file spec.txt`. For `--precheck` on each candidate,
@@ -91,5 +94,6 @@ parent then touches up, adds a whole request. So:
    Calls can take minutes: use `--progress` and wait for exit if backgrounded.
    See [generation controls and diagnostics](../../README.md#generation-controls-and-diagnostics).
 4. **Read the receipt and retry tails.** On exit `0`, read the receipt and stderr's failure tails
-   when `attempts>1`. Re-read code only if a later edit needs new line numbers. On exit `1` or `2`,
+   when `attempts>1`. Review semantic/style obligations the verifier does not establish, especially for
+   a new shape; avoid rereading already-understood source otherwise. On exit `1` or `2`,
    return to the frontier implementer.

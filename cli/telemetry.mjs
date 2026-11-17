@@ -29,6 +29,8 @@ export const NETWORK_MODES = Object.freeze([
     { module: "cli/review-meter.mjs", flag: "--fetch", what: "fetches review data from GitHub" },
     { module: "cli/telemetry.mjs", flag: "--export", what: "posts an OTLP payload to a collector" },
     { module: "cli/feedback.mjs", flag: "--approve", what: "files a GitHub issue with `gh issue create`" },
+    { module: "tools/local-llm/evidence/sizing/acquire.mjs", flag: "--acquire", what: "runs the manual model sizing acquisition" },
+    { module: "tools/local-llm/evidence/sizing/acquire.mjs", flag: "--child", what: "runs one manual model sizing call" },
     {
         module: "tools/local-llm/runner/local-llm.mjs",
         unless: "--verify-offline",
