@@ -113,7 +113,13 @@ A score is a candidate, not a verdict: the runner neither merges nor edits a fil
 
 The pass is the [`delegate-local`](skills/delegate-local/SKILL.md) skill: check the server with
 `status`, scope the input with [`cli/symbols.mjs`](../../../cli/symbols.mjs) and `--lines`, choose the
-supported role by task shape, gate every edit with `--verify`, and read only the receipt back.
+supported role by task shape, and gate every edit with `--verify`.
+When `attempts` is greater than one, also read stderr: each earlier failed attempt
+is labeled with its number and phase, followed by the same bounded verification tail
+the model saw (at most 1,500 characters plus a truncation marker). Expectation misses
+and silent red exits have explicit diagnostics. A first-attempt pass prints no extra
+feedback; successful stdout remains one receipt. The API exposes `retryFailures`
+beside the result. Use these tails to fix the next prompt's style rules or API contract.
 The acquired [record](../../../evals/ab/local-worker.md) supports `code` at low effort; shared `prose`
 is disabled because codify failed all five local turns. `summarize` defaults to that disabled role and
 refuses. An explicit `--model` without `--role` is an operator-selected candidate, not automatic routing.
