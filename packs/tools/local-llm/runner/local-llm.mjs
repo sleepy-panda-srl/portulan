@@ -4,7 +4,7 @@
 // Exit codes: 0 green · 1 red check or model/verify failure · 2 could not run.
 
 import { spawn, spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -344,19 +344,342 @@ function tryRecoverStaleLock(lockPath, staleGraceMs) {
     }
 }
 
+export const DEFAULT_LIFECYCLE_MAX_RECORDS = 100;
+export const DEFAULT_LIFECYCLE_MAX_BYTES = 64 * 1024;
+const EMPTY_USAGE = Object.freeze({ input: null, output: null, cached: null, reasoning: null });
+
+export function normalizeLifecycleUsage(usage) {
+    if (!usage || typeof usage !== "object") return { ...EMPTY_USAGE };
+    const adapted = {
+        prompt_tokens: usage.promptTokens ?? usage.prompt_tokens ?? usage.input,
+        completion_tokens: usage.completionTokens ?? usage.completion_tokens ?? usage.output,
+        prompt_tokens_details: {
+            cached_tokens: usage.cachedPromptTokens ?? usage.prompt_tokens_details?.cached_tokens ?? usage.cached,
+        },
+        completion_tokens_details: {
+            reasoning_tokens: usage.reasoningTokens ?? usage.completion_tokens_details?.reasoning_tokens ?? usage.reasoning,
+        },
+    };
+    const u = readUsage(adapted);
+    return {
+        input: u.promptTokens,
+        output: u.completionTokens,
+        cached: u.cachedPromptTokens,
+        reasoning: u.reasoningTokens,
+    };
+}
+
+function sanitizeEndpoint(url) {
+    if (typeof url !== "string" || !url.trim()) return null;
+    try {
+        const parsed = new URL(url);
+        if (parsed.hostname.toLowerCase() === "localhost") parsed.hostname = "127.0.0.1";
+        return `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}`;
+    } catch {
+        return null;
+    }
+}
+
+export function lifecycleDir(stateDir = process.env.PORTULAN_LOCAL_LLM_STATE_DIR || os.tmpdir()) {
+    return path.join(stateDir, "portulan-local-llm-lifecycle");
+}
+
+function allowlistedLifecycleRecord(rec) {
+    return {
+        requestId: String(rec.requestId),
+        pid: Number.isSafeInteger(rec.pid) && rec.pid > 0 ? rec.pid : null,
+        mode: typeof rec.mode === "string" && rec.mode ? rec.mode : "unknown",
+        model: typeof rec.model === "string" && rec.model ? rec.model : null,
+        endpoint: sanitizeEndpoint(rec.endpoint),
+        phase: typeof rec.phase === "string" && rec.phase ? rec.phase : "unknown",
+        attempt: Number.isSafeInteger(rec.attempt) && rec.attempt >= 0 ? rec.attempt : 0,
+        startedAt: typeof rec.startedAt === "string" ? rec.startedAt : new Date().toISOString(),
+        updatedAt: typeof rec.updatedAt === "string" ? rec.updatedAt : new Date().toISOString(),
+        endedAt: typeof rec.endedAt === "string" ? rec.endedAt : null,
+        reconciledAt: typeof rec.reconciledAt === "string" ? rec.reconciledAt : null,
+        status: typeof rec.status === "string" ? rec.status : "started",
+        terminalOutcome: typeof rec.terminalOutcome === "string" ? rec.terminalOutcome : null,
+        signal: typeof rec.signal === "string" ? rec.signal : null,
+        reason: typeof rec.reason === "string" ? rec.reason : null,
+        elapsedMs: Number.isFinite(rec.elapsedMs) && rec.elapsedMs >= 0 ? Math.round(rec.elapsedMs) : null,
+        rollback: typeof rec.rollback === "string" ? rec.rollback : "unknown",
+        providerCancellation: rec.providerCancellation === "confirmed" ? "confirmed" : "unknown",
+        usage: normalizeLifecycleUsage(rec.usage),
+        target: typeof rec.target === "string" && rec.target ? path.basename(rec.target) : null,
+    };
+}
+
+function readLifecycleFile(file) {
+    try {
+        const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+        if (!parsed || typeof parsed !== "object" || typeof parsed.requestId !== "string" || !parsed.requestId) return null;
+        return allowlistedLifecycleRecord(parsed);
+    } catch {
+        return null;
+    }
+}
+
+function writeLifecycleFileAtomic(file, record) {
+    const clean = allowlistedLifecycleRecord(record);
+    const payload = `${JSON.stringify(clean)}\n`;
+    const tmp = `${file}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
+    try {
+        fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+        fs.writeFileSync(tmp, payload, { encoding: "utf8", mode: 0o600 });
+        fs.renameSync(tmp, file);
+        return clean;
+    } catch {
+        try { fs.rmSync(tmp, { force: true }); } catch {}
+        try {
+            fs.writeFileSync(file, payload, { encoding: "utf8", mode: 0o600 });
+        } catch {}
+        return clean;
+    }
+}
+
+function pruneLifecycleDir(dir, maxRecords = DEFAULT_LIFECYCLE_MAX_RECORDS, maxBytes = DEFAULT_LIFECYCLE_MAX_BYTES) {
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+        return;
+    }
+    const files = [];
+    for (const entry of entries) {
+        if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+        const file = path.join(dir, entry.name);
+        try {
+            const st = fs.statSync(file);
+            const rec = readLifecycleFile(file);
+            files.push({
+                file,
+                bytes: st.size,
+                active: rec?.status === "started",
+                stamp: Date.parse(rec?.updatedAt ?? rec?.startedAt ?? "") || st.mtimeMs,
+            });
+        } catch {}
+    }
+    files.sort((a, b) => b.stamp - a.stamp);
+    let totalBytes = files.reduce((n, f) => n + f.bytes, 0);
+    let keptCount = files.length;
+    for (let i = files.length - 1; i >= 0 && (keptCount > maxRecords || totalBytes > maxBytes); i -= 1) {
+        if (files[i].active) continue;
+        try {
+            fs.rmSync(files[i].file, { force: true });
+            totalBytes -= files[i].bytes;
+            keptCount -= 1;
+        } catch {}
+    }
+}
+
+export function reconcileLifecycleRecords({
+    stateDir,
+    isAlive = isProcessAlive,
+    maxRecords = DEFAULT_LIFECYCLE_MAX_RECORDS,
+    maxBytes = DEFAULT_LIFECYCLE_MAX_BYTES,
+    now = new Date(),
+} = {}) {
+    const dir = lifecycleDir(stateDir);
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+        return { reconciled: [], records: [] };
+    }
+    const stamp = now instanceof Date ? now.toISOString() : new Date(now).toISOString();
+    const reconciled = [];
+    const records = [];
+    for (const entry of entries) {
+        if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+        const file = path.join(dir, entry.name);
+        const rec = readLifecycleFile(file);
+        if (!rec) continue;
+        if (rec.status === "started") {
+            const alive = Number.isSafeInteger(rec.pid) && rec.pid > 0 && isAlive(rec.pid);
+            if (!alive) {
+                const updated = writeLifecycleFileAtomic(file, {
+                    ...rec,
+                    status: "orphaned",
+                    terminalOutcome: "orphaned",
+                    reason: rec.reason ?? "orphan_dead_pid",
+                    endedAt: null,
+                    reconciledAt: stamp,
+                    updatedAt: stamp,
+                    elapsedMs: null,
+                    rollback: rec.mode === "transform" ? "unknown" : "not_applicable",
+                    providerCancellation: "unknown",
+                    usage: normalizeLifecycleUsage(rec.usage),
+                });
+                reconciled.push(updated);
+                records.push(updated);
+                continue;
+            }
+        }
+        records.push(rec);
+    }
+    pruneLifecycleDir(dir, maxRecords, maxBytes);
+    records.sort((a, b) => Date.parse(b.updatedAt ?? b.startedAt) - Date.parse(a.updatedAt ?? a.startedAt));
+    return { reconciled, records };
+}
+
+export function readLifecycleRecords(options = {}) {
+    if (options.reconcile !== false) return reconcileLifecycleRecords(options).records;
+    const dir = lifecycleDir(options.stateDir);
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+        return [];
+    }
+    const records = [];
+    for (const entry of entries) {
+        if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+        const rec = readLifecycleFile(path.join(dir, entry.name));
+        if (rec) records.push(rec);
+    }
+    records.sort((a, b) => Date.parse(b.updatedAt ?? b.startedAt) - Date.parse(a.updatedAt ?? a.startedAt));
+    return records;
+}
+
+export function formatCancelReceipt(record) {
+    const u = normalizeLifecycleUsage(record?.usage);
+    return (
+        `CANCELLED id=${record?.requestId ?? "?"} mode=${record?.mode ?? "?"} model=${record?.model ?? "?"} ` +
+        `phase=${record?.phase ?? "?"} signal=${record?.signal ?? "none"} reason=${record?.reason ?? "interrupted"} ` +
+        `elapsed=${figure(record?.elapsedMs, "ms")} rollback=${record?.rollback ?? "unknown"} ` +
+        `provider-cancel=${record?.providerCancellation ?? "unknown"} ` +
+        `in=${figure(u.input, "t")} out=${figure(u.output, "t")} ` +
+        `reasoning=${figure(u.reasoning, "t")} cached-in=${figure(u.cached, "t")}`
+    );
+}
+
+export function beginLifecycle({
+    mode,
+    model = null,
+    endpoint = null,
+    phase = "queued",
+    target = null,
+    requestId = randomUUID(),
+    pid = process.pid,
+    stateDir,
+    maxRecords = DEFAULT_LIFECYCLE_MAX_RECORDS,
+    maxBytes = DEFAULT_LIFECYCLE_MAX_BYTES,
+    reconcile = true,
+} = {}) {
+    const dir = lifecycleDir(stateDir);
+    if (reconcile) reconcileLifecycleRecords({ stateDir, maxRecords, maxBytes });
+    const file = path.join(dir, `${String(requestId).replace(/[^a-zA-Z0-9_-]/g, "_")}.json`);
+    const startedAt = new Date().toISOString();
+    const t0 = performance.now();
+    const controller = new AbortController();
+    let settled = false;
+    let current = allowlistedLifecycleRecord({
+        requestId,
+        pid,
+        mode,
+        model,
+        endpoint,
+        phase,
+        attempt: 0,
+        startedAt,
+        updatedAt: startedAt,
+        endedAt: null,
+        reconciledAt: null,
+        status: "started",
+        terminalOutcome: null,
+        signal: null,
+        reason: null,
+        elapsedMs: null,
+        rollback: mode === "transform" ? "unknown" : "not_applicable",
+        providerCancellation: "unknown",
+        usage: EMPTY_USAGE,
+        target: target ? path.basename(String(target)) : null,
+    });
+    writeLifecycleFileAtomic(file, current);
+
+    const persist = (patch) => {
+        current = writeLifecycleFileAtomic(file, { ...current, ...patch, updatedAt: new Date().toISOString() });
+        return current;
+    };
+    const finalize = ({
+        status,
+        phase: finalPhase = current.phase,
+        signal = null,
+        reason = null,
+        elapsedMs,
+        rollback,
+        providerCancellation = "unknown",
+        usage = null,
+    }) => {
+        if (settled) return current;
+        settled = true;
+        const nowIso = new Date().toISOString();
+        const computedElapsed = Number.isFinite(elapsedMs) && elapsedMs >= 0
+            ? Math.round(elapsedMs)
+            : Math.max(0, Math.round(performance.now() - t0));
+        const resolvedRollback = rollback ?? (current.mode === "transform" ? "unknown" : "not_applicable");
+        const saved = writeLifecycleFileAtomic(file, {
+            ...current,
+            phase: finalPhase,
+            signal,
+            reason,
+            elapsedMs: computedElapsed,
+            endedAt: nowIso,
+            updatedAt: nowIso,
+            status,
+            terminalOutcome: status,
+            rollback: resolvedRollback,
+            providerCancellation: providerCancellation === "confirmed" ? "confirmed" : "unknown",
+            usage: normalizeLifecycleUsage(usage),
+        });
+        current = saved;
+        pruneLifecycleDir(dir, maxRecords, maxBytes);
+        return current;
+    };
+
+    return {
+        id: current.requestId,
+        file,
+        controller,
+        phase: () => current.phase,
+        isSettled: () => settled,
+        currentRecord: () => ({ ...current, usage: { ...current.usage } }),
+        setPhase: (nextPhase, extra = {}) => {
+            if (settled) return current;
+            const patch = { phase: nextPhase };
+            if (extra.attempt !== undefined) patch.attempt = extra.attempt;
+            if (extra.model !== undefined) patch.model = extra.model;
+            if (extra.endpoint !== undefined) patch.endpoint = sanitizeEndpoint(extra.endpoint);
+            return persist(patch);
+        },
+        complete: ({ phase: finalPhase = "completed", usage = null, elapsedMs, rollback = "not_applicable", reason = null } = {}) =>
+            finalize({ status: "completed", phase: finalPhase, usage, elapsedMs, rollback, reason }),
+        fail: ({ reason = "failed", phase: finalPhase = current.phase, elapsedMs, rollback, usage = null, providerCancellation = "unknown" } = {}) =>
+            finalize({ status: "failed", phase: finalPhase, reason, elapsedMs, rollback, usage, providerCancellation }),
+        cancel: ({ signal = null, reason = "interrupted", phase: finalPhase = current.phase, elapsedMs, rollback, providerCancellation = "unknown", usage = null } = {}) => {
+            const record = finalize({ status: "cancelled", phase: finalPhase, signal, reason, elapsedMs, rollback, providerCancellation, usage });
+            return { record, receipt: formatCancelReceipt(record) };
+        },
+    };
+}
+
 export async function acquireEndpointLock(
     endpoint,
-    { lockDir = process.env.PORTULAN_LOCAL_LLM_LOCK_DIR || os.tmpdir(), pollMs = 50, staleGraceMs = 2000 } = {},
+    { lockDir = process.env.PORTULAN_LOCAL_LLM_LOCK_DIR || os.tmpdir(), pollMs = 50, staleGraceMs = 2000, signal } = {},
 ) {
     fs.mkdirSync(lockDir, { recursive: true });
     const lockPath = endpointLockPath(endpoint, lockDir);
+    const lockToken = randomUUID();
     const waitStart = performance.now();
     let waited = false;
     while (true) {
+        if (signal?.aborted) {
+            throw Object.assign(new Error("Local model request aborted while queued for endpoint lock"), { code: "LOCAL_REQUEST_ABORTED" });
+        }
         let fd = null;
         try {
             fd = fs.openSync(lockPath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY, 0o600);
-            fs.writeSync(fd, `${JSON.stringify({ pid: process.pid, startedAt: Date.now(), endpoint })}\n`);
+            fs.writeSync(fd, `${JSON.stringify({ pid: process.pid, token: lockToken, startedAt: Date.now(), endpoint })}\n`);
             fs.closeSync(fd);
             fd = null;
             const queuedMs = waited ? Math.max(1, Math.round(performance.now() - waitStart)) : 0;
@@ -366,7 +689,10 @@ export async function acquireEndpointLock(
                 released = true;
                 ACTIVE_LOCKS.delete(release);
                 syncLockSignals();
-                try { fs.unlinkSync(lockPath); } catch {}
+                try {
+                    const holder = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+                    if (holder?.pid === process.pid && holder?.token === lockToken) fs.unlinkSync(lockPath);
+                } catch {}
             };
             ACTIVE_LOCKS.add(release);
             syncLockSignals();
@@ -378,9 +704,34 @@ export async function acquireEndpointLock(
             if (err.code !== "EEXIST") throw err;
             waited = true;
             if (tryRecoverStaleLock(lockPath, staleGraceMs)) continue;
-            await new Promise((resolve) => setTimeout(resolve, pollMs));
+            await new Promise((resolve) => {
+                const timer = setTimeout(() => {
+                    signal?.removeEventListener("abort", onAbort);
+                    resolve();
+                }, pollMs);
+                const onAbort = () => {
+                    clearTimeout(timer);
+                    resolve();
+                };
+                if (signal) signal.addEventListener("abort", onAbort, { once: true });
+            });
         }
     }
+}
+
+function registerSignalCancel(onInterrupt) {
+    let active = true;
+    const handler = (signal) => {
+        if (!active) return;
+        active = false;
+        cleanup();
+        onInterrupt(signal);
+    };
+    const cleanup = () => {
+        for (const signal of RESTORE_SIGNALS) process.off(signal, handler);
+    };
+    for (const signal of RESTORE_SIGNALS) process.on(signal, handler);
+    return cleanup;
 }
 
 export async function callLocalChat({
@@ -396,23 +747,57 @@ export async function callLocalChat({
     noLock = false,
     useLock,
     lockDir,
+    signal,
+    lifecycle = null,
+    requestId,
+    stateDir,
+    trackLifecycle = true,
+    exitOnSignal = true,
     fetchImpl = globalThis.fetch,
 }) {
     const endpoint = assertLoopback(baseUrl, { allowRemote });
     const serialized = messages.map((m) => m.content ?? "").join("\n");
     assertInputBudget(serialized, { maxInputBytes });
 
-    const shouldLock = !noLock && (useLock === true || lockDir !== undefined || fetchImpl === globalThis.fetch);
-    const lock = shouldLock ? await acquireEndpointLock(endpoint, { ...(lockDir ? { lockDir } : {}) }) : { queuedMs: 0, release: () => {} };
-    if (lock.queuedMs > 0) console.error(`local-llm: waited ${lock.queuedMs}ms for endpoint lock (${endpoint})`);
+    const ownLifecycle = !lifecycle && trackLifecycle !== false
+        ? beginLifecycle({ mode: "chat", model, endpoint, phase: "queued", requestId, stateDir })
+        : null;
+    const activeLifecycle = lifecycle ?? ownLifecycle;
+    const controller = ownLifecycle ? ownLifecycle.controller : null;
+    const activeSignal = signal ?? controller?.signal;
+    if (signal && controller && signal !== controller.signal) {
+        if (signal.aborted) controller.abort();
+        else signal.addEventListener("abort", () => controller.abort(), { once: true });
+    }
+    const unregisterSignals = ownLifecycle
+        ? registerSignalCancel((sig) => {
+            const interruptedPhase = activeLifecycle.phase();
+            controller.abort();
+            releaseActiveLocks();
+            const cancelled = ownLifecycle.cancel({ signal: sig, reason: "interrupted", phase: interruptedPhase, rollback: "not_applicable", providerCancellation: "unknown", usage: null });
+            console.error(`Interrupted by ${sig}; rollback=not_applicable.`);
+            console.error(cancelled.receipt);
+            if (exitOnSignal) process.exit(2);
+        })
+        : () => {};
 
+    const shouldLock = !noLock && (useLock === true || lockDir !== undefined || fetchImpl === globalThis.fetch);
+    let lock = { queuedMs: 0, release: () => {} };
     try {
+        activeLifecycle?.setPhase("queued", { model, endpoint });
+        lock = shouldLock
+            ? await acquireEndpointLock(endpoint, { ...(lockDir ? { lockDir } : {}), ...(activeSignal ? { signal: activeSignal } : {}) })
+            : { queuedMs: 0, release: () => {} };
+        if (lock.queuedMs > 0) console.error(`local-llm: waited ${lock.queuedMs}ms for endpoint lock (${endpoint})`);
+
+        activeLifecycle?.setPhase("generation", { model, endpoint });
         const t0 = performance.now();
         const res = await localFetch(
             `${endpoint}/chat/completions`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                ...(activeSignal ? { signal: activeSignal } : {}),
                 body: JSON.stringify({
                     model,
                     messages,
@@ -449,7 +834,8 @@ export async function callLocalChat({
         const rawContent = data.choices?.[0]?.message?.content ?? "";
         const { completionTokens } = usage;
 
-        return {
+        const out = {
+            requestId: activeLifecycle?.id ?? null,
             content: stripThinking(rawContent),
             rawContent,
             ...usage,
@@ -457,7 +843,18 @@ export async function callLocalChat({
             queuedMs: lock.queuedMs,
             tokPerSec: rate(completionTokens, totalMs),
         };
+        ownLifecycle?.complete({ phase: "completed", usage: out, elapsedMs: totalMs, rollback: "not_applicable" });
+        return out;
+    } catch (err) {
+        ownLifecycle?.fail({
+            reason: err instanceof RailError ? "rail_error" : err?.code === "LOCAL_REQUEST_ABORTED" ? "aborted" : "failed",
+            phase: activeLifecycle?.phase() ?? "generation",
+            rollback: "not_applicable",
+            usage: null,
+        });
+        throw err;
     } finally {
+        unregisterSignals();
         lock.release();
     }
 }
@@ -568,34 +965,85 @@ export async function runDedup({
     baseUrl = DEFAULT_BASE_URL,
     allowRemote = false,
     maxInputBytes = DEFAULT_MAX_INPUT_BYTES,
+    signal,
+    lifecycle = null,
+    requestId,
+    stateDir,
+    trackLifecycle = true,
+    exitOnSignal = true,
     fetchImpl = globalThis.fetch,
 }) {
     const endpoint = assertLoopback(baseUrl, { allowRemote });
     const { names, texts } = readSlot(dir, { maxInputBytes });
 
-    const t0 = performance.now();
-    const res = await localFetch(
-        `${endpoint}/embeddings`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, input: texts }) },
-        fetchImpl,
-    );
-    if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        throw new CouldNotRunError(`Local LLM server returned HTTP ${res.status}: ${body.slice(0, 200)}`);
+    const ownLifecycle = !lifecycle && trackLifecycle !== false
+        ? beginLifecycle({ mode: "dedup", model, endpoint, phase: "embedding", requestId, stateDir })
+        : null;
+    const activeLifecycle = lifecycle ?? ownLifecycle;
+    const controller = ownLifecycle ? ownLifecycle.controller : null;
+    const activeSignal = signal ?? controller?.signal;
+    if (signal && controller && signal !== controller.signal) {
+        if (signal.aborted) controller.abort();
+        else signal.addEventListener("abort", () => controller.abort(), { once: true });
     }
-    let data;
+    const unregisterSignals = ownLifecycle
+        ? registerSignalCancel((sig) => {
+            const interruptedPhase = activeLifecycle.phase();
+            controller.abort();
+            releaseActiveLocks();
+            const cancelled = ownLifecycle.cancel({ signal: sig, reason: "interrupted", phase: interruptedPhase, rollback: "not_applicable", providerCancellation: "unknown", usage: null });
+            console.error(`Interrupted by ${sig}; rollback=not_applicable.`);
+            console.error(cancelled.receipt);
+            if (exitOnSignal) process.exit(2);
+        })
+        : () => {};
+
     try {
-        data = await res.json();
+        activeLifecycle?.setPhase("embedding", { model, endpoint });
+        const t0 = performance.now();
+        const res = await localFetch(
+            `${endpoint}/embeddings`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                ...(activeSignal ? { signal: activeSignal } : {}),
+                body: JSON.stringify({ model, input: texts }),
+            },
+            fetchImpl,
+        );
+        if (!res.ok) {
+            const body = await res.text().catch(() => "");
+            throw new CouldNotRunError(`Local LLM server returned HTTP ${res.status}: ${body.slice(0, 200)}`);
+        }
+        let data;
+        try {
+            data = await res.json();
+        } catch (err) {
+            throw new CouldNotRunError(`Local LLM server returned a body that is not JSON — ${err.message}`);
+        }
+        const vectors = parseEmbeddings(data, names.length);
+        const totalMs = Math.max(1, Math.round(performance.now() - t0));
+        const promptTokens = Number.isSafeInteger(data.usage?.prompt_tokens) && data.usage.prompt_tokens >= 0 ? data.usage.prompt_tokens : null;
+        const result = {
+            requestId: activeLifecycle?.id ?? null,
+            pairs: rankDuplicatePairs(names, vectors, threshold),
+            files: names.length,
+            promptTokens,
+            totalMs,
+        };
+        ownLifecycle?.complete({ phase: "completed", usage: { input: promptTokens, output: null, cached: null, reasoning: null }, elapsedMs: totalMs, rollback: "not_applicable" });
+        return result;
     } catch (err) {
-        throw new CouldNotRunError(`Local LLM server returned a body that is not JSON — ${err.message}`);
+        ownLifecycle?.fail({
+            reason: err instanceof RailError ? "rail_error" : err?.code === "LOCAL_REQUEST_ABORTED" ? "aborted" : "failed",
+            phase: activeLifecycle?.phase() ?? "embedding",
+            rollback: "not_applicable",
+            usage: null,
+        });
+        throw err;
+    } finally {
+        unregisterSignals();
     }
-    const vectors = parseEmbeddings(data, names.length);
-    return {
-        pairs: rankDuplicatePairs(names, vectors, threshold),
-        files: names.length,
-        promptTokens: data.usage?.prompt_tokens ?? null,
-        totalMs: Math.max(1, Math.round(performance.now() - t0)),
-    };
 }
 
 export function formatDedupReceipt({ model, promptTokens = null, totalMs = null }) {
@@ -791,6 +1239,12 @@ export async function verifyGatedTransform({
     effort = "low",
     retries = DEFAULT_RETRIES,
     noLock = false,
+    signal,
+    lifecycle = null,
+    requestId,
+    stateDir,
+    trackLifecycle = true,
+    exitOnSignal = true,
     chatFn = callLocalChat,
     execFn = runVerify,
 }) {
@@ -845,8 +1299,19 @@ export async function verifyGatedTransform({
     const contextBlock = contextSections.length > 0 ? `${contextSections.join("\n\n")}\n\n` : "";
     const targetSlice = insertMode ? null : allLines.slice(startLine - 1, endLine).join("\n");
 
+    const ownLifecycle = !lifecycle && trackLifecycle !== false
+        ? beginLifecycle({ mode: "transform", model, endpoint: baseUrl, phase: preflight ? "preflight" : "generation", target: filePath, requestId, stateDir })
+        : null;
+    const activeLifecycle = lifecycle ?? ownLifecycle;
+    const abortController = activeLifecycle?.controller ?? new AbortController();
+    if (signal) {
+        if (signal.aborted) abortController.abort();
+        else signal.addEventListener("abort", () => abortController.abort(), { once: true });
+    }
+
     let kept = false;
     let verifying = null;
+    let interrupted = false;
     const restore = () => {
         try {
             fs.writeFileSync(filePath, originalBytes);
@@ -854,21 +1319,37 @@ export async function verifyGatedTransform({
             throw new CouldNotRunError(`Could not restore ${filePath} (${err.message}): it may still hold the model's unverified edit`);
         }
     };
-    const onSignal = (signal) => {
+    const onSignal = (sig) => {
+        if (interrupted) return;
+        interrupted = true;
+        const interruptedPhase = activeLifecycle?.phase() ?? (verifying ? "verification" : "generation");
+        abortController.abort();
         stopVerify(verifying);
         releaseActiveLocks();
         let outcome = kept ? "the verified edit stands" : `restored ${filePath}`;
+        let rollbackStatus = kept ? "not_applicable" : "restored";
         if (!kept) {
             try {
                 restore();
             } catch (err) {
                 outcome = err.message;
+                rollbackStatus = "failed";
             }
         }
-        console.error(`Interrupted by ${signal}; ${outcome}.`);
-        process.exit(2);
+        const cancelled = activeLifecycle?.cancel({
+            signal: sig,
+            reason: "interrupted",
+            phase: interruptedPhase,
+            rollback: rollbackStatus,
+            providerCancellation: "unknown",
+            usage: null,
+        });
+        for (const s of RESTORE_SIGNALS) process.off(s, onSignal);
+        console.error(`Interrupted by ${sig}; ${outcome}.`);
+        if (cancelled?.receipt) console.error(cancelled.receipt);
+        if (exitOnSignal) process.exit(2);
     };
-    for (const signal of RESTORE_SIGNALS) process.on(signal, onSignal);
+    for (const sig of RESTORE_SIGNALS) process.on(sig, onSignal);
 
     let lastError = "";
     let promptTokens = 0;
@@ -880,6 +1361,7 @@ export async function verifyGatedTransform({
     let preflightOutcome = null;
     try {
         if (preflight) {
+            activeLifecycle?.setPhase("preflight", { attempt: 0 });
             const baseline = await execFn(verifyCmd, { onSpawn: (child) => (verifying = child) });
             verifying = null;
             if (baseline.status === 0) {
@@ -917,7 +1399,8 @@ export async function verifyGatedTransform({
                 },
             ];
 
-            const reply = await chatFn({ baseUrl, allowRemote, model, messages, maxInputBytes, effort, noLock });
+            activeLifecycle?.setPhase("generation", { attempt, model, endpoint: baseUrl });
+            const reply = await chatFn({ baseUrl, allowRemote, model, messages, maxInputBytes, effort, noLock, signal: abortController.signal, lifecycle: activeLifecycle, exitOnSignal });
             promptTokens = sum(promptTokens, reply.promptTokens);
             completionTokens = sum(completionTokens, reply.completionTokens);
             reasoningTokens = sum(reasoningTokens, reply.reasoningTokens);
@@ -931,6 +1414,7 @@ export async function verifyGatedTransform({
                 : [...allLines.slice(0, startLine - 1), extracted, ...allLines.slice(endLine)];
             fs.writeFileSync(filePath, updatedLines.join("\n") + (trailingNewline ? "\n" : ""), "utf8");
 
+            activeLifecycle?.setPhase("verification", { attempt });
             const check = await execFn(verifyCmd, { onSpawn: (child) => (verifying = child) });
             verifying = null;
             const output = [check.stdout, check.stderr].filter(Boolean).join("\n").trim();
@@ -940,8 +1424,14 @@ export async function verifyGatedTransform({
                     continue;
                 }
                 kept = true;
+                activeLifecycle?.complete({
+                    phase: "completed",
+                    rollback: "not_applicable",
+                    usage: { input: promptTokens, output: completionTokens, cached: cachedPromptTokens, reasoning: reasoningTokens },
+                });
                 return {
                     ok: true,
+                    requestId: activeLifecycle?.id ?? null,
                     attempts: attempt,
                     preflight: preflightOutcome,
                     receipt: formatPassReceipt({
@@ -970,16 +1460,36 @@ export async function verifyGatedTransform({
             lastError = output;
         }
 
+        restore();
+        activeLifecycle?.fail({
+            reason: "red_verify",
+            phase: "verification",
+            rollback: "restored",
+            usage: { input: promptTokens, output: completionTokens, cached: cachedPromptTokens, reasoning: reasoningTokens },
+        });
         return {
             ok: false,
+            requestId: activeLifecycle?.id ?? null,
             attempts: retries + 1,
             error: `Verification remained red after ${retries + 1} attempt(s); restored ${filePath} byte-for-byte.\n${tail(lastError, FEEDBACK_CHARS)}`,
         };
+    } catch (err) {
+        let rollbackStatus = kept ? "not_applicable" : "restored";
+        if (!kept) {
+            try { restore(); } catch { rollbackStatus = "failed"; }
+        }
+        activeLifecycle?.fail({
+            reason: err instanceof RailError ? "rail_error" : err?.code === "LOCAL_REQUEST_ABORTED" ? "aborted" : "failed",
+            phase: activeLifecycle?.phase() ?? "generation",
+            rollback: rollbackStatus,
+            usage: null,
+        });
+        throw err;
     } finally {
         try {
             if (!kept) restore();
         } finally {
-            for (const signal of RESTORE_SIGNALS) process.off(signal, onSignal);
+            for (const sig of RESTORE_SIGNALS) process.off(sig, onSignal);
         }
     }
 }
@@ -1111,6 +1621,8 @@ export async function runRoleEval({
     baseUrl = DEFAULT_BASE_URL,
     allowRemote = false,
     effort = "low",
+    signal,
+    lifecycle = null,
     chatFn = callLocalChat,
     predicates,
 } = {}) {
@@ -1121,7 +1633,7 @@ export async function runRoleEval({
 
     const results = [];
     for (const task of tasks) {
-        const reply = await chatFn({ baseUrl, allowRemote, model, effort, messages: EVAL_PROMPTS[task] });
+        const reply = await chatFn({ baseUrl, allowRemote, model, effort, messages: EVAL_PROMPTS[task], ...(signal ? { signal } : {}), ...(lifecycle ? { lifecycle } : {}) });
         const verdict = gradeRoleOutput(task, reply.content, grading);
         results.push({
             task,
@@ -1882,6 +2394,7 @@ const TRANSFORM_USAGE =
 export const USAGE = `local-llm.mjs — a zero-dependency runner for a loopback OpenAI-compatible model.
 
   local-llm.mjs status
+  local-llm.mjs lifecycle
   local-llm.mjs chat|summarize [--role code|prose | --model <id>] [--file <path> [--lines <a>-<b>]] [--context <a>-<b>] [--context-file <path>[:a-b]] (--prompt <text> | --prompt-file <path>) [--no-lock]
   ${TRANSFORM_USAGE}
   local-llm.mjs eval [--role code|prose | --model <id>] [--task code|codify|handoff] [--no-lock]
@@ -2067,7 +2580,7 @@ async function abMode(args, { fetchImpl }) {
         screen: grading.screen,
         journal: conditions.journal,
         predicates: grading.predicates,
-        chatFn: (options) => callLocalChat({ ...options, noLock: Boolean(args.noLock), fetchImpl }),
+        chatFn: (options) => callLocalChat({ ...options, noLock: Boolean(args.noLock), exitOnSignal: false, fetchImpl }),
         onTurn: (t, reused) =>
             console.error(`local-llm: ${t.arm.toUpperCase()} ${t.task} run ${t.run} ${t.completed ? (t.ok ? "PASS" : "FAIL") : "DID-NOT-COMPLETE"} ${t.ms}ms${reused ? " · from the journal, not re-run" : ""}`),
     });
@@ -2122,17 +2635,49 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
             return 0;
         }
 
+        if (cmd === "lifecycle") {
+            console.log(JSON.stringify(reconcileLifecycleRecords()));
+            return 0;
+        }
+
+        const runWithReadonlyLifecycle = async (mode, chosenModel, phase, fn) => {
+            const lifecycle = beginLifecycle({ mode, model: chosenModel, endpoint: baseUrl, phase });
+            const unregister = registerSignalCancel((sig) => {
+                const interruptedPhase = lifecycle.phase();
+                lifecycle.controller.abort();
+                releaseActiveLocks();
+                const cancelled = lifecycle.cancel({ signal: sig, reason: "interrupted", phase: interruptedPhase, rollback: "not_applicable", providerCancellation: "unknown", usage: null });
+                console.error(`Interrupted by ${sig}; rollback=not_applicable.`);
+                console.error(cancelled.receipt);
+                process.exit(2);
+            });
+            try {
+                return await fn(lifecycle);
+            } catch (err) {
+                lifecycle.fail({ reason: err instanceof RailError ? "rail_error" : "failed", phase: lifecycle.phase(), rollback: "not_applicable", usage: null });
+                throw err;
+            } finally {
+                unregister();
+            }
+        };
+
         if (cmd === "chat" || cmd === "summarize") {
             const chosen = operationalModel(args, cmd === "summarize" ? "prose" : "code");
-            const reply = await callLocalChat({
-                baseUrl,
-                allowRemote: args.allowRemote,
-                model: chosen,
-                effort: args.effort ?? "low",
-                maxInputBytes: args.maxInputBytes ?? DEFAULT_MAX_INPUT_BYTES,
-                noLock: Boolean(args.noLock),
-                messages: [{ role: "user", content: buildPrompt(args) }],
-                fetchImpl,
+            const reply = await runWithReadonlyLifecycle(cmd, chosen, "queued", async (lifecycle) => {
+                const res = await callLocalChat({
+                    baseUrl,
+                    allowRemote: args.allowRemote,
+                    model: chosen,
+                    effort: args.effort ?? "low",
+                    maxInputBytes: args.maxInputBytes ?? DEFAULT_MAX_INPUT_BYTES,
+                    noLock: Boolean(args.noLock),
+                    signal: lifecycle.controller.signal,
+                    lifecycle,
+                    messages: [{ role: "user", content: buildPrompt(args) }],
+                    fetchImpl,
+                });
+                lifecycle.complete({ phase: "completed", usage: res, elapsedMs: res.totalMs, rollback: "not_applicable" });
+                return res;
             });
             console.log(reply.content);
             console.error(formatPassReceipt({ mode: cmd, model: chosen, ...reply }));
@@ -2183,14 +2728,20 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
             if (args.role) throw new CouldNotRunError(`--role picks a chat model; dedup embeds with ${ROLE_MODELS.embed} unless --model names another`);
             const chosen = args.model ?? ROLE_MODELS.embed;
             const threshold = args.threshold ?? DEFAULT_DEDUP_THRESHOLD;
-            const res = await runDedup({
-                dir: args.dir,
-                threshold,
-                model: chosen,
-                baseUrl,
-                allowRemote: args.allowRemote,
-                maxInputBytes: args.maxInputBytes ?? DEFAULT_MAX_INPUT_BYTES,
-                fetchImpl,
+            const res = await runWithReadonlyLifecycle("dedup", chosen, "embedding", async (lifecycle) => {
+                const out = await runDedup({
+                    dir: args.dir,
+                    threshold,
+                    model: chosen,
+                    baseUrl,
+                    allowRemote: args.allowRemote,
+                    maxInputBytes: args.maxInputBytes ?? DEFAULT_MAX_INPUT_BYTES,
+                    signal: lifecycle.controller.signal,
+                    lifecycle,
+                    fetchImpl,
+                });
+                lifecycle.complete({ phase: "completed", usage: { input: out.promptTokens, output: null, cached: null, reasoning: null }, elapsedMs: out.totalMs, rollback: "not_applicable" });
+                return out;
             });
             for (const p of res.pairs) console.log(`${p.score.toFixed(3)} ${p.a} ${p.b}`);
             console.error(`dedup files=${res.files} pairs=${res.pairs.length} threshold=${threshold}`);
@@ -2202,13 +2753,19 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
             for (const key of AB_ONLY) {
                 if (args[key] !== undefined) throw new CouldNotRunError(`${FLAG_OF[key]} belongs to eval --ab, --verify or --write; the screen takes one sample and runs no host`);
             }
-            const results = await runRoleEval({
-                model,
-                tasks: args.task ? [args.task] : ["code", "codify", "handoff"],
-                baseUrl,
-                allowRemote: args.allowRemote,
-                effort: args.effort ?? "low",
-                chatFn: (options) => callLocalChat({ ...options, noLock: Boolean(args.noLock), fetchImpl }),
+            const results = await runWithReadonlyLifecycle("eval", model, "generation", async (lifecycle) => {
+                const out = await runRoleEval({
+                    model,
+                    tasks: args.task ? [args.task] : ["code", "codify", "handoff"],
+                    baseUrl,
+                    allowRemote: args.allowRemote,
+                    effort: args.effort ?? "low",
+                    signal: lifecycle.controller.signal,
+                    lifecycle,
+                    chatFn: (options) => callLocalChat({ ...options, noLock: Boolean(args.noLock), fetchImpl }),
+                });
+                lifecycle.complete({ phase: "completed", rollback: "not_applicable" });
+                return out;
             });
             for (const r of results) {
                 console.log(`${r.ok ? "PASS" : "FAIL"} task=${r.task} model=${r.model} time=${r.totalMs}ms rate=${figure(r.tokPerSec, "tok/s")} ${r.detail}`);

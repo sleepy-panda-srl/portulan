@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {callLocalChat, formatPassReceipt, verifyGatedTransform, RailError} from '../packs/tools/local-llm/runner/local-llm.mjs';
+import {callLocalChat, formatCancelReceipt, formatPassReceipt, normalizeLifecycleUsage, verifyGatedTransform, RailError} from '../packs/tools/local-llm/runner/local-llm.mjs';
 import {receiptOf} from './ledger.mjs';
 
 const response = (usage, finish_reason = 'stop') => async () => ({ok:true,json:async()=>({
@@ -95,4 +95,10 @@ test('ledger accepts legacy and extended receipts, refuses impossible subsets',(
     assert.deepEqual(receiptOf(preflighted),receiptOf(legacy));
     assert.equal(receiptOf(extended.replace('reasoning=15t','reasoning=19t')),null);
     assert.equal(receiptOf(extended.replace('cached-in=4t','cached-in=13t')),null);
+});
+test('cancellation receipt is ignored by spend ledger and preserves null unreported usage (#581)',()=>{
+    const cancelLine=formatCancelReceipt({requestId:'req-1',mode:'transform',model:'m',phase:'generation',signal:'SIGINT',reason:'interrupted',elapsedMs:42,rollback:'restored',providerCancellation:'unknown',usage:null});
+    assert.equal(receiptOf(cancelLine),null);
+    assert.match(cancelLine,/in=\? out=\? reasoning=\? cached-in=\?/);
+    assert.deepEqual(normalizeLifecycleUsage({input:10,output:4,cached:12,reasoning:6}),{input:10,output:4,cached:null,reasoning:null});
 });
