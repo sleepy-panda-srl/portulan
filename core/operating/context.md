@@ -139,6 +139,10 @@ less. `compile` writes the lead of each rule below onto every boot card, Portula
   Read tool's `offset` and `limit`, which an Edit may follow. `<plugin root>` is where Portulan is
   installed, the directory whose `core/engine.md` the boot reads; in Portulan's own repository it is the
   repository, and `compile` writes the command as run from there.
+  JavaScript, shell, Markdown, C# and Python are supported; the latter two print
+  `start-end` ranges directly usable by `--lines`. See [bounded language coverage](../../cli/symbols-code.md)
+  for lexical limits. If outlining refuses, use a bounded declaration search to
+  select a span instead of opening the whole file.
 - **Ask for only the output you need: a range, a count, the failures.** Output enters the context as a
   read does. A passing run needs its summary and a failing one the failing check and the fact to act on,
   as [`loop.md`](loop.md)'s compacted error does; `git diff --stat`, `grep -c` and a line range ask for

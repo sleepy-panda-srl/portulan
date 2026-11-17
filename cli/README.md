@@ -97,6 +97,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`spend-offer.mjs`](spend-offer.mjs) | Local evidence for init's optional spend declaration. |
 | [`stop-diagnostics.mjs`](stop-diagnostics.mjs) | Bounded streaming failure excerpts for the Stop recipe relay. |
 | [`stop-policy.mjs`](stop-policy.mjs) | Stop recipe deadline policy. |
+| [`symbols-code.mjs`](symbols-code.mjs) | Bounded lexical C#/Python outlines; source offsets keep line spans honest. |
 | [`symbols.mjs`](symbols.mjs) | A code file's outline, one line per symbol, and a Markdown file's, one line per heading with its size. |
 | [`telemetry.mjs`](telemetry.mjs) | The OTel emitter: the review-loop figures as OTLP/HTTP JSON, sent only when a committed config opts in. |
 | [`version-carriers.mjs`](version-carriers.mjs) | Every prose statement of the current version agrees with `package.json`. |
@@ -191,6 +192,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`spend-offer.test.mjs`](spend-offer.test.mjs) | Init spend offers. |
 | [`stop-diagnostics.test.mjs`](stop-diagnostics.test.mjs) | Stop recipe diagnostics retain failures across noise and stream boundaries. |
 | [`stop-gate.test.mjs`](stop-gate.test.mjs) | Tests for the Stop-gate runner: its per-reason caps, the handoff date, its verdicts, the did-work signals and the tree it answers about. |
+| [`symbols-code.test.mjs`](symbols-code.test.mjs) | C#/Python spans retain complete declarations and feed the runner's range contract. |
 | [`symbols.live.test.mjs`](symbols.live.test.mjs) | `symbols` against this repository: tracked code and Markdown files outline, each declaration compiles alone, and heading links land. |
 | [`symbols.test.mjs`](symbols.test.mjs) | The outline's contract, on fixtures: what each construct prints, and every refusal. |
 | [`telemetry.test.mjs`](telemetry.test.mjs) | Tests for the OTel emitter: its consent gate, closed payload, offline audit and transport. |
@@ -212,4 +214,5 @@ What the tools and suites read.
 | [`finish.md`](finish.md) | Finish verification boundaries |
 | [`recipe-runner.md`](recipe-runner.md) | Recipe execution and cleanup |
 | [`spend-offer.md`](spend-offer.md) | Init's spend offer |
+| [`symbols-code.md`](symbols-code.md) | C# and Python outlines |
 | [`fixtures/`](fixtures/) | The fixtures the suites build on; each suite names the ones it reads. Not shipped. |

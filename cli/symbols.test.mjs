@@ -402,12 +402,12 @@ describe("the command", () => {
         assert.deepEqual(run(["a.mjs"], dir), { code: 0, out: "a.mjs: 1 line\n1 export const A = 1;\n", err: "" });
         const txt = run(["notes.txt"], dir);
         assert.equal(txt.code, 2);
-        assert.match(txt.err, /notes\.txt is not JavaScript, shell or Markdown; read it whole/);
+        assert.match(txt.err, /notes\.txt has no supported outline; use a bounded declaration search/);
         const missing = run(["gone.mjs"], dir);
         assert.equal(missing.code, 2);
         assert.match(missing.err, /cannot read gone\.mjs: ENOENT/);
         fs.writeFileSync(path.join(dir, "broken.mjs"), "function f() {\n");
-        assert.match(run(["broken.mjs"], dir).err, /broken\.mjs: an unclosed `\{` on line 1; read it as usual/);
+        assert.match(run(["broken.mjs"], dir).err, /broken\.mjs: an unclosed `\{` on line 1; use a bounded declaration search/);
     });
 
     test("finds a definition across the tracked code, members as Class.member, and exits 1 for none", () => {
