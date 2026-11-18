@@ -1,0 +1,172 @@
+{
+  "schema": 1,
+  "preregisteredAt": "2026-11-18T00:14:02.566Z",
+  "parentCommit": "e69854893db1b629ed680e4a9d369f6795b4b577",
+  "sourceSha256": {
+    "runner": "a4973327489847ebc7e14b695b8fff7bdfb3404093183b700f835e5159427dfa",
+    "acquisition": "678c7c45d499923fc95212c2b2cb4cd190e16bf6f63ce77994ea610fe83728e5",
+    "verifier": "217d6cd64ed5f30f5b42b908162078c937a792f8092387ac88f586079b325c85",
+    "protocol": "a899f62433a396f91d6872210e15e3a6a3fe9c6455a48973caed354f3fc61bd4",
+    "source": "a08b7e83e218ad314c7dbe966920e518f530c014f598298bbeada72d8577094a",
+    "instruction": "b8b0f015a6c1ed323c4da147495dbb863bd2794c3bce98580196dacff9404c81",
+    "expected": "f679dd60a6f835dfdf6378f165eceda5887e900c225fffcdb5fb70165e4a1426"
+  },
+  "controls": [
+    {
+      "name": "intended",
+      "exit": 0
+    },
+    {
+      "name": "baseline",
+      "exit": 1
+    },
+    {
+      "name": "missingAssignment",
+      "exit": 1
+    },
+    {
+      "name": "missingGuard",
+      "exit": 1
+    },
+    {
+      "name": "wrongGuard",
+      "exit": 1
+    },
+    {
+      "name": "oldSchema",
+      "exit": 1
+    },
+    {
+      "name": "missingPayload",
+      "exit": 1
+    },
+    {
+      "name": "wrongPayload",
+      "exit": 1
+    },
+    {
+      "name": "missingTimeout",
+      "exit": 1
+    },
+    {
+      "name": "wrongInput",
+      "exit": 1
+    }
+  ],
+  "profile": {
+    "model": "qwen/qwen3.8-27b",
+    "role": "code",
+    "effort": "low",
+    "maxTokens": 4096,
+    "retries": 0,
+    "enableThinking": false,
+    "temperature": 0.1,
+    "seed": null,
+    "baseUrl": "http://127.0.0.1:1234/v1"
+  },
+  "arms": [
+    "without-soft-switch",
+    "with-soft-switch"
+  ],
+  "stoppingPolicy": "one generation per arm;180000ms whole child bound;stop remaining after cancellation or could-not-run;no adaptive retries",
+  "modelsSha256": "da8bea2792856b945185bf5c31f4e2cff3156cb36bc42ec579c570fc2821a9ae",
+  "machine": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v26.13.1",
+    "python": "Python 3.15.2",
+    "cpu": "Apple M5 Max",
+    "memoryBytes": 137438953472
+  },
+  "historicalPromptRecovered": false,
+  "startedAt": "2026-11-18T00:14:02.876Z",
+  "cells": [
+    {
+      "id": "without-soft-switch",
+      "outcome": "verified",
+      "exit": 0,
+      "signal": null,
+      "cancelled": false,
+      "wallMs": 26660,
+      "requestId": "d1261c13-10c0-4de8-93d8-38b16f539f50",
+      "providerResponseId": "chatcmpl-kr52xwpdme2x6yq07s9k2",
+      "providerCancellation": "unknown",
+      "terminalReason": null,
+      "attempts": 1,
+      "requested": {
+        "model": "qwen/qwen3.8-27b",
+        "effort": "low",
+        "enableThinking": false,
+        "maxTokens": 4096,
+        "temperature": 0.1,
+        "seed": null
+      },
+      "usage": {
+        "input": 525,
+        "output": 320,
+        "reasoning": 0,
+        "cached": null
+      },
+      "finishReason": "stop",
+      "providerRefusal": false,
+      "queuedMs": 0,
+      "modelMs": 26468,
+      "receipt": "OK mode=transform model=qwen/qwen3.8-27b target=target.py attempts=1 in=525t out=320t time=26468ms rate=12.1tok/s reasoning=0t cached-in=? preflight=red max-tokens=4096 spend=$0.00",
+      "selectedLines": 19,
+      "emittedCodeLines": 22,
+      "keptSpanLines": 22,
+      "beforeSha256": "0f829c6c33523b7bf5d623965f94b1dca51db30060bc3cfcea966c4683bb1431",
+      "selectedSha256": "a08b7e83e218ad314c7dbe966920e518f530c014f598298bbeada72d8577094a",
+      "afterSha256": "b5fbc757358ef4ba04165ab17ec54d94f9e2e405830f5e54717279cd3cf854ee",
+      "requestSha256": "dc973a425590063ec34ba3c24f52a8c8ca9b1afd5c7874c3426cd10c33004eed",
+      "normalizedRequestSha256": "dc973a425590063ec34ba3c24f52a8c8ca9b1afd5c7874c3426cd10c33004eed",
+      "responseSha256": "6f93a3cf215e8bcf8ae83f646cd0ec7291a333113150141942c3c22182392147",
+      "outsideIntact": true,
+      "rollback": "not_needed"
+    },
+    {
+      "id": "with-soft-switch",
+      "outcome": "verified",
+      "exit": 0,
+      "signal": null,
+      "cancelled": false,
+      "wallMs": 19077,
+      "requestId": "56d14ab4-a4e7-4eb2-8c41-4e832a0e9cee",
+      "providerResponseId": "chatcmpl-qn1wiq8054qon33hf6tko8",
+      "providerCancellation": "unknown",
+      "terminalReason": null,
+      "attempts": 1,
+      "requested": {
+        "model": "qwen/qwen3.8-27b",
+        "effort": "low",
+        "enableThinking": false,
+        "maxTokens": 4096,
+        "temperature": 0.1,
+        "seed": null
+      },
+      "usage": {
+        "input": 526,
+        "output": 320,
+        "reasoning": 0,
+        "cached": null
+      },
+      "finishReason": "stop",
+      "providerRefusal": false,
+      "queuedMs": 0,
+      "modelMs": 18881,
+      "receipt": "OK mode=transform model=qwen/qwen3.8-27b target=target.py attempts=1 in=526t out=320t time=18881ms rate=16.9tok/s reasoning=0t cached-in=? preflight=red max-tokens=4096 spend=$0.00",
+      "selectedLines": 19,
+      "emittedCodeLines": 22,
+      "keptSpanLines": 22,
+      "beforeSha256": "0f829c6c33523b7bf5d623965f94b1dca51db30060bc3cfcea966c4683bb1431",
+      "selectedSha256": "a08b7e83e218ad314c7dbe966920e518f530c014f598298bbeada72d8577094a",
+      "afterSha256": "b5fbc757358ef4ba04165ab17ec54d94f9e2e405830f5e54717279cd3cf854ee",
+      "requestSha256": "6d2d6c756009c9221c9aafb1a5d8626a2b70bff6a9cf717032fd817542366f3f",
+      "normalizedRequestSha256": "dc973a425590063ec34ba3c24f52a8c8ca9b1afd5c7874c3426cd10c33004eed",
+      "responseSha256": "afb3bce535d42994a642f06445d73d282a60e08a53050292833be201158559a8",
+      "outsideIntact": true,
+      "rollback": "not_needed"
+    }
+  ],
+  "finishedAt": "2026-11-18T00:14:48.615Z"
+}
