@@ -1,1 +1,0 @@
-- Successful local transforms now expose every earlier failed attempt's bounded verification tail on stderr, including expectation misses, while stdout remains one receipt.

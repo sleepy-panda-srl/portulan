@@ -1,1 +1,0 @@
-- `tools/local-llm`: `stripThinking` strips only leading blank lines and trailing whitespace after `<think>`, so unfenced replies keep their first line's indentation ([#576](https://github.com/sleepy-panda-srl/portulan/issues/576)).

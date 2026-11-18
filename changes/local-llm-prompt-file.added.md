@@ -1,1 +1,0 @@
-- `tools/local-llm`: add `--prompt-file <path>` (and `-` for stdin) to `transform`, `chat` and `summarize` ([#580](https://github.com/sleepy-panda-srl/portulan/issues/580)).
