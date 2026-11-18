@@ -1,0 +1,21 @@
+{
+  "originalSpanSha256": "a08b7e83e218ad314c7dbe966920e518f530c014f598298bbeada72d8577094a",
+  "historicalReplacementSha256": "f679dd60a6f835dfdf6378f165eceda5887e900c225fffcdb5fb70165e4a1426",
+  "historicalResponseSha256": "083a3afcd8c4b568b047fd6c25bfd31b95f8041925d1c617676d273ee30a0bed",
+  "historicalResponseId": "chatcmpl-dv92cd7s9khrx194qlrze",
+  "historicalUsage": {
+    "prompt_tokens": 570,
+    "completion_tokens": 1876,
+    "total_tokens": 2446,
+    "completion_tokens_details": {
+      "reasoning_tokens": 1555
+    }
+  },
+  "historicalPromptTruncated": true,
+  "originalSpanLines": 19,
+  "replacementLines": 22,
+  "sourceMatchesTransformation": true,
+  "insertedPhysicalLines": 3,
+  "modifiedExistingLines": 2,
+  "custody": "Immutable consumer Git selection and original server-log response independently reconciled before acquisition; source and paths remain private."
+}
