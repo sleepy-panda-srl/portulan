@@ -64,9 +64,10 @@ tasks and profiles. They establish neither a general capacity ceiling nor net pa
 The paired run recorded zero reasoning in both arms under the current runtime.
 
 For workspaces using `floor.strict` with gate-policy spec 2.1 or 2.2, review the repair with
-`portulan upgrade` and apply it with `portulan upgrade --write`. The optional `verify.stop`
+`portulan upgrade <workspace-dir>` and apply it with `portulan upgrade --write <workspace-dir>`. The optional `verify.stop`
 and per-recipe `stopTimeout` fields require [Workspace Definition 2.17](spec/README.md#versioning-and-migrations).
 Existing manifests can retain the version their fields require.
+This release carries its [eval register](evals/releases/0.5.0.md).
 
 ### Added
 
@@ -108,7 +109,7 @@ Existing manifests can retain the version their fields require.
   keep restart wording conditional on collecting delegated results; cost estimates
   and the verification Stop-gate retain their existing behavior (#575).
 
-- **Gate-policy `floor.strict` diagnostics and upgrade repair.** `compile` and `doctor` now instruct setting `portulan.spec` to `"2.3"` when `floor.strict` appears under gate-policy `2.1` or `2.2`, and `spec/migrations/0012-gate-policy-floor-strict.mjs` upgrades matching gate policies automatically during `portulan upgrade` even when that single check fails pre-state `doctor` (workarounds for 0.3.0+ adopters upgrading from 0.2.0: update `portulan.spec` to `"2.3"` in `gates.json` or run `portulan upgrade --write`) ([#579](https://github.com/sleepy-panda-srl/portulan/issues/579)).
+- **Gate-policy `floor.strict` diagnostics and upgrade repair.** `compile` and `doctor` now instruct setting `portulan.spec` to `"2.3"` when `floor.strict` appears under gate-policy `2.1` or `2.2`, and `spec/migrations/0012-gate-policy-floor-strict.mjs` upgrades matching gate policies automatically during `portulan upgrade --write <workspace-dir>` even when that single check fails pre-state `doctor`. Update `portulan.spec` to `"2.3"` in `gates.json` to apply the repair manually ([#579](https://github.com/sleepy-panda-srl/portulan/issues/579)).
 
 - `tools/local-llm`: record bounded metadata-only request start and terminal lifecycle receipts (`CANCELLED ...` on `SIGINT`/`SIGTERM`/`SIGHUP`, preserving `null` for unreported usage and `"unknown"` for unconfirmed provider cancellation), prove transform rollback on interruption while reporting `not_applicable` for read-only modes, compose safely with endpoint locks, and reconcile dead-PID `SIGKILL` records as `orphaned` via `reconcileLifecycleRecords` and `local-llm.mjs lifecycle` ([#581](https://github.com/sleepy-panda-srl/portulan/issues/581)).
 
