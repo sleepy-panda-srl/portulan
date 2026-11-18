@@ -47,6 +47,89 @@ A change's commit message is the fuller record: it says why, and `git log` finds
 Each entry for the next release is a file in [`changes/`](changes/), so two open changes never edit the
 same lines; `node cli/index.mjs --changes changes` prints them as the cut pastes them.
 
+## 0.5.0 — 2026-11-18
+
+**More control over local code delegation.** Callers can scope C# and Python declarations,
+pass read-only reference slices, insert code at a seam, and bound generation. Cheap prechecks
+can reject candidates before full verification. Progress, exhaustion, failed attempts and
+interrupted calls have distinct diagnostics. GitHub milestone 17 closed after the independent
+review verified these capabilities and the original-span `/no_think` comparison.
+
+**Upgrade notes.** Update the CLI or plugin and follow the [pack's adoption and upgrade checks](packs/tools/local-llm/README.md#adopting-it-in-a-workspace)
+if you compose `tools/local-llm`. Use the [sizing guidance](packs/tools/local-llm/README.md#sizing-and-wording-a-call)
+for a starting scope and keep the full verifier on transforms. The shared local role remains
+limited to earned code work. The [sizing pilot](packs/tools/local-llm/evidence/sizing/report.md)
+and [paired thinking receipts](packs/tools/local-llm/evidence/thinking/report.md) cover specific
+tasks and profiles. They establish neither a general capacity ceiling nor net parent savings.
+The paired run recorded zero reasoning in both arms under the current runtime.
+
+For workspaces using `floor.strict` with gate-policy spec 2.1 or 2.2, review the repair with
+`portulan upgrade <workspace-dir>` and apply it with `portulan upgrade --write <workspace-dir>`. The optional `verify.stop`
+and per-recipe `stopTimeout` fields require [Workspace Definition 2.17](spec/README.md#versioning-and-migrations).
+Existing manifests can retain the version their fields require.
+This release carries its [eval register](evals/releases/0.5.0.md).
+
+### Added
+
+- Symbol outlines now scope C# types/members and Python classes/functions with
+  runner-ready line ranges, including attributes/decorators and complete bodies.
+  Tracked definition search includes both languages; unsupported input recommends
+  bounded declaration search. Coverage and lexical limits are documented (#567).
+
+- The local-delegation skill is discoverable as “hybrid development” and explains
+  uncomposed workspaces. The adoption guide names composition, compilation, model
+  status, scoped earned-code transforms and source-byte upgrade verification,
+  including supported Claude Code/Codex recovery without cache edits (#566).
+
+- Local-model chat, summarize and transform accept `--max-tokens` and optional phase progress on stderr; exhausted responses are saved privately for diagnosis without accepting partial edits.
+
+- `tools/local-llm`: add repeatable `--context` / `--context-file` read-only reference slices and `--insert-after` / `--insert-before` seam-normalized insertion mode ([#569](https://github.com/sleepy-panda-srl/portulan/issues/569), [#570](https://github.com/sleepy-panda-srl/portulan/issues/570)).
+
+- `tools/local-llm`: serialise per-endpoint chat calls via an advisory lockfile (`--no-lock` to opt out) and report `queued=<ms>ms` outside the generation deadline ([#574](https://github.com/sleepy-panda-srl/portulan/issues/574)).
+
+- `tools/local-llm`: add `--prompt-file <path>` (and `-` for stdin) to `transform`, `chat` and `summarize` ([#580](https://github.com/sleepy-panda-srl/portulan/issues/580)).
+
+- **Preflight, expected-output checks, and reply preservation in `local-llm transform`.** Added `--preflight` to verify command runnability before invoking the local model (`preflight=green|red` recorded in the pass receipt), `--verify-expect <regex>` to reject empty or zero-test exit-0 runs, and candidate-reply preservation to a temp file when verification exits with no verdict; updated `delegate-local` step 3 and `cli/ledger.mjs` receipt parsing ([#577](https://github.com/sleepy-panda-srl/portulan/issues/577)).
+
+- Local delegation now has dated sizing receipts and wording cases, a conservative
+  starting scope with explicit model/budget limits, and bounded generation advice.
+  A six-cell live pilot, one separate diagnostic and parent-rejected counterexamples
+  distinguish fixture success from correctness; shared routing stays unchanged (#578).
+
+- Local transforms accept `--precheck` to reject and retry cheap failures before running the mandatory full verifier, with rollback and per-phase feedback preserved.
+
+- Added the matched original-span thinking-control comparison and qualified
+  receipts for the local runner's low-effort request, closing the evidence gap
+  identified by the independent milestone review.
+
+### Fixed
+
+- Restart advice follows the governing workspace's handoff policy and waits for known
+  background work without consuming its once-only delivery. Unknown host inventories
+  keep restart wording conditional on collecting delegated results; cost estimates
+  and the verification Stop-gate retain their existing behavior (#575).
+
+- **Gate-policy `floor.strict` diagnostics and upgrade repair.** `compile` and `doctor` now instruct setting `portulan.spec` to `"2.3"` when `floor.strict` appears under gate-policy `2.1` or `2.2`, and `spec/migrations/0012-gate-policy-floor-strict.mjs` upgrades matching gate policies automatically during `portulan upgrade --write <workspace-dir>` even when that single check fails pre-state `doctor`. Update `portulan.spec` to `"2.3"` in `gates.json` to apply the repair manually ([#579](https://github.com/sleepy-panda-srl/portulan/issues/579)).
+
+- `tools/local-llm`: record bounded metadata-only request start and terminal lifecycle receipts (`CANCELLED ...` on `SIGINT`/`SIGTERM`/`SIGHUP`, preserving `null` for unreported usage and `"unknown"` for unconfirmed provider cancellation), prove transform rollback on interruption while reporting `not_applicable` for read-only modes, compose safely with endpoint locks, and reconcile dead-PID `SIGKILL` records as `orphaned` via `reconcileLifecycleRecords` and `local-llm.mjs lifecycle` ([#581](https://github.com/sleepy-panda-srl/portulan/issues/581)).
+
+- `tools/local-llm`: include `--role`, `--model`, and `--effort` in `transform` `--help` and missing-flag usage lines with matching flag parity ([#568](https://github.com/sleepy-panda-srl/portulan/issues/568)).
+
+- `tools/local-llm`: `stripThinking` strips only leading blank lines and trailing whitespace after `<think>`, so unfenced replies keep their first line's indentation ([#576](https://github.com/sleepy-panda-srl/portulan/issues/576)).
+
+- Successful local transforms now expose every earlier failed attempt's bounded verification tail on stderr, including expectation misses, while stdout remains one receipt.
+
+- Local calls stop progress on cancellation and refuse late generation or check results; displayed verification diagnostics no longer introduce false ledger receipts.
+
+- The local-worker persona now offers the earned low-effort code route, with
+  handoffs and digests restricted to explicit operator-selected evaluations.
+  Cost, verification and rollback claims distinguish worker work from parent
+  requests and verified transforms from unverified candidate replies (#584).
+
+- Stop-gate supports per-recipe `verify.recipes[].stopTimeout` and optional `verify.stop` gate recipe selection under Workspace Definition 2.17, skips re-running a timed-out Stop recipe on an unchanged working tree during the same turn (`stop_hook_active`), and warns via `doctor` when a recorded Stop recipe duration exceeds its gate limit ([#652](https://github.com/sleepy-panda-srl/portulan/issues/652)).
+
+- **Worktree verification in Stop-gate.** When a session ends in a git worktree of the governed repository that holds its workspace, the Stop-gate runs the trusted default verify recipe in that worktree and names it on failure instead of running in the primary checkout; where the worktree cannot run the recipe, the gate refuses without falling back to another tree ([#653](https://github.com/sleepy-panda-srl/portulan/issues/653)).
+
 ## 0.4.1 — 2026-11-11
 
 **A closing command a drafted card can name.** The boot card `init` drafted told an agent to run

@@ -1,1 +1,0 @@
-- Local transforms accept `--precheck` to reject and retry cheap failures before running the mandatory full verifier, with rollback and per-phase feedback preserved.

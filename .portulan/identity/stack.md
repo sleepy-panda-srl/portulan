@@ -77,6 +77,10 @@ and tagged tree again before publication.
 byte-identical to their indexed Git blobs. Two files joined the payload since `0.4.0`, the
 [0.4.1 release eval pair](../../evals/releases/0.4.1.md), and none left it.
 
+**Re-measured at the 0.5.0 cut: 180 files.** Packed a clean Git export and compared
+each tarball entry with its Git blob. All 180 match, including `package.json` and
+the [0.5.0 release eval pair](../../evals/releases/0.5.0.md).
+
 ## Where the line sits, and the one tool outside it
 
 **Where the line sits now, precisely.** [`verify/docs.sh`](../verify/docs.sh) needs `git`, `bash`, and the
