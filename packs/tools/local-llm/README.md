@@ -311,14 +311,32 @@ diagnostic prose. The API and model retain the raw bounded retry feedback.
 The acquired [record](../../../evals/ab/local-worker.md) supports `code` at low effort; shared `prose`
 is disabled because codify failed all five local turns. `summarize` defaults to that disabled role and
 refuses. An explicit `--model` without `--role` is an operator-selected candidate, not automatic routing.
-Find-and-quote reading through `chat --role code --number-lines` is an operator-selected candidate use
-too: the record measured `code` on transforms, not on reading, and the skill gives its rails.
+[Find-and-quote reading](#find-and-quote) is an operator-selected candidate use too.
 Use the [sizing and wording guidance](#sizing-and-wording-a-call) before choosing a complete function
 or test group; specify one observable change, prefer serial calls, and return only the selected replacement. On truncated output inspect the diagnostic and task contract; on transport
 failure inspect the transport; on verifier failure inspect code. For reasoning-only
 exhaustion, investigate backend/profile/task behavior before selecting another span.
 Do not lower an operator-pinned
 model/effort or bypass verification. This advice reduces failures, does not guarantee completion.
+
+## Find and quote
+
+A pointed question about one file or one log, answered with line numbers, which the caller confirms
+by reading only those lines: `chat --role code --file <path> --number-lines --prompt-file <question>`.
+It is an **operator-selected candidate use, not earned routing**. The [A/B record](#the-ab-record)
+measured `code` on a transform, not on reading; the screen's `read` task passing earns nothing; and a
+record of reading is the subject of a draft proposal, not a capture. Use it where the operator selected
+it, and only on these rails:
+
+- **One file or one log per call**, under the input ceiling; a longer one in parts with `--lines`,
+  whose numbers stay the file's own.
+- **One question, ending "Give line numbers. If the file does not contain it, say so."**
+- **Check before relying on it:** read only the cited lines, or grep the one number in a log. If they
+  do not show what the answer said, the answer was wrong: read that part yourself.
+- **Not for tracing a function, deciding anything, or comparing files.** Those stay in the parent, and
+  so do prose digests and librarian drafts.
+
+When it pays is under [When a call pays](#when-a-call-pays).
 
 ## Sizing and wording a call
 
