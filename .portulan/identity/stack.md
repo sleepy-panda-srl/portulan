@@ -81,6 +81,11 @@ byte-identical to their indexed Git blobs. Two files joined the payload since `0
 each tarball entry with its Git blob. All 180 match, including `package.json` and
 the [0.5.0 release eval pair](../../evals/releases/0.5.0.md).
 
+**Re-measured at the 0.5.1 cut: 184 files.** Packed a clean Git export of the staged cut and
+compared each tarball entry with its Git blob. All 184 match. Four files joined the payload since
+`0.5.0`, the two `read` screen fixtures under `packs/tools/local-llm/screen/read/` and the
+[0.5.1 release eval pair](../../evals/releases/0.5.1.md), and none left it.
+
 ## Where the line sits, and the one tool outside it
 
 **Where the line sits now, precisely.** [`verify/docs.sh`](../verify/docs.sh) needs `git`, `bash`, and the

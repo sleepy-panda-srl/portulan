@@ -47,6 +47,29 @@ A change's commit message is the fuller record: it says why, and `git log` finds
 Each entry for the next release is a file in [`changes/`](changes/), so two open changes never edit the
 same lines; `node cli/index.mjs --changes changes` prints them as the cut pastes them.
 
+## 0.5.1 — 2026-11-19
+
+**Line-numbered reading with the local runner.** `chat` and `summarize` can send a file with its own
+line numbers, so an answer can cite lines that the caller then reads to confirm it. The runner's
+`eval` screen gains a `read` task for this find-and-quote use, and the `delegate-local` skill names
+it as an operator-selected candidate with its rails. It is not earned routing.
+
+**Upgrade notes.** Update the CLI or plugin. If you compose `tools/local-llm`, repeat the
+[pack's upgrade checks](packs/tools/local-llm/README.md#verifying-an-upgrade), because the runner's
+bytes changed. `--number-lines` is opt-in: a call without it sends and records what it did before.
+A call that uses it ends its receipt with `line-numbers=on spend=$0.00`, so a receipt parser of your
+own that matches the whole line must accept that token, as `cli/ledger.mjs` now does.
+The evidence is a screen, not a record. The `read` task passed once, on one model, one sample per
+question on a loaded machine, and passing it earns nothing. The A/B record measured `code` on a
+transform, not on reading, and the record that would earn reading is a draft proposal, not a capture.
+Keep to the [find-and-quote rails](packs/tools/local-llm/README.md#find-and-quote) and check every
+cited line before relying on an answer.
+This release carries its [eval register](evals/releases/0.5.1.md).
+
+### Added
+
+- `tools/local-llm`: `chat` and `summarize` take `--number-lines`, which sends each line of `--file` and its context blocks with the file's own line number and records `line-numbers=on` in the receipt; `eval` gains a `read` task that screens find-and-quote reading on synthetic fixtures with absent-item traps; and the `delegate-local` skill names find and quote as an operator-selected candidate use with its rails, not earned routing ([#678](https://github.com/sleepy-panda-srl/portulan/issues/678)).
+
 ## 0.5.0 — 2026-11-18
 
 **More control over local code delegation.** Callers can scope C# and Python declarations,
