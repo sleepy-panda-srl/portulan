@@ -24,8 +24,19 @@ parent. `--allow-remote` requires the explicit `local-llm-off-loopback` decision
 - **A verify-gated file transform longer than one short parent Edit:** a mechanical refactor or a
   history-comment cleanup across a file, or a unit test the parent would otherwise iterate red→green,
   where a verify command can prove the edit green or have it rolled back.
+- **Operator-selected candidate: find and quote.** One pointed question about one file or one
+  log, answered with line numbers, through `chat --role code --file <path> --number-lines`.
+  [No A/B cell](../../README.md#the-ab-record) supports it: the record measured `code` on transforms,
+  and the screen's `read` task earns nothing. Use it only where the operator selected it, and only on
+  its rails:
+  - one file or one log per call, under the input ceiling (`--lines` for a longer one);
+  - one question, ending "Give line numbers. If the file does not contain it, say so.";
+  - before relying on the answer, read only the cited lines, or grep the one number in a log; lines
+    that do not show what it said make the answer wrong, and you read that part yourself;
+  - not for tracing a function, deciding anything, or comparing files: those stay in the parent.
 - **Operator-selected candidate digests or librarian/handoff drafts:** use an explicit
-  `--model` without `--role`; normally keep these in the parent.
+  `--model` without `--role`; normally keep these in the parent. Prose digests stay in the parent
+  whatever find and quote does.
 
 Not for multi-file architectural planning, ambiguous requirements (`clarify`), or pre-merge verdicts
 (`reviewer`).
@@ -35,6 +46,9 @@ Not for multi-file architectural planning, ambiguous requirements (`clarify`), o
 Keep a one-short-Edit task in the parent. A separately issued call costs a parent
 request; batched invocations share a request boundary. The [cost model and measured
 limits](../../README.md#when-a-call-pays) explain why local tokens alone prove no savings.
+A reading call pays only on a file you would otherwise carry for several turns without editing it:
+the file's tokens it keeps out, over the requests that would re-read them, must exceed the one
+request it costs.
 
 ## Sizing and wording a call
 
@@ -69,7 +83,7 @@ completion nor correctness. Input slices and the 32-KB input ceiling are differe
 
 1. **Scope the input first.** Outline files of 300 lines or more with
    `node <plugin root>/cli/symbols.mjs <file>`, then use `--file <file> --lines <start>-<end>`
-   for `transform`, `chat` or `summarize`. Packs-only installs lack `cli/`; use a bounded
+   for `transform`, `chat` or `summarize`; add `--number-lines` to `chat` so a reply can cite them. Packs-only installs lack `cli/`; use a bounded
    declaration search there. Add read-only signatures/fixtures with repeatable
    `--context <a>-<b>` or `--context-file <path>[:a-b]`. The 32-KB input cap is not a
    latency measurement; see [prefill evidence](../../README.md#why-this-pack-exists).

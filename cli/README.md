@@ -155,6 +155,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`list-quoting.live.test.mjs`](list-quoting.live.test.mjs) | Every recipe that enumerates the tree reads the pathname git actually carries. |
 | [`local-completion.test.mjs`](local-completion.test.mjs) | Local completion and fenced-code regression tests. |
 | [`local-diagnostics.test.mjs`](local-diagnostics.test.mjs) | Local runner budgets, diagnostics and verification. |
+| [`local-reading.test.mjs`](local-reading.test.mjs) | Find-and-quote reading tests. |
 | [`local-sizing.test.mjs`](local-sizing.test.mjs) | Offline sizing controls and evidence replay. |
 | [`local-transport.test.mjs`](local-transport.test.mjs) | Local HTTP deadlines, response bounds and compatibility tests. |
 | [`local-usage.test.mjs`](local-usage.test.mjs) | Usage, exhaustion and rollback tests. |
