@@ -24,6 +24,8 @@ parent. `--allow-remote` requires the explicit `local-llm-off-loopback` decision
 - **A verify-gated file transform longer than one short parent Edit:** a mechanical refactor or a
   history-comment cleanup across a file, or a unit test the parent would otherwise iterate red→green,
   where a verify command can prove the edit green or have it rolled back.
+- **Candidate find and quote:** `chat --role code --number-lines`, a question ending
+  "Give line numbers. If the file does not contain it, say so."; [check cited lines](../../README.md#find-and-quote).
 - **Operator-selected candidate digests or librarian/handoff drafts:** use an explicit
   `--model` without `--role`; normally keep these in the parent.
 

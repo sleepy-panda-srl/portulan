@@ -41,6 +41,7 @@ import {
     parseArgs,
     publishAb,
     RailError,
+    READ_QUESTIONS,
     readLifecycleRecords,
     reconcileLifecycleRecords,
     renderAbRegister,
@@ -461,7 +462,7 @@ test("a refused endpoint or prompt sends nothing, and every chat-completions req
             named(await run(0, "chat", "--base-url", baseUrl, ...given, "--prompt", "hi"), effort, 1);
             named(await run(0, "summarize", "--base-url", baseUrl, ...given, "--prompt", "hi"), effort, 1);
             named(await run(0, "transform", "--base-url", baseUrl, ...given, "--file", file(), "--verify", "true", "--prompt", "set a"), effort, 1);
-            named(await run(1, "eval", "--base-url", baseUrl, ...given), effort, 3);
+            named(await run(1, "eval", "--base-url", baseUrl, ...given), effort, 3 + READ_QUESTIONS.length);
         }
     } finally {
         close();
@@ -894,7 +895,7 @@ test("from a payload that carries packs/ without cli/, the offline rails still r
 
     const offline = spawnSync(process.execPath, [copy, "--verify-offline"], { encoding: "utf8" });
     assert.equal(offline.status, 0, offline.stderr);
-    assert.match(offline.stdout, /6\/6 offline rails held/);
+    assert.match(offline.stdout, /7\/7 offline rails held/);
 
     const graded = spawnSync(process.execPath, [copy, "eval"], { encoding: "utf8" });
     assert.equal(graded.status, 2, graded.stderr);

@@ -1,0 +1,102 @@
+// A synthetic module for the runner's `read` screen. It is written for that purpose only and
+// describes no real system: the questions in runner/local-llm.mjs (READ_QUESTIONS) cite its lines.
+
+export const DEFAULT_RATE = 12;
+export const MAX_BURST = 48;
+export const IDLE_RESET_MS = 90_000;
+export const UNITS = Object.freeze(["call", "byte", "row"]);
+
+const buckets = new Map();
+
+function now() {
+    return Date.now();
+}
+
+function bucketKey(owner, unit) {
+    if (!UNITS.includes(unit)) {
+        throw new RangeError(`Unknown unit ${unit}`);
+    }
+    return `${owner}:${unit}`;
+}
+
+function freshBucket(rate) {
+    return { tokens: MAX_BURST, rate, updated: now() };
+}
+
+function refillBucket(bucket, at) {
+    const elapsed = Math.max(0, at - bucket.updated);
+    if (elapsed >= IDLE_RESET_MS) {
+        bucket.tokens = MAX_BURST;
+    } else {
+        const earned = (elapsed / 1000) * bucket.rate;
+        bucket.tokens = Math.min(MAX_BURST, bucket.tokens + earned);
+    }
+    bucket.updated = at;
+    return bucket;
+}
+
+export function openBucket(owner, unit, rate = DEFAULT_RATE) {
+    const key = bucketKey(owner, unit);
+    if (!buckets.has(key)) {
+        buckets.set(key, freshBucket(rate));
+    }
+    return buckets.get(key);
+}
+
+export function take(owner, unit, cost = 1) {
+    const bucket = openBucket(owner, unit);
+    refillBucket(bucket, now());
+    if (bucket.tokens < cost) {
+        return { granted: false, waitMs: Math.ceil(((cost - bucket.tokens) / bucket.rate) * 1000) };
+    }
+    bucket.tokens -= cost;
+    return { granted: true, waitMs: 0 };
+}
+
+export function peek(owner, unit) {
+    const key = bucketKey(owner, unit);
+    const bucket = buckets.get(key);
+    if (!bucket) {
+        return MAX_BURST;
+    }
+    return Math.floor(refillBucket({ ...bucket }, now()).tokens);
+}
+
+export function drainBucket(owner, unit) {
+    const key = bucketKey(owner, unit);
+    const bucket = buckets.get(key);
+    if (!bucket) {
+        return 0;
+    }
+    const spent = Math.floor(bucket.tokens);
+    bucket.tokens = 0;
+    bucket.updated = now();
+    return spent;
+}
+
+export function forget(owner) {
+    let removed = 0;
+    for (const key of [...buckets.keys()]) {
+        if (key.startsWith(`${owner}:`)) {
+            buckets.delete(key);
+            removed += 1;
+        }
+    }
+    return removed;
+}
+
+export function describeBuckets() {
+    const rows = [];
+    for (const [key, bucket] of buckets) {
+        const [owner, unit] = key.split(":");
+        rows.push({ owner, unit, tokens: Math.floor(bucket.tokens), rate: bucket.rate });
+    }
+    rows.sort((a, b) => a.owner.localeCompare(b.owner) || a.unit.localeCompare(b.unit));
+    return rows;
+}
+
+export function resetAll() {
+    const count = buckets.size;
+    buckets.clear();
+    return count;
+}

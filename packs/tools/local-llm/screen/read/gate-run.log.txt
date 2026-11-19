@@ -1,0 +1,45 @@
+[gate] synthetic log for the runner's `read` screen; it records no real run
+[gate] recipe tests: starting
+TAP version 13
+# Subtest: quota buckets
+ok 1 - a fresh bucket starts full
+ok 2 - refill caps at the burst
+ok 3 - an idle bucket resets
+not ok 4 - a partial refill rounds down
+  ---
+  duration_ms: 3.41
+  failureType: 'testCodeFailure'
+  error: 'Expected values to be strictly equal: 11 !== 12'
+  code: 'ERR_ASSERTION'
+  location: 'quota.test.mjs:41:5'
+  ...
+ok 5 - take refuses past the balance
+ok 6 - peek leaves the bucket untouched
+# Subtest: ledger rows
+ok 7 - rows sort by owner then unit
+ok 8 - forget removes only one owner
+ok 9 - drain returns what was spent # SKIP needs the slow clock
+not ok 10 - resetAll reports the count
+  ---
+  duration_ms: 1.07
+  failureType: 'testCodeFailure'
+  error: 'Expected values to be strictly equal: 0 !== 3'
+  code: 'ERR_ASSERTION'
+  location: 'ledger.test.mjs:88:9'
+  ...
+ok 11 - describe lists every bucket
+ok 12 - unknown unit throws a range error
+ok 13 - waitMs rounds up # SKIP needs the slow clock
+1..13
+# tests 13
+# suites 2
+# pass 9
+# fail 2
+# cancelled 0
+# skipped 2
+# todo 0
+# duration_ms 214.6
+[gate] recipe tests: red (exit 1)
+[gate] recipe docs: green
+[gate] recipe json: green
+[gate] 1 of 3 recipes red

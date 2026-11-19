@@ -134,16 +134,17 @@ export function incompleteGenerationMessage(usage) {
 
 const figure = (value, unit) => (value === null || value === undefined ? "?" : `${value}${unit}`);
 
-export function formatPassReceipt({ mode, model, attempts = 1, promptTokens = null, completionTokens = null, reasoningTokens = null, cachedPromptTokens = null, totalMs = null, tokPerSec = null, target = "", queuedMs = 0, preflight = null, maxTokens }) {
+export function formatPassReceipt({ mode, model, attempts = 1, promptTokens = null, completionTokens = null, reasoningTokens = null, cachedPromptTokens = null, totalMs = null, tokPerSec = null, target = "", queuedMs = 0, preflight = null, maxTokens, lineNumbers = false }) {
     const usage = readUsage({prompt_tokens:promptTokens,completion_tokens:completionTokens,
         completion_tokens_details:{reasoning_tokens:reasoningTokens},prompt_tokens_details:{cached_tokens:cachedPromptTokens}});
     const where = target ? ` target=${target}` : "";
     const queued = Number.isSafeInteger(queuedMs) && queuedMs > 0 ? ` queued=${queuedMs}ms` : "";
     const baseline = preflight === "green" || preflight === "red" ? ` preflight=${preflight}` : "";
     const budget = maxTokens === undefined ? "" : ` max-tokens=${Number.isSafeInteger(maxTokens) && maxTokens > 0 ? maxTokens : "?"}`;
+    const numbered = lineNumbers === true ? " line-numbers=on" : "";
     return (
         `OK mode=${mode} model=${model}${where} attempts=${attempts} in=${figure(usage.promptTokens, "t")} out=${figure(usage.completionTokens, "t")} ` +
-        `time=${figure(totalMs, "ms")} rate=${figure(tokPerSec, "tok/s")} reasoning=${figure(usage.reasoningTokens, "t")} cached-in=${figure(usage.cachedPromptTokens, "t")}${queued}${baseline}${budget} spend=$0.00`
+        `time=${figure(totalMs, "ms")} rate=${figure(tokPerSec, "tok/s")} reasoning=${figure(usage.reasoningTokens, "t")} cached-in=${figure(usage.cachedPromptTokens, "t")}${queued}${baseline}${budget}${numbered} spend=$0.00`
     );
 }
 
@@ -1120,7 +1121,17 @@ function parseContextFileSpec(spec, existsFn = fs.existsSync) {
     return { filePath: raw, range: null };
 }
 
-export function resolveContextSections({ filePath = null, fileLines = null, contexts = [], contextFiles = [] } = {}) {
+export function numberedText(lines, firstNumber) {
+    const width = String(firstNumber + lines.length - 1).length;
+    return lines.map((line, i) => `${String(firstNumber + i).padStart(width)}\t${line}`).join("\n");
+}
+
+export function numberedFileBlock(label, lines, firstNumber) {
+    const last = firstNumber + lines.length - 1;
+    return `${label} lines ${firstNumber}-${last}, each line prefixed with its line number and a tab:\n\`\`\`\n${numberedText(lines, firstNumber)}\n\`\`\``;
+}
+
+export function resolveContextSections({ filePath = null, fileLines = null, contexts = [], contextFiles = [], numberLines = false } = {}) {
     const sections = [];
     if (contexts.length > 0) {
         if (!filePath) throw new CouldNotRunError("--context selects lines of --file, and no --file was given");
@@ -1129,7 +1140,7 @@ export function resolveContextSections({ filePath = null, fileLines = null, cont
             const { start, end } = parseLineRange(spec, lines.length, "--context");
             sections.push({
                 label: `${path.basename(filePath)} lines ${start}-${end}`,
-                text: lines.slice(start - 1, end).join("\n"),
+                text: numberLines ? numberedText(lines.slice(start - 1, end), start) : lines.slice(start - 1, end).join("\n"),
             });
         }
     }
@@ -1141,12 +1152,12 @@ export function resolveContextSections({ filePath = null, fileLines = null, cont
             const { start, end } = parseLineRange(parsed.range, lines.length, "--context-file");
             sections.push({
                 label: `${path.basename(parsed.filePath)} lines ${start}-${end}`,
-                text: lines.slice(start - 1, end).join("\n"),
+                text: numberLines ? numberedText(lines.slice(start - 1, end), start) : lines.slice(start - 1, end).join("\n"),
             });
         } else {
             sections.push({
                 label: path.basename(parsed.filePath),
-                text: text.endsWith("\n") ? text.slice(0, -1) : text,
+                text: numberLines ? numberedText(lines, 1) : text.endsWith("\n") ? text.slice(0, -1) : text,
             });
         }
     }
@@ -1713,9 +1724,105 @@ export const EVAL_PROMPTS = Object.freeze({
     ],
 });
 
+// Not in EVAL_PROMPTS: the A/B record hashes it.
+export const READ_FIXTURES = Object.freeze({ module: "quota-module.js.txt", log: "gate-run.log.txt" });
+export const READ_USE_ENDING = "Give line numbers. If the file does not contain it, say so.";
+export const READ_ANSWER_FORM =
+    "End with one line in exactly this form: `ANSWER: <the value asked for, or - when the question asks only where> | LINES: <the line numbers, separated by commas>`. " +
+    "If the file does not contain it, end with `ANSWER: ABSENT | LINES: none`.";
+export const READ_QUESTIONS = Object.freeze(
+    [
+        { id: "module-declares", fixture: "module", kind: "lines", question: "Which line declares the function `refillBucket`?", anchor: "function refillBucket", lines: [26] },
+        { id: "module-constant", fixture: "module", kind: "value", question: "What value is the constant `MAX_BURST` set to?", anchor: "MAX_BURST = ", value: "48", lines: [5] },
+        { id: "module-calls", fixture: "module", kind: "lines", question: "Which lines call `refillBucket`, not counting its declaration?", anchor: "refillBucket(", lines: [48, 62], except: [26] },
+        { id: "module-absent-function", fixture: "module", kind: "absent", question: "Which line declares the function `drainQueue`?", needle: "drainQueue" },
+        { id: "module-absent-env", fixture: "module", kind: "absent", question: "Which line reads an environment variable through `process.env`?", needle: "process.env" },
+        { id: "log-skipped", fixture: "log", kind: "value", question: "How many tests were skipped, according to the summary at the end?", anchor: "# skipped", value: "2", lines: [39] },
+        { id: "log-first-failure", fixture: "log", kind: "lines", question: "Which line holds the error message of the first failing test?", anchor: "Expected values", lines: [12], except: [26] },
+        { id: "log-absent-coverage", fixture: "log", kind: "absent", question: "What line-coverage percentage does this log report?", needle: "coverage" },
+    ].map((q) => Object.freeze({ ...q, ...(q.lines ? { lines: Object.freeze(q.lines) } : {}), ...(q.except ? { except: Object.freeze(q.except) } : {}) })),
+);
+export const SCREEN_TASKS = Object.freeze(["code", "codify", "handoff", "read"]);
+
+export function readFixtureText(fixture) {
+    const name = READ_FIXTURES[fixture];
+    if (!name) throw new CouldNotRunError(`Unknown read fixture: ${fixture}`);
+    try {
+        return fs.readFileSync(new URL(`../screen/read/${name}`, import.meta.url), "utf8");
+    } catch (err) {
+        throw new CouldNotRunError(`The read screen's fixture ${name} is not in screen/read/ beside this runner's directory — ${err.message}`);
+    }
+}
+
+export function readMessages(question) {
+    const { lines } = splitLines(readFixtureText(question.fixture));
+    return [
+        {
+            role: "system",
+            content: "You answer one question about one file. Each line of the file is prefixed with its line number and a tab. Cite only lines the file shows, and never guess.",
+        },
+        {
+            role: "user",
+            content: `${question.question} ${READ_USE_ENDING}\n${READ_ANSWER_FORM}\n\n${numberedFileBlock(READ_FIXTURES[question.fixture], lines, 1)}`,
+        },
+    ];
+}
+
+export function gradeReadAnswer(question, rawText) {
+    const cleaned = stripThinking(rawText).replace(/[*`]/g, "");
+    const re = /^[ \t>-]*ANSWER:\s*(.*?)\s*\|\s*LINES:\s*(.*?)\s*$/gim;
+    const matches = [...cleaned.matchAll(re)];
+    if (matches.length === 0) {
+        return { ok: false, detail: "no ANSWER line" };
+    }
+    const match = matches[matches.length - 1];
+    const value = match[1].replace(/^["']/, "").replace(/["'.]+$/, "").trim();
+    const cited = [...new Set((match[2].match(/\d+/g) ?? []).map(Number))].sort((a, b) => a - b);
+    const absent = /^absent$/i.test(value);
+    const want = question.kind === "absent" ? [] : [...question.lines].sort((a, b) => a - b);
+    const sameLines = cited.length === want.length && cited.every((n, i) => n === want[i]);
+    const shown = (list) => `[${list.join(",")}]`;
+    let ok;
+    let detail;
+    if (question.kind === "absent") {
+        ok = absent && cited.length === 0;
+        detail = `absent=${absent} lines=${shown(cited)}`;
+    } else if (question.kind === "lines") {
+        ok = !absent && sameLines;
+        detail = `lines=${shown(cited)} want=${shown(want)}`;
+    } else {
+        ok = !absent && sameLines && value.toLowerCase() === String(question.value).toLowerCase();
+        detail = `value=${JSON.stringify(value)} lines=${shown(cited)} want=${JSON.stringify(String(question.value))}@${shown(want)}`;
+    }
+    return { ok, detail };
+}
+
+async function runReadTask({ model, chatFn, request }) {
+    const wrong = [];
+    let right = 0;
+    let trapsRight = 0;
+    let totalMs = 0;
+    let tokens = 0;
+    for (const question of READ_QUESTIONS) {
+        const reply = await chatFn({ ...request, model, messages: readMessages(question) });
+        const verdict = gradeReadAnswer(question, reply.content);
+        totalMs = sum(totalMs, reply.totalMs ?? null);
+        tokens = sum(tokens, reply.completionTokens ?? null);
+        if (verdict.ok) {
+            right += 1;
+            if (question.kind === "absent") trapsRight += 1;
+        } else {
+            wrong.push(`${question.id}(${verdict.detail})`);
+        }
+    }
+    const traps = READ_QUESTIONS.filter((q) => q.kind === "absent").length;
+    const detail = `right=${right}/${READ_QUESTIONS.length} traps=${trapsRight}/${traps}${wrong.length > 0 ? ` wrong=${wrong.join(" ")}` : ""}`;
+    return { task: "read", model, ok: wrong.length === 0, detail, totalMs, tokPerSec: rate(tokens, totalMs) };
+}
+
 export async function runRoleEval({
     model = ROLE_MODELS.code,
-    tasks = ["code", "codify", "handoff"],
+    tasks = SCREEN_TASKS,
     baseUrl = DEFAULT_BASE_URL,
     allowRemote = false,
     effort = "low",
@@ -1725,12 +1832,17 @@ export async function runRoleEval({
     predicates,
 } = {}) {
     for (const task of tasks) {
-        if (!Object.hasOwn(EVAL_PROMPTS, task)) throw new CouldNotRunError(`Unknown eval task: ${task}`);
+        if (task !== "read" && !Object.hasOwn(EVAL_PROMPTS, task)) throw new CouldNotRunError(`Unknown eval task: ${task}`);
     }
-    const grading = predicates ?? (await loadPredicates());
+    const grading = predicates ?? (tasks.some((task) => task !== "read") ? await loadPredicates() : null);
 
     const results = [];
     for (const task of tasks) {
+        if (task === "read") {
+            const request = { baseUrl, allowRemote, effort, ...(signal ? { signal } : {}), ...(lifecycle ? { lifecycle } : {}) };
+            results.push(await runReadTask({ model, chatFn, request }));
+            continue;
+        }
         const reply = await chatFn({ baseUrl, allowRemote, model, effort, messages: EVAL_PROMPTS[task], ...(signal ? { signal } : {}), ...(lifecycle ? { lifecycle } : {}) });
         const verdict = gradeRoleOutput(task, reply.content, grading);
         results.push({
@@ -1744,8 +1856,6 @@ export async function runRoleEval({
     }
     return results;
 }
-
-// ---------------------------------------------------------------- the A/B record
 
 export const AB_RECORD = "evals/ab/local-worker.json";
 export const AB_REGISTER = "evals/ab/local-worker.md";
@@ -2340,6 +2450,20 @@ export async function runOfflineVerify() {
     if (!caughtBudget) return { status: 1, message: "FAIL: oversized input was not refused by assertInputBudget" };
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-local-llm-"));
+    const numberedFile = path.join(tmpDir, "numbered.txt");
+    fs.writeFileSync(numberedFile, "one\ntwo\nthree\nfour\n", "utf8");
+    const plainSpan = buildPrompt({ _: ["chat"], prompt: "q", file: numberedFile, lines: "3-4" });
+    const numberedSpan = buildPrompt({ _: ["chat"], prompt: "q", file: numberedFile, lines: "3-4", numberLines: true });
+    let numbersCounted = false;
+    try {
+        assertInputBudget(numberedSpan, { maxInputBytes: Buffer.byteLength(plainSpan, "utf8") });
+    } catch (e) {
+        numbersCounted = e instanceof RailError;
+    }
+    if (!numberedSpan.endsWith("```\n3\tthree\n4\tfour\n```") || !numbersCounted) {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+        return { status: 1, message: "FAIL: --number-lines did not keep the file's own numbers under --lines, or its numbers escaped the input ceiling" };
+    }
     const sampleFile = path.join(tmpDir, "sample.mjs");
     const originalBytes = "export const x = 1;\n";
     fs.writeFileSync(sampleFile, originalBytes, "utf8");
@@ -2406,7 +2530,7 @@ export async function runOfflineVerify() {
         fs.rmSync(tmpDir, { recursive: true, force: true });
     }
 
-    return { status: 0, message: "OK tools/local-llm:runner-rails (6/6 offline rails held)" };
+    return { status: 0, message: "OK tools/local-llm:runner-rails (7/7 offline rails held)" };
 }
 
 const BOOLEAN_FLAGS = Object.freeze({
@@ -2417,6 +2541,7 @@ const BOOLEAN_FLAGS = Object.freeze({
     "--preflight": "preflight",
     "--no-lock": "noLock",
     "--progress": "progress",
+    "--number-lines": "numberLines",
     "--help": "help",
 });
 const VALUE_FLAGS = Object.freeze({
@@ -2497,16 +2622,18 @@ export const USAGE = `local-llm.mjs — a zero-dependency runner for a loopback 
 
   local-llm.mjs status
   local-llm.mjs lifecycle
-  local-llm.mjs chat|summarize [--role code|prose | --model <id>] [--file <path> [--lines <a>-<b>]] [--context <a>-<b>] [--context-file <path>[:a-b]] (--prompt <text> | --prompt-file <path>) [--max-tokens <n>] [--progress] [--no-lock]
+  local-llm.mjs chat|summarize [--role code|prose | --model <id>] [--file <path> [--lines <a>-<b>] [--number-lines]] [--context <a>-<b>] [--context-file <path>[:a-b]] (--prompt <text> | --prompt-file <path>) [--max-tokens <n>] [--progress] [--no-lock]
   ${TRANSFORM_USAGE}
-  local-llm.mjs eval [--role code|prose | --model <id>] [--task code|codify|handoff] [--no-lock]
+  local-llm.mjs eval [--role code|prose | --model <id>] [--task code|codify|handoff|read] [--no-lock]
   local-llm.mjs eval --ab --k ${AB_K} --seed <s> --host-cmd "<command>" --host-model <id> --write [--repo-root <dir>]
   local-llm.mjs eval --verify [--repo-root <dir>]
   local-llm.mjs eval --write [--repo-root <dir>]
   local-llm.mjs --verify-offline
 
   eval           the screen: one sample per task and no baseline arm. A model that fails it is not
-                 routed; passing it earns nothing.
+                 routed; passing it earns nothing. read asks one question per call about a numbered
+                 fixture in screen/read/ and passes only when every answer is right; it is not in the
+                 A/B record, so no routing rests on it.
   eval --ab      capture the A/B record routing is earned by, k=${AB_K} per (task, arm) over code, codify and
                  handoff, both arms graded by the screen's predicates. Arm L is each task's model as
                  routed, at --effort low, on loopback, at $0.00, and runs first. Arm H is the host agent:
@@ -2540,6 +2667,9 @@ lockfile unless --no-lock is passed. transform defaults to --role code at --effo
 defaults to low.
 chat, summarize and transform accept --max-tokens (positive safe integer, default 4096),
 recorded in the receipt; it does not override a stricter caller-owned profile.
+chat and summarize --number-lines prefix each line of --file, --context and --context-file with its
+own number in the file and a tab (under --lines a-b, line a is numbered a), so a reply can cite lines;
+the numbers count against --max-input-bytes, and the receipt records line-numbers=on.
 --progress prints queued/generation phase and elapsed time to stderr immediately and every
 10 seconds while waiting. Tokens remain unknown until the nonstreaming response completes.
 Incomplete length responses are refused and saved privately to a temporary diagnostic file.
@@ -2612,15 +2742,18 @@ export function buildPrompt(args, options = {}) {
     let input = resolved ?? args._.slice(1).join(" ");
     let fileLines = null;
     let spanBlock = null;
+    if (args.numberLines && !args.file) {
+        throw new CouldNotRunError("--number-lines numbers the lines of --file, and no --file was given");
+    }
     if (args.file) {
         const { text } = readUtf8Validated(args.file, "Target");
         let span = text;
-        if (args.lines) {
-            fileLines = splitLines(text).lines;
-            const { start, end } = parseLineRange(args.lines, fileLines.length);
-            span = fileLines.slice(start - 1, end).join("\n");
-        }
-        spanBlock = `\`\`\`\n${span}\n\`\`\``;
+        if (args.lines || args.numberLines) fileLines = splitLines(text).lines;
+        const { start, end } = args.lines ? parseLineRange(args.lines, fileLines.length) : { start: 1, end: fileLines?.length ?? 0 };
+        if (args.lines) span = fileLines.slice(start - 1, end).join("\n");
+        spanBlock = args.numberLines
+            ? numberedFileBlock(path.basename(args.file), fileLines.slice(start - 1, end), start)
+            : `\`\`\`\n${span}\n\`\`\``;
     } else if (args.lines) {
         throw new CouldNotRunError("--lines selects a span of --file, and no --file was given");
     }
@@ -2629,6 +2762,7 @@ export function buildPrompt(args, options = {}) {
         fileLines,
         contexts: args.contexts ?? [],
         contextFiles: args.contextFiles ?? [],
+        numberLines: Boolean(args.numberLines),
     });
     const suffix = [...contextSections, ...(spanBlock ? [spanBlock] : [])];
     return suffix.length > 0 ? `${input}\n\n${suffix.join("\n\n")}` : input;
@@ -2730,6 +2864,9 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
                 if (args[key] !== undefined) throw new CouldNotRunError(`${FLAG_OF[key]} belongs to chat, summarize or transform, not ${cmd}`);
             }
         }
+        if (args.numberLines && cmd !== "chat" && cmd !== "summarize") {
+            throw new CouldNotRunError(`--number-lines belongs to chat or summarize, not ${cmd}: it numbers a file sent to be read, and a transform's reply replaces lines`);
+        }
         if (cmd === "eval" && args._.length > 1) throw new CouldNotRunError(`eval takes no positional argument, not ${JSON.stringify(args._[1])}`);
         const baseUrl = args.baseUrl ?? DEFAULT_BASE_URL;
         const model = args.model ?? ROLE_MODELS[args.role ?? "code"];
@@ -2791,7 +2928,7 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
                 return res;
             });
             console.log(reply.content);
-            console.error(formatPassReceipt({ mode: cmd, model: chosen, ...reply }));
+            console.error(formatPassReceipt({ mode: cmd, model: chosen, ...reply, lineNumbers: Boolean(args.numberLines) }));
             return 0;
         }
 
@@ -2873,7 +3010,7 @@ export async function main(argv = process.argv.slice(2), { fetchImpl = globalThi
             const results = await runWithReadonlyLifecycle("eval", model, "generation", async (lifecycle) => {
                 const out = await runRoleEval({
                     model,
-                    tasks: args.task ? [args.task] : ["code", "codify", "handoff"],
+                    tasks: args.task ? [args.task] : SCREEN_TASKS,
                     baseUrl,
                     allowRemote: args.allowRemote,
                     effort: args.effort ?? "low",

@@ -211,7 +211,7 @@ Proposal [`0036`](../../../.portulan/proposals/0036-what-a-host-loads-into-every
    Any exit other than `0` or `1` — `2`, a missing command, a signal — is no verdict: the file is restored at once and the runner exits `2`. SIGINT, SIGTERM and SIGHUP, whether they arrive during the model call or while the verify command runs, stop the verify, restore the file and exit `2`. **The limits:** this is a rollback, not an atomic write — any other signal that ends the runner (SIGKILL and SIGQUIT among them) or a power loss between the edit and its verdict leaves the edit in place, and since the verify runs in a process group of its own, such a signal leaves the verify running too, even one sent to the runner's whole group. Signal handling is POSIX's: on Windows no SIGTERM arrives, and stopping the verify stops only its shell.
 5. **Advisory endpoint serialisation (`--no-lock` to opt out).** Chat completions serialise per normalized endpoint URL via an `O_EXCL` lockfile in the OS temp directory (`portulan-local-llm-<hash>.lock`) holding PID and start time, recovering locks left by dead processes. Waiting happens before the generation request and its 15-minute deadline start; any wait prints to stderr and appears in the receipt as `queued=<ms>ms`. Pass `--no-lock` for servers configured with parallel slots.
 6. **Durable metadata-only request lifecycle & orphan reconciliation.** Requests record a bounded metadata-only start and terminal entry (`requestId`, `phase`, `elapsedMs`, `signal`/`reason`, `rollback`, `providerCancellation`, unreported token subsets preserved as `null` without estimation) under `PORTULAN_LOCAL_LLM_STATE_DIR` (default `os.tmpdir()`, outside committed evidence). `SIGINT`/`SIGTERM`/`SIGHUP` across generation, verification, or read-only modes emits a `CANCELLED` receipt to stderr, records rollback (`restored` vs `not_applicable`), and releases only the caller's own endpoint lock; `SIGKILL`/crash start records are reconciled as `orphaned` when their PID is no longer alive (via `beginLifecycle` / `reconcileLifecycleRecords` / `local-llm.mjs lifecycle`).
-7. **Role screening (`eval`).** Grades an installed local model against Portulan's own [`cli/comments.mjs`](../../../cli/comments.mjs), [`cli/doctor.mjs`](../../../cli/doctor.mjs), and [`cli/skill-goldens.mjs`](../../../cli/skill-goldens.mjs) predicates across `code`, `codify`, and `handoff` tasks. It takes **one sample per task and has no baseline arm**, so it is a screen, not the A/B run `0038` requires before a role is routed: a model that fails it is not routed, and passing it earns nothing. It needs `cli/` beside `packs/`, as the repository and the npm package carry it, exiting `2` where only `packs/` was installed. The A/B run is [*The A/B record*](#the-ab-record) below.
+7. **Role screening (`eval`).** Grades an installed local model against Portulan's own [`cli/comments.mjs`](../../../cli/comments.mjs), [`cli/doctor.mjs`](../../../cli/doctor.mjs), and [`cli/skill-goldens.mjs`](../../../cli/skill-goldens.mjs) predicates across `code`, `codify`, and `handoff` tasks, and on a fourth task, `read`, that screens find-and-quote reading: eight calls, each one pointed question about one of two synthetic numbered fixtures in [`screen/read/`](screen/read/), graded with no judgement (the exact set of cited lines, a value and its line, or `ABSENT` citing no line), three of them traps whose item is not in the file; it passes only when all eight are right, and needs no `cli/` predicate. `eval --task <name>` runs one task. It takes **one sample per task and has no baseline arm**, so it is a screen, not the A/B run `0038` requires before a role is routed: a model that fails it is not routed, and passing it earns nothing. Its first three tasks need `cli/` beside `packs/`, as the repository and the npm package carry it, exiting `2` where only `packs/` was installed. `read` is outside the A/B record: its prompts and grader are kept apart from the fingerprinted ones, so the captured record still verifies, and no routing rests on it. The A/B run is [*The A/B record*](#the-ab-record) below.
 
 Default loopback `/chat/completions` calls use a finite 15-minute deadline over the
 connection, headers and complete response body, with a 256-KiB response limit.
@@ -258,6 +258,14 @@ Transform receipts use a wrapper's reported effective budget when available, fal
 back to the requested budget for older injected replies; differing or invalid reported
 retry budgets print `max-tokens=?` rather than claiming a single known cap.
 
+`chat` and `summarize` accept `--number-lines` with `--file`: each line of the file, and of any
+`--context` or `--context-file` block, is sent prefixed with its own number in that file and a tab,
+under a label naming the file and the range, so a reply can cite lines without a hand-made numbered
+copy. Under `--lines a-b` line `a` is numbered `a`. The numbers count against `--max-input-bytes`,
+the receipt ends `line-numbers=on spend=$0.00`, and the ledger reads it. It does not open
+`summarize`'s refusal, and `transform` refuses it, since a transform's reply replaces lines and
+numbered input invites numbered output. Without `--file` it is refused with exit `2`.
+
 `--progress` reports request ID, queued/generation phase and elapsed time to stderr
 on phase entry and every ten seconds while waiting, across all three prompt modes.
 The response remains nonstreaming and bounded: `tokens=?` is honest until final
@@ -303,12 +311,32 @@ diagnostic prose. The API and model retain the raw bounded retry feedback.
 The acquired [record](../../../evals/ab/local-worker.md) supports `code` at low effort; shared `prose`
 is disabled because codify failed all five local turns. `summarize` defaults to that disabled role and
 refuses. An explicit `--model` without `--role` is an operator-selected candidate, not automatic routing.
+[Find-and-quote reading](#find-and-quote) is an operator-selected candidate use too.
 Use the [sizing and wording guidance](#sizing-and-wording-a-call) before choosing a complete function
 or test group; specify one observable change, prefer serial calls, and return only the selected replacement. On truncated output inspect the diagnostic and task contract; on transport
 failure inspect the transport; on verifier failure inspect code. For reasoning-only
 exhaustion, investigate backend/profile/task behavior before selecting another span.
 Do not lower an operator-pinned
 model/effort or bypass verification. This advice reduces failures, does not guarantee completion.
+
+## Find and quote
+
+A pointed question about one file or one log, answered with line numbers, which the caller confirms
+by reading only those lines: `chat --role code --file <path> --number-lines --prompt-file <question>`.
+It is an **operator-selected candidate use, not earned routing**. The [A/B record](#the-ab-record)
+measured `code` on a transform, not on reading; the screen's `read` task passing earns nothing; and a
+record of reading is the subject of a draft proposal, not a capture. Use it where the operator selected
+it, and only on these rails:
+
+- **One file or one log per call**, under the input ceiling; a longer one in parts with `--lines`,
+  whose numbers stay the file's own.
+- **One question, ending "Give line numbers. If the file does not contain it, say so."**
+- **Check before relying on it:** read only the cited lines, or grep the one number in a log. If they
+  do not show what the answer said, the answer was wrong: read that part yourself.
+- **Not for tracing a function, deciding anything, or comparing files.** Those stay in the parent, and
+  so do prose digests and librarian drafts.
+
+When it pays is under [When a call pays](#when-a-call-pays).
 
 ## Sizing and wording a call
 
@@ -356,6 +384,19 @@ parent then touches up, adds a whole request. So:
 - **Where a call should pay is reasoning, not measurement:** a red→green loop the parent would otherwise
   iterate, a batch of calls inside one tool request, and a long mechanical replacement the parent would
   otherwise write out.
+- **A reading call pays when what it keeps out of the parent outweighs the request it costs.** A
+  find-and-quote call (the [skill](skills/delegate-local/SKILL.md)'s candidate use) puts the question,
+  the answer and the few lines read to check it, `q`, into the parent's context in place of the file,
+  `R`. The call is one more request re-reading `C`; the saving is `R − q` on every later request that
+  would have re-read the file, `T′` of them, so it pays while `(R − q) × T′` exceeds `C`. It pays on a
+  file the parent only consults and would otherwise carry for several turns, and not on a short file or
+  one the parent must then read or edit anyway. A wrong answer the check catches costs one more read of a
+  few lines; a wrong answer acted on unchecked is the risk, which is why the check is a rail of the use
+  and not advice. This is the reason, not a measurement: no run has measured a reading call's saving.
+  The one trial so far, in a consumer workspace and reported on
+  [#678](https://github.com/sleepy-panda-srl/portulan/issues/678), asked ten questions with one sample
+  each: `--role code` answered 9 of 10, wrong on working a weighted pick through by hand, and both
+  absent-item traps right. That is a screen, not a rate.
 
 ## Choosing checks
 
@@ -457,6 +498,14 @@ It is repository workshop tooling, excluded from npm like the earlier A/B instru
   record carrying the synthetic fixture's `fixture` field is exit `1` from `--verify` and `--write`
   alike: a synthetic fixture is not a capture.
   `eval --write` re-renders the register from the record, refusing one `--verify` would red.
+
+- **`read` has no cell, and nothing captures one today.** This record's matrix is three tasks and is
+  captured once, so a cell for find-and-quote reading would be a record of its own beside it, graded by
+  the screen's `read` predicate, with arm L at `--role code`. Its design, and the capture step left to the
+  maintainer, are in the draft
+  [proposal 0042](../../../.portulan/proposals/0042-find-and-quote-reading-earns-its-place-by-its-own-record.md);
+  until a ruling and a capture, `--ab` refuses `--task` as before and the use stays an operator-selected
+  candidate.
 
 The `ab-run` recipe runs the earlier baseline verifier, exact no-model `eval --verify`, and the
 shipped-routing verifier on every pull request. A red or could-not-run result survives later greens;
