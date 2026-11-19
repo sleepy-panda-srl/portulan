@@ -26,7 +26,9 @@ test('sizing controls accept intended code and reject wrong or vacuous implement
 test('published sizing captures bind the frozen sources, profile and line/usage measurements',()=>{
     for(const [captureFile,corpusFile,notes]of sources){
         const capture=read(captureFile),corpus=read(corpusFile);
-        assert.equal(capture.sourceSha256.runner,hash(path.join(root,'packs/tools/local-llm/runner/local-llm.mjs')));
+        const ran=spawnSync('git',['show',`${capture.parentCommit}:packs/tools/local-llm/runner/local-llm.mjs`],{cwd:root,maxBuffer:16*1024*1024});
+        assert.equal(ran.status,0,`the capture's parent commit ${capture.parentCommit} is not in this clone's history`);
+        assert.equal(capture.sourceSha256.runner,createHash('sha256').update(ran.stdout).digest('hex'));
         assert.equal(capture.sourceSha256.protocol,hash(script));assert.equal(capture.sourceSha256.fixtures,hash(path.join(evidence,corpusFile)));
         assert.equal(capture.sourceSha256.protocolNotes,hash(path.join(evidence,notes)));
         assert.deepEqual(capture.profile,corpus.profile);assert.equal(capture.cells.length,corpus.cells.length);
