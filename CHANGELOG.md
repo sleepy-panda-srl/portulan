@@ -64,6 +64,7 @@ question on a loaded machine, and passing it earns nothing. The A/B record measu
 transform, not on reading, and the record that would earn reading is a draft proposal, not a capture.
 Keep to the [find-and-quote rails](packs/tools/local-llm/README.md#find-and-quote) and check every
 cited line before relying on an answer.
+This release carries its [eval register](evals/releases/0.5.1.md).
 
 ### Added
 
