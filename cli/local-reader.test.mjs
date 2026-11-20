@@ -248,6 +248,12 @@ describe("eval --verify over the reader record", () => {
         assert.equal(fs.readFileSync(path.join(root, READER_REGISTER), "utf8"), renderReaderRegister(rec));
     });
 
+    test("a turn of seven questions is refused with the shape finding", async () => {
+        const rec = await stubCapture();
+        turnOf(rec, "h", 2).questions.pop();
+        assert.ok(verifyReader(rec).some((line) => /\(read, h, run 2\) does not carry the screen's 8 questions/.test(line)), verifyReader(rec).join(" / "));
+    });
+
     test("is red on every drift of a reading turn", async () => {
         const base = await stubCapture({ localRead: (run, q) => (run === 0 && q.id === READ_QUESTIONS[1].id ? "wrong" : "right") });
         assert.deepEqual(verifyReader(base), []);
