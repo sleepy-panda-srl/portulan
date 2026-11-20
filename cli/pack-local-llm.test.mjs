@@ -42,14 +42,12 @@ import {
     publishAb,
     RailError,
     READ_QUESTIONS,
-    readHostPrompt,
     readLifecycleRecords,
     reconcileLifecycleRecords,
     renderAbRegister,
     resolveInstruction,
     RESTORE_SIGNALS,
     ROLE_MODELS,
-    ROLE_TASKS,
     runHostTurn,
     parseThreshold,
     rankDuplicatePairs,
@@ -978,10 +976,8 @@ describe("the A/B record", () => {
                 "    setTimeout(() => {}, 60000);",
                 "} else {",
                 `    const passing = ${JSON.stringify(PASSING)};`,
-                `    const reading = ${JSON.stringify(READ_QUESTIONS.map((q) => [q.question, q.kind === "absent" ? "ANSWER: ABSENT | LINES: none" : `ANSWER: ${q.kind === "value" ? q.value : "-"} | LINES: ${q.lines.join(", ")}`]))};`,
                 "    const prompt = process.argv.at(-1);",
-                "    const read = reading.find(([question]) => prompt.includes(question));",
-                '    process.stdout.write(read ? read[1] : prompt.includes("summarizeRun") ? passing.code : prompt.includes("Provenance") ? passing.codify : passing.handoff);',
+                '    process.stdout.write(prompt.includes("summarizeRun") ? passing.code : prompt.includes("Provenance") ? passing.codify : passing.handoff);',
                 "}",
             ].join("\n"),
         );
@@ -1017,17 +1013,15 @@ describe("the A/B record", () => {
                 ["codify", "h", 4, 0, 1],
                 ["handoff", "l", 4, 1, 0],
                 ["handoff", "h", 4, 0, 1],
-                ["read", "l", 4, 1, 0],
-                ["read", "h", 3, 0, 2],
             ],
         );
         const predicates = await loadPredicates();
-        for (const t of rec.turns.filter((turn) => turn.completed && turn.task !== "read")) {
+        for (const t of rec.turns.filter((turn) => turn.completed)) {
             const { ok, detail } = gradeRoleOutput(t.task, t.output, predicates);
             assert.deepEqual({ ok, detail }, { ok: t.ok, detail: t.detail }, `(${t.task}, ${t.arm}, ${t.run})`);
         }
         assert.match(rec.machine, /synthetic/);
-        assert.match(fixtureRegister(), /\*\*Arm L 15\/20, arm H 16\/20 — a difference of -1, recorded as measured\.\*\*/);
+        assert.match(fixtureRegister(), /\*\*Arm L 11\/15, arm H 13\/15 — a difference of -2, recorded as measured\.\*\*/);
         assert.match(fixtureRegister(), /`k = 5` per cell supports a recorded rate and nothing else/);
     });
 
@@ -1148,7 +1142,7 @@ describe("the A/B record", () => {
         const root = scratch();
         const r = spawnSync(process.execPath, [RUNNER, "eval", "--ab", "--k", "5", "--write", "--seed", "s", "--host-model", "m", "--repo-root", root], { encoding: "utf8" });
         assert.equal(r.status, 1, r.stderr);
-        assert.match(r.stderr, /PAID run of 55 host calls whose prompts leave this machine/);
+        assert.match(r.stderr, /PAID run of 15 host calls whose prompts leave this machine/);
         assert.match(r.stderr, /--host-cmd/);
         assert.deepEqual(fs.readdirSync(root), []);
 
@@ -1233,18 +1227,18 @@ describe("the A/B record", () => {
         const fixture = capturable();
         const prior = ["an earlier irreproducible capture\n", "its existing register\n"];
         const { baseUrl, run, close } = await recordingServer({ onRequest: (n) => {
-            if (n !== 55) return;
+            if (n !== 15) return;
             fs.mkdirSync(path.join(fixture.root, path.dirname(AB_RECORD)), { recursive: true });
             for (const [i, name] of [AB_RECORD, AB_REGISTER].entries()) fs.writeFileSync(path.join(fixture.root, name), prior[i]);
         } });
         try {
-            assert.equal((await run(2, ...abArgs(fixture, baseUrl))).length, 55);
+            assert.equal((await run(2, ...abArgs(fixture, baseUrl))).length, 15);
         } finally {
             close();
         }
         for (const [i, name] of [AB_RECORD, AB_REGISTER].entries()) assert.equal(fs.readFileSync(path.join(fixture.root, name), "utf8"), prior[i]);
-        assert.equal(fs.readdirSync(fixture.journal).length, 41, "conditions and all 40 completed turns remain recoverable");
-        assert.equal(fixture.calls().length, 55, "only the fake host was invoked");
+        assert.equal(fs.readdirSync(fixture.journal).length, 31, "conditions and all30 completed turns remain recoverable");
+        assert.equal(fixture.calls().length, 15, "only the fake host was invoked");
     });
 
     test("unruled k values fail promptly before verification or rendering work", () => {
@@ -1268,10 +1262,8 @@ describe("the A/B record", () => {
         const textA = source.replace("maxTokens = 4096", "maxTokens = 2048");
         const textB = source.replace("maxTokens = 4096", "maxTokens = 1024");
         assert.notEqual(textA, textB);
-        fs.cpSync(path.join(REPO, "packs", "tools", "local-llm", "screen"), path.join(dir, "screen"), { recursive: true });
-        fs.mkdirSync(path.join(dir, "runner"));
-        const fileA = path.join(dir, "runner", "runner-a.mjs");
-        const fileB = path.join(dir, "runner", "runner-b.mjs");
+        const fileA = path.join(dir, "runner-a.mjs");
+        const fileB = path.join(dir, "runner-b.mjs");
         fs.writeFileSync(fileA, textA);
         fs.writeFileSync(fileB, textB);
         const a = await import(pathToFileURL(fileA));
@@ -1294,8 +1286,8 @@ describe("the A/B record", () => {
         assert.deepEqual(caps, [2048, 2048], "changed runner is rejected before a model request");
         assert.deepEqual(fs.readdirSync(journal).sort().map((name) => [name, fs.readFileSync(path.join(journal, name), "utf8")]), before);
         const resumed = await a.captureAb({ ...options, chatFn: (o) => a.callLocalChat({ ...o, fetchImpl }) });
-        assert.equal(resumed.turns.length, 40);
-        assert.equal(caps.length, 55, "the same runner reuses its first two local turns");
+        assert.equal(resumed.turns.length, 30);
+        assert.equal(caps.length, 15, "the same runner reuses its first two local turns");
         assert.ok(caps.every((cap) => cap === 2048));
         assert.equal(resumed.source.runner, createHash("sha256").update(textA).digest("hex"));
     });
@@ -1310,21 +1302,18 @@ describe("the A/B record", () => {
         } finally {
             close();
         }
-        assert.equal(bodies.length, 55);
+        assert.equal(bodies.length, 15);
         let i = 0;
         for (const task of AB_TASKS) {
-            for (let r = 0; r < 5; r += 1) {
-                for (let q = 0; q < (task === "read" ? READ_QUESTIONS.length : 1); q += 1, i += 1) {
-                    assert.equal(bodies[i].reasoning_effort, "low");
-                    assert.equal(bodies[i].seed, turnSeed("s1", task, r));
-                    assert.equal(bodies[i].model, ROLE_MODELS[TASK_ROLES[task]]);
-                }
+            for (let r = 0; r < 5; r += 1, i += 1) {
+                assert.equal(bodies[i].reasoning_effort, "low");
+                assert.equal(bodies[i].seed, turnSeed("s1", task, r));
+                assert.equal(bodies[i].model, ROLE_MODELS[TASK_ROLES[task]]);
             }
         }
         const calls = fixture.calls();
-        assert.equal(calls.length, 55, "the second capture was refused before any host call: a record is captured once");
-        const prompts = (task) => (task === "read" ? READ_QUESTIONS.map(readHostPrompt) : [hostPrompt(task)]);
-        assert.deepEqual(calls.map((c) => c.args), AB_TASKS.flatMap((task) => Array.from({ length: 5 }, () => prompts(task)).flat().map((p) => ["--print", p])));
+        assert.equal(calls.length, 15, "the second capture was refused before any host call: a record is captured once");
+        assert.deepEqual(calls.map((c) => c.args), AB_TASKS.flatMap((task) => Array(5).fill(["--print", hostPrompt(task)])));
         for (const c of calls) {
             assert.notEqual(c.cwd, fixture.root);
             assert.equal(fs.existsSync(c.cwd), false);
@@ -1337,7 +1326,7 @@ describe("the A/B record", () => {
         assert.equal(fs.readFileSync(`${fixture.log}.version`, "utf8"), '["--print","--version"]\n', "the version is the whole host command's, run once");
         assert.deepEqual(rec.arms.h.command, [fixture.host, "--print"]);
         assert.deepEqual(rec.screen, currentScreen());
-        assert.deepEqual(rec.cells.map((c) => `${c.task}/${c.arm}=${c.passed}`), ["code/l=0", "code/h=5", "codify/l=0", "codify/h=5", "handoff/l=0", "handoff/h=5", "read/l=0", "read/h=5"]);
+        assert.deepEqual(rec.cells.map((c) => `${c.task}/${c.arm}=${c.passed}`), ["code/l=0", "code/h=5", "codify/l=0", "codify/h=5", "handoff/l=0", "handoff/h=5"]);
         assert.equal(fs.existsSync(fixture.journal), false, "the journal is removed once the record is written");
         assert.equal(await viaMain(fixture.root), 0);
     });
@@ -1351,9 +1340,9 @@ describe("the A/B record", () => {
             child.stderr.setEncoding("utf8").on("data", (chunk) => (stderr += chunk));
             const [status] = await new Promise((resolve) => child.on("close", (...exit) => resolve(exit)));
             assert.equal(status, 2, stderr);
-            assert.match(stderr, /Interrupted by SIGTERM; 22 turn\(s\) kept in .*local-worker-journal/);
+            assert.match(stderr, /Interrupted by SIGTERM; 17 turn\(s\) kept in .*local-worker-journal/);
             const journalled = fs.readdirSync(fixture.journal).sort();
-            assert.equal(journalled.length, 23);
+            assert.equal(journalled.length, 18);
             assert.equal(journalled.filter((name) => name.includes("__h__")).length, 2);
             assert.equal(fs.existsSync(path.join(fixture.root, AB_RECORD)), false);
             assert.equal(fixture.calls().length, 3);
@@ -1361,15 +1350,15 @@ describe("the A/B record", () => {
 
             fs.rmSync(`${fixture.log}.interrupt`);
             assert.deepEqual(await run(2, ...abArgs(fixture, baseUrl, "another-seed")), []);
-            assert.equal(fs.readdirSync(fixture.journal).length, 23, "a journal of other conditions is refused and left alone");
+            assert.equal(fs.readdirSync(fixture.journal).length, 18, "a journal of other conditions is refused and left alone");
 
             assert.deepEqual(await run(0, ...abArgs(fixture, baseUrl)), [], "arm L is resumed from the journal, not re-run");
         } finally {
             close();
         }
         const calls = fixture.calls();
-        assert.equal(calls.length, 3 + 13 + 40, "only the turn that was interrupted, and the ones never taken, reach the host");
-        assert.deepEqual(calls.slice(3).map((c) => c.args.at(-1)), [hostPrompt("code"), hostPrompt("code"), hostPrompt("code"), ...Array(5).fill(hostPrompt("codify")), ...Array(5).fill(hostPrompt("handoff")), ...Array.from({ length: 5 }, () => READ_QUESTIONS.map(readHostPrompt)).flat()]);
+        assert.equal(calls.length, 3 + 13, "only the turn that was interrupted, and the ones never taken, reach the host");
+        assert.deepEqual(calls.slice(3).map((c) => c.args.at(-1)), [hostPrompt("code"), hostPrompt("code"), hostPrompt("code"), ...Array(5).fill(hostPrompt("codify")), ...Array(5).fill(hostPrompt("handoff"))]);
         assert.equal(fs.existsSync(fixture.journal), false);
         assert.equal(await viaMain(fixture.root), 0);
     });
@@ -1565,12 +1554,12 @@ describe("dedup", () => {
 describe("acquired local routing", () => {
     const acquired = () => JSON.parse(fs.readFileSync(path.join(REPO, AB_RECORD), "utf8"));
     test("rederives code support and withholds shared prose without changing historical task routing", async () => {
-        assert.deepEqual(TASK_ROLES, { code: "code", codify: "prose", handoff: "prose", read: "code" });
+        assert.deepEqual(TASK_ROLES, { code: "code", codify: "prose", handoff: "prose" });
         assert.deepEqual(await deriveRouting(acquired()), EARNED_ROUTING.roles);
         const rec = acquired();
         const turn = rec.turns.find((t) => t.task === "code" && t.arm === "h");
         Object.assign(turn, { completed: false, exit: 1, ok: null, detail: null, output: "authentication failed" });
-        rec.cells = foldAb(rec.turns, rec.k, ROLE_TASKS);
+        rec.cells = foldAb(rec.turns, rec.k);
         assert.equal((await deriveRouting(rec)).code.enabled, false, "incomplete H cannot earn a positive local tie");
         rec.turns.pop();
         await assert.rejects(deriveRouting(rec), RailError, "a malformed matrix earns nothing");
@@ -1675,7 +1664,7 @@ test("a zero-quality tie earns nothing and both prose tasks must qualify", async
     const predicates = await loadPredicates();
     const change = (rec, select, output) => {
         for (const t of rec.turns.filter(select)) Object.assign(t, { output }, gradeRoleOutput(t.task, output, predicates));
-        rec.cells = foldAb(rec.turns, rec.k, ROLE_TASKS);
+        rec.cells = foldAb(rec.turns, rec.k);
     };
     const zero = record();
     change(zero, (t) => t.task === "code", "no exported code");

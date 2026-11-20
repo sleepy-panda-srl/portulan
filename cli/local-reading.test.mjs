@@ -275,11 +275,10 @@ describe("the read task of the eval screen", () => {
         assert.match(wrong.detail, new RegExp(`right=${READ_QUESTIONS.length - 1}/${READ_QUESTIONS.length} .* wrong=${trap.id}`));
     });
 
-    test("read is the A/B matrix's fourth task, kept outside EVAL_PROMPTS, so the committed three-task record's prompts are as captured", () => {
-        assert.deepEqual([...AB_TASKS], ["code", "codify", "handoff", "read"]);
+    test("the read task is outside the A/B record: its tasks, prompts and fingerprints are as captured", () => {
+        assert.deepEqual([...AB_TASKS], ["code", "codify", "handoff"]);
         assert.deepEqual(Object.keys(EVAL_PROMPTS), ["code", "codify", "handoff"]);
         const record = JSON.parse(fs.readFileSync(path.join(REPO, "evals", "ab", "local-worker.json"), "utf8"));
-        assert.equal(record.portulan.abLocalWorker, "1");
         assert.equal(currentScreen().prompts, record.screen.prompts);
     });
 

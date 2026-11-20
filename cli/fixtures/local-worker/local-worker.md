@@ -20,15 +20,12 @@
   - `code` → role `code` → `fixture/local-code-model`
   - `codify` → role `prose` → `fixture/local-prose-model`
   - `handoff` → role `prose` → `fixture/local-prose-model`
-  - `read` → role `code` → `fixture/local-code-model`
 - **Arm H:** `fixture-host --print <prompt>`, host `0.0.0 (synthetic fixture host)` as `fixture-host --print --version` reports it, in an empty working directory, with a per-turn timeout of 600s
 - **Arm H's model:** `fixture/host-model`, as the operator declared it — the runner does not observe it
 - **Prompt:** `EVAL_PROMPTS`' own, verbatim. Arm L receives its system and user messages; arm H the two joined by a blank line, as its command's last argument
 - **Graded by:** `gradeRoleOutput()`, the predicates `eval` screens with, the same for both arms
-- **Runner source:** sha256 `6144e8123cb5cace25300192647198354a803f4a3d40e73e77ab90a7c783c421`
+- **Runner source:** sha256 `5dd7a84a561b0f92c95e7c153d797cca38d8367796b7ed899a6722269fa2e447`
 - **Screen fingerprints:** predicates `0000000000000000000000000000000000000000000000000000000000000000`, the sha256 over `cli/comments.mjs`, `cli/doctor.mjs`, `cli/skill-goldens.mjs`, `gradeRoleOutput()` and its required tokens; prompts `c60ce823e1551fee7644f1c376a19cf697f825900c92adfa39a13c6a99058132`
-- **Reading:** a `read` turn is one pass of the 8 screen questions in `screen/read/`, each its own call (`readMessages()`; arm H the two messages joined), graded by `gradeReadAnswer()`, and passes only when all 8 are right; arm L's 8 calls share the turn's seed; ruled 2026-11-20
-- **Reading fingerprints:** prompts `57b5ead953e7387ac18bbcbef563e4354e16460e076da10040d8157b071cc43f`, questions `2c124be9c14bf4aff47788796ec1e5ed0b0c71ffe43e64aef693bd20ef5716c6`, fixtures `0973bbcff03866607afb75617dd651aa2883b466a2de1231d47462f4d0f9fda7`, grader `0000000000000000000000000000000000000000000000000000000000000000`
 
 ## The figures
 
@@ -40,12 +37,10 @@
 | `codify` | H | `fixture/host-model` | **4**/5 | 0 | 1 |
 | `handoff` | L | `fixture/local-prose-model` | **4**/5 | 1 | 0 |
 | `handoff` | H | `fixture/host-model` | **4**/5 | 0 | 1 |
-| `read` | L | `fixture/local-code-model` | **4**/5 | 1 | 0 |
-| `read` | H | `fixture/host-model` | **3**/5 | 0 | 2 |
 
-**Arm L 15/20, arm H 16/20 — a difference of -1, recorded as measured.**
+**Arm L 11/15, arm H 13/15 — a difference of -2, recorded as measured.**
 
-That total is a sum of 4 counts of 5, and NOT a rate over 20 independent
+That total is a sum of 3 counts of 5, and NOT a rate over 15 independent
 trials. It carries no significance, no interval, and no claim that a difference between the arms is
 a difference between the models. The per-task rows above are the measurement.
 
@@ -56,7 +51,6 @@ a difference between the models. The per-task rows above are the measurement.
 | `code` | 4/5 | 5/5 | -1 |
 | `codify` | 3/5 | 4/5 | -1 |
 | `handoff` | 4/5 | 4/5 | +0 |
-| `read` | 4/5 | 3/5 | +1 |
 
 A difference here is a difference between two counts of 5. It is not a measurement of an
 effect, and the block below is not a formality.
@@ -95,101 +89,6 @@ effect, and the block below is not a formality.
 | `handoff` | H | 2 | — | `pass` | 0 | 22002 | `bytes=175/800 missing=0` |
 | `handoff` | H | 3 | — | `pass` | 0 | 22003 | `bytes=175/800 missing=0` |
 | `handoff` | H | 4 | — | `pass` | 0 | 22004 | `bytes=175/800 missing=0` |
-| `read` | L | 0 | 1869464975 | `pass` | — | 4028 | `right=8/8 traps=3/3` |
-| `read` | L | 1 | 2149045721 | `pass` | — | 4108 | `right=8/8 traps=3/3` |
-| `read` | L | 2 | 2019063135 | `fail` | — | 4188 | `right=7/8 traps=2/3 wrong=module-absent-function(absent=false lines=[12])` |
-| `read` | L | 3 | 2054832489 | `pass` | — | 4268 | `right=8/8 traps=3/3` |
-| `read` | L | 4 | 1006482901 | `pass` | — | 4348 | `right=8/8 traps=3/3` |
-| `read` | H | 0 | — | `pass` | 0 | 32028 | `right=8/8 traps=3/3` |
-| `read` | H | 1 | — | **did-not-complete** | 1 | 32108 | — |
-| `read` | H | 2 | — | `pass` | 0 | 32188 | `right=8/8 traps=3/3` |
-| `read` | H | 3 | — | `pass` | 0 | 32268 | `right=8/8 traps=3/3` |
-| `read` | H | 4 | — | **did-not-complete** (timed out) | — | 628307 | — |
-
-## Every reading question, so each reading turn can be checked against them
-
-| Arm | run | question | verdict | exit | ms | detail |
-|---|---|---|---|---|---|---|
-| L | 0 | `module-declares` | `pass` | — | 500 | `lines=[26] want=[26]` |
-| L | 0 | `module-constant` | `pass` | — | 501 | `value="48" lines=[5] want="48"@[5]` |
-| L | 0 | `module-calls` | `pass` | — | 502 | `lines=[48,62] want=[48,62]` |
-| L | 0 | `module-absent-function` | `pass` | — | 503 | `absent=true lines=[]` |
-| L | 0 | `module-absent-env` | `pass` | — | 504 | `absent=true lines=[]` |
-| L | 0 | `log-skipped` | `pass` | — | 505 | `value="2" lines=[39] want="2"@[39]` |
-| L | 0 | `log-first-failure` | `pass` | — | 506 | `lines=[12] want=[12]` |
-| L | 0 | `log-absent-coverage` | `pass` | — | 507 | `absent=true lines=[]` |
-| L | 1 | `module-declares` | `pass` | — | 510 | `lines=[26] want=[26]` |
-| L | 1 | `module-constant` | `pass` | — | 511 | `value="48" lines=[5] want="48"@[5]` |
-| L | 1 | `module-calls` | `pass` | — | 512 | `lines=[48,62] want=[48,62]` |
-| L | 1 | `module-absent-function` | `pass` | — | 513 | `absent=true lines=[]` |
-| L | 1 | `module-absent-env` | `pass` | — | 514 | `absent=true lines=[]` |
-| L | 1 | `log-skipped` | `pass` | — | 515 | `value="2" lines=[39] want="2"@[39]` |
-| L | 1 | `log-first-failure` | `pass` | — | 516 | `lines=[12] want=[12]` |
-| L | 1 | `log-absent-coverage` | `pass` | — | 517 | `absent=true lines=[]` |
-| L | 2 | `module-declares` | `pass` | — | 520 | `lines=[26] want=[26]` |
-| L | 2 | `module-constant` | `pass` | — | 521 | `value="48" lines=[5] want="48"@[5]` |
-| L | 2 | `module-calls` | `pass` | — | 522 | `lines=[48,62] want=[48,62]` |
-| L | 2 | `module-absent-function` | `fail` | — | 523 | `absent=false lines=[12]` |
-| L | 2 | `module-absent-env` | `pass` | — | 524 | `absent=true lines=[]` |
-| L | 2 | `log-skipped` | `pass` | — | 525 | `value="2" lines=[39] want="2"@[39]` |
-| L | 2 | `log-first-failure` | `pass` | — | 526 | `lines=[12] want=[12]` |
-| L | 2 | `log-absent-coverage` | `pass` | — | 527 | `absent=true lines=[]` |
-| L | 3 | `module-declares` | `pass` | — | 530 | `lines=[26] want=[26]` |
-| L | 3 | `module-constant` | `pass` | — | 531 | `value="48" lines=[5] want="48"@[5]` |
-| L | 3 | `module-calls` | `pass` | — | 532 | `lines=[48,62] want=[48,62]` |
-| L | 3 | `module-absent-function` | `pass` | — | 533 | `absent=true lines=[]` |
-| L | 3 | `module-absent-env` | `pass` | — | 534 | `absent=true lines=[]` |
-| L | 3 | `log-skipped` | `pass` | — | 535 | `value="2" lines=[39] want="2"@[39]` |
-| L | 3 | `log-first-failure` | `pass` | — | 536 | `lines=[12] want=[12]` |
-| L | 3 | `log-absent-coverage` | `pass` | — | 537 | `absent=true lines=[]` |
-| L | 4 | `module-declares` | `pass` | — | 540 | `lines=[26] want=[26]` |
-| L | 4 | `module-constant` | `pass` | — | 541 | `value="48" lines=[5] want="48"@[5]` |
-| L | 4 | `module-calls` | `pass` | — | 542 | `lines=[48,62] want=[48,62]` |
-| L | 4 | `module-absent-function` | `pass` | — | 543 | `absent=true lines=[]` |
-| L | 4 | `module-absent-env` | `pass` | — | 544 | `absent=true lines=[]` |
-| L | 4 | `log-skipped` | `pass` | — | 545 | `value="2" lines=[39] want="2"@[39]` |
-| L | 4 | `log-first-failure` | `pass` | — | 546 | `lines=[12] want=[12]` |
-| L | 4 | `log-absent-coverage` | `pass` | — | 547 | `absent=true lines=[]` |
-| H | 0 | `module-declares` | `pass` | 0 | 4000 | `lines=[26] want=[26]` |
-| H | 0 | `module-constant` | `pass` | 0 | 4001 | `value="48" lines=[5] want="48"@[5]` |
-| H | 0 | `module-calls` | `pass` | 0 | 4002 | `lines=[48,62] want=[48,62]` |
-| H | 0 | `module-absent-function` | `pass` | 0 | 4003 | `absent=true lines=[]` |
-| H | 0 | `module-absent-env` | `pass` | 0 | 4004 | `absent=true lines=[]` |
-| H | 0 | `log-skipped` | `pass` | 0 | 4005 | `value="2" lines=[39] want="2"@[39]` |
-| H | 0 | `log-first-failure` | `pass` | 0 | 4006 | `lines=[12] want=[12]` |
-| H | 0 | `log-absent-coverage` | `pass` | 0 | 4007 | `absent=true lines=[]` |
-| H | 1 | `module-declares` | `pass` | 0 | 4010 | `lines=[26] want=[26]` |
-| H | 1 | `module-constant` | `pass` | 0 | 4011 | `value="48" lines=[5] want="48"@[5]` |
-| H | 1 | `module-calls` | `pass` | 0 | 4012 | `lines=[48,62] want=[48,62]` |
-| H | 1 | `module-absent-function` | `pass` | 0 | 4013 | `absent=true lines=[]` |
-| H | 1 | `module-absent-env` | `pass` | 0 | 4014 | `absent=true lines=[]` |
-| H | 1 | `log-skipped` | **did-not-complete** | 1 | 4015 | — |
-| H | 1 | `log-first-failure` | `pass` | 0 | 4016 | `lines=[12] want=[12]` |
-| H | 1 | `log-absent-coverage` | `pass` | 0 | 4017 | `absent=true lines=[]` |
-| H | 2 | `module-declares` | `pass` | 0 | 4020 | `lines=[26] want=[26]` |
-| H | 2 | `module-constant` | `pass` | 0 | 4021 | `value="48" lines=[5] want="48"@[5]` |
-| H | 2 | `module-calls` | `pass` | 0 | 4022 | `lines=[48,62] want=[48,62]` |
-| H | 2 | `module-absent-function` | `pass` | 0 | 4023 | `absent=true lines=[]` |
-| H | 2 | `module-absent-env` | `pass` | 0 | 4024 | `absent=true lines=[]` |
-| H | 2 | `log-skipped` | `pass` | 0 | 4025 | `value="2" lines=[39] want="2"@[39]` |
-| H | 2 | `log-first-failure` | `pass` | 0 | 4026 | `lines=[12] want=[12]` |
-| H | 2 | `log-absent-coverage` | `pass` | 0 | 4027 | `absent=true lines=[]` |
-| H | 3 | `module-declares` | `pass` | 0 | 4030 | `lines=[26] want=[26]` |
-| H | 3 | `module-constant` | `pass` | 0 | 4031 | `value="48" lines=[5] want="48"@[5]` |
-| H | 3 | `module-calls` | `pass` | 0 | 4032 | `lines=[48,62] want=[48,62]` |
-| H | 3 | `module-absent-function` | `pass` | 0 | 4033 | `absent=true lines=[]` |
-| H | 3 | `module-absent-env` | `pass` | 0 | 4034 | `absent=true lines=[]` |
-| H | 3 | `log-skipped` | `pass` | 0 | 4035 | `value="2" lines=[39] want="2"@[39]` |
-| H | 3 | `log-first-failure` | `pass` | 0 | 4036 | `lines=[12] want=[12]` |
-| H | 3 | `log-absent-coverage` | `pass` | 0 | 4037 | `absent=true lines=[]` |
-| H | 4 | `module-declares` | `pass` | 0 | 4040 | `lines=[26] want=[26]` |
-| H | 4 | `module-constant` | **did-not-complete** (timed out) | — | 600000 | — |
-| H | 4 | `module-calls` | `pass` | 0 | 4042 | `lines=[48,62] want=[48,62]` |
-| H | 4 | `module-absent-function` | `pass` | 0 | 4043 | `absent=true lines=[]` |
-| H | 4 | `module-absent-env` | `pass` | 0 | 4044 | `absent=true lines=[]` |
-| H | 4 | `log-skipped` | `pass` | 0 | 4045 | `value="2" lines=[39] want="2"@[39]` |
-| H | 4 | `log-first-failure` | `pass` | 0 | 4046 | `lines=[12] want=[12]` |
-| H | 4 | `log-absent-coverage` | `pass` | 0 | 4047 | `absent=true lines=[]` |
 
 **What may not be concluded from the figures above.**
 
@@ -214,6 +113,3 @@ effect, and the block below is not a formality.
   ended by a signal the capture did not send, and is folded into neither count.
 - **Which routing these figures support is not stated here.** It is stated where the routing ships,
   the pack's README and `ROLE_MODELS`, which cite this record.
-- **A reading pass is `gradeReadAnswer()`'s and nothing more**: the exact set of cited lines, a value and
-  its line, or `ABSENT` citing none, on two synthetic fixtures. It does not say a reading call pays,
-  which turns on the file and the parent's context, nor how often a reading answer is wrong elsewhere.
