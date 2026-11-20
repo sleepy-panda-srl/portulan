@@ -311,7 +311,7 @@ diagnostic prose. The API and model retain the raw bounded retry feedback.
 The acquired [record](../../../evals/ab/local-worker.md) supports `code` at low effort; shared `prose`
 is disabled because codify failed all five local turns. `summarize` defaults to that disabled role and
 refuses. An explicit `--model` without `--role` is an operator-selected candidate, not automatic routing.
-[Find-and-quote reading](#find-and-quote) is an operator-selected candidate use too.
+[Find-and-quote reading](#find-and-quote) is a supported use of `code`, earned on [a record of its own](#the-reading-record).
 Use the [sizing and wording guidance](#sizing-and-wording-a-call) before choosing a complete function
 or test group; specify one observable change, prefer serial calls, and return only the selected replacement. On truncated output inspect the diagnostic and task contract; on transport
 failure inspect the transport; on verifier failure inspect code. For reasoning-only
@@ -323,10 +323,11 @@ model/effort or bypass verification. This advice reduces failures, does not guar
 
 A pointed question about one file or one log, answered with line numbers, which the caller confirms
 by reading only those lines: `chat --role code --file <path> --number-lines --prompt-file <question>`.
-It is an **operator-selected candidate use, not earned routing**. The [A/B record](#the-ab-record)
-measured `code` on a transform, not on reading; the screen's `read` task passing earns nothing; and
-[the reading record](#the-reading-record) that would earn it is not captured. Use it where the operator
-selected it, and only on these rails:
+It is a **supported use of the `code` role, earned on [the reading record](#the-reading-record)**: on
+the eight screen questions arm L passed all five turns and arm H five, a positive tie, which qualifies.
+The [A/B record](#the-ab-record) measured `code` on a transform, not on reading, and the screen's
+`read` task passing earns nothing. The record supports that recorded rate and nothing wider, so use it
+only on these rails:
 
 - **One file or one log per call**, under the input ceiling; a longer one in parts with `--lines`,
   whose numbers stay the file's own.
@@ -385,7 +386,7 @@ parent then touches up, adds a whole request. So:
   iterate, a batch of calls inside one tool request, and a long mechanical replacement the parent would
   otherwise write out.
 - **A reading call pays when what it keeps out of the parent outweighs the request it costs.** A
-  find-and-quote call (the [skill](skills/delegate-local/SKILL.md)'s candidate use) puts the question,
+  find-and-quote call (the [skill](skills/delegate-local/SKILL.md)'s reading use) puts the question,
   the answer and the few lines read to check it, `q`, into the parent's context in place of the file,
   `R`. The call is one more request re-reading `C`; the saving is `R − q` on every later request that
   would have re-read the file, `T′` of them, so it pays while `(R − q) × T′` exceeds `C`. It pays on a
@@ -507,10 +508,13 @@ It is repository workshop tooling, excluded from npm like the earlier A/B instru
 
 Find-and-quote reading is earned on `evals/ab/local-reader.json` and its generated register
 `local-reader.md`, by the rulings on [proposal 0042](../../../.portulan/proposals/0042-find-and-quote-reading-earns-its-place-by-its-own-record.md), and
-**neither exists yet**: capturing it is the maintainer's step. Until then `eval --verify` ends with
-`evals/ab/local-reader.json is not captured, so reading earns nothing` and stays green,
-`cli/local-routing.mjs` ends with `reading: not captured`, and `EARNED_ROUTING` carries no `reading`
-entry; a `local-reader.md` with no record beside it is exit `1`.
+**both are captured** (2026-11-20, the maintainer's step): arm L `qwen/qwen3.8-27b` passed 5 of 5
+turns and arm H `claude-sonnet-5-5` 5 of 5, [as the register shows](../../../evals/ab/local-reader.md).
+That qualifies, so `EARNED_ROUTING` carries `reading: { role: "code", model: "qwen/qwen3.8-27b" }` and
+`cli/local-routing.mjs` ends with `reading: earned`. Where the record is absent, `eval --verify` ends
+with `evals/ab/local-reader.json is not captured, so reading earns nothing` and stays green, while
+`cli/local-routing.mjs` is exit `1` on a shipped `reading` entry that no record derives; a
+`local-reader.md` with no record beside it is exit `1`.
 
 - **`eval --ab --task read --k 5 --seed <s> --host-cmd "<command>" --host-model <id> --write`
   captures it**, beside the local-worker record and without touching it. One task, two arms, `k = 5`

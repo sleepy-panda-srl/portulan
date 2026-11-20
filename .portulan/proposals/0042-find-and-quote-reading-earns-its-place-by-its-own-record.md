@@ -6,8 +6,8 @@ second of them twice.** Extends
 (loopback is a rail; routing is earned) to a second use of the earned `code` role: reading one file or
 one log and quoting lines from it. Answers [#678](https://github.com/sleepy-panda-srl/portulan/issues/678).
 The rulings are recorded under *What was ruled*. The capture path they ask for is built in the change
-that records them; the capture itself is the maintainer's step, and until he takes it reading stays a
-candidate use.
+that records them; the capture itself was the maintainer's step, taken on 2026-11-20: the record
+qualifies, and the change that commits it names reading a supported use.
 
 **Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/679 (the draft); the rulings and the
 capture path land in the pull request that follows it.
@@ -42,8 +42,8 @@ Built with the draft, as an implementation of the issue's runner and screen asks
   passing only when all eight are right. On 2026-11-19 it passed on `qwen/qwen3.8-27b`, 8 of 8 with the
   three traps right, one sample on a loaded machine. **The screen earns nothing.** `read` stays in
   `eval`'s default task set, by the fourth ruling.
-- **The skill names find and quote as an operator-selected candidate use**, with its rails, and the
-  pack's README states when a reading call pays.
+- **The skill named find and quote as an operator-selected candidate use**, with its rails, until the
+  record below was captured; the pack's README states when a reading call pays.
 
 Built with the rulings:
 
@@ -52,10 +52,13 @@ Built with the rulings:
 - **`EARNED_ROUTING` takes a reading entry only from a qualifying reader record**, derived by
   [`cli/local-routing.mjs`](../../cli/local-routing.mjs).
 
-**What is still missing is the record.** No reader record is captured. `eval --verify` reports it as
-`not captured, so reading earns nothing` and stays green, `cli/local-routing.mjs` reports
-`reading: not captured`, and the shipped routing carries no reading entry. Until the maintainer captures
-it, the use is a candidate.
+**The record is captured.** The maintainer captured
+[`evals/ab/local-reader.json`](../../evals/ab/local-reader.json) on 2026-11-20: arm L
+`qwen/qwen3.8-27b` passed 5 of 5 turns and arm H `claude-sonnet-5-5` 5 of 5,
+[as its register shows](../../evals/ab/local-reader.md). That is a positive tie, which qualifies under
+clause 1, so `cli/local-routing.mjs` derives `reading: { role: "code", model: "qwen/qwen3.8-27b" }`,
+the shipped routing carries it, and the skill names the use supported. It supports that recorded rate
+on the eight screen questions and nothing wider; clause 3's demotion still applies.
 
 ## Rule
 

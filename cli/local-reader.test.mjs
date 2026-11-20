@@ -103,18 +103,28 @@ const readingTable = (root, rec, reading) => ({
     ...(reading ? { reading } : {}),
 });
 
-describe("the worker record is untouched, and an absent reader record earns nothing", () => {
+describe("the worker record is untouched, the captured reader record earns reading, and an absent one earns nothing", () => {
     test("the worker matrix stays three tasks and its record verifies as committed", async () => {
         assert.deepEqual([...AB_TASKS], ["code", "codify", "handoff"]);
-        assert.equal(fs.existsSync(path.join(REPO, READER_RECORD)), false, "no reader record is captured in this change");
-        assert.match(await verifyReaderRecord(REPO), /local-reader\.json is not captured, so reading earns nothing/);
+        assert.equal(fs.existsSync(path.join(REPO, READER_RECORD)), true, "the reader record is committed beside the worker's");
+        assert.match(await verifyReaderRecord(REPO), /local-reader\.json: 10 turn\(s\) of 8 questions at k=5, regraded and folded consistently, and evals\/ab\/local-reader\.md matches byte for byte/);
+        assert.match(await verifyReaderRecord(repoWith(null)), /local-reader\.json is not captured, so reading earns nothing/);
     });
 
-    test("no reading entry ships, none is derived without a record, and a claimed one is red", async () => {
-        assert.equal(Object.hasOwn(EARNED_ROUTING, "reading"), false);
+    test("the reading entry ships as the committed record derives it; a missing or different one is red, and none is derived without a record", async () => {
+        const committed = JSON.parse(fs.readFileSync(path.join(REPO, READER_RECORD), "utf8"));
+        assert.deepEqual(deriveReading(committed), { role: "code", model: "qwen/qwen3.8-27b" });
+        assert.deepEqual(EARNED_ROUTING.reading, deriveReading(committed));
+        assert.equal(Object.isFrozen(EARNED_ROUTING.reading), true);
+        assert.match(await verifyRoutingRecord(REPO), /reading: earned/);
+        const { reading, ...withoutReading } = structuredClone(EARNED_ROUTING);
+        await assert.rejects(verifyRoutingRecord(REPO, withoutReading), /differs from its acquired record/);
+        await assert.rejects(verifyRoutingRecord(REPO, { ...withoutReading, reading: { ...reading, model: "google/gemma-4-31b" } }), /differs from its acquired record/);
+        await assert.rejects(verifyRoutingRecord(REPO, { ...withoutReading, reading: { ...reading, role: "prose" } }), /differs from its acquired record/);
         assert.equal(deriveReading(null), null);
-        assert.match(await verifyRoutingRecord(REPO), /reading: not captured/);
-        await assert.rejects(verifyRoutingRecord(REPO, { ...structuredClone(EARNED_ROUTING), reading: { role: "code", model: "qwen/qwen3.8-27b" } }), /differs from its acquired record/);
+        const absent = repoWith(null);
+        assert.match(await verifyRoutingRecord(absent, withoutReading), /reading: not captured/);
+        await assert.rejects(verifyRoutingRecord(absent, structuredClone(EARNED_ROUTING)), /differs from its acquired record/);
     });
 
     test("a reader register with no reader record is red", async () => {

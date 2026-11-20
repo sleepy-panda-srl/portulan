@@ -24,7 +24,7 @@
 - **Arm H's model:** `fixture/host-model`, as the operator declared it — the runner does not observe it
 - **Prompt:** `EVAL_PROMPTS`' own, verbatim. Arm L receives its system and user messages; arm H the two joined by a blank line, as its command's last argument
 - **Graded by:** `gradeRoleOutput()`, the predicates `eval` screens with, the same for both arms
-- **Runner source:** sha256 `477d054de94d17235059a48219967db87b81f850cdb0ab3fe6f421db1e13b037`
+- **Runner source:** sha256 `63f99480a18f3fc951f266e908ac5275a434bb8179f5dece3b9bcb8ef4f1c968`
 - **Screen fingerprints:** predicates `0000000000000000000000000000000000000000000000000000000000000000`, the sha256 over `cli/comments.mjs`, `cli/doctor.mjs`, `cli/skill-goldens.mjs`, `gradeRoleOutput()` and its required tokens; prompts `c60ce823e1551fee7644f1c376a19cf697f825900c92adfa39a13c6a99058132`
 
 ## The figures
