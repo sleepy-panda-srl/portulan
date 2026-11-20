@@ -42,6 +42,7 @@ export const EARNED_ROUTING = Object.freeze({
         code: Object.freeze({ model: "qwen/qwen3.8-27b", enabled: true }),
         prose: Object.freeze({ model: "google/gemma-4-31b", enabled: false }),
     }),
+    reading: Object.freeze({ role: "code", model: "qwen/qwen3.8-27b" }),
 });
 
 export function operationalModel(args, defaultRole) {
@@ -3043,7 +3044,7 @@ export const USAGE = `local-llm.mjs — a zero-dependency runner for a loopback 
                  --verify would red.
 
 Routing evidence: ${AB_REGISTER}, k=5. Code is enabled (L5/H5); shared prose is disabled
-(codify L0/H3, handoff L5/H5). Reading has no captured record, so find and quote is a candidate use.
+(codify L0/H3, handoff L5/H5). Find and quote is supported on --role code by ${READER_REGISTER} (L5/H5).
 Operational defaults and --role require the measured model at low
 effort. --model without --role is an explicit candidate; eval and eval --ab remain screens/captures
 and never enable a role automatically.

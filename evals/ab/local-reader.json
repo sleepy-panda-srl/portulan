@@ -1,0 +1,1015 @@
+{
+  "portulan": {
+    "abLocalReader": "1"
+  },
+  "captured": "2026-11-20T09:10:51.845Z",
+  "source": {
+    "commit": "1fcc176cd8b420205da825cf0246187cbbaa8bfb",
+    "clean": true,
+    "runner": "477d054de94d17235059a48219967db87b81f850cdb0ab3fe6f421db1e13b037"
+  },
+  "machine": "Apple M5 Max, 128 GiB, darwin arm64, node v26.13.1",
+  "k": 5,
+  "seed": "portulan-reader-20261120",
+  "rulings": {
+    "k": "2026-08-31",
+    "read": "2026-11-20"
+  },
+  "screen": {
+    "prompts": "57b5ead953e7387ac18bbcbef563e4354e16460e076da10040d8157b071cc43f",
+    "questions": "2c124be9c14bf4aff47788796ec1e5ed0b0c71ffe43e64aef693bd20ef5716c6",
+    "fixtures": "0973bbcff03866607afb75617dd651aa2883b466a2de1231d47462f4d0f9fda7",
+    "grader": "7a1c40e10e4ea31768b11975d5a891f58d01190dd97b26156e4bb5ad02322cd6"
+  },
+  "arms": {
+    "l": {
+      "endpoint": "http://127.0.0.1:1234/v1",
+      "effort": "low",
+      "role": "code",
+      "model": "qwen/qwen3.8-27b"
+    },
+    "h": {
+      "command": [
+        "claude",
+        "--print",
+        "--model",
+        "claude-sonnet-5-5",
+        "--max-budget-usd",
+        "0.15"
+      ],
+      "version": "2.1.325 (Claude Code)",
+      "model": "claude-sonnet-5-5",
+      "timeoutMs": 600000
+    }
+  },
+  "turns": [
+    {
+      "task": "read",
+      "arm": "l",
+      "run": 0,
+      "seed": 4069502210,
+      "model": "qwen/qwen3.8-27b",
+      "completed": true,
+      "exit": null,
+      "timedOut": false,
+      "ms": 42962,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 9524,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "The function `refillBucket` is declared on line 26.\n\nANSWER: 26 | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3130,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "The constant `MAX_BURST` is defined on line 5 with the value `48`.\n\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 7739,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "The function `refillBucket` is declared on line 26.\nThe calls to `refillBucket` (excluding the declaration) are found on:\n- Line 48: `refillBucket(bucket, now());`\n- Line 62: `return Math.floor(refillBucket({ ...bucket }, now()).tokens);`\n\nANSWER: 48, 62 | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 4085,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file does not contain a function named `drainQueue`. It contains a function named `drainBucket` (line 65), but not `drainQueue`.\n\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3577,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "I reviewed the entire file (lines 1-102). The file contains no references to `process.env` or any environment variable reading.\n\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3969,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "The summary at the end of the file indicates that 2 tests were skipped. This is explicitly stated on line 39.\n\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 8590,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "The first failing test is identified by the line `not ok 4 - a partial refill rounds down` on line 8. The error message associated with this test is found in the YAML block immediately following it. Specifically, line 12 contains the `error` field with the message `'Expected values to be strictly equal: 11 !== 12'`.\n\nANSWER: 'Expected values to be strictly equal: 11 !== 12' | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2348,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file does not contain a line-coverage percentage.\n\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "l",
+      "run": 1,
+      "seed": 616679883,
+      "model": "qwen/qwen3.8-27b",
+      "completed": true,
+      "exit": null,
+      "timedOut": false,
+      "ms": 33974,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2616,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "The function `refillBucket` is declared on line 26.\n\nANSWER: 26 | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2963,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "The constant `MAX_BURST` is defined on line 5 with the value `48`.\n\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 7452,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "The function `refillBucket` is declared on line 26.\nThe calls to `refillBucket` (excluding the declaration) are found on:\n- Line 48: `refillBucket(bucket, now());`\n- Line 62: `return Math.floor(refillBucket({ ...bucket }, now()).tokens);`\n\nANSWER: 48, 62 | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3846,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file does not contain a function named `drainQueue`. It contains a function named `drainBucket` (line 65), but no `drainQueue`.\n\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3147,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "I reviewed lines 1-102 of `quota-module.js.txt`. The file contains no occurrence of `process.env`.\n\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3328,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "The summary at the end of the file indicates the number of skipped tests on line 39.\n\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 8310,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "The first failing test is identified by the line `not ok 4 - a partial refill rounds down` on line 8. The error message associated with this test is found in the YAML block immediately following it. Specifically, line 12 contains the `error` key with the value `'Expected values to be strictly equal: 11 !== 12'`.\n\nANSWER: 'Expected values to be strictly equal: 11 !== 12' | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2312,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file does not contain a line-coverage percentage.\n\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "l",
+      "run": 2,
+      "seed": 1771965907,
+      "model": "qwen/qwen3.8-27b",
+      "completed": true,
+      "exit": null,
+      "timedOut": false,
+      "ms": 34612,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2513,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "The function `refillBucket` is declared on line 26.\n\nANSWER: 26 | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2924,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "The constant `MAX_BURST` is defined on line 5 with the value `48`.\n\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 7286,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "The function `refillBucket` is declared on line 26.\nThe calls to `refillBucket` (excluding the declaration) are found on:\n- Line 48: `refillBucket(bucket, now());`\n- Line 62: `return Math.floor(refillBucket({ ...bucket }, now()).tokens);`\n\nANSWER: 48, 62 | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3796,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file does not contain a function named `drainQueue`. It contains a function named `drainBucket` (line 65), but not `drainQueue`.\n\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3971,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "I reviewed the entire file (lines 1-102) for any occurrence of `process.env`. The file contains no references to `process.env` or any environment variable reading.\n\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3675,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "The summary at the end of the file indicates that 2 tests were skipped. This is explicitly stated on line 39.\n\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 8121,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "The first failing test is identified by the line `not ok 4 - a partial refill rounds down` on line 8. The error message associated with this test is found in the YAML block immediately following it. Specifically, line 12 contains the `error` key with the value `'Expected values to be strictly equal: 11 !== 12'`.\n\nANSWER: 'Expected values to be strictly equal: 11 !== 12' | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2326,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file does not contain a line-coverage percentage.\n\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "l",
+      "run": 3,
+      "seed": 745603375,
+      "model": "qwen/qwen3.8-27b",
+      "completed": true,
+      "exit": null,
+      "timedOut": false,
+      "ms": 32869,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2445,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "The function `refillBucket` is declared on line 26.\n\nANSWER: 26 | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2848,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "The constant `MAX_BURST` is defined on line 5 with the value `48`.\n\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 7084,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "The function `refillBucket` is declared on line 26.\nThe calls to `refillBucket` (excluding the declaration) are found on:\n- Line 48: `refillBucket(bucket, now());`\n- Line 62: `return Math.floor(refillBucket({ ...bucket }, now()).tokens);`\n\nANSWER: 48, 62 | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3774,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file does not contain a function named `drainQueue`. It contains a function named `drainBucket` on line 65, but no `drainQueue`.\n\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2979,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "I reviewed lines 1-102 of `quota-module.js.txt`. The file contains no occurrences of `process.env`.\n\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3200,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "The summary at the end of the file indicates the number of skipped tests on line 39.\n\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 8236,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "The first failing test is identified by the line `not ok 4 - a partial refill rounds down` on line 8. The error message associated with this test is found in the YAML block immediately following it. Specifically, line 12 contains the `error` key with the value `'Expected values to be strictly equal: 11 !== 12'`.\n\nANSWER: 'Expected values to be strictly equal: 11 !== 12' | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2303,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file does not contain a line-coverage percentage.\n\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "l",
+      "run": 4,
+      "seed": 3595497759,
+      "model": "qwen/qwen3.8-27b",
+      "completed": true,
+      "exit": null,
+      "timedOut": false,
+      "ms": 33052,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2424,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "The function `refillBucket` is declared on line 26.\n\nANSWER: 26 | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2763,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "The constant `MAX_BURST` is defined on line 5 with the value `48`.\n\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 7260,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "The function `refillBucket` is declared on line 26.\nThe calls to `refillBucket` (excluding the declaration) are found on:\n- Line 48: `refillBucket(bucket, now());`\n- Line 62: `return Math.floor(refillBucket({ ...bucket }, now()).tokens);`\n\nANSWER: 48, 62 | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3737,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file does not contain a function named `drainQueue`. It contains a function named `drainBucket` (line 65), but not `drainQueue`.\n\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3484,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "I reviewed the entire file (lines 1-102). The file contains no usage of `process.env` or any environment variable reading.\n\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 3146,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "The summary at the end of the file indicates the number of skipped tests on line 39.\n\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 7914,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "The first failing test is identified by the line `not ok 4 - a partial refill rounds down` on line 8. The error message associated with this test is found in the YAML block immediately following it. Specifically, line 12 contains the `error` key with the value `'Expected values to be strictly equal: 11 !== 12'`.\n\nANSWER: 'Expected values to be strictly equal: 11 !== 12' | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 2324,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file does not contain a line-coverage percentage.\n\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "h",
+      "run": 0,
+      "seed": null,
+      "model": "claude-sonnet-5-5",
+      "completed": true,
+      "exit": 0,
+      "timedOut": false,
+      "ms": 39487,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 5866,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "`refillBucket` is declared on line 26 as `function refillBucket(bucket, at) {`. It isn't exported.\n\nANSWER: refillBucket | LINES: 26\n"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4342,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "`MAX_BURST` is set to 48. It's declared at line 5 as `export const MAX_BURST = 48;`.\n\nANSWER: 48 | LINES: 5\n"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 5933,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "`refillBucket` is called on three lines in this file:\n\n- Line 48, in `take`: `refillBucket(bucket, now());`\n- Line 62, in `peek`: `refillBucket({ ...bucket }, now()).tokens`. It runs on a copy of the bucket.\n\nThe only other occurrence is the declaration on line 26, which the question excludes. That makes two calls, not three: lines 48 and 62.\n\nANSWER: refillBucket | LINES: 48, 62\n"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4619,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file has no function named `drainQueue`. The closest match is `drainBucket`, declared at line 65, but that is a different name. I found no `drainQueue` declaration or reference anywhere in lines 1-102.\n\nANSWER: ABSENT | LINES: none\n"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4952,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file doesn't contain a `process.env` read. I checked all 102 lines. The only module-level state is the `buckets` Map on line 9. The constants on lines 4–7 are hard-coded, and `Date.now()` on line 12 is the only other environment-style access. No line references `process.env`.\n\nANSWER: ABSENT | LINES: none\n"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4427,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "The summary at the end reports 2 skipped tests (line 39: `# skipped 2`). This matches the two tests marked `# SKIP` on lines 21 and 32.\n\nANSWER: 2 | LINES: 39\n"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4367,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "The first failing test is \"not ok 4 - a partial refill rounds down\" (line 8). Its error message is on line 12: `Expected values to be strictly equal: 11 !== 12`.\n\nANSWER: Expected values to be strictly equal: 11 !== 12 | LINES: 12\n"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4981,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The log doesn't report a line-coverage percentage. It has TAP test output (lines 3–41) and a gate summary (lines 42–45). The counts are 13 tests, 9 passed, 2 failed and 2 skipped (lines 34–39). None of those lines mentions coverage, and nothing else in lines 1–45 does either.\n\nANSWER: ABSENT | LINES: none\n"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "h",
+      "run": 1,
+      "seed": null,
+      "model": "claude-sonnet-5-5",
+      "completed": true,
+      "exit": 0,
+      "timedOut": false,
+      "ms": 36235,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4581,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "`refillBucket` is declared at line 26: `function refillBucket(bucket, at) {`. It's a module-private function, with no `export`. Other lines only call it: 48 in `take` and 62 in `peek`.\n\nANSWER: refillBucket | LINES: 26\n"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4644,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "`MAX_BURST` is set to 48. It is declared at line 5 as `export const MAX_BURST = 48;`.\n\nANSWER: 48 | LINES: 5\n"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4474,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "Calls to `refillBucket` (not counting its declaration on line 26):\n\n- Line 48: `refillBucket(bucket, now());` in `take`\n- Line 62: `refillBucket({ ...bucket }, now())` in `peek`\n\nANSWER: refillBucket | LINES: 48, 62\n"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4477,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file has no function named `drainQueue`. The closest match is `drainBucket`, declared at line 65 (`export function drainBucket(owner, unit)`). It's a different name, so it doesn't answer the question. I found no `drainQueue` declaration, call, or reference anywhere in lines 1-102.\n\nANSWER: ABSENT | LINES: none\n"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4575,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "No line in this file reads an environment variable through `process.env`. The file never references `process` or `process.env`. Its only external inputs are `Date.now()` at line 12 and the function arguments.\n\nANSWER: ABSENT | LINES: none\n"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4453,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "The summary at the end of the log reports 2 skipped tests (line 39: `# skipped 2`). The two `# SKIP` markers on lines 21 and 32 (tests 9 and 13) agree with that count.\n\nANSWER: 2 | LINES: 39\n"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4578,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "The first failing test is `not ok 4 - a partial refill rounds down` (line 8). Its error message is on line 12: `Expected values to be strictly equal: 11 !== 12`.\n\nANSWER: Expected values to be strictly equal: 11 !== 12 | LINES: 12\n"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4453,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The log doesn't report a line-coverage percentage. It has TAP test output (13 tests, 9 pass, 2 fail, 2 skipped, on lines 34-41) and gate status lines, but no coverage figure. Line 1 also says it's a synthetic log.\n\nANSWER: ABSENT | LINES: none\n"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "h",
+      "run": 2,
+      "seed": null,
+      "model": "claude-sonnet-5-5",
+      "completed": true,
+      "exit": 0,
+      "timedOut": false,
+      "ms": 37150,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4433,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "`refillBucket` is declared on line 26: `function refillBucket(bucket, at) {`. It is a module-private function, not exported. Other lines only call it (48 and 62).\n\nANSWER: function refillBucket(bucket, at) | LINES: 26\n"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4406,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "`MAX_BURST` is set to 48. It is declared at line 5 as `export const MAX_BURST = 48;`.\n\nANSWER: 48 | LINES: 5\n"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4676,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "`refillBucket` is called on these lines:\n\n- Line 48, in `take`: `refillBucket(bucket, now());`\n- Line 62, in `peek`: `refillBucket({ ...bucket }, now())`\n\nLine 26 is the declaration, so I left it out.\n\nANSWER: refillBucket | LINES: 48, 62\n"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4582,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file has no function named `drainQueue`. The closest match is `drainBucket`, declared at line 65. It's a different name, so it doesn't count. The file has no \"queue\" function at all.\n\nANSWER: ABSENT | LINES: none\n"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4686,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file doesn't read any environment variable through `process.env`. It has no reference to `process` or `process.env` anywhere in lines 1-102. The only configuration is hard-coded constants (`DEFAULT_RATE`, `MAX_BURST`, `IDLE_RESET_MS` and `UNITS`, on lines 4-7).\n\nANSWER: ABSENT | LINES: none\n"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4759,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "The summary at the end reports `# skipped 2` on line 39. The two skipped tests are on line 21 (test 9, \"needs the slow clock\") and line 32 (test 13, \"needs the slow clock\"). Both are marked `# SKIP`.\n\nANSWER: 2 | LINES: 39\n"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4794,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "The first failing test is `not ok 4 - a partial refill rounds down` (line 8). Its error message is on line 12: `Expected values to be strictly equal: 11 !== 12`.\n\nANSWER: Expected values to be strictly equal: 11 !== 12 | LINES: 12\n"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4814,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The log doesn't report a line-coverage percentage. Lines 34-41 give the test summary: 13 tests, 2 suites, 9 passed, 2 failed, 2 skipped, and a duration. There are no coverage figures anywhere in lines 1-45.\n\nANSWER: ABSENT | LINES: none\n"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "h",
+      "run": 3,
+      "seed": null,
+      "model": "claude-sonnet-5-5",
+      "completed": true,
+      "exit": 0,
+      "timedOut": false,
+      "ms": 37970,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4604,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "`refillBucket` is declared on line 26 as `function refillBucket(bucket, at) {`. It is a module-private function, since it has no `export`.\n\nANSWER: refillBucket | LINES: 26\n"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4399,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "`MAX_BURST` is set to 48 on line 5: `export const MAX_BURST = 48;`.\n\nANSWER: 48 | LINES: 5\n"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4968,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "Calls to `refillBucket`, not counting its declaration on line 26:\n\n- Line 48, in `take`: `refillBucket(bucket, now());`\n- Line 62, in `peek`: `refillBucket({ ...bucket }, now())`, where it runs on a copy of the bucket.\n\nNo other lines call it.\n\nANSWER: refillBucket | LINES: 48, 62\n"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4709,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "`drainQueue` isn't declared in this file. The nearest match is `drainBucket`, declared at line 65 (`export function drainBucket(owner, unit)`). It's a different function. No line declares `drainQueue`.\n\nANSWER: ABSENT | LINES: none\n"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4665,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "No line in this file reads an environment variable through `process.env`. The file never references `process`. It only defines constants, a `Map` of rate-limit buckets, and functions that operate on those buckets.\n\nANSWER: ABSENT | LINES: none\n"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4716,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "2 tests were skipped. The summary line `# skipped 2` (line 39) says so. It matches the two `# SKIP` markers on tests 9 and 13 (lines 21 and 32).\n\nANSWER: 2 | LINES: 39\n"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4786,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "The first failing test is test 4, \"a partial refill rounds down\" (line 8). Its error message is on line 12: `Expected values to be strictly equal: 11 !== 12`.\n\nANSWER: Expected values to be strictly equal: 11 !== 12 | LINES: 12\n"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 5123,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The log doesn't report a line-coverage percentage. It has TAP test results (lines 3–41) and the gate summary (lines 42–45). The summary counts are 13 tests, 9 passed, 2 failed and 2 skipped (lines 34–39). It has no coverage figure.\n\nANSWER: ABSENT | LINES: none\n"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "h",
+      "run": 4,
+      "seed": null,
+      "model": "claude-sonnet-5-5",
+      "completed": true,
+      "exit": 0,
+      "timedOut": false,
+      "ms": 38008,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4571,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "`refillBucket` is declared on line 26: `function refillBucket(bucket, at) {`. It's a module-private function, since it has no `export`.\n\nANSWER: refillBucket | LINES: 26\n"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 5022,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "`MAX_BURST` is set to 48 on line 5: `export const MAX_BURST = 48;`.\n\nANSWER: 48 | LINES: 5\n"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4830,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "Calls to `refillBucket` (not counting the declaration at line 26):\n\n- Line 48, in `take`: `refillBucket(bucket, now());`\n- Line 62, in `peek`: `refillBucket({ ...bucket }, now()).tokens`\n\nANSWER: refillBucket | LINES: 48, 62\n"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4735,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The file has no function named `drainQueue`. The closest match is `drainBucket`, declared at line 65. That is a different name. The file has no queue-related function.\n\nANSWER: ABSENT | LINES: none\n"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4887,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "No line in this file reads an environment variable through `process.env`. A search of lines 1-102 finds no use of `process` at all. The module only uses `Date.now()` (line 12), a `Map` of buckets (line 9), and constants such as `DEFAULT_RATE` (line 4).\n\nANSWER: ABSENT | LINES: none\n"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4594,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "Two tests were skipped, according to the summary. Line 39 reads `# skipped 2`. The two `# SKIP` markers on lines 21 and 32 match that count.\n\nANSWER: 2 | LINES: 39\n"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4498,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "The first failing test is `not ok 4 - a partial refill rounds down` (line 8). Its error message is on line 12: `Expected values to be strictly equal: 11 !== 12`.\n\nANSWER: Expected values to be strictly equal: 11 !== 12 | LINES: 12\n"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4871,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "The log doesn't report a line-coverage percentage. Its test summary (lines 34–41) lists only these counters: tests, suites, pass, fail, cancelled, skipped, todo and duration_ms. Nothing in the file mentions coverage.\n\nANSWER: ABSENT | LINES: none\n"
+        }
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "task": "read",
+      "arm": "l",
+      "model": "qwen/qwen3.8-27b",
+      "passed": 5,
+      "failed": 0,
+      "didNotComplete": 0
+    },
+    {
+      "task": "read",
+      "arm": "h",
+      "model": "claude-sonnet-5-5",
+      "passed": 5,
+      "failed": 0,
+      "didNotComplete": 0
+    }
+  ]
+}
