@@ -4,6 +4,8 @@
 Extends [`core/personas/README.md`](../../core/personas/README.md) (a persona is a role packaged as a
 context firewall) and the pattern of the checkpoints pack (a role contributed by a pack, with its skills).
 
+**Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/686
+
 ---
 
 ## Incident — a workforce wrote five role rules outside the engine
