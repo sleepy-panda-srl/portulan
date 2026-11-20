@@ -115,6 +115,12 @@ describe("the worker record is untouched, and an absent reader record earns noth
         await assert.rejects(verifyRoutingRecord(REPO, { ...structuredClone(EARNED_ROUTING), reading: { role: "code", model: "qwen/qwen3.8-27b" } }), /differs from its acquired record/);
     });
 
+    test("a reader register with no reader record is red", async () => {
+        const root = repoWith(null);
+        fs.writeFileSync(path.join(root, READER_REGISTER), "a register\n");
+        await assert.rejects(verifyReaderRecord(root), /exists with no evals\/ab\/local-reader\.json/);
+    });
+
     test("eval --verify through main is green with no reader record, and names it not captured", async () => {
         const root = repoWith(null);
         const out = [];
@@ -243,10 +249,11 @@ describe("eval --verify over the reader record", () => {
     test("is red on every drift of a reading turn", async () => {
         const base = await stubCapture({ localRead: (run, q) => (run === 0 && q.id === READ_QUESTIONS[1].id ? "wrong" : "right") });
         assert.deepEqual(verifyReader(base), []);
-        const red = (edit, why) => {
+        const red = (edit, why, finding = /./) => {
             const rec = structuredClone(base);
             edit(rec);
-            assert.ok(verifyReader(rec).length > 0, why);
+            const found = verifyReader(rec);
+            assert.ok(found.some((line) => finding.test(line)), `${why}: ${found.join(" / ")}`);
         };
         red((rec) => {
             const t = turnOf(rec, "l", 0);
@@ -262,16 +269,21 @@ describe("eval --verify over the reader record", () => {
         red((rec) => {
             const qs = turnOf(rec, "h", 2).questions;
             [qs[0], qs[1]] = [qs[1], qs[0]];
-        }, "questions out of the screen's order");
+        }, "questions out of the screen's order", /not the screen's questions in the screen's order/);
         red((rec) => (rec.screen.fixtures = "f".repeat(64)), "fixtures that moved since capture");
         red((rec) => (rec.screen.questions = "f".repeat(64)), "questions that moved since capture");
         red((rec) => (rec.screen.prompts = "f".repeat(64)), "prompts that moved since capture");
-        red((rec) => delete rec.rulings.read, "no ruling for reading");
+        red((rec) => delete rec.rulings.read, "no ruling for reading", /no ruling for its k and for reading/);
         red((rec) => (rec.k = 4), "another k");
         red((rec) => (turnOf(rec, "l", 3).seed += 1), "a seed the record's seed does not derive");
         red((rec) => (turnOf(rec, "h", 3).seed = 7), "a host turn with a seed");
         red((rec) => (turnOf(rec, "l", 3).questions[0].exit = 0), "a local question recorded as a process");
-        red((rec) => Object.assign(turnOf(rec, "h", 4).questions[0], { completed: false, ok: null, detail: null }), "a host question not completed against its exit 0");
+        red((rec) => {
+            const t = turnOf(rec, "h", 4);
+            Object.assign(t.questions[0], { completed: false, ok: null, detail: null });
+            Object.assign(t, foldReadTurn("h", t.questions));
+            refold(rec);
+        }, "a host question not completed against its exit 0", /records `completed` against its own exit and timeout/);
         red((rec) => (turnOf(rec, "h", 4).questions[2].output = 5), "a question with no output");
         red((rec) => (turnOf(rec, "l", 4).model = "other/model"), "a local turn of another model");
         red((rec) => (rec.arms.l.endpoint = "https://api.example.com/v1"), "arm L off loopback");
@@ -312,6 +324,12 @@ describe("reading routing is derived from the reader record", () => {
         refold(rec);
         assert.deepEqual(verifyReader(rec), []);
         assert.equal(deriveReading(rec), null);
+    });
+
+    test("local passes below host passes earn nothing, even where every host turn completes", async () => {
+        const one = (run, q) => (run === 0 && q.id === READ_QUESTIONS[0].id ? "wrong" : "right");
+        assert.equal(await routed({ localRead: one, hostRead: one }), null, "a positive tie with a local failure earns nothing");
+        assert.equal(await routed({ localRead: one, hostRead: (run) => (run < 2 ? "wrong" : "right") }), null, "local above host with a local failure earns nothing");
     });
 
     test("a tie at zero earns nothing", async () => {
