@@ -1797,27 +1797,34 @@ export function gradeReadAnswer(question, rawText) {
     return { ok, detail };
 }
 
-async function runReadTask({ model, chatFn, request }) {
+export function readTaskDetail(verdicts) {
     const wrong = [];
     let right = 0;
     let trapsRight = 0;
+    READ_QUESTIONS.forEach((question, i) => {
+        if (verdicts[i].ok) {
+            right += 1;
+            if (question.kind === "absent") trapsRight += 1;
+        } else {
+            wrong.push(`${question.id}(${verdicts[i].detail})`);
+        }
+    });
+    const traps = READ_QUESTIONS.filter((q) => q.kind === "absent").length;
+    return { ok: wrong.length === 0, detail: `right=${right}/${READ_QUESTIONS.length} traps=${trapsRight}/${traps}${wrong.length > 0 ? ` wrong=${wrong.join(" ")}` : ""}` };
+}
+
+async function runReadTask({ model, chatFn, request }) {
+    const verdicts = [];
     let totalMs = 0;
     let tokens = 0;
     for (const question of READ_QUESTIONS) {
         const reply = await chatFn({ ...request, model, messages: readMessages(question) });
-        const verdict = gradeReadAnswer(question, reply.content);
+        verdicts.push(gradeReadAnswer(question, reply.content));
         totalMs = sum(totalMs, reply.totalMs ?? null);
         tokens = sum(tokens, reply.completionTokens ?? null);
-        if (verdict.ok) {
-            right += 1;
-            if (question.kind === "absent") trapsRight += 1;
-        } else {
-            wrong.push(`${question.id}(${verdict.detail})`);
-        }
     }
-    const traps = READ_QUESTIONS.filter((q) => q.kind === "absent").length;
-    const detail = `right=${right}/${READ_QUESTIONS.length} traps=${trapsRight}/${traps}${wrong.length > 0 ? ` wrong=${wrong.join(" ")}` : ""}`;
-    return { task: "read", model, ok: wrong.length === 0, detail, totalMs, tokPerSec: rate(tokens, totalMs) };
+    const { ok, detail } = readTaskDetail(verdicts);
+    return { task: "read", model, ok, detail, totalMs, tokPerSec: rate(tokens, totalMs) };
 }
 
 export async function runRoleEval({
@@ -1976,13 +1983,13 @@ export function runHostTurn({ command, prompt, timeoutMs = HOST_TURN_TIMEOUT_MS,
     }).finally(() => fs.rmSync(cwd, { recursive: true, force: true }));
 }
 
-export function abConditions({ repoRoot, hostCommand, spawnFn = spawnSync }) {
+export function abConditions({ repoRoot, hostCommand, spawnFn = spawnSync, journalPath = JOURNAL_GIT_PATH }) {
     const git = (...argv) => spawnFn("git", argv, { cwd: repoRoot, encoding: "utf8" });
     const head = git("rev-parse", "HEAD");
     if (head.error || head.status !== 0) throw new CouldNotRunError(`${repoRoot} names no commit (\`git rev-parse HEAD\` failed), and a record must name the one it was captured at`);
     const status = git("status", "--porcelain");
     if (status.error || status.status !== 0) throw new CouldNotRunError(`\`git status\` failed in ${repoRoot}, so the record could not say whether its tree was clean`);
-    const journal = git("rev-parse", "--git-path", JOURNAL_GIT_PATH);
+    const journal = git("rev-parse", "--git-path", journalPath);
     if (journal.error || journal.status !== 0) throw new CouldNotRunError(`\`git rev-parse --git-path\` failed in ${repoRoot}, so the capture has nowhere to journal its turns`);
     const version = spawnFn(hostCommand[0], [...hostCommand.slice(1), "--version"], { cwd: os.tmpdir(), encoding: "utf8", timeout: 60_000 });
     const line = (version.stdout ?? "").trim().split("\n")[0]?.trim() ?? "";
@@ -2073,7 +2080,52 @@ export async function captureAb({
         captured: conditions.captured,
     };
     const opened = journal === null ? header : openJournal(journal, header);
+    const { turns, take, host, close } = journalledTurns({ journal, onTurn, hostFn, hostCommand });
+    try {
+        for (const task of AB_TASKS) {
+            for (let run = 0; run < k; run += 1) {
+                await take({ task, arm: "l", run }, async () => {
+                    const model = models[TASK_ROLES[task]];
+                    const turnSeedValue = turnSeed(seed, task, run);
+                    const reply = await chatFn({ baseUrl: endpoint, model, effort: "low", messages: EVAL_PROMPTS[task], seed: turnSeedValue });
+                    return { task, arm: "l", run, seed: turnSeedValue, model, completed: true, exit: null, timedOut: false, ms: reply.totalMs, ...grade(task, reply.content), output: reply.content };
+                });
+            }
+        }
+        for (const task of AB_TASKS) {
+            for (let run = 0; run < k; run += 1) {
+                await take({ task, arm: "h", run }, async () => {
+                    const res = await host(hostPrompt(task));
+                    const verdict = res.completed ? grade(task, res.output) : { ok: null, detail: null };
+                    return { task, arm: "h", run, seed: null, model: hostModel, completed: res.completed, exit: res.exit, timedOut: res.timedOut, ms: res.ms, ...verdict, output: res.output };
+                });
+            }
+        }
+    } finally {
+        close();
+    }
+    const order = (t) => AB_TASKS.indexOf(t.task) * 2 * k + AB_ARMS.indexOf(t.arm) * k + t.run;
+    turns.sort((a, b) => order(a) - order(b));
+    const record = {
+        portulan: { abLocalWorker: "1" },
+        captured: opened.captured,
+        source: { commit: conditions.commit, clean: conditions.clean, runner: opened.runner },
+        machine: conditions.machine,
+        k,
+        seed,
+        rulings: { k: AB_K_RULED },
+        screen: { ...screen },
+        arms: {
+            l: { endpoint, effort: "low", models: { ...models }, routing: { ...TASK_ROLES } },
+            h: { command: [...hostCommand], version: conditions.hostVersion, model: hostModel, timeoutMs: HOST_TURN_TIMEOUT_MS },
+        },
+        turns,
+    };
+    record.cells = foldAb(turns, k);
+    return record;
+}
 
+function journalledTurns({ journal, onTurn, hostFn, hostCommand }) {
     const turns = [];
     let running = null;
     const onSignal = (signal) => {
@@ -2099,60 +2151,18 @@ export async function captureAb({
         turns.push(turn);
         onTurn(turn, false);
     };
-    for (const signal of RESTORE_SIGNALS) process.on(signal, onSignal);
-    try {
-        for (const task of AB_TASKS) {
-            for (let run = 0; run < k; run += 1) {
-                await take({ task, arm: "l", run }, async () => {
-                    const model = models[TASK_ROLES[task]];
-                    const turnSeedValue = turnSeed(seed, task, run);
-                    const reply = await chatFn({ baseUrl: endpoint, model, effort: "low", messages: EVAL_PROMPTS[task], seed: turnSeedValue });
-                    return { task, arm: "l", run, seed: turnSeedValue, model, completed: true, exit: null, timedOut: false, ms: reply.totalMs, ...grade(task, reply.content), output: reply.content };
-                });
-            }
-        }
-        for (const task of AB_TASKS) {
-            for (let run = 0; run < k; run += 1) {
-                await take({ task, arm: "h", run }, async () => {
-                    const res = await hostFn({
-                        command: hostCommand,
-                        prompt: hostPrompt(task),
-                        timeoutMs: HOST_TURN_TIMEOUT_MS,
-                        onSpawn: (child, cwd) => (running = { child, cwd }),
-                    });
-                    running = null;
-                    const verdict = res.completed ? grade(task, res.output) : { ok: null, detail: null };
-                    return { task, arm: "h", run, seed: null, model: hostModel, completed: res.completed, exit: res.exit, timedOut: res.timedOut, ms: res.ms, ...verdict, output: res.output };
-                });
-            }
-        }
-    } finally {
-        for (const signal of RESTORE_SIGNALS) process.off(signal, onSignal);
-    }
-    const order = (t) => AB_TASKS.indexOf(t.task) * 2 * k + AB_ARMS.indexOf(t.arm) * k + t.run;
-    turns.sort((a, b) => order(a) - order(b));
-    const record = {
-        portulan: { abLocalWorker: "1" },
-        captured: opened.captured,
-        source: { commit: conditions.commit, clean: conditions.clean, runner: opened.runner },
-        machine: conditions.machine,
-        k,
-        seed,
-        rulings: { k: AB_K_RULED },
-        screen: { ...screen },
-        arms: {
-            l: { endpoint, effort: "low", models: { ...models }, routing: { ...TASK_ROLES } },
-            h: { command: [...hostCommand], version: conditions.hostVersion, model: hostModel, timeoutMs: HOST_TURN_TIMEOUT_MS },
-        },
-        turns,
+    const host = async (prompt) => {
+        const res = await hostFn({ command: hostCommand, prompt, timeoutMs: HOST_TURN_TIMEOUT_MS, onSpawn: (child, cwd) => (running = { child, cwd }) });
+        running = null;
+        return res;
     };
-    record.cells = foldAb(turns, k);
-    return record;
+    for (const signal of RESTORE_SIGNALS) process.on(signal, onSignal);
+    return { turns, take, host, close: () => RESTORE_SIGNALS.forEach((signal) => process.off(signal, onSignal)) };
 }
 
-export function foldAb(turns, k = AB_K) {
+export function foldAb(turns, k = AB_K, tasks = AB_TASKS) {
     const cells = [];
-    for (const task of AB_TASKS) {
+    for (const task of tasks) {
         for (const arm of AB_ARMS) {
             const mine = turns.filter((t) => t?.task === task && t?.arm === arm);
             if (mine.length !== k) throw new RailError(`\`${task}\`/${arm} holds ${mine.length} turn(s) and k is ${k} — a rate over an incomplete cell is a rate about something else`);
@@ -2432,6 +2442,371 @@ export function publishAb(repoRoot, rec, grading) {
     return { ok: true, message: `wrote ${AB_RECORD} and ${AB_REGISTER}. k=${rec.k} per cell supports a recorded rate and nothing else` };
 }
 
+export const READER_RECORD = "evals/ab/local-reader.json";
+export const READER_REGISTER = "evals/ab/local-reader.md";
+export const READER_RULED = "2026-11-20";
+export const READER_JOURNAL_GIT_PATH = "portulan/local-reader-journal";
+const QUESTION_FIELDS = "completed,detail,exit,id,ms,ok,output,timedOut";
+const TURN_FIELDS = "arm,completed,detail,exit,model,ms,ok,questions,run,seed,task,timedOut";
+
+export function readerHostCalls(k = AB_K) {
+    return k * READ_QUESTIONS.length;
+}
+
+export function readFingerprints() {
+    const sha = (text) => createHash("sha256").update(text).digest("hex");
+    return {
+        prompts: sha(JSON.stringify(READ_QUESTIONS.map(readMessages))),
+        questions: sha(JSON.stringify(READ_QUESTIONS)),
+        fixtures: sha(Object.entries(READ_FIXTURES).map(([fixture, name]) => `${name}\0${readFixtureText(fixture)}`).join("\0")),
+        grader: sha(gradeReadAnswer.toString()),
+    };
+}
+
+export function readHostPrompt(question) {
+    return readMessages(question).map((m) => m.content).join("\n\n");
+}
+
+export function foldReadTurn(arm, questions) {
+    const completed = questions.every((q) => q.completed === true);
+    const stopped = questions.find((q) => q.completed !== true);
+    return {
+        completed,
+        exit: arm === "l" ? null : completed ? 0 : stopped.exit,
+        timedOut: questions.some((q) => q.timedOut === true),
+        ms: questions.reduce((n, q) => n + q.ms, 0),
+        ...(completed ? readTaskDetail(questions) : { ok: null, detail: null }),
+    };
+}
+
+export async function captureReader({
+    seed,
+    k = AB_K,
+    hostCommand,
+    hostModel,
+    model = ROLE_MODELS.code,
+    baseUrl = DEFAULT_BASE_URL,
+    conditions,
+    screen = readFingerprints(),
+    journal = null,
+    chatFn = callLocalChat,
+    hostFn = runHostTurn,
+    onTurn = () => {},
+}) {
+    const endpoint = assertLoopback(baseUrl);
+    const header = {
+        record: READER_RECORD,
+        k,
+        seed,
+        commit: conditions.commit,
+        clean: conditions.clean,
+        runner: RUNNER_FINGERPRINT,
+        machine: conditions.machine,
+        endpoint,
+        model,
+        hostCommand,
+        hostVersion: conditions.hostVersion,
+        hostModel,
+        screen,
+        captured: conditions.captured,
+    };
+    const opened = journal === null ? header : openJournal(journal, header);
+    const { turns, take, host, close } = journalledTurns({ journal, onTurn, hostFn, hostCommand });
+    const answer = (question, completed, output) => (completed ? (({ ok, detail }) => ({ ok, detail }))(gradeReadAnswer(question, output)) : { ok: null, detail: null });
+    try {
+        for (let run = 0; run < k; run += 1) {
+            await take({ task: "read", arm: "l", run }, async () => {
+                const turnSeedValue = turnSeed(seed, "read", run);
+                const questions = [];
+                for (const question of READ_QUESTIONS) {
+                    const reply = await chatFn({ baseUrl: endpoint, model, effort: "low", messages: readMessages(question), seed: turnSeedValue });
+                    questions.push({ id: question.id, completed: true, exit: null, timedOut: false, ms: reply.totalMs, ...answer(question, true, reply.content), output: reply.content });
+                }
+                return { task: "read", arm: "l", run, seed: turnSeedValue, model, ...foldReadTurn("l", questions), questions };
+            });
+        }
+        for (let run = 0; run < k; run += 1) {
+            await take({ task: "read", arm: "h", run }, async () => {
+                const questions = [];
+                for (const question of READ_QUESTIONS) {
+                    const res = await host(readHostPrompt(question));
+                    questions.push({ id: question.id, completed: res.completed, exit: res.exit, timedOut: res.timedOut, ms: res.ms, ...answer(question, res.completed, res.output), output: res.output });
+                }
+                return { task: "read", arm: "h", run, seed: null, model: hostModel, ...foldReadTurn("h", questions), questions };
+            });
+        }
+    } finally {
+        close();
+    }
+    turns.sort((a, b) => AB_ARMS.indexOf(a.arm) * k + a.run - (AB_ARMS.indexOf(b.arm) * k + b.run));
+    const record = {
+        portulan: { abLocalReader: "1" },
+        captured: opened.captured,
+        source: { commit: conditions.commit, clean: conditions.clean, runner: opened.runner },
+        machine: conditions.machine,
+        k,
+        seed,
+        rulings: { k: AB_K_RULED, read: READER_RULED },
+        screen: { ...screen },
+        arms: {
+            l: { endpoint, effort: "low", role: "code", model },
+            h: { command: [...hostCommand], version: conditions.hostVersion, model: hostModel, timeoutMs: HOST_TURN_TIMEOUT_MS },
+        },
+        turns,
+    };
+    record.cells = foldAb(turns, k, ["read"]);
+    return record;
+}
+
+function callFindings(id, t) {
+    const red = [];
+    if (typeof t?.completed !== "boolean" || typeof t?.timedOut !== "boolean") red.push(`${id} carries no boolean \`completed\` or \`timedOut\``);
+    if (t?.completed === true && (typeof t?.ok !== "boolean" || typeof t?.detail !== "string")) red.push(`${id} completed and carries no verdict`);
+    if (t?.completed === false && (t?.ok !== null || t?.detail !== null)) red.push(`${id} did not complete and carries a verdict anyway`);
+    if (t?.exit !== null && !Number.isInteger(t?.exit)) red.push(`${id} carries an \`exit\` that is neither \`null\` nor an integer`);
+    if (!Number.isInteger(t?.ms) || t.ms < 0) red.push(`${id} carries no whole-millisecond time`);
+    return red;
+}
+
+export function verifyReaderShape(rec) {
+    const red = [];
+    const sha = (v) => typeof v === "string" && /^[0-9a-f]{64}$/.test(v);
+    if (rec?.portulan?.abLocalReader !== "1") red.push("the record does not declare `portulan.abLocalReader: \"1\"` — this is not a local-reader A/B capture");
+    if (!isNonEmpty(rec?.captured)) red.push("the record carries no `captured` time");
+    if (!isNonEmpty(rec?.source?.commit) || typeof rec?.source?.clean !== "boolean" || !sha(rec?.source?.runner)) red.push("the record's `source` names no commit, clean flag and runner fingerprint");
+    if (!isNonEmpty(rec?.machine)) red.push("the record names no machine");
+    if (rec?.k !== AB_K) red.push(`the record's k is ${JSON.stringify(rec?.k)} where the maintainer ruled ${AB_K}`);
+    if (!isNonEmpty(rec?.seed)) red.push("the record carries no seed, so no arm-L seed in it can be recomputed");
+    if (!isNonEmpty(rec?.rulings?.k) || !isNonEmpty(rec?.rulings?.read)) red.push("the record carries no ruling for its k and for reading");
+    if (!["prompts", "questions", "fixtures", "grader"].every((key) => sha(rec?.screen?.[key]))) red.push("the record carries no sha256 fingerprint of the reading prompts, questions, fixtures and grader");
+    if (rec?.fixture !== undefined && !isNonEmpty(rec.fixture)) red.push("the record's `fixture` is present and is not a non-empty string");
+    const l = rec?.arms?.l;
+    const h = rec?.arms?.h;
+    if (!isNonEmpty(l?.endpoint) || l?.effort !== "low" || l?.role !== "code" || !isNonEmpty(l?.model)) red.push("arm L does not record a loopback endpoint, `--effort low`, the code role and its model");
+    if (!Array.isArray(h?.command) || h.command.length === 0 || !h.command.every(isNonEmpty) || !isNonEmpty(h?.version) || !isNonEmpty(h?.model)) red.push("arm H records no host command, version or model");
+    if (!Number.isInteger(h?.timeoutMs) || h.timeoutMs <= 0) red.push("arm H records no per-turn timeout");
+    if (!Array.isArray(rec?.turns) || rec.turns.length === 0) red.push("the record carries no turns");
+    if (!Array.isArray(rec?.cells) || rec.cells.length === 0) red.push("the record publishes no cells");
+    for (const t of Array.isArray(rec?.turns) ? rec.turns : []) {
+        const id = `(read, ${t?.arm}, run ${t?.run})`;
+        if (Object.keys(t ?? {}).sort().join(",") !== TURN_FIELDS) red.push(`${id} does not carry exactly the fields a reading turn records (${TURN_FIELDS})`);
+        if (t?.task !== "read" || !AB_ARMS.includes(t?.arm) || !Number.isInteger(t?.run)) red.push(`${id} is not a turn of this matrix`);
+        if (!isNonEmpty(t?.model)) red.push(`${id} names no model`);
+        red.push(...callFindings(id, t));
+        if (!Array.isArray(t?.questions) || t.questions.length !== READ_QUESTIONS.length) {
+            red.push(`${id} does not carry the screen's ${READ_QUESTIONS.length} questions`);
+            continue;
+        }
+        t.questions.forEach((q, i) => {
+            const qid = `${id} question ${i + 1}`;
+            if (Object.keys(q ?? {}).sort().join(",") !== QUESTION_FIELDS) red.push(`${qid} does not carry exactly the fields a question records (${QUESTION_FIELDS})`);
+            if (typeof q?.output !== "string") red.push(`${qid} carries no output, so nobody can regrade it`);
+            red.push(...callFindings(qid, q));
+        });
+    }
+    if (red.length > 0) return red;
+    try {
+        const rendered = renderReaderRegister(rec);
+        for (const hole of ["undefined", "NaN"]) if (rendered.includes(hole)) red.push(`the register rendered from this record contains \`${hole}\``);
+    } catch (cause) {
+        red.push(`the register cannot be rendered from this record — ${cause.message}`);
+    }
+    return red;
+}
+
+export function verifyReader(rec, screen = readFingerprints()) {
+    const red = verifyReaderShape(rec);
+    if (red.length > 0) return red;
+    for (const key of ["prompts", "questions", "fixtures"]) {
+        if (rec.screen[key] !== screen[key]) red.push(`the reading ${key} moved since capture, so the record measures a screen that no longer ships`);
+    }
+    const graderMoved = rec.screen.grader !== screen.grader;
+    try {
+        assertLoopback(rec.arms.l.endpoint);
+    } catch (cause) {
+        red.push(`arm L's endpoint is not loopback, so it is not the local model — ${cause.message}`);
+    }
+    if (rec.turns.length !== AB_ARMS.length * rec.k) red.push(`the record holds ${rec.turns.length} turn(s) where k=${rec.k} needs ${AB_ARMS.length * rec.k}`);
+    const seen = new Set(rec.turns.map((t) => `${t.arm}\0${t.run}`));
+    for (const arm of AB_ARMS) {
+        for (let run = 0; run < rec.k; run += 1) if (!seen.has(`${arm}\0${run}`)) red.push(`no turn for (read, ${arm}, run ${run}) — the matrix is not total over k`);
+    }
+    for (const t of rec.turns) {
+        const id = `(read, ${t.arm}, run ${t.run})`;
+        if (t.arm === "l") {
+            const want = turnSeed(rec.seed, "read", t.run);
+            if (t.seed !== want) red.push(`${id} records seed ${t.seed} where the record's seed derives ${want}`);
+            if (t.model !== rec.arms.l.model) red.push(`${id} names \`${t.model}\`, not arm L's model`);
+        } else {
+            if (t.seed !== null) red.push(`${id} records a seed, and arm H's command takes none`);
+            if (t.model !== rec.arms.h.model) red.push(`${id} names \`${t.model}\`, not arm H's declared model`);
+        }
+        const ids = t.questions.map((q) => q.id);
+        if (JSON.stringify(ids) !== JSON.stringify(READ_QUESTIONS.map((q) => q.id))) {
+            red.push(`${id} asks ${ids.join(", ")}, not the screen's questions in the screen's order`);
+            continue;
+        }
+        t.questions.forEach((q, i) => {
+            const qid = `${id} question ${q.id}`;
+            if (t.arm === "l" && (q.completed !== true || q.exit !== null || q.timedOut !== false)) red.push(`${qid} is an arm-L call recorded as a process — a local call either answers or aborts the capture`);
+            if (t.arm === "h" && q.completed !== (q.exit === 0 && q.timedOut === false)) red.push(`${qid} records \`completed\` against its own exit and timeout`);
+            if (!q.completed) return;
+            const now = gradeReadAnswer(READ_QUESTIONS[i], q.output);
+            if (now.ok !== q.ok || now.detail !== q.detail) {
+                red.push(
+                    `${qid} records ${q.ok ? "pass" : "fail"} \`${q.detail}\` where its output regrades ${now.ok ? "pass" : "fail"} \`${now.detail}\` — ` +
+                        (graderMoved ? "the grader moved since capture, and the figures must hold under the screen that ships" : "a recorded verdict does not match its output"),
+                );
+            }
+        });
+        const folded = foldReadTurn(t.arm, t.questions);
+        if (Object.keys(folded).some((key) => folded[key] !== t[key])) red.push(`${id} records a verdict, exit, timeout or time that does not fold from its ${READ_QUESTIONS.length} questions`);
+    }
+    try {
+        if (JSON.stringify(foldAb(rec.turns, rec.k, ["read"])) !== JSON.stringify(rec.cells)) red.push("the published cells do not match a fresh fold of the turns — a figure has drifted from its own data");
+    } catch (cause) {
+        red.push(`the turns do not fold: ${cause.message}`);
+    }
+    return red;
+}
+
+export function renderReaderRegister(rec) {
+    const k = rec.k;
+    const cell = (arm) => {
+        const found = rec.cells.find((c) => c.task === "read" && c.arm === arm);
+        if (found === undefined) throw new Error(`the record publishes no cell for \`read\`/${arm}`);
+        return found;
+    };
+    const n = READ_QUESTIONS.length;
+    const state = (c) => (c.completed ? `\`${c.ok ? "pass" : "fail"}\`` : c.timedOut ? "**did-not-complete** (timed out)" : "**did-not-complete**");
+    const lines = [
+        "# The local-reader A/B record — what a run of the arms measured on find-and-quote reading",
+        "",
+        `> Rendered from \`${READER_RECORD}\` by \`local-llm.mjs eval --write\`. Do not edit by hand: it is`,
+        "> regenerated from that file and byte-compared, so a hand-edit survives exactly until the next run.",
+        ">",
+        "> **The record is the unreproducible half.** Its turns are model events, captured once.",
+    ];
+    if (rec.fixture !== undefined) lines.push("", `> **SYNTHETIC FIXTURE: not a record of any run.** ${rec.fixture}`);
+    lines.push(
+        "",
+        "## The conditions",
+        "",
+        `- **Taken:** ${rec.captured}`,
+        `- **Commit:** \`${rec.source.commit}\`${rec.source.clean ? "" : " — **a dirty tree**, which is a fact about the runner and the grader that graded it"}`,
+        `- **Machine:** ${rec.machine}`,
+        `- **k:** ${k} turns per arm, the k the maintainer ruled for \`evals/ab/baseline.md\` on ${rec.rulings.k}`,
+        `- **A turn:** one pass of the ${n} screen questions in \`screen/read/\`, each its own call, graded by \`gradeReadAnswer()\`; it passes only when all ${n} are right, and does not complete where any of its host calls does not (ruled ${rec.rulings.read})`,
+        `- **Seed:** \`${rec.seed}\` — each arm-L turn's sampling seed derives from it, shared by its ${n} calls; arm H's command takes none`,
+        `- **Arm L:** role \`${rec.arms.l.role}\` → \`${rec.arms.l.model}\`, through \`local-llm.mjs\` at \`--effort ${rec.arms.l.effort}\` with no host floor, against \`${rec.arms.l.endpoint}\`; each question's \`readMessages()\` verbatim`,
+        `- **Arm H:** \`${rec.arms.h.command.join(" ")} <prompt>\`, host \`${rec.arms.h.version}\`, in an empty working directory, with a per-call timeout of ${Math.round(rec.arms.h.timeoutMs / 1000)}s; the prompt is the question's two messages joined by a blank line`,
+        `- **Arm H's model:** \`${rec.arms.h.model}\`, as the operator declared it — the runner does not observe it`,
+        `- **Runner source:** sha256 \`${rec.source.runner}\``,
+        `- **Screen fingerprints:** prompts \`${rec.screen.prompts}\`, questions \`${rec.screen.questions}\`, fixtures \`${rec.screen.fixtures}\`, grader \`${rec.screen.grader}\``,
+        "",
+        "## The figures",
+        "",
+        "| Arm | Model | passed | failed | did-not-complete |",
+        "|---|---|---|---|---|",
+        ...rec.cells.map((c) => `| ${c.arm.toUpperCase()} | \`${c.model}\` | **${c.passed}**/${k} | ${c.failed} | ${c.didNotComplete} |`),
+        "",
+        `**Arm L ${cell("l").passed}/${k}, arm H ${cell("h").passed}/${k} — ${cell("l").passed === cell("h").passed ? "a tie" : `a difference of ${cell("l").passed > cell("h").passed ? "+" : ""}${cell("l").passed - cell("h").passed}`}, recorded as measured.**`,
+        "",
+        "## Every turn",
+        "",
+        "| Arm | run | seed | verdict | exit | ms | detail |",
+        "|---|---|---|---|---|---|---|",
+        ...rec.turns.map((t) => `| ${t.arm.toUpperCase()} | ${t.run} | ${t.seed ?? "—"} | ${state(t)} | ${t.exit ?? "—"} | ${t.ms} | ${t.detail === null ? "—" : `\`${t.detail}\``} |`),
+        "",
+        "## Every question, so each turn can be checked against them",
+        "",
+        "| Arm | run | question | verdict | exit | ms | detail |",
+        "|---|---|---|---|---|---|---|",
+        ...rec.turns.flatMap((t) => t.questions.map((q) => `| ${t.arm.toUpperCase()} | ${t.run} | \`${q.id}\` | ${state(q)} | ${q.exit ?? "—"} | ${q.ms} | ${q.detail === null ? "—" : `\`${q.detail}\``} |`)),
+        "",
+        ...READER_LIMITATIONS,
+    );
+    return `${lines.join("\n")}\n`;
+}
+
+export const READER_LIMITATIONS = Object.freeze([
+    "**What may not be concluded from the figures above.**",
+    "",
+    "- **`k = 5` per arm supports a recorded rate and nothing else**: no significance, no interval, and no",
+    "  claim that a difference between the arms is a difference between the models.",
+    "- **A pass is `gradeReadAnswer()`'s and nothing more**: the exact set of cited lines, a value and its",
+    "  line, or `ABSENT` citing none, on two synthetic fixtures. It does not say a reading call pays, which",
+    "  turns on the file and the parent's context, nor how often reading answers are wrong elsewhere.",
+    "- **`eval --verify` regrades every completed question with the grader that ships**, and any verdict",
+    "  that moves is red.",
+    "- **The arms differ in more than the model**, as in `evals/ab/local-worker.md`: arm H is the host agent",
+    "  under the operator's own environment, and its model is the operator's declaration.",
+    "- **Which use these figures support is not stated here.** It is stated where the routing ships.",
+]);
+
+function readReaderRecord(repoRoot) {
+    const file = path.join(repoRoot, READER_RECORD);
+    let text;
+    try {
+        text = fs.readFileSync(file, "utf8");
+    } catch (cause) {
+        if (cause.code === "ENOENT") return null;
+        throw new CouldNotRunError(`${READER_RECORD} could not be read — ${cause.code ?? cause.message}`);
+    }
+    try {
+        return JSON.parse(text);
+    } catch (cause) {
+        throw new RailError(`${READER_RECORD} is not JSON — ${cause.message}`);
+    }
+}
+
+function refuseReaderFixture(rec, allowFixture) {
+    if (rec?.fixture !== undefined && !allowFixture) throw new RailError(`${READER_RECORD} is a synthetic fixture, and a synthetic fixture is not a capture: no run stands behind its figures`);
+}
+
+export const READER_NOT_CAPTURED = `${READER_RECORD} is not captured, so reading earns nothing`;
+
+export async function verifyReaderRecord(repoRoot, { allowFixture = false } = {}) {
+    const rec = readReaderRecord(repoRoot);
+    if (rec === null) {
+        if (fs.existsSync(path.join(repoRoot, READER_REGISTER))) throw new RailError(`${READER_REGISTER} exists with no ${READER_RECORD} to render it from`);
+        return READER_NOT_CAPTURED;
+    }
+    refuseReaderFixture(rec, allowFixture);
+    const red = verifyReader(rec);
+    if (red.length > 0) throw new RailError(findings(red));
+    const registerPath = path.join(repoRoot, READER_REGISTER);
+    const onDisk = fs.existsSync(registerPath) ? fs.readFileSync(registerPath, "utf8") : null;
+    if (onDisk === null) red.push(`${READER_REGISTER} is missing — render it with \`local-llm.mjs eval --write\``);
+    else if (onDisk !== renderReaderRegister(rec)) red.push(`${READER_REGISTER} does not match a fresh render of ${READER_RECORD} — a published figure has drifted from its own data`);
+    if (red.length > 0) throw new RailError(findings(red));
+    return `${READER_RECORD}: ${rec.turns.length} turn(s) of ${READ_QUESTIONS.length} questions at k=${rec.k}, regraded and folded consistently, and ${READER_REGISTER} matches byte for byte`;
+}
+
+export async function writeReaderRegister(repoRoot, { allowFixture = false } = {}) {
+    const rec = readReaderRecord(repoRoot);
+    if (rec === null) return READER_NOT_CAPTURED;
+    refuseReaderFixture(rec, allowFixture);
+    const red = verifyReader(rec);
+    if (red.length > 0) throw new RailError(`${findings(red)}\n${READER_REGISTER} was NOT written`);
+    fs.writeFileSync(path.join(repoRoot, READER_REGISTER), renderReaderRegister(rec));
+    return `wrote ${READER_REGISTER} from ${READER_RECORD}`;
+}
+
+export function publishReader(repoRoot, rec) {
+    fs.mkdirSync(path.join(repoRoot, path.dirname(READER_RECORD)), { recursive: true });
+    try {
+        fs.writeFileSync(path.join(repoRoot, READER_RECORD), `${JSON.stringify(rec, null, 2)}\n`, { flag: "wx" });
+    } catch (cause) {
+        if (cause.code === "EEXIST") throw new CouldNotRunError(`${READER_RECORD} exists at publication: its bytes and register were preserved; the current journal remains for recovery`);
+        throw new CouldNotRunError(`${READER_RECORD} could not be published — ${cause.code ?? cause.message}; the current journal remains for recovery`);
+    }
+    const red = verifyReader(rec);
+    if (red.length > 0) return { ok: false, message: `wrote ${READER_RECORD}, which is kept because its turns do not repeat; ${findings(red)}\n${READER_REGISTER} was NOT written` };
+    fs.writeFileSync(path.join(repoRoot, READER_REGISTER), renderReaderRegister(rec));
+    return { ok: true, message: `wrote ${READER_RECORD} and ${READER_REGISTER}. k=${rec.k} per arm supports a recorded rate and nothing else` };
+}
+
 export async function runOfflineVerify() {
     let caughtRemote = false;
     try {
@@ -2598,6 +2973,7 @@ const TRANSFORM_ONLY = Object.freeze(["insertAfter", "insertBefore", "seamBlankL
 const PROMPT_MODES = new Set(["chat", "summarize", "transform"]);
 const AB_TAKES = Object.freeze(new Set(["_", "ab", "write", "k", "seed", "hostCmd", "hostModel", "repoRoot", "baseUrl", "effort", "noLock"]));
 const RECORD_TAKES = Object.freeze(new Set(["_", "verifyRecord", "write", "repoRoot"]));
+const READER_TAKES = Object.freeze(new Set([...AB_TAKES, "task"]));
 const AB_REFUSALS = Object.freeze({
     model: "arm L is each task's model as routed",
     role: "arm L is each task's model as routed",
@@ -2783,13 +3159,16 @@ async function abMode(args, { fetchImpl }) {
         refuseOutside(args, RECORD_TAKES, "eval --verify");
         if (args.write) throw new CouldNotRunError("--verify writes nothing; --write alone re-renders the register");
         console.log(`local-llm: ${await verifyAbRecord(repoRoot)}`);
+        console.log(`local-llm: ${await verifyReaderRecord(repoRoot)}`);
         return 0;
     }
     if (!args.ab) {
         refuseOutside(args, RECORD_TAKES, "eval --write");
         console.log(`local-llm: ${await writeAbRegister(repoRoot)}`);
+        console.log(`local-llm: ${await writeReaderRegister(repoRoot)}`);
         return 0;
     }
+    if (args.task !== undefined) return readerMode(args, repoRoot, { fetchImpl });
     refuseOutside(args, AB_TAKES, "eval --ab");
     if (args.hostCmd === undefined) {
         throw new RailError(
@@ -2828,6 +3207,49 @@ async function abMode(args, { fetchImpl }) {
             console.error(`local-llm: ${t.arm.toUpperCase()} ${t.task} run ${t.run} ${t.completed ? (t.ok ? "PASS" : "FAIL") : "DID-NOT-COMPLETE"} ${t.ms}ms${reused ? " · from the journal, not re-run" : ""}`),
     });
     const published = publishAb(repoRoot, rec, grading);
+    fs.rmSync(conditions.journal, { recursive: true, force: true });
+    if (published.ok) console.log(`local-llm: ${published.message}`);
+    else console.error(`local-llm: ${published.message}`);
+    return published.ok ? 0 : 1;
+}
+
+async function readerMode(args, repoRoot, { fetchImpl }) {
+    if (args.task !== "read") throw new CouldNotRunError(`--ab --task takes only read, which captures ${READER_RECORD}; ${AB_RECORD} is captured over every one of its tasks`);
+    refuseOutside(args, READER_TAKES, "eval --ab --task read");
+    if (args.hostCmd === undefined) {
+        throw new RailError(
+            `Refused eval --ab --task read: arm H is a PAID run of ${readerHostCalls()} host calls whose prompts leave this machine, which crosses the loopback rail this runner holds. ` +
+                'Name the host command with --host-cmd "<command>" to declare that crossing; nothing was contacted.',
+        );
+    }
+    if (!args.write) throw new CouldNotRunError(`--ab captures turns that do not repeat and keeps them: pass --write, which writes ${READER_RECORD}`);
+    if (fs.existsSync(path.join(repoRoot, READER_RECORD))) {
+        throw new CouldNotRunError(`${READER_RECORD} exists, and a record is captured once: removing it to capture another is the operator's deliberate act, not this command's`);
+    }
+    const k = args.k ?? AB_K;
+    if (k !== AB_K) throw new CouldNotRunError(`--k ${k}: the maintainer ruled ${AB_K} for evals/ab/baseline.md, and a record at another k is another experiment`);
+    if (args.seed === undefined || args.seed.trim() === "") throw new CouldNotRunError("--ab needs --seed <s>, which every arm-L sampling seed derives from");
+    if (args.hostModel === undefined || args.hostModel.trim() === "") throw new CouldNotRunError("--ab needs --host-model <id>: the record names both arms' models");
+    if ((args.effort ?? "low") !== "low") throw new CouldNotRunError("--ab runs arm L at --effort low, the effort the routing ships with");
+    const hostCommand = parseHostCommand(args.hostCmd);
+    const bypassing = (await loadHostRail())(hostCommand);
+    if (bypassing.length > 0) throw new CouldNotRunError(`the host command carries ${bypassing.join(" and ")}, which lets arm H act without a permission prompt — refused, as cli/ab-run.mjs refuses it`);
+    const baseUrl = assertLoopback(args.baseUrl ?? DEFAULT_BASE_URL);
+    const conditions = abConditions({ repoRoot, hostCommand, journalPath: READER_JOURNAL_GIT_PATH });
+    console.error(`local-llm: arm H sends ${readerHostCalls()} prompts off this machine through \`${hostCommand.join(" ")}\`, billed to its account, after arm L's ${readerHostCalls()} on ${baseUrl}; turns are journalled in ${conditions.journal}`);
+    const rec = await captureReader({
+        seed: args.seed,
+        k,
+        hostCommand,
+        hostModel: args.hostModel,
+        baseUrl,
+        conditions,
+        journal: conditions.journal,
+        chatFn: (options) => callLocalChat({ ...options, noLock: Boolean(args.noLock), exitOnSignal: false, fetchImpl }),
+        onTurn: (t, reused) =>
+            console.error(`local-llm: ${t.arm.toUpperCase()} read run ${t.run} ${t.completed ? (t.ok ? "PASS" : "FAIL") : "DID-NOT-COMPLETE"} ${t.ms}ms${reused ? " · from the journal, not re-run" : ""}`),
+    });
+    const published = publishReader(repoRoot, rec);
     fs.rmSync(conditions.journal, { recursive: true, force: true });
     if (published.ok) console.log(`local-llm: ${published.message}`);
     else console.error(`local-llm: ${published.message}`);
