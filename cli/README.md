@@ -73,7 +73,7 @@ Run as `node cli/<file>.mjs`, or imported by the files above.
 | [`instructions.mjs`](instructions.mjs) | `instructions` — the sections a team marks in its own instruction file, moved to on-read units and proved. |
 | [`ledger.mjs`](ledger.mjs) | What a change spends, measured from the host's own usage records. |
 | [`librarian.mjs`](librarian.mjs) | `librarian` — the scheduled pass over the curated layer: reindex, staleness, nags, demotion drafts. |
-| [`local-routing.mjs`](local-routing.mjs) | Verify the shipped operational local roles against their immutable acquired A/B record. No model. Not shipped. |
+| [`local-routing.mjs`](local-routing.mjs) | Check shipped local roles and reading against acquired A/B records. No model. Not shipped. |
 | [`manifest.mjs`](manifest.mjs) | The two facts every tool here needs out of `package.json`, read once and in a module that imports nothing of ours. |
 | [`mutants.mjs`](mutants.mjs) | Mutation-test this repository's two gate matchers against the corpus that claims to cover them. |
 | [`normalize-personas.mjs`](normalize-personas.mjs) | Publish whitelisted numeric metadata and generic answers from the completed private persona acquisition. Not shipped. |
@@ -155,6 +155,7 @@ Node's own runner: `node --test "cli/**/*.test.mjs"`, which the `tests` recipe r
 | [`list-quoting.live.test.mjs`](list-quoting.live.test.mjs) | Every recipe that enumerates the tree reads the pathname git actually carries. |
 | [`local-completion.test.mjs`](local-completion.test.mjs) | Local completion and fenced-code regression tests. |
 | [`local-diagnostics.test.mjs`](local-diagnostics.test.mjs) | Local runner budgets, diagnostics and verification. |
+| [`local-reader.test.mjs`](local-reader.test.mjs) | Reading record tests. |
 | [`local-reading.test.mjs`](local-reading.test.mjs) | Find-and-quote reading tests. |
 | [`local-sizing.test.mjs`](local-sizing.test.mjs) | Offline sizing controls and evidence replay. |
 | [`local-transport.test.mjs`](local-transport.test.mjs) | Local HTTP deadlines, response bounds and compatibility tests. |

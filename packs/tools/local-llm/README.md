@@ -211,7 +211,7 @@ Proposal [`0036`](../../../.portulan/proposals/0036-what-a-host-loads-into-every
    Any exit other than `0` or `1` — `2`, a missing command, a signal — is no verdict: the file is restored at once and the runner exits `2`. SIGINT, SIGTERM and SIGHUP, whether they arrive during the model call or while the verify command runs, stop the verify, restore the file and exit `2`. **The limits:** this is a rollback, not an atomic write — any other signal that ends the runner (SIGKILL and SIGQUIT among them) or a power loss between the edit and its verdict leaves the edit in place, and since the verify runs in a process group of its own, such a signal leaves the verify running too, even one sent to the runner's whole group. Signal handling is POSIX's: on Windows no SIGTERM arrives, and stopping the verify stops only its shell.
 5. **Advisory endpoint serialisation (`--no-lock` to opt out).** Chat completions serialise per normalized endpoint URL via an `O_EXCL` lockfile in the OS temp directory (`portulan-local-llm-<hash>.lock`) holding PID and start time, recovering locks left by dead processes. Waiting happens before the generation request and its 15-minute deadline start; any wait prints to stderr and appears in the receipt as `queued=<ms>ms`. Pass `--no-lock` for servers configured with parallel slots.
 6. **Durable metadata-only request lifecycle & orphan reconciliation.** Requests record a bounded metadata-only start and terminal entry (`requestId`, `phase`, `elapsedMs`, `signal`/`reason`, `rollback`, `providerCancellation`, unreported token subsets preserved as `null` without estimation) under `PORTULAN_LOCAL_LLM_STATE_DIR` (default `os.tmpdir()`, outside committed evidence). `SIGINT`/`SIGTERM`/`SIGHUP` across generation, verification, or read-only modes emits a `CANCELLED` receipt to stderr, records rollback (`restored` vs `not_applicable`), and releases only the caller's own endpoint lock; `SIGKILL`/crash start records are reconciled as `orphaned` when their PID is no longer alive (via `beginLifecycle` / `reconcileLifecycleRecords` / `local-llm.mjs lifecycle`).
-7. **Role screening (`eval`).** Grades an installed local model against Portulan's own [`cli/comments.mjs`](../../../cli/comments.mjs), [`cli/doctor.mjs`](../../../cli/doctor.mjs), and [`cli/skill-goldens.mjs`](../../../cli/skill-goldens.mjs) predicates across `code`, `codify`, and `handoff` tasks, and on a fourth task, `read`, that screens find-and-quote reading: eight calls, each one pointed question about one of two synthetic numbered fixtures in [`screen/read/`](screen/read/), graded with no judgement (the exact set of cited lines, a value and its line, or `ABSENT` citing no line), three of them traps whose item is not in the file; it passes only when all eight are right, and needs no `cli/` predicate. `eval --task <name>` runs one task. It takes **one sample per task and has no baseline arm**, so it is a screen, not the A/B run `0038` requires before a role is routed: a model that fails it is not routed, and passing it earns nothing. Its first three tasks need `cli/` beside `packs/`, as the repository and the npm package carry it, exiting `2` where only `packs/` was installed. `read` is outside the A/B record: its prompts and grader are kept apart from the fingerprinted ones, so the captured record still verifies, and no routing rests on it. The A/B run is [*The A/B record*](#the-ab-record) below.
+7. **Role screening (`eval`).** Grades an installed local model against Portulan's own [`cli/comments.mjs`](../../../cli/comments.mjs), [`cli/doctor.mjs`](../../../cli/doctor.mjs), and [`cli/skill-goldens.mjs`](../../../cli/skill-goldens.mjs) predicates across `code`, `codify`, and `handoff` tasks, and on a fourth task, `read`, that screens find-and-quote reading: eight calls, each one pointed question about one of two synthetic numbered fixtures in [`screen/read/`](screen/read/), graded with no judgement (the exact set of cited lines, a value and its line, or `ABSENT` citing no line), three of them traps whose item is not in the file; it passes only when all eight are right, and needs no `cli/` predicate. `eval --task <name>` runs one task. It takes **one sample per task and has no baseline arm**, so it is a screen, not the A/B run `0038` requires before a role is routed: a model that fails it is not routed, and passing it earns nothing. Its first three tasks need `cli/` beside `packs/`, as the repository and the npm package carry it, exiting `2` where only `packs/` was installed. `read` stays in the default task set, by the fourth ruling on [proposal 0042](../../../.portulan/proposals/0042-find-and-quote-reading-earns-its-place-by-its-own-record.md). It is outside the local-worker A/B record: its prompts and grader are kept apart from the fingerprinted ones, so that record still verifies, and no routing rests on the screen. Reading is earned, if at all, by [a record of its own](#the-reading-record). The A/B run is [*The A/B record*](#the-ab-record) below.
 
 Default loopback `/chat/completions` calls use a finite 15-minute deadline over the
 connection, headers and complete response body, with a 256-KiB response limit.
@@ -324,9 +324,9 @@ model/effort or bypass verification. This advice reduces failures, does not guar
 A pointed question about one file or one log, answered with line numbers, which the caller confirms
 by reading only those lines: `chat --role code --file <path> --number-lines --prompt-file <question>`.
 It is an **operator-selected candidate use, not earned routing**. The [A/B record](#the-ab-record)
-measured `code` on a transform, not on reading; the screen's `read` task passing earns nothing; and a
-record of reading is the subject of a draft proposal, not a capture. Use it where the operator selected
-it, and only on these rails:
+measured `code` on a transform, not on reading; the screen's `read` task passing earns nothing; and
+[the reading record](#the-reading-record) that would earn it is not captured. Use it where the operator
+selected it, and only on these rails:
 
 - **One file or one log per call**, under the input ceiling; a longer one in parts with `--lines`,
   whose numbers stay the file's own.
@@ -499,16 +499,42 @@ It is repository workshop tooling, excluded from npm like the earlier A/B instru
   alike: a synthetic fixture is not a capture.
   `eval --write` re-renders the register from the record, refusing one `--verify` would red.
 
-- **`read` has no cell, and nothing captures one today.** This record's matrix is three tasks and is
-  captured once, so a cell for find-and-quote reading would be a record of its own beside it, graded by
-  the screen's `read` predicate, with arm L at `--role code`. Its design, and the capture step left to the
-  maintainer, are in the draft
-  [proposal 0042](../../../.portulan/proposals/0042-find-and-quote-reading-earns-its-place-by-its-own-record.md);
-  until a ruling and a capture, `--ab` refuses `--task` as before and the use stays an operator-selected
-  candidate.
+- **`read` has no cell in this record**, and never will: by the maintainer's rulings on
+  [proposal 0042](../../../.portulan/proposals/0042-find-and-quote-reading-earns-its-place-by-its-own-record.md) reading is earned on
+  [a record of its own](#the-reading-record), and this record is not recaptured or reshaped for it.
 
-The `ab-run` recipe runs the earlier baseline verifier, exact no-model `eval --verify`, and the
-shipped-routing verifier on every pull request. A red or could-not-run result survives later greens;
+## The reading record
+
+Find-and-quote reading is earned on `evals/ab/local-reader.json` and its generated register
+`local-reader.md`, by the rulings on [proposal 0042](../../../.portulan/proposals/0042-find-and-quote-reading-earns-its-place-by-its-own-record.md), and
+**neither exists yet**: capturing it is the maintainer's step. Until then `eval --verify` ends with
+`evals/ab/local-reader.json is not captured, so reading earns nothing` and stays green,
+`cli/local-routing.mjs` ends with `reading: not captured`, and `EARNED_ROUTING` carries no `reading`
+entry; a `local-reader.md` with no record beside it is exit `1`.
+
+- **`eval --ab --task read --k 5 --seed <s> --host-cmd "<command>" --host-model <id> --write`
+  captures it**, beside the local-worker record and without touching it. One task, two arms, `k = 5`
+  turns each. **A turn is one pass of the eight screen questions**, each its own call, graded by
+  `gradeReadAnswer()`; it passes only when all eight are right, does not complete where any of its host
+  calls does not, and asks all eight either way. Arm L is `--role code` (`qwen/qwen3.8-27b`) at
+  `--effort low` on loopback, each turn's eight calls sharing a seed derived from `--seed`, and runs
+  first. Arm H is **forty paid host calls whose prompts leave the machine**, each the question's two
+  messages joined, under every refusal, rail and journal rule of the worker capture above; its journal
+  is `portulan/local-reader-journal`, journalled per turn, so a turn interrupted between its questions
+  re-runs all eight on resume. Any other `--task` is refused with exit `2`.
+- **`eval --verify` checks it when it exists**, with no model: its shape, every arm-L seed, every
+  completed question regraded by the grader as it ships, the sha256 fingerprints of the questions'
+  prompts, the questions and answer key, and the fixtures (a grader that moved while every verdict
+  regrades the same is no finding), each turn folded from its eight questions, the cells folded from
+  the turns, and the register byte-compared. `eval --write` re-renders its register too.
+- **Reading is earned only from a record that qualifies** under the local-worker rule: all five local
+  turns pass, all five host turns complete with an answer to every question, and local passes are at
+  least host passes; a tie at zero earns nothing. `cli/local-routing.mjs` derives the `reading` entry
+  from the record and compares it with the shipped `EARNED_ROUTING`, so the entry can ship only with a
+  qualifying record, and the change that commits one is the one that calls the use supported.
+
+The `ab-run` recipe runs the earlier baseline verifier, exact no-model `eval --verify` (both records),
+and the shipped-routing verifier on every pull request. A red or could-not-run result survives later greens;
 exit `2` takes precedence over exit `1`. No model is rerun in CI. `k = 5` supports these recorded rates,
 not general reliability, arbitrary task quality or independently observed host model identity.
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Verify the shipped operational local roles against their immutable acquired A/B record. No model.
+// Check shipped local roles and reading against acquired A/B records. No model.
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import {
-    AB_RECORD, AB_TASKS, EARNED_ROUTING, RailError, TASK_ROLES,
-    currentScreen, loadPredicates, verifyAb, verifyAbRecord,
+    AB_RECORD, AB_TASKS, EARNED_ROUTING, READER_RECORD, RailError, TASK_ROLES,
+    currentScreen, loadPredicates, verifyAb, verifyAbRecord, verifyReader, verifyReaderRecord,
 } from "../packs/tools/local-llm/runner/local-llm.mjs";
 
 export async function deriveRouting(record) {
@@ -26,18 +26,37 @@ export async function deriveRouting(record) {
     }]));
 }
 
+export function deriveReading(record) {
+    if (record === null) return null;
+    const red = verifyReader(record);
+    if (record?.fixture !== undefined) red.push("a synthetic fixture earns no routing");
+    if (red.length) throw new RailError(red.join("\n"));
+    const local = record.turns.filter((t) => t.arm === "l");
+    const host = record.turns.filter((t) => t.arm === "h");
+    const localPassed = local.filter((t) => t.ok).length;
+    const earned = local.every((t) => t.completed && t.ok) &&
+        host.every((t) => t.completed && t.exit === 0 && !t.timedOut && t.questions.every((q) => q.output.trim() !== "")) &&
+        localPassed >= host.filter((t) => t.ok).length && localPassed > 0;
+    return earned ? { role: "code", model: record.arms.l.model } : null;
+}
+
 export async function verifyRoutingRecord(repoRoot, routing = EARNED_ROUTING) {
     await verifyAbRecord(repoRoot);
+    await verifyReaderRecord(repoRoot);
     const bytes = fs.readFileSync(path.join(repoRoot, AB_RECORD));
+    const readerFile = path.join(repoRoot, READER_RECORD);
+    const reader = fs.existsSync(readerFile) ? JSON.parse(fs.readFileSync(readerFile, "utf8")) : null;
+    const reading = deriveReading(reader);
     const expected = {
         record: AB_RECORD,
         sha256: createHash("sha256").update(bytes).digest("hex"),
         roles: await deriveRouting(JSON.parse(bytes)),
+        ...(reading ? { reading } : {}),
     };
     if (JSON.stringify(routing) !== JSON.stringify(expected)) {
         throw new RailError("shipped EARNED_ROUTING differs from its acquired record's digest, models or supported roles");
     }
-    return "acquired record digest and models match; shipped role support is rederived from its turns";
+    return `acquired record digest and models match; shipped role support is rederived from its turns; reading: ${reader === null ? "not captured" : reading ? "earned" : "captured and not earned"}`;
 }
 
 export async function run(argv = process.argv.slice(2)) {
