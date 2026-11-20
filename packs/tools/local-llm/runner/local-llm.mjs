@@ -3002,14 +3002,15 @@ export const USAGE = `local-llm.mjs — a zero-dependency runner for a loopback 
   ${TRANSFORM_USAGE}
   local-llm.mjs eval [--role code|prose | --model <id>] [--task code|codify|handoff|read] [--no-lock]
   local-llm.mjs eval --ab --k ${AB_K} --seed <s> --host-cmd "<command>" --host-model <id> --write [--repo-root <dir>]
+  local-llm.mjs eval --ab --task read --k ${AB_K} --seed <s> --host-cmd "<command>" --host-model <id> --write [--repo-root <dir>]
   local-llm.mjs eval --verify [--repo-root <dir>]
   local-llm.mjs eval --write [--repo-root <dir>]
   local-llm.mjs --verify-offline
 
   eval           the screen: one sample per task and no baseline arm. A model that fails it is not
                  routed; passing it earns nothing. read asks one question per call about a numbered
-                 fixture in screen/read/ and passes only when every answer is right; it is not in the
-                 A/B record, so no routing rests on it.
+                 fixture in screen/read/ and passes only when every answer is right; no routing rests
+                 on the screen.
   eval --ab      capture the A/B record routing is earned by, k=${AB_K} per (task, arm) over code, codify and
                  handoff, both arms graded by the screen's predicates. Arm L is each task's model as
                  routed, at --effort low, on loopback, at $0.00, and runs first. Arm H is the host agent:
@@ -3026,14 +3027,24 @@ export const USAGE = `local-llm.mjs — a zero-dependency runner for a loopback 
                  record is captured once. Creates ${AB_RECORD} exclusively; a late existing record is
                  preserved with the journal (exit2). Removes the journal after writing a new record,
                  and writes ${AB_REGISTER} only where the capture passes --verify.
+  eval --ab --task read
+                 capture the reading record, ${READER_RECORD}, apart from ${AB_RECORD}: k=${AB_K} turns per
+                 arm, a turn being the ${READ_QUESTIONS.length} screen questions, each its own call graded by
+                 gradeReadAnswer(), passing only when all are right. Arm L is --role code at --effort low
+                 with the turn's seed, first; arm H is ${readerHostCalls()} PAID host calls under the same refusals,
+                 journal (${READER_JOURNAL_GIT_PATH}) and capture-once rule as above.
   eval --verify  no model: the record's shape, its matrix total over k, every arm-L seed, every completed
                  turn REGRADED by the predicates as they ship, the cells re-folded from the turns, and
-                 ${AB_REGISTER} byte-compared with a fresh render. Exit 2 where no record exists or cli/
-                 is not beside packs/ to regrade with, 1 where anything disagrees.
-  eval --write   re-render ${AB_REGISTER} from the committed record, refusing one --verify would red.
+                 ${AB_REGISTER} byte-compared with a fresh render; then the same for ${READER_RECORD}
+                 question by question, where it exists. An absent reading record is reported as not
+                 captured and earns nothing. Exit 2 where no worker record exists or cli/ is not beside
+                 packs/ to regrade with, 1 where anything disagrees.
+  eval --write   re-render ${AB_REGISTER}, and ${READER_REGISTER} where its record exists, refusing a record
+                 --verify would red.
 
 Routing evidence: ${AB_REGISTER}, k=5. Code is enabled (L5/H5); shared prose is disabled
-(codify L0/H3, handoff L5/H5). Operational defaults and --role require the measured model at low
+(codify L0/H3, handoff L5/H5). Reading has no captured record, so find and quote is a candidate use.
+Operational defaults and --role require the measured model at low
 effort. --model without --role is an explicit candidate; eval and eval --ab remain screens/captures
 and never enable a role automatically.
 

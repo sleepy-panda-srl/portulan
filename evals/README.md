@@ -275,7 +275,10 @@ tier** [`ab/arm.md`](ab/arm.md) specifies, and closes row 8 for no other configu
 `node packs/tools/local-llm/runner/local-llm.mjs eval --verify` regrades and byte-compares without a
 model. `node cli/local-routing.mjs` additionally compares the shipped role flags, model IDs and
 capture digest with an independent derivation. Both run beside the original baseline in `ab-run`.
-The acquired five-turn cells support code, while the shared prose role is disabled. These rates
+The acquired five-turn cells support code, while the shared prose role is disabled. Find-and-quote
+reading is earned on a record of its own, `ab/local-reader.json`, by the rulings on
+[proposal 0042](../.portulan/proposals/0042-find-and-quote-reading-earns-its-place-by-its-own-record.md);
+it is not captured, both checks say so and stay green, and capturing it is the maintainer's step. These rates
 support no general quality claim, and CI cannot replay the events that produced them.
 
 ## A release carries an eval result

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Verify the shipped operational local roles against their immutable acquired A/B record. No model.
+// Check shipped local roles and reading against acquired A/B records. No model.
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
