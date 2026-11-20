@@ -1,22 +1,29 @@
 {
   "portulan": {
-    "abLocalWorker": "1"
+    "abLocalWorker": "2"
   },
   "captured": "2000-01-01T00:00:00.000Z",
   "source": {
     "commit": "0000000000000000000000000000000000000000",
     "clean": true,
-    "runner": "5dd7a84a561b0f92c95e7c153d797cca38d8367796b7ed899a6722269fa2e447"
+    "runner": "6144e8123cb5cace25300192647198354a803f4a3d40e73e77ab90a7c783c421"
   },
   "machine": "none: a synthetic fixture, and no machine ran these turns",
   "k": 5,
   "seed": "synthetic-fixture",
   "rulings": {
-    "k": "2026-08-31"
+    "k": "2026-08-31",
+    "read": "2026-11-20"
   },
   "screen": {
     "predicates": "0000000000000000000000000000000000000000000000000000000000000000",
-    "prompts": "c60ce823e1551fee7644f1c376a19cf697f825900c92adfa39a13c6a99058132"
+    "prompts": "c60ce823e1551fee7644f1c376a19cf697f825900c92adfa39a13c6a99058132",
+    "read": {
+      "prompts": "57b5ead953e7387ac18bbcbef563e4354e16460e076da10040d8157b071cc43f",
+      "questions": "2c124be9c14bf4aff47788796ec1e5ed0b0c71ffe43e64aef693bd20ef5716c6",
+      "fixtures": "0973bbcff03866607afb75617dd651aa2883b466a2de1231d47462f4d0f9fda7",
+      "grader": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
   },
   "arms": {
     "l": {
@@ -29,7 +36,8 @@
       "routing": {
         "code": "code",
         "codify": "prose",
-        "handoff": "prose"
+        "handoff": "prose",
+        "read": "code"
       }
     },
     "h": {
@@ -55,7 +63,8 @@
       "ms": 1000,
       "ok": true,
       "detail": "comments=0 history=0 exported=true",
-      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```"
+      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```",
+      "questions": null
     },
     {
       "task": "code",
@@ -69,7 +78,8 @@
       "ms": 1001,
       "ok": true,
       "detail": "comments=0 history=0 exported=true",
-      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```"
+      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```",
+      "questions": null
     },
     {
       "task": "code",
@@ -83,7 +93,8 @@
       "ms": 1002,
       "ok": false,
       "detail": "comments=1 history=1 exported=true",
-      "output": "(synthetic fixture output: no model wrote this)\n```js\n// added 2026-10-27 for #546\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```"
+      "output": "(synthetic fixture output: no model wrote this)\n```js\n// added 2026-10-27 for #546\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```",
+      "questions": null
     },
     {
       "task": "code",
@@ -97,7 +108,8 @@
       "ms": 1003,
       "ok": true,
       "detail": "comments=0 history=0 exported=true",
-      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```"
+      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```",
+      "questions": null
     },
     {
       "task": "code",
@@ -111,7 +123,8 @@
       "ms": 1004,
       "ok": true,
       "detail": "comments=0 history=0 exported=true",
-      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```"
+      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```",
+      "questions": null
     },
     {
       "task": "code",
@@ -125,7 +138,8 @@
       "ms": 20000,
       "ok": true,
       "detail": "comments=0 history=0 exported=true",
-      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```"
+      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```",
+      "questions": null
     },
     {
       "task": "code",
@@ -139,7 +153,8 @@
       "ms": 20001,
       "ok": true,
       "detail": "comments=0 history=0 exported=true",
-      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```"
+      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```",
+      "questions": null
     },
     {
       "task": "code",
@@ -153,7 +168,8 @@
       "ms": 20002,
       "ok": true,
       "detail": "comments=0 history=0 exported=true",
-      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```"
+      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```",
+      "questions": null
     },
     {
       "task": "code",
@@ -167,7 +183,8 @@
       "ms": 20003,
       "ok": true,
       "detail": "comments=0 history=0 exported=true",
-      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```"
+      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```",
+      "questions": null
     },
     {
       "task": "code",
@@ -181,7 +198,8 @@
       "ms": 20004,
       "ok": true,
       "detail": "comments=0 history=0 exported=true",
-      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```"
+      "output": "(synthetic fixture output: no model wrote this)\n```js\nexport function summarizeRun(records) {\n    return { requests: records.length, billableTokens: 0, maxContext: 0 };\n}\n```",
+      "questions": null
     },
     {
       "task": "codify",
@@ -195,7 +213,8 @@
       "ms": 1100,
       "ok": false,
       "detail": "incident=true proposedRule=true enforcement=false retireWhen=false provenance=true",
-      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`."
+      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.",
+      "questions": null
     },
     {
       "task": "codify",
@@ -209,7 +228,8 @@
       "ms": 1101,
       "ok": true,
       "detail": "incident=true proposedRule=true enforcement=true retireWhen=true provenance=true",
-      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks."
+      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks.",
+      "questions": null
     },
     {
       "task": "codify",
@@ -223,7 +243,8 @@
       "ms": 1102,
       "ok": false,
       "detail": "incident=true proposedRule=true enforcement=false retireWhen=false provenance=true",
-      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`."
+      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.",
+      "questions": null
     },
     {
       "task": "codify",
@@ -237,7 +258,8 @@
       "ms": 1103,
       "ok": true,
       "detail": "incident=true proposedRule=true enforcement=true retireWhen=true provenance=true",
-      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks."
+      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks.",
+      "questions": null
     },
     {
       "task": "codify",
@@ -251,7 +273,8 @@
       "ms": 1104,
       "ok": true,
       "detail": "incident=true proposedRule=true enforcement=true retireWhen=true provenance=true",
-      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks."
+      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks.",
+      "questions": null
     },
     {
       "task": "codify",
@@ -265,7 +288,8 @@
       "ms": 21000,
       "ok": true,
       "detail": "incident=true proposedRule=true enforcement=true retireWhen=true provenance=true",
-      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks."
+      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks.",
+      "questions": null
     },
     {
       "task": "codify",
@@ -279,7 +303,8 @@
       "ms": 21001,
       "ok": true,
       "detail": "incident=true proposedRule=true enforcement=true retireWhen=true provenance=true",
-      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks."
+      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks.",
+      "questions": null
     },
     {
       "task": "codify",
@@ -293,7 +318,8 @@
       "ms": 21002,
       "ok": null,
       "detail": null,
-      "output": ""
+      "output": "",
+      "questions": null
     },
     {
       "task": "codify",
@@ -307,7 +333,8 @@
       "ms": 21003,
       "ok": true,
       "detail": "incident=true proposedRule=true enforcement=true retireWhen=true provenance=true",
-      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks."
+      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks.",
+      "questions": null
     },
     {
       "task": "codify",
@@ -321,7 +348,8 @@
       "ms": 21004,
       "ok": true,
       "detail": "incident=true proposedRule=true enforcement=true retireWhen=true provenance=true",
-      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks."
+      "output": "**Incident.** (synthetic fixture output: no model wrote this) Bounded calls loaded the whole host floor.\n\n**Proposed rule.** Omit the host floor on bounded local worker calls.\n\n**Enforcement.** The runner refuses prompts above `--max-input-bytes`.\n\n**Provenance.** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/433`.\n\n**Retire when.** Host subagents omit the floor on bounded tasks.",
+      "questions": null
     },
     {
       "task": "handoff",
@@ -335,7 +363,8 @@
       "ms": 1200,
       "ok": true,
       "detail": "bytes=175/800 missing=0",
-      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing."
+      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing.",
+      "questions": null
     },
     {
       "task": "handoff",
@@ -349,7 +378,8 @@
       "ms": 1201,
       "ok": true,
       "detail": "bytes=175/800 missing=0",
-      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing."
+      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing.",
+      "questions": null
     },
     {
       "task": "handoff",
@@ -363,7 +393,8 @@
       "ms": 1202,
       "ok": true,
       "detail": "bytes=175/800 missing=0",
-      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing."
+      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing.",
+      "questions": null
     },
     {
       "task": "handoff",
@@ -377,7 +408,8 @@
       "ms": 1203,
       "ok": false,
       "detail": "bytes=153/800 missing=1",
-      "output": "## Did\n(synthetic fixture output: no model wrote this) `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing."
+      "output": "## Did\n(synthetic fixture output: no model wrote this) `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing.",
+      "questions": null
     },
     {
       "task": "handoff",
@@ -391,7 +423,8 @@
       "ms": 1204,
       "ok": true,
       "detail": "bytes=175/800 missing=0",
-      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing."
+      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing.",
+      "questions": null
     },
     {
       "task": "handoff",
@@ -405,7 +438,8 @@
       "ms": 22000,
       "ok": true,
       "detail": "bytes=175/800 missing=0",
-      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing."
+      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing.",
+      "questions": null
     },
     {
       "task": "handoff",
@@ -419,7 +453,8 @@
       "ms": 600000,
       "ok": null,
       "detail": null,
-      "output": ""
+      "output": "",
+      "questions": null
     },
     {
       "task": "handoff",
@@ -433,7 +468,8 @@
       "ms": 22002,
       "ok": true,
       "detail": "bytes=175/800 missing=0",
-      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing."
+      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing.",
+      "questions": null
     },
     {
       "task": "handoff",
@@ -447,7 +483,8 @@
       "ms": 22003,
       "ok": true,
       "detail": "bytes=175/800 missing=0",
-      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing."
+      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing.",
+      "questions": null
     },
     {
       "task": "handoff",
@@ -461,7 +498,968 @@
       "ms": 22004,
       "ok": true,
       "detail": "bytes=175/800 missing=0",
-      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing."
+      "output": "## Did\n(synthetic fixture output: no model wrote this) `claude/spend-ledger` `0038` `cli/ledger.mjs` `cli/advisory.mjs` `ef91a02` `85k` `m13`\n## Open\nNothing.\n## Next\nNothing.",
+      "questions": null
+    },
+    {
+      "task": "read",
+      "arm": "l",
+      "run": 0,
+      "seed": 1869464975,
+      "model": "fixture/local-code-model",
+      "completed": true,
+      "exit": null,
+      "timedOut": false,
+      "ms": 4028,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "output": null,
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 500,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 501,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 502,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 503,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 504,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 505,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 506,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 507,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "l",
+      "run": 1,
+      "seed": 2149045721,
+      "model": "fixture/local-code-model",
+      "completed": true,
+      "exit": null,
+      "timedOut": false,
+      "ms": 4108,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "output": null,
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 510,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 511,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 512,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 513,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 514,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 515,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 516,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 517,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "l",
+      "run": 2,
+      "seed": 2019063135,
+      "model": "fixture/local-code-model",
+      "completed": true,
+      "exit": null,
+      "timedOut": false,
+      "ms": 4188,
+      "ok": false,
+      "detail": "right=7/8 traps=2/3 wrong=module-absent-function(absent=false lines=[12])",
+      "output": null,
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 520,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 521,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 522,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 523,
+          "ok": false,
+          "detail": "absent=false lines=[12]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 12"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 524,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 525,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 526,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 527,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "l",
+      "run": 3,
+      "seed": 2054832489,
+      "model": "fixture/local-code-model",
+      "completed": true,
+      "exit": null,
+      "timedOut": false,
+      "ms": 4268,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "output": null,
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 530,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 531,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 532,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 533,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 534,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 535,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 536,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 537,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "l",
+      "run": 4,
+      "seed": 1006482901,
+      "model": "fixture/local-code-model",
+      "completed": true,
+      "exit": null,
+      "timedOut": false,
+      "ms": 4348,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "output": null,
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 540,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 541,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 542,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 543,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 544,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 545,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 546,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": null,
+          "timedOut": false,
+          "ms": 547,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "h",
+      "run": 0,
+      "seed": null,
+      "model": "fixture/host-model",
+      "completed": true,
+      "exit": 0,
+      "timedOut": false,
+      "ms": 32028,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "output": null,
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4000,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4001,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4002,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4003,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4004,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4005,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4006,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4007,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "h",
+      "run": 1,
+      "seed": null,
+      "model": "fixture/host-model",
+      "completed": false,
+      "exit": 1,
+      "timedOut": false,
+      "ms": 32108,
+      "ok": null,
+      "detail": null,
+      "output": null,
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4010,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4011,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4012,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4013,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4014,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": false,
+          "exit": 1,
+          "timedOut": false,
+          "ms": 4015,
+          "ok": null,
+          "detail": null,
+          "output": ""
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4016,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4017,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "h",
+      "run": 2,
+      "seed": null,
+      "model": "fixture/host-model",
+      "completed": true,
+      "exit": 0,
+      "timedOut": false,
+      "ms": 32188,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "output": null,
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4020,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4021,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4022,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4023,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4024,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4025,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4026,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4027,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "h",
+      "run": 3,
+      "seed": null,
+      "model": "fixture/host-model",
+      "completed": true,
+      "exit": 0,
+      "timedOut": false,
+      "ms": 32268,
+      "ok": true,
+      "detail": "right=8/8 traps=3/3",
+      "output": null,
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4030,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4031,
+          "ok": true,
+          "detail": "value=\"48\" lines=[5] want=\"48\"@[5]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 48 | LINES: 5"
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4032,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4033,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4034,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4035,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4036,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4037,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        }
+      ]
+    },
+    {
+      "task": "read",
+      "arm": "h",
+      "run": 4,
+      "seed": null,
+      "model": "fixture/host-model",
+      "completed": false,
+      "exit": null,
+      "timedOut": true,
+      "ms": 628307,
+      "ok": null,
+      "detail": null,
+      "output": null,
+      "questions": [
+        {
+          "id": "module-declares",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4040,
+          "ok": true,
+          "detail": "lines=[26] want=[26]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 26"
+        },
+        {
+          "id": "module-constant",
+          "completed": false,
+          "exit": null,
+          "timedOut": true,
+          "ms": 600000,
+          "ok": null,
+          "detail": null,
+          "output": ""
+        },
+        {
+          "id": "module-calls",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4042,
+          "ok": true,
+          "detail": "lines=[48,62] want=[48,62]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 48, 62"
+        },
+        {
+          "id": "module-absent-function",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4043,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "module-absent-env",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4044,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        },
+        {
+          "id": "log-skipped",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4045,
+          "ok": true,
+          "detail": "value=\"2\" lines=[39] want=\"2\"@[39]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: 2 | LINES: 39"
+        },
+        {
+          "id": "log-first-failure",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4046,
+          "ok": true,
+          "detail": "lines=[12] want=[12]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: - | LINES: 12"
+        },
+        {
+          "id": "log-absent-coverage",
+          "completed": true,
+          "exit": 0,
+          "timedOut": false,
+          "ms": 4047,
+          "ok": true,
+          "detail": "absent=true lines=[]",
+          "output": "(synthetic fixture output: no model wrote this)\nANSWER: ABSENT | LINES: none"
+        }
+      ]
     }
   ],
   "cells": [
@@ -512,6 +1510,22 @@
       "passed": 4,
       "failed": 0,
       "didNotComplete": 1
+    },
+    {
+      "task": "read",
+      "arm": "l",
+      "model": "fixture/local-code-model",
+      "passed": 4,
+      "failed": 1,
+      "didNotComplete": 0
+    },
+    {
+      "task": "read",
+      "arm": "h",
+      "model": "fixture/host-model",
+      "passed": 3,
+      "failed": 0,
+      "didNotComplete": 2
     }
   ],
   "fixture": "Every turn was scripted by `cli/fixtures/generate-local-worker.mjs` and every output was invented; no model, host or machine ran."

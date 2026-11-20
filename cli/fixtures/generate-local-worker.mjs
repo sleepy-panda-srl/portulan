@@ -1,7 +1,7 @@
 // Writes `./local-worker/`: a synthetic A/B capture of the local-llm runner's arms, and the register it renders.
 //
 // Every turn is scripted from PLAN below and every output is invented; the capture and the render are the runner's own.
-// The predicates fingerprint is a fixed fake, so an edit to a predicate file moves no byte here unless a verdict moves.
+// The grading fingerprints are fixed fakes, so an edit to a grader moves no byte here unless a verdict moves.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -15,6 +15,10 @@ import {
     hostPrompt,
     loadPredicates,
     promptsFingerprint,
+    READ_QUESTIONS,
+    readFingerprints,
+    readHostPrompt,
+    readMessages,
     renderAbRegister,
     verifyAb,
 } from "../../packs/tools/local-llm/runner/local-llm.mjs";
@@ -30,7 +34,10 @@ const PLAN = Object.freeze({
     code: { l: "PPFPP", h: "PPPPP" },
     codify: { l: "FPFPP", h: "PPXPP" },
     handoff: { l: "PPPFP", h: "PTPPP" },
+    read: { l: "PPFPP", h: "PXPPT" },
 });
+const READ_WRONG = "module-absent-function";
+const READ_STOPPED = { X: "log-skipped", T: "module-constant" };
 
 const MARK = "(synthetic fixture output: no model wrote this)";
 const OUTPUTS = {
@@ -64,19 +71,43 @@ const OUTPUTS = {
     },
 };
 
+const answer = (q) => `${MARK}\nANSWER: ${q.kind === "absent" ? "ABSENT" : q.kind === "value" ? q.value : "-"} | LINES: ${q.kind === "absent" ? "none" : q.lines.join(", ")}`;
+const misread = `${MARK}\nANSWER: - | LINES: 12`;
+
 const runs = { l: Object.fromEntries(AB_TASKS.map((t) => [t, 0])), h: Object.fromEntries(AB_TASKS.map((t) => [t, 0])) };
 const next = (arm, task) => {
     const run = runs[arm][task]++;
     return { run, state: PLAN[task][arm][run] };
 };
+const reads = { l: 0, h: 0 };
+const nextRead = (arm) => {
+    const call = reads[arm]++;
+    const run = Math.floor(call / READ_QUESTIONS.length);
+    return { run, state: PLAN.read[arm][run], question: READ_QUESTIONS[call % READ_QUESTIONS.length] };
+};
 
 const chatFn = async ({ messages }) => {
+    const question = READ_QUESTIONS.find((q) => JSON.stringify(readMessages(q)) === JSON.stringify(messages));
+    if (question !== undefined) {
+        const { run, state, question: due } = nextRead("l");
+        if (due !== question) throw new Error(`the capture asked ${question.id} where ${due.id} was due`);
+        return { content: state === "F" && question.id === READ_WRONG ? misread : answer(question), totalMs: 500 + 10 * run + READ_QUESTIONS.indexOf(question) };
+    }
     const task = AB_TASKS.find((t) => EVAL_PROMPTS[t] === messages);
     const { run, state } = next("l", task);
     return { content: OUTPUTS[task][state], totalMs: 1000 + 100 * AB_TASKS.indexOf(task) + run };
 };
 
 const hostFn = ({ prompt, timeoutMs }) => {
+    const question = READ_QUESTIONS.find((q) => readHostPrompt(q) === prompt);
+    if (question !== undefined) {
+        const { run, state, question: due } = nextRead("h");
+        if (due !== question) throw new Error(`the capture asked ${question.id} where ${due.id} was due`);
+        const ms = 4000 + 10 * run + READ_QUESTIONS.indexOf(question);
+        if (state === "X" && question.id === READ_STOPPED.X) return { completed: false, exit: 1, timedOut: false, ms, output: "" };
+        if (state === "T" && question.id === READ_STOPPED.T) return { completed: false, exit: null, timedOut: true, ms: timeoutMs, output: "" };
+        return { completed: true, exit: 0, timedOut: false, ms, output: answer(question) };
+    }
     const task = AB_TASKS.find((t) => hostPrompt(t) === prompt);
     const { run, state } = next("h", task);
     const ms = 20000 + 1000 * AB_TASKS.indexOf(task) + run;
@@ -88,7 +119,7 @@ const hostFn = ({ prompt, timeoutMs }) => {
 const predicates = await loadPredicates();
 const rec = await captureAb({
     seed: "synthetic-fixture",
-    screen: { predicates: "0".repeat(64), prompts: promptsFingerprint() },
+    screen: { predicates: "0".repeat(64), prompts: promptsFingerprint(), read: { ...readFingerprints(), grader: "0".repeat(64) } },
     predicates,
     hostCommand: ["fixture-host", "--print"],
     hostModel: "fixture/host-model",
